@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "qt-cpp-docs": {
+      "source": "TheQtCompanyRnD/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/qt-cpp-docs/SKILL.md",
+      "computedHash": "f781ee529c96268427ef64b4364e13d3d0c471b8e9956aec35e5211f205b703d"
+    },
+    "qt-cpp-review": {
+      "source": "TheQtCompanyRnD/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/qt-cpp-review/SKILL.md",
+      "computedHash": "a40d50ce9c6cfffbcc2736b5e2cb76eaabb12569180eee1dbc155a636419112a"
+    },
+    "qt-qml": {
+      "source": "TheQtCompanyRnD/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/qt-qml/SKILL.md",
+      "computedHash": "c42cef83fcee714b5733a1d0dde092acbc2e7648c99f837e82b11abcc5be23a1"
+    },
+    "qt-qml-docs": {
+      "source": "TheQtCompanyRnD/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/qt-qml-docs/SKILL.md",
+      "computedHash": "5b5be950238f0e5ffd54034b24a05cee43a07f898401e706b3a8f8ae45d37876"
+    },
+    "qt-qml-profiler": {
+      "source": "TheQtCompanyRnD/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/qt-qml-profiler/SKILL.md",
+      "computedHash": "2094f245c9dbb05112614d449fb4fbcdef52dd4f5dc77f6571e9aa321d54d22b"
+    },
+    "qt-qml-review": {
+      "source": "TheQtCompanyRnD/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/qt-qml-review/SKILL.md",
+      "computedHash": "34ac70b37b8e1a18ebd672527ce4d60f8ce491a9a9c5d47f844849183d307f53"
+    }
+  }
+}

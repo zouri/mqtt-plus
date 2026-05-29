@@ -1,0 +1,147 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "qt6.11-debug",
+      "displayName": "Qt 6.11.0 macOS Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/qt6.11-debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_PREFIX_PATH": "/Users/sun/Qt/6.11.0/macos"
+      }
+    },
+    {
+      "name": "qt6.11-macos-release",
+      "displayName": "Qt 6.11.0 macOS Release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/qt6.11-macos-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "/Users/sun/Qt/6.11.0/macos"
+      }
+    },
+    {
+      "name": "qt6.11-linux-release",
+      "displayName": "Qt 6.11.0 Linux Release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/qt6.11-linux-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "/opt/Qt/6.11.0/gcc_64"
+      }
+    },
+    {
+      "name": "qt6.11-windows-release",
+      "displayName": "Qt 6.11.0 Windows Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/qt6.11-windows-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.11.0/msvc2022_64"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "qt6.11-debug",
+      "configurePreset": "qt6.11-debug"
+    },
+    {
+      "name": "qt6.11-macos-release",
+      "configurePreset": "qt6.11-macos-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "qt6.11-linux-release",
+      "configurePreset": "qt6.11-linux-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "qt6.11-windows-release",
+      "configurePreset": "qt6.11-windows-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "qt6.11-macos-dmg",
+      "displayName": "Qt 6.11.0 macOS DMG",
+      "configurePreset": "qt6.11-macos-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "generators": [
+        "DragNDrop"
+      ],
+      "packageDirectory": "${sourceDir}/dist"
+    },
+    {
+      "name": "qt6.11-linux-tgz",
+      "displayName": "Qt 6.11.0 Linux tar.gz",
+      "configurePreset": "qt6.11-linux-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "generators": [
+        "TGZ"
+      ],
+      "packageDirectory": "${sourceDir}/dist"
+    },
+    {
+      "name": "qt6.11-windows-zip",
+      "displayName": "Qt 6.11.0 Windows ZIP",
+      "configurePreset": "qt6.11-windows-release",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "generators": [
+        "ZIP"
+      ],
+      "packageDirectory": "${sourceDir}/dist"
+    }
+  ]
+}

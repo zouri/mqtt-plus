@@ -1,0 +1,325 @@
+#include "historystore.h"
+
+#include <QDir>
+#include <QSet>
+#include <QSqlError>
+#include <QSqlQuery>
+#include <QStandardPaths>
+#include <QUuid>
+
+HistoryStore::HistoryStore()
+{
+    m_connectionName = QStringLiteral("history-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    initialize();
+}
+
+HistoryStore::~HistoryStore()
+{
+    if (m_db.isValid()) {
+        m_db.close();
+        m_db = QSqlDatabase();
+    }
+    if (!m_connectionName.isEmpty()) {
+        QSqlDatabase::removeDatabase(m_connectionName);
+    }
+}
+
+bool HistoryStore::isReady() const
+{
+    return m_db.isOpen();
+}
+
+QString HistoryStore::lastError() const
+{
+    return m_lastError;
+}
+
+qint64 HistoryStore::appendMessage(
+    const QString &sessionId,
+    const QString &timestamp,
+    const QString &topic,
+    const QByteArray &payloadBytes,
+    const QString &parsedPayload,
+    const QString &parsedFormat,
+    const QString &parseError,
+    const QString &scriptId,
+    const QString &scriptName)
+{
+    if (!isReady()) {
+        return 0;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        QStringLiteral(
+            "INSERT INTO messages("
+            "session_id, timestamp, entry_type, topic, payload, payload_b64, "
+            "parsed_payload, parsed_format, parse_error, script_id, script_name) "
+            "VALUES(?, ?, 'message', ?, ?, ?, ?, ?, ?, ?, ?)"));
+    query.addBindValue(sessionId);
+    query.addBindValue(timestamp);
+    query.addBindValue(topic);
+    query.addBindValue(QString::fromUtf8(payloadBytes));
+    query.addBindValue(QString::fromLatin1(payloadBytes.toBase64()));
+    query.addBindValue(parsedPayload);
+    query.addBindValue(parsedFormat);
+    query.addBindValue(parseError);
+    query.addBindValue(scriptId);
+    query.addBindValue(scriptName);
+
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return 0;
+    }
+    return query.lastInsertId().toLongLong();
+}
+
+qint64 HistoryStore::appendEvent(
+    const QString &sessionId,
+    const QString &timestamp,
+    const QString &channel,
+    const QString &message)
+{
+    if (!isReady()) {
+        return 0;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        QStringLiteral(
+            "INSERT INTO messages(session_id, timestamp, entry_type, topic, payload, payload_b64) "
+            "VALUES(?, ?, 'event', ?, ?, '')"));
+    query.addBindValue(sessionId);
+    query.addBindValue(timestamp);
+    query.addBindValue(channel);
+    query.addBindValue(message);
+
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return 0;
+    }
+    return query.lastInsertId().toLongLong();
+}
+
+QVariantList HistoryStore::loadEntries(const QString &sessionId, int limit) const
+{
+    QVariantList result;
+    if (!isReady()) {
+        return result;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        QStringLiteral(
+            "SELECT id, timestamp, entry_type, topic, payload, payload_b64, "
+            "parsed_payload, parsed_format, parse_error, script_id, script_name "
+            "FROM ("
+            "    SELECT id, timestamp, entry_type, topic, payload, payload_b64, "
+            "    parsed_payload, parsed_format, parse_error, script_id, script_name "
+            "    FROM messages "
+            "    WHERE session_id = ? "
+            "    ORDER BY id DESC "
+            "    LIMIT ?"
+            ") recent_entries "
+            "ORDER BY id ASC"));
+    query.addBindValue(sessionId);
+    query.addBindValue(qMax(1, limit));
+
+    if (!query.exec()) {
+        return result;
+    }
+
+    while (query.next()) {
+        QVariantMap row;
+        row.insert(QStringLiteral("id"), query.value(0).toLongLong());
+        row.insert(QStringLiteral("timestamp"), query.value(1).toString());
+        row.insert(QStringLiteral("entry_type"), query.value(2).toString());
+        row.insert(QStringLiteral("topic"), query.value(3).toString());
+        row.insert(QStringLiteral("payload"), query.value(4).toString());
+        row.insert(QStringLiteral("payload_b64"), query.value(5).toString());
+        row.insert(QStringLiteral("parsed_payload"), query.value(6).toString());
+        row.insert(QStringLiteral("parsed_format"), query.value(7).toString());
+        row.insert(QStringLiteral("parse_error"), query.value(8).toString());
+        row.insert(QStringLiteral("script_id"), query.value(9).toString());
+        row.insert(QStringLiteral("script_name"), query.value(10).toString());
+        result.append(row);
+    }
+
+    return result;
+}
+
+QVariantList HistoryStore::loadEntriesBefore(const QString &sessionId, qint64 beforeId, int limit) const
+{
+    QVariantList result;
+    if (!isReady() || beforeId <= 0) {
+        return result;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        QStringLiteral(
+            "SELECT id, timestamp, entry_type, topic, payload, payload_b64, "
+            "parsed_payload, parsed_format, parse_error, script_id, script_name "
+            "FROM ("
+            "    SELECT id, timestamp, entry_type, topic, payload, payload_b64, "
+            "    parsed_payload, parsed_format, parse_error, script_id, script_name "
+            "    FROM messages "
+            "    WHERE session_id = ? AND id < ? "
+            "    ORDER BY id DESC "
+            "    LIMIT ?"
+            ") older_entries "
+            "ORDER BY id ASC"));
+    query.addBindValue(sessionId);
+    query.addBindValue(beforeId);
+    query.addBindValue(qMax(1, limit));
+
+    if (!query.exec()) {
+        return result;
+    }
+
+    while (query.next()) {
+        QVariantMap row;
+        row.insert(QStringLiteral("id"), query.value(0).toLongLong());
+        row.insert(QStringLiteral("timestamp"), query.value(1).toString());
+        row.insert(QStringLiteral("entry_type"), query.value(2).toString());
+        row.insert(QStringLiteral("topic"), query.value(3).toString());
+        row.insert(QStringLiteral("payload"), query.value(4).toString());
+        row.insert(QStringLiteral("payload_b64"), query.value(5).toString());
+        row.insert(QStringLiteral("parsed_payload"), query.value(6).toString());
+        row.insert(QStringLiteral("parsed_format"), query.value(7).toString());
+        row.insert(QStringLiteral("parse_error"), query.value(8).toString());
+        row.insert(QStringLiteral("script_id"), query.value(9).toString());
+        row.insert(QStringLiteral("script_name"), query.value(10).toString());
+        result.append(row);
+    }
+
+    return result;
+}
+
+void HistoryStore::clearMessages(const QString &sessionId)
+{
+    if (!isReady()) {
+        return;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("DELETE FROM messages WHERE session_id = ?"));
+    query.addBindValue(sessionId);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+    }
+}
+
+bool HistoryStore::initialize()
+{
+    const QString dataPath =
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (dataPath.isEmpty()) {
+        m_lastError = QStringLiteral("Cannot resolve app data path.");
+        return false;
+    }
+
+    QDir dir(dataPath);
+    if (!dir.exists() && !dir.mkpath(QStringLiteral("."))) {
+        m_lastError = QStringLiteral("Cannot create app data directory.");
+        return false;
+    }
+
+    const QString dbPath = dir.filePath(QStringLiteral("history.db"));
+
+    m_db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), m_connectionName);
+    m_db.setDatabaseName(dbPath);
+    if (!m_db.open()) {
+        m_lastError = m_db.lastError().text();
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+    if (!query.exec(
+            QStringLiteral(
+                "CREATE TABLE IF NOT EXISTS messages ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "session_id TEXT NOT NULL, "
+                "timestamp TEXT NOT NULL, "
+                "entry_type TEXT NOT NULL DEFAULT 'message', "
+                "topic TEXT NOT NULL, "
+                "payload TEXT NOT NULL DEFAULT '', "
+                "payload_b64 TEXT NOT NULL DEFAULT '', "
+                "parsed_payload TEXT NOT NULL DEFAULT '', "
+                "parsed_format TEXT NOT NULL DEFAULT '', "
+                "parse_error TEXT NOT NULL DEFAULT '', "
+                "script_id TEXT NOT NULL DEFAULT '', "
+                "script_name TEXT NOT NULL DEFAULT '')"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    QSet<QString> columns;
+    QSqlQuery columnsQuery(m_db);
+    if (!columnsQuery.exec(QStringLiteral("PRAGMA table_info(messages)"))) {
+        m_lastError = columnsQuery.lastError().text();
+        return false;
+    }
+    while (columnsQuery.next()) {
+        columns.insert(columnsQuery.value(1).toString());
+    }
+
+    if (!columns.contains(QStringLiteral("entry_type"))) {
+        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN entry_type TEXT NOT NULL DEFAULT 'message'"))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+    if (!columns.contains(QStringLiteral("payload"))) {
+        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN payload TEXT NOT NULL DEFAULT ''"))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+    if (!columns.contains(QStringLiteral("payload_b64"))) {
+        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN payload_b64 TEXT NOT NULL DEFAULT ''"))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+    if (!columns.contains(QStringLiteral("parsed_payload"))) {
+        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN parsed_payload TEXT NOT NULL DEFAULT ''"))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+    if (!columns.contains(QStringLiteral("parsed_format"))) {
+        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN parsed_format TEXT NOT NULL DEFAULT ''"))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+    if (!columns.contains(QStringLiteral("parse_error"))) {
+        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN parse_error TEXT NOT NULL DEFAULT ''"))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+    if (!columns.contains(QStringLiteral("script_id"))) {
+        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN script_id TEXT NOT NULL DEFAULT ''"))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+    if (!columns.contains(QStringLiteral("script_name"))) {
+        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN script_name TEXT NOT NULL DEFAULT ''"))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+
+    if (!query.exec(
+            QStringLiteral(
+                "CREATE INDEX IF NOT EXISTS idx_messages_session_id_id "
+                "ON messages(session_id, id)"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    return true;
+}
