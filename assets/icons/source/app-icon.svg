@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="mqtt-plus icon">
+  <defs>
+    <linearGradient id="base" x1="128" y1="112" x2="896" y2="912" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b2ad8"/>
+      <stop offset=".55" stop-color="#6711a8"/>
+      <stop offset="1" stop-color="#34115a"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="96" y="96" width="832" height="832" rx="156" fill="url(#base)"/>
+  <path d="M188 366c260 0 470 210 470 470" fill="none" stroke="#fff" stroke-width="88"/>
+  <path d="M188 530c170 0 306 136 306 306" fill="none" stroke="#fff" stroke-width="88"/>
+  <path d="M188 694c78 0 142 64 142 142" fill="none" stroke="#fff" stroke-width="88"/>
+
+  <g fill="#fff">
+    <rect x="690" y="210" width="188" height="62" rx="31"/>
+    <rect x="753" y="147" width="62" height="188" rx="31"/>
+  </g>
+</svg>
