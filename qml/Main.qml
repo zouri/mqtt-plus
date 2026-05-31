@@ -14,8 +14,10 @@ ApplicationWindow {
     width: 1380
     height: 880
     visible: true
-    flags: Qt.Window | Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
-    title: ""
+    flags: Qt.platform.os === "windows"
+           ? Qt.Window
+           : Qt.Window | Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
+    title: Qt.platform.os === "windows" ? qsTr("MQTT Plus") : ""
     topPadding: 0
 
     AppUi {
@@ -38,6 +40,8 @@ ApplicationWindow {
     readonly property var publishStatus: root.appController.publishStatus
     readonly property var subscriptions: root.appController.subscriptionsModel
     readonly property var eventStream: root.appController.eventStreamModel
+    readonly property bool isWindows: Qt.platform.os === "windows"
+    readonly property bool isMacOS: Qt.platform.os === "osx"
 
     Component.onCompleted: {
         subscriptionsPanel.syncSubscriptions(root.appController.subscriptionsModel || [])
@@ -126,10 +130,12 @@ ApplicationWindow {
     MouseArea {
         anchors.top: parent.top
         anchors.left: parent.left
-        anchors.leftMargin: Qt.platform.os === "osx" ? 86 : 0
-        width: parent.width - anchors.leftMargin
+        anchors.right: parent.right
+        anchors.leftMargin: root.isMacOS ? 86 : 0
         height: 30
         acceptedButtons: Qt.LeftButton
+        visible: !root.isWindows
+        z: 1000
 
         onPressed: (mouse) => {
             if (mouse.button === Qt.LeftButton) {
