@@ -8,7 +8,7 @@
   "configurePresets": [
     {
       "name": "qt6.11-debug",
-      "displayName": "Qt 6.11.0 macOS Debug",
+      "displayName": "Qt 6.11 macOS Debug",
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/qt6.11-debug",
       "condition": {
@@ -17,13 +17,12 @@
         "rhs": "Darwin"
       },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_PREFIX_PATH": "/Users/sun/Qt/6.11.0/macos"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
       "name": "qt6.11-macos-release",
-      "displayName": "Qt 6.11.0 macOS Release",
+      "displayName": "Qt 6.11 macOS Release",
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/qt6.11-macos-release",
       "condition": {
@@ -32,13 +31,12 @@
         "rhs": "Darwin"
       },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PREFIX_PATH": "/Users/sun/Qt/6.11.0/macos"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
       "name": "qt6.11-linux-release",
-      "displayName": "Qt 6.11.0 Linux Release",
+      "displayName": "Qt 6.11 Linux Release",
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/qt6.11-linux-release",
       "condition": {
@@ -47,13 +45,12 @@
         "rhs": "Linux"
       },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PREFIX_PATH": "/opt/Qt/6.11.0/gcc_64"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
       "name": "qt6.11-windows-release",
-      "displayName": "Qt 6.11.0 Windows Release",
+      "displayName": "Qt 6.11 Windows Release",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/qt6.11-windows-release",
       "condition": {
@@ -62,8 +59,7 @@
         "rhs": "Windows"
       },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_PREFIX_PATH": "C:/Qt/6.11.0/msvc2022_64"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     }
   ],
@@ -103,7 +99,7 @@
   "packagePresets": [
     {
       "name": "qt6.11-macos-dmg",
-      "displayName": "Qt 6.11.0 macOS DMG",
+      "displayName": "Qt 6.11 macOS DMG",
       "configurePreset": "qt6.11-macos-release",
       "condition": {
         "type": "equals",
@@ -117,7 +113,7 @@
     },
     {
       "name": "qt6.11-linux-tgz",
-      "displayName": "Qt 6.11.0 Linux tar.gz",
+      "displayName": "Qt 6.11 Linux tar.gz",
       "configurePreset": "qt6.11-linux-release",
       "condition": {
         "type": "equals",
@@ -131,7 +127,7 @@
     },
     {
       "name": "qt6.11-windows-zip",
-      "displayName": "Qt 6.11.0 Windows ZIP",
+      "displayName": "Qt 6.11 Windows ZIP",
       "configurePreset": "qt6.11-windows-release",
       "condition": {
         "type": "equals",
