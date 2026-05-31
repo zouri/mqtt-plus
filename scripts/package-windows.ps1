@@ -1,5 +1,5 @@
 param(
-    [string] $QtPrefix = "C:/Qt/6.11.0/msvc2022_64"
+    [string] $QtPrefix = "C:/Qt/6.11.1/msvc2022_64"
 )
 
 $ErrorActionPreference = "Stop"

@@ -71,11 +71,26 @@
   - Sql
   - Mqtt
   - Svg
-- macOS 本地调试 preset 默认使用 `/path/to/Qt/6.11.0/macos`。
+- 通过 Qt Creator Kit、Qt 自带的 `qt-cmake`，或本机专用的 `CMakeUserPresets.json` 指定 Qt 安装路径。
 
 项目会在 CMake configure 阶段通过 `FetchContent` 从 `lua.org` 下载固定版本的 Lua 源码，并编译为项目内的静态库 `mqtt_plus_lua`。如果本机 Qt 没有安装 `Qt6Mqtt`，或 configure 阶段无法下载 Lua 源码，配置会失败。
 
-如需覆盖 Qt 安装路径，可以在命令行传入 `-DCMAKE_PREFIX_PATH=/path/to/Qt`，或创建本机专用的 `CMakeUserPresets.json`。
+如需在命令行固定本机 Qt 路径，可以传入 `-DCMAKE_PREFIX_PATH=/path/to/Qt`，或创建不提交到仓库的 `CMakeUserPresets.json`：
+
+```json
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "qt6.11-local",
+      "inherits": "qt6.11-windows-release",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/msvc2022_64"
+      }
+    }
+  ]
+}
+```
 
 ## 构建
 
@@ -101,6 +116,7 @@ macOS 调试构建完成后，可以直接运行 app bundle 内的可执行文�
 ## 打包
 
 打包需要在目标平台本机执行。平台 preset 只会在对应系统上出现。
+项目通过 Qt 官方 CMake Deployment API 生成部署脚本：CMake 先安装应用目标，再由 `qt_generate_deploy_qml_app_script()` 收集 Qt 运行库、QML 模块和需要的插件，最后交给 CPack 生成平台包。
 
 ### macOS
 
@@ -112,7 +128,7 @@ cd /path/to/mqtt-plus
 指定 Qt 路径：
 
 ```bash
-./scripts/package-macos.sh /path/to/Qt/6.11.0/macos
+./scripts/package-macos.sh /path/to/Qt/6.11.x/macos
 ```
 
 生成的 DMG 会写入 `dist/`。
@@ -121,7 +137,7 @@ cd /path/to/mqtt-plus
 
 ```bash
 cd /path/to/mqtts
-./scripts/package-linux.sh /opt/Qt/6.11.0/gcc_64
+./scripts/package-linux.sh /opt/Qt/6.11.x/gcc_64
 ```
 
 生成的 tarball 会写入 `dist/`。
@@ -138,7 +154,7 @@ cd C:\path\to\mqtts
 指定 Qt 路径：
 
 ```powershell
-.\scripts\package-windows.ps1 -QtPrefix C:/Qt/6.11.0/msvc2022_64
+.\scripts\package-windows.ps1 -QtPrefix C:/Qt/6.11.x/msvc2022_64
 ```
 
 生成的 ZIP 会写入 `dist/`。

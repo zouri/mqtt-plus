@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg)
 
+include(GNUInstallDirs)
+
 set(MQTT_PLUS_LUA_VERSION "5.5.0" CACHE STRING "Lua source release to build")
 set(MQTT_PLUS_LUA_URL "https://www.lua.org/ftp/lua-${MQTT_PLUS_LUA_VERSION}.tar.gz")
 set(MQTT_PLUS_LUA_SHA256 "57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d")
@@ -145,19 +147,11 @@ set_target_properties(mqtt_plus_app PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-if(WIN32)
-    install(TARGETS mqtt_plus_app
-        RUNTIME DESTINATION .
-    )
-elseif(APPLE)
-    install(TARGETS mqtt_plus_app
-        BUNDLE DESTINATION .
-    )
-else()
-    install(TARGETS mqtt_plus_app
-        RUNTIME DESTINATION bin
-    )
-endif()
+install(TARGETS mqtt_plus_app
+    BUNDLE DESTINATION .
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
 
 qt_generate_deploy_qml_app_script(
     TARGET mqtt_plus_app
