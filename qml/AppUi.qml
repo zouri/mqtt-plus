@@ -8,7 +8,7 @@ QtObject {
 
     required property bool isDarkTheme
 
-    readonly property int panelRadius: 14
+    readonly property int panelRadius: 0
     readonly property int innerRadius: 10
     readonly property int compactControlHeight: 32
     readonly property int compactCheckHeight: 28

@@ -11,13 +11,13 @@ ApplicationWindow {
     id: root
     required property var app
 
+    readonly property string appTitle: qsTr("MQTT Plus")
+
     width: 1380
     height: 880
     visible: true
-    flags: Qt.platform.os === "windows"
-           ? Qt.Window
-           : Qt.Window | Qt.ExpandedClientAreaHint | Qt.NoTitleBarBackgroundHint
-    title: Qt.platform.os === "windows" ? qsTr("MQTT Plus") : ""
+    flags: Qt.Window
+    title: root.appTitle
     topPadding: 0
 
     AppUi {
@@ -40,8 +40,6 @@ ApplicationWindow {
     readonly property var publishStatus: root.appController.publishStatus
     readonly property var subscriptions: root.appController.subscriptionsModel
     readonly property var eventStream: root.appController.eventStreamModel
-    readonly property bool isWindows: Qt.platform.os === "windows"
-    readonly property bool isMacOS: Qt.platform.os === "osx"
 
     Component.onCompleted: {
         subscriptionsPanel.syncSubscriptions(root.appController.subscriptionsModel || [])
@@ -74,7 +72,6 @@ ApplicationWindow {
             sessionEditor: sessionEditor
             Layout.preferredWidth: 238
             Layout.fillHeight: true
-            Layout.topMargin: 20
             onScriptWorkspaceRequested: scriptLibraryWindow.openLibrary()
         }
 
@@ -85,8 +82,8 @@ ApplicationWindow {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: 6
-                spacing: 4
+                anchors.margins: 0
+                spacing: 0
 
                 Rectangle {
                     Layout.preferredWidth: 396
@@ -95,7 +92,7 @@ ApplicationWindow {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 4
+                        spacing: 0
 
                         SessionOverviewPanel {
                             ui: ui
@@ -123,23 +120,6 @@ ApplicationWindow {
                     publishStatus: root.publishStatus
                     fontFamily: root.font.family
                 }
-            }
-        }
-    }
-
-    MouseArea {
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.leftMargin: root.isMacOS ? 86 : 0
-        height: 30
-        acceptedButtons: Qt.LeftButton
-        visible: !root.isWindows
-        z: 1000
-
-        onPressed: (mouse) => {
-            if (mouse.button === Qt.LeftButton) {
-                root.startSystemMove()
             }
         }
     }
