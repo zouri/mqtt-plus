@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`src/` contains the C++20 application logic. `main.cpp` boots Qt/QML, `appcontroller.*` exposes the app state to QML, `mqttclient.*` handles broker I/O, `historystore.*` persists SQLite history, and `payloadcodec.*` converts message payload formats. `qml/` contains the UI entry point in `Main.qml`. `build/qt6.11-debug/` is generated output from CMake and should not be edited by hand.
+`src/` contains the C++20 application logic. `main.cpp` boots Qt/QML, `appcontroller.*` exposes the app state to QML and coordinates Qt MQTT, `historystore.*` persists SQLite history, and `payloadcodec.*` converts message payload formats. `qml/` contains the UI entry point in `Main.qml`. `build/qt6.11-debug/` is generated output from CMake and should not be edited by hand.
 
 ## Build, Test, and Development Commands
 Use the checked-in CMake preset for local work:
@@ -19,7 +19,7 @@ The first command configures the project against Qt 6.11. The second builds `mqt
 ```
 
 ## Coding Style & Naming Conventions
-Follow the existing Qt style: 4-space indentation, opening braces on the next line in C++, and no tabs. Use `PascalCase` for C++ classes, `camelCase` for methods and QML properties, and keep private member fields prefixed with `m_`. Source filenames are lowercase, matching the current pattern such as `mqttclient.cpp` and `historystore.h`. Keep QML `id` values short and descriptive, such as `sessionList` or `statusLabel`.
+Follow the existing Qt style: 4-space indentation, opening braces on the next line in C++, and no tabs. Use `PascalCase` for C++ classes, `camelCase` for methods and QML properties, and keep private member fields prefixed with `m_`. Source filenames are lowercase, matching the current pattern such as `appcontroller.cpp` and `historystore.h`. Keep QML `id` values short and descriptive, such as `sessionList` or `statusLabel`.
 
 ## Testing Guidelines
 There are currently no registered automated tests in this checkout (`ctest --test-dir build/qt6.11-debug -N` reports `0` tests). Until unit tests are added, contributors should:

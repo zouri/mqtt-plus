@@ -76,7 +76,6 @@ qt_add_qml_module(mqtt_plus_app
         qml/components/AppIconButton.qml
         qml/components/AppPanel.qml
         qml/components/AppSectionHeader.qml
-        qml/components/AppSessionPill.qml
         qml/components/AppSpinner.qml
         qml/components/AppStatusBadge.qml
         qml/components/AppTextArea.qml
@@ -92,7 +91,6 @@ qt_add_qml_module(mqtt_plus_app
         qml/panels/SubscriptionsPanel.qml
         qml/dialogs/SessionEditorDialog.qml
     RESOURCES
-        qml/icons/material/broom.svg
         qml/icons/material/chevron-down.svg
         qml/icons/material/chevron-up.svg
         qml/icons/material/check.svg
@@ -100,7 +98,6 @@ qt_add_qml_module(mqtt_plus_app
         qml/icons/material/dark-mode.svg
         qml/icons/material/edit.svg
         qml/icons/material/light-mode.svg
-        qml/icons/material/link-off.svg
         qml/icons/material/link.svg
         qml/icons/material/pause.svg
         qml/icons/material/play.svg
