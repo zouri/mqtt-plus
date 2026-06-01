@@ -56,12 +56,18 @@ qt_add_executable(mqtt_plus_app
     src/main.cpp
     src/appcontroller.cpp
     src/appcontroller.h
+    src/eventrenderer.cpp
+    src/eventrenderer.h
     src/historystore.cpp
     src/historystore.h
     src/luarunner.cpp
     src/luarunner.h
     src/payloadcodec.cpp
     src/payloadcodec.h
+    src/scriptstore.cpp
+    src/scriptstore.h
+    src/sessionconfig.cpp
+    src/sessionconfig.h
 )
 
 qt_add_qml_module(mqtt_plus_app

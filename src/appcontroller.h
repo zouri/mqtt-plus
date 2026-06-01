@@ -199,8 +199,6 @@ private:
     bool currentSessionHasActiveSubscriptionFps(qint64 nowMs) const;
     void refreshSubscriptionFps();
     void trimVisibleEventRows(SessionState &session);
-    QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &subscriptionFormats) const;
-    QVariantList loadHistoryRows(const SessionState &session, const QVariantList &rows, bool includeLaunchDivider) const;
     void reloadCurrentSessionHistory();
     void loadScripts();
     bool saveScripts();
