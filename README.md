@@ -41,7 +41,6 @@
 ├── src/                    # C++ 应用逻辑
 │   ├── main.cpp            # Qt/QML 启动入口
 │   ├── appcontroller.*     # 暴露给 QML 的应用状态和操作
-│   ├── mqttclient.*        # MQTT 客户端相关逻辑
 │   ├── historystore.*      # SQLite 历史记录存储
 │   ├── payloadcodec.*      # 载荷格式编码和解码
 │   └── luarunner.*         # Lua 接收脚本运行环境

@@ -1,7 +1,6 @@
 #include "historystore.h"
 
 #include <QDir>
-#include <QSet>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
@@ -252,65 +251,6 @@ bool HistoryStore::initialize()
                 "script_name TEXT NOT NULL DEFAULT '')"))) {
         m_lastError = query.lastError().text();
         return false;
-    }
-
-    QSet<QString> columns;
-    QSqlQuery columnsQuery(m_db);
-    if (!columnsQuery.exec(QStringLiteral("PRAGMA table_info(messages)"))) {
-        m_lastError = columnsQuery.lastError().text();
-        return false;
-    }
-    while (columnsQuery.next()) {
-        columns.insert(columnsQuery.value(1).toString());
-    }
-
-    if (!columns.contains(QStringLiteral("entry_type"))) {
-        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN entry_type TEXT NOT NULL DEFAULT 'message'"))) {
-            m_lastError = query.lastError().text();
-            return false;
-        }
-    }
-    if (!columns.contains(QStringLiteral("payload"))) {
-        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN payload TEXT NOT NULL DEFAULT ''"))) {
-            m_lastError = query.lastError().text();
-            return false;
-        }
-    }
-    if (!columns.contains(QStringLiteral("payload_b64"))) {
-        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN payload_b64 TEXT NOT NULL DEFAULT ''"))) {
-            m_lastError = query.lastError().text();
-            return false;
-        }
-    }
-    if (!columns.contains(QStringLiteral("parsed_payload"))) {
-        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN parsed_payload TEXT NOT NULL DEFAULT ''"))) {
-            m_lastError = query.lastError().text();
-            return false;
-        }
-    }
-    if (!columns.contains(QStringLiteral("parsed_format"))) {
-        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN parsed_format TEXT NOT NULL DEFAULT ''"))) {
-            m_lastError = query.lastError().text();
-            return false;
-        }
-    }
-    if (!columns.contains(QStringLiteral("parse_error"))) {
-        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN parse_error TEXT NOT NULL DEFAULT ''"))) {
-            m_lastError = query.lastError().text();
-            return false;
-        }
-    }
-    if (!columns.contains(QStringLiteral("script_id"))) {
-        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN script_id TEXT NOT NULL DEFAULT ''"))) {
-            m_lastError = query.lastError().text();
-            return false;
-        }
-    }
-    if (!columns.contains(QStringLiteral("script_name"))) {
-        if (!query.exec(QStringLiteral("ALTER TABLE messages ADD COLUMN script_name TEXT NOT NULL DEFAULT ''"))) {
-            m_lastError = query.lastError().text();
-            return false;
-        }
     }
 
     if (!query.exec(

@@ -23,7 +23,6 @@ class AppController : public QObject
     Q_PROPERTY(int currentSessionIndex READ currentSessionIndex WRITE setCurrentSessionIndex NOTIFY currentSessionIndexChanged)
     Q_PROPERTY(QVariantMap currentSession READ currentSession NOTIFY currentSessionChanged)
     Q_PROPERTY(QVariantMap sessionStatus READ sessionStatus NOTIFY currentSessionChanged)
-    Q_PROPERTY(QString sessionLastError READ sessionLastError NOTIFY currentSessionChanged)
     Q_PROPERTY(QVariantList subscriptionsModel READ subscriptionsModel NOTIFY subscriptionsChanged)
     Q_PROPERTY(QVariantMap publishStatus READ publishStatus NOTIFY currentSessionChanged)
     Q_PROPERTY(QVariantList eventStreamModel READ eventStreamModel NOTIFY eventStreamChanged)
@@ -32,7 +31,6 @@ class AppController : public QObject
     Q_PROPERTY(QVariantList scriptTestSamplesModel READ scriptTestSamplesModel NOTIFY scriptTestSamplesChanged)
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QString effectiveTheme READ effectiveTheme NOTIFY effectiveThemeChanged)
-    Q_PROPERTY(bool systemDarkMode READ systemDarkMode NOTIFY systemDarkModeChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -42,7 +40,6 @@ public:
     int currentSessionIndex() const;
     QVariantMap currentSession() const;
     QVariantMap sessionStatus() const;
-    QString sessionLastError() const;
     QVariantList subscriptionsModel() const;
     QVariantMap publishStatus() const;
     QVariantList eventStreamModel() const;
@@ -51,22 +48,16 @@ public:
     QVariantList scriptTestSamplesModel() const;
     QString themeMode() const;
     QString effectiveTheme() const;
-    bool systemDarkMode() const;
 
     void setCurrentSessionIndex(int index);
     void setThemeMode(const QString &mode);
 
     Q_INVOKABLE QVariantMap defaultSessionConfig() const;
-    Q_INVOKABLE QVariantMap currentSessionConfig() const;
     Q_INVOKABLE QVariantMap sessionConfigAt(int index) const;
-    Q_INVOKABLE bool updateCurrentSessionConfig(const QVariantMap &config);
     Q_INVOKABLE bool updateSessionConfigAt(int index, const QVariantMap &config);
-    Q_INVOKABLE void addSession();
     Q_INVOKABLE void addSessionWithConfig(const QVariantMap &config);
     Q_INVOKABLE void duplicateSessionAt(int index);
     Q_INVOKABLE void removeSessionAt(int index);
-    Q_INVOKABLE void removeCurrentSession();
-    Q_INVOKABLE void renameCurrentSession(const QString &name);
     Q_INVOKABLE void connectCurrentSession();
     Q_INVOKABLE void disconnectCurrentSession();
     Q_INVOKABLE void setCurrentOutputPaused(bool paused);
@@ -77,7 +68,6 @@ public:
         const QString &scriptId = QString(),
         const QString &alias = QString());
     Q_INVOKABLE bool updateCurrentSubscription(const QString &topic, const QString &alias, const QString &scriptId);
-    Q_INVOKABLE bool updateCurrentSubscriptionScript(const QString &topic, const QString &scriptId);
     Q_INVOKABLE void removeCurrentSubscription(const QString &topic);
     Q_INVOKABLE void setCurrentSubscriptionPaused(const QString &topic, bool paused);
     Q_INVOKABLE void publishCurrentSession(
@@ -107,7 +97,6 @@ signals:
     void scriptTestSamplesChanged();
     void themeModeChanged();
     void effectiveThemeChanged();
-    void systemDarkModeChanged();
 
 public:
     struct SubscriptionEntry {
@@ -180,7 +169,6 @@ private:
 
     void bindSessionSignals(SessionState *session);
     void configureSession(SessionState &session, const QVariantMap &config, bool keepNameFallback);
-    void applySessionClientConfig(SessionState &session);
     void initializeSessionRuntime(SessionState *session);
     void connectSession(SessionState &session, const QString &eventPrefix);
     QSslConfiguration sslConfigurationForSession(const SessionState &session, QString &errorMessage) const;
