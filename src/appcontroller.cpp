@@ -588,12 +588,6 @@ QVariantMap AppController::sessionStatus() const
     return row;
 }
 
-QString AppController::sessionLastError() const
-{
-    const auto *session = currentSessionState();
-    return session ? session->lastError : QString();
-}
-
 QVariantList AppController::subscriptionsModel() const
 {
     const auto *session = currentSessionState();
@@ -704,11 +698,6 @@ QString AppController::effectiveTheme() const
     return m_systemDarkMode ? QStringLiteral("dark") : QStringLiteral("light");
 }
 
-bool AppController::systemDarkMode() const
-{
-    return m_systemDarkMode;
-}
-
 void AppController::setCurrentSessionIndex(int index)
 {
     if (index < 0 || index >= m_sessions.size() || index == m_currentSessionIndex) {
@@ -779,42 +768,6 @@ QVariantMap AppController::defaultSessionConfig() const
     return config;
 }
 
-QVariantMap AppController::currentSessionConfig() const
-{
-    const auto *session = currentSessionState();
-    if (!session) {
-        return defaultSessionConfig();
-    }
-
-    QVariantMap config;
-    config.insert(QStringLiteral("name"), session->name);
-    config.insert(QStringLiteral("host"), session->client->hostname());
-    config.insert(QStringLiteral("port"), session->client->port());
-    config.insert(QStringLiteral("transport"), session->transport);
-    config.insert(QStringLiteral("protocolVersion"), session->protocolVersion);
-    config.insert(QStringLiteral("sslSecure"), session->sslSecure);
-    config.insert(QStringLiteral("alpn"), session->alpn);
-    config.insert(QStringLiteral("certificateType"), session->certificateType);
-    config.insert(QStringLiteral("caFile"), session->caFile);
-    config.insert(QStringLiteral("clientCertificateFile"), session->clientCertificateFile);
-    config.insert(QStringLiteral("clientKeyFile"), session->clientKeyFile);
-    config.insert(QStringLiteral("clientId"), session->client->clientId());
-    config.insert(QStringLiteral("username"), session->client->username());
-    config.insert(QStringLiteral("password"), session->client->password());
-    config.insert(QStringLiteral("cleanSession"), session->client->cleanSession());
-    config.insert(QStringLiteral("keepAliveSeconds"), session->client->keepAlive());
-    config.insert(QStringLiteral("connectTimeoutSeconds"), session->connectTimeoutSeconds);
-    config.insert(QStringLiteral("sessionExpiryInterval"), session->sessionExpiryInterval);
-    config.insert(QStringLiteral("receiveMaximum"), session->receiveMaximum > 0 ? QString::number(session->receiveMaximum) : QString());
-    config.insert(QStringLiteral("maximumPacketSize"), session->maximumPacketSize > 0 ? QString::number(session->maximumPacketSize) : QString());
-    config.insert(QStringLiteral("topicAliasMaximum"), session->topicAliasMaximum > 0 ? QString::number(session->topicAliasMaximum) : QString());
-    config.insert(QStringLiteral("requestResponseInformation"), session->requestResponseInformation);
-    config.insert(QStringLiteral("requestProblemInformation"), session->requestProblemInformation);
-    config.insert(QStringLiteral("authenticationMethod"), session->authenticationMethod);
-    config.insert(QStringLiteral("authenticationData"), session->authenticationData);
-    return config;
-}
-
 QVariantMap AppController::sessionConfigAt(int index) const
 {
     if (index < 0 || index >= m_sessions.size()) {
@@ -851,11 +804,6 @@ QVariantMap AppController::sessionConfigAt(int index) const
     return config;
 }
 
-bool AppController::updateCurrentSessionConfig(const QVariantMap &config)
-{
-    return updateSessionConfigAt(m_currentSessionIndex, config);
-}
-
 bool AppController::updateSessionConfigAt(int index, const QVariantMap &config)
 {
     if (index < 0 || index >= m_sessions.size()) {
@@ -886,11 +834,6 @@ bool AppController::updateSessionConfigAt(int index, const QVariantMap &config)
         emit subscriptionsChanged();
     }
     return true;
-}
-
-void AppController::addSession()
-{
-    addSessionWithConfig(defaultSessionConfig());
 }
 
 void AppController::addSessionWithConfig(const QVariantMap &config)
@@ -1003,29 +946,6 @@ void AppController::removeSessionAt(int index)
     emit subscriptionsChanged();
     emit eventStreamChanged();
     emit scriptLibraryChanged();
-}
-
-void AppController::removeCurrentSession()
-{
-    removeSessionAt(m_currentSessionIndex);
-}
-
-void AppController::renameCurrentSession(const QString &name)
-{
-    auto *session = currentSessionState();
-    if (!session) {
-        return;
-    }
-
-    const QString trimmed = name.trimmed();
-    if (trimmed.isEmpty() || trimmed == session->name) {
-        return;
-    }
-
-    session->name = trimmed;
-    saveSessions();
-    emit sessionsChanged();
-    emit currentSessionChanged();
 }
 
 void AppController::connectCurrentSession()
@@ -1168,30 +1088,6 @@ bool AppController::updateCurrentSubscription(const QString &topic, const QStrin
     }
 
     entry->alias = displayAlias;
-    entry->scriptId = sanitizedScriptId;
-    saveSessions();
-    emit currentSessionChanged();
-    emit subscriptionsChanged();
-    return true;
-}
-
-bool AppController::updateCurrentSubscriptionScript(const QString &topic, const QString &scriptId)
-{
-    auto *session = currentSessionState();
-    if (!session) {
-        return false;
-    }
-
-    SubscriptionEntry *entry = subscriptionByTopic(session, topic.trimmed());
-    if (!entry) {
-        return false;
-    }
-
-    const QString sanitizedScriptId = scriptById(scriptId) ? scriptId : QString();
-    if (entry->scriptId == sanitizedScriptId) {
-        return true;
-    }
-
     entry->scriptId = sanitizedScriptId;
     saveSessions();
     emit currentSessionChanged();
@@ -1792,7 +1688,6 @@ void AppController::connectSession(SessionState &session, const QString &eventPr
         session.connectTimeoutTimer->start(qMax(1, session.connectTimeoutSeconds) * 1000);
     }
 
-    applySessionClientConfig(session);
     appendEvent(
         session,
         QStringLiteral("Connection"),
@@ -1914,7 +1809,7 @@ void AppController::configureSession(SessionState &session, const QVariantMap &c
     session.client->setPassword(config.value(QStringLiteral("password")).toString());
     session.client->setCleanSession(config.value(QStringLiteral("cleanSession"), true).toBool());
     session.client->setKeepAlive(sanitizeKeepAlive(config.value(QStringLiteral("keepAliveSeconds"), kDefaultKeepAlive)));
-    session.client->setAutoKeepAlive(config.value(QStringLiteral("autoKeepAlive"), true).toBool());
+    session.client->setAutoKeepAlive(true);
     if (session.connectTimeoutTimer) {
         session.connectTimeoutTimer->setInterval(session.connectTimeoutSeconds * 1000);
     }
@@ -1936,11 +1831,6 @@ void AppController::configureSession(SessionState &session, const QVariantMap &c
         connectionProperties.setAuthenticationData(session.authenticationData.toUtf8());
     }
     session.client->setConnectionProperties(connectionProperties);
-}
-
-void AppController::applySessionClientConfig(SessionState &session)
-{
-    session.client->setProtocolVersion(toProtocolVersion(session.protocolVersion));
 }
 
 void AppController::restoreActiveSubscriptions(SessionState &session, bool emitEvents)
@@ -2288,9 +2178,6 @@ QVariantMap AppController::renderHistoryRow(const QVariantMap &row, const QHash<
 
     QByteArray payloadBytes =
         QByteArray::fromBase64(row.value(QStringLiteral("payload_b64")).toString().toLatin1());
-    if (payloadBytes.isEmpty()) {
-        payloadBytes = row.value(QStringLiteral("payload")).toString().toUtf8();
-    }
 
     const PayloadFormat format = PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
     QString parseError;
@@ -2464,9 +2351,7 @@ void AppController::loadSessions()
 
         session.outputPaused = m_settings.value(QStringLiteral("outputPaused"), false).toBool();
         session.transport = sanitizeTransport(
-            m_settings.value(
-                QStringLiteral("transport"),
-                m_settings.value(QStringLiteral("useTls"), false).toBool() ? QStringLiteral("tls") : QStringLiteral("tcp")));
+            m_settings.value(QStringLiteral("transport"), QStringLiteral("tcp")));
         session.protocolVersion = sanitizeProtocolVersion(
             m_settings.value(QStringLiteral("protocolVersion"), 5));
 
@@ -2650,7 +2535,6 @@ void AppController::refreshSystemColorScheme()
 
     const QString previousEffectiveTheme = effectiveTheme();
     m_systemDarkMode = darkMode;
-    emit systemDarkModeChanged();
     if (effectiveTheme() != previousEffectiveTheme) {
         emit effectiveThemeChanged();
     }
