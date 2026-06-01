@@ -1,165 +1,32 @@
 #include "appcontroller.h"
 
+#include "eventrenderer.h"
+#include "scriptstore.h"
+#include "sessionconfig.h"
+
 #include <QAbstractSocket>
 #include <QDateTime>
-#include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QGuiApplication>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonParseError>
-#include <QRandomGenerator>
 #include <QRegularExpression>
-#include <QSaveFile>
 #include <QSslCertificate>
 #include <QSslConfiguration>
 #include <QSslKey>
 #include <QSslSocket>
-#include <QStandardPaths>
 #include <QStyleHints>
 #include <QUuid>
 
 #include <algorithm>
-#include <limits>
 
 namespace {
-constexpr int kDefaultPort = 1883;
-constexpr int kDefaultTlsPort = 8883;
-constexpr int kDefaultKeepAlive = 30;
 constexpr int kEventPageSize = 500;
 constexpr int kMaxVisibleEventRows = 1200;
 constexpr qint64 kSubscriptionFpsWindowMs = 1000;
 constexpr int kSubscriptionFpsRefreshIntervalMs = 250;
-const QString kStartupDividerLabel = QStringLiteral("Current launch");
-
-QString scriptStorageDirPath()
-{
-    const QString configRoot = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-    const QString basePath = configRoot.isEmpty()
-        ? QDir::home().filePath(QStringLiteral(".config"))
-        : configRoot;
-    return QDir(basePath).filePath(QStringLiteral("mqtt_plus/scripts"));
-}
-
-QString scriptIndexPath()
-{
-    return QDir(scriptStorageDirPath()).filePath(QStringLiteral("index.json"));
-}
-
-QString scriptFileNameForId(const QString &id)
-{
-    QString safeId = id.trimmed();
-    safeId.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9_-]")), QStringLiteral("_"));
-    if (safeId.isEmpty()) {
-        safeId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    }
-    return QStringLiteral("%1.lua").arg(safeId);
-}
-
-QString scriptFilePath(const QString &fileName)
-{
-    return QDir(scriptStorageDirPath()).filePath(QFileInfo(fileName).fileName());
-}
-
-bool ensureScriptStorageDir()
-{
-    QDir dir;
-    return dir.mkpath(scriptStorageDirPath());
-}
-
-QString readScriptFile(const QString &fileName)
-{
-    QFile file(scriptFilePath(fileName));
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return {};
-    }
-    return QString::fromUtf8(file.readAll());
-}
-
-bool writeTextFile(const QString &path, const QByteArray &content)
-{
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        return false;
-    }
-    if (file.write(content) != content.size()) {
-        return false;
-    }
-    return file.commit();
-}
-
-QString generateClientId()
-{
-    return QStringLiteral("mqtt-plus-%1")
-        .arg(QRandomGenerator::global()->bounded(100000, 999999));
-}
 
 QString timestampNow()
 {
     return QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
-}
-
-qint64 firstHistoryId(const QVariantList &rows)
-{
-    for (const QVariant &item : rows) {
-        const qint64 id = item.toMap().value(QStringLiteral("historyId")).toLongLong();
-        if (id > 0) {
-            return id;
-        }
-    }
-    return 0;
-}
-
-bool containsLaunchDivider(const QVariantList &rows)
-{
-    for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        if (row.value(QStringLiteral("kind")).toString() == QStringLiteral("divider")
-                && row.value(QStringLiteral("title")).toString() == kStartupDividerLabel) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool containsRowsBeforeLaunch(const QVariantList &rows, const QString &launchTimestamp)
-{
-    for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        if (row.value(QStringLiteral("kind")).toString() != QStringLiteral("divider")
-                && row.value(QStringLiteral("timestamp")).toString() < launchTimestamp) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool startsWithCurrentLaunchRows(const QVariantList &rows, const QString &launchTimestamp)
-{
-    for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        if (row.value(QStringLiteral("kind")).toString() == QStringLiteral("divider")) {
-            continue;
-        }
-        return row.value(QStringLiteral("timestamp")).toString() >= launchTimestamp;
-    }
-    return false;
-}
-
-QVariantMap launchDividerRow(const QString &launchTimestamp)
-{
-    QVariantMap dividerRow;
-    dividerRow.insert(QStringLiteral("timestamp"), launchTimestamp);
-    dividerRow.insert(QStringLiteral("historyId"), 0);
-    dividerRow.insert(QStringLiteral("kind"), QStringLiteral("divider"));
-    dividerRow.insert(QStringLiteral("title"), kStartupDividerLabel);
-    dividerRow.insert(QStringLiteral("topic"), QString());
-    dividerRow.insert(QStringLiteral("payload"), QString());
-    dividerRow.insert(QStringLiteral("payloadFormat"), QString());
-    dividerRow.insert(QStringLiteral("payloadSize"), 0);
-    return dividerRow;
 }
 
 QString transportLabel(const QString &transport)
@@ -199,25 +66,6 @@ QSslKey readPrivateKey(const QString &path)
     return {};
 }
 
-QString defaultLuaScript()
-{
-    return QStringLiteral(
-        "-- parse(ctx) runs for each received MQTT message.\n"
-        "-- ctx.topic: received MQTT topic\n"
-        "-- ctx.payload: raw payload bytes as a Lua string\n"
-        "-- ctx.payloadBase64: raw payload encoded as Base64\n"
-        "-- ctx.payloadHex: raw payload encoded as uppercase hex bytes\n"
-        "-- ctx.decoded: payload decoded with the subscription format\n"
-        "-- ctx.decodeError: decode error text, or empty string when OK\n"
-        "-- ctx.format: subscription payload format name\n"
-        "-- ctx.timestamp: receive timestamp generated by the app\n"
-        "-- Return nil, boolean, number, string, or a table.\n"
-        "\n"
-        "function parse(ctx)\n"
-        "    return ctx.decoded\n"
-        "end\n");
-}
-
 QString sanitizeThemeMode(const QString &value)
 {
     const QString mode = value.trimmed().toLower();
@@ -230,84 +78,6 @@ QString sanitizeThemeMode(const QString &value)
 QMqttClient::ProtocolVersion toProtocolVersion(int value)
 {
     return value >= 5 ? QMqttClient::MQTT_5_0 : QMqttClient::MQTT_3_1_1;
-}
-
-int sanitizePort(const QVariant &value, const QString &transport)
-{
-    bool ok = false;
-    const int parsed = value.toInt(&ok);
-    if (!ok) {
-        return transport == QStringLiteral("tls") ? kDefaultTlsPort : kDefaultPort;
-    }
-    return qBound(1, parsed, 65535);
-}
-
-int sanitizeKeepAlive(const QVariant &value)
-{
-    bool ok = false;
-    const int parsed = value.toInt(&ok);
-    if (!ok) {
-        return kDefaultKeepAlive;
-    }
-    return qBound(5, parsed, 1200);
-}
-
-int sanitizeBoundedInt(const QVariant &value, int fallback, int minimum, int maximum)
-{
-    bool ok = false;
-    const int parsed = value.toInt(&ok);
-    if (!ok) {
-        return fallback;
-    }
-    return qBound(minimum, parsed, maximum);
-}
-
-quint16 sanitizeOptionalUInt16(const QVariant &value)
-{
-    const QString text = value.toString().trimmed();
-    if (text.isEmpty()) {
-        return 0;
-    }
-
-    bool ok = false;
-    const uint parsed = text.toUInt(&ok);
-    if (!ok) {
-        return 0;
-    }
-    return static_cast<quint16>(qBound<uint>(0, parsed, 65535));
-}
-
-quint32 sanitizeOptionalUInt32(const QVariant &value)
-{
-    const QString text = value.toString().trimmed();
-    if (text.isEmpty()) {
-        return 0;
-    }
-
-    bool ok = false;
-    const quint64 parsed = text.toULongLong(&ok);
-    if (!ok) {
-        return 0;
-    }
-    return static_cast<quint32>(qMin<quint64>(parsed, std::numeric_limits<quint32>::max()));
-}
-
-int sanitizeQos(int qos)
-{
-    return qBound(0, qos, 1);
-}
-
-QString sanitizeTransport(const QVariant &value)
-{
-    const QString transport = value.toString().trimmed().toLower();
-    return transport == QStringLiteral("tls") ? QStringLiteral("tls") : QStringLiteral("tcp");
-}
-
-int sanitizeProtocolVersion(const QVariant &value)
-{
-    bool ok = false;
-    const int parsed = value.toInt(&ok);
-    return (ok && parsed == 4) ? 4 : 5;
 }
 
 QString subscriptionStateName(QMqttSubscription::SubscriptionState state)
@@ -504,7 +274,7 @@ QVariantList AppController::sessionsModel() const
         row.insert(QStringLiteral("state"), sessionStateName(session));
         row.insert(QStringLiteral("connected"), session.client && session.client->state() == QMqttClient::Connected);
         row.insert(QStringLiteral("host"), session.client ? session.client->hostname() : QString());
-        row.insert(QStringLiteral("port"), session.client ? session.client->port() : kDefaultPort);
+        row.insert(QStringLiteral("port"), session.client ? session.client->port() : SessionConfig::kDefaultPort);
         row.insert(QStringLiteral("transport"), session.transport);
         row.insert(QStringLiteral("transportLabel"), transportLabel(session.transport));
         row.insert(QStringLiteral("protocolVersion"), session.protocolVersion);
@@ -532,7 +302,7 @@ QVariantMap AppController::currentSession() const
     row.insert(QStringLiteral("id"), session->id);
     row.insert(QStringLiteral("name"), session->name);
     row.insert(QStringLiteral("host"), session->client ? session->client->hostname() : QString());
-    row.insert(QStringLiteral("port"), session->client ? session->client->port() : kDefaultPort);
+    row.insert(QStringLiteral("port"), session->client ? session->client->port() : SessionConfig::kDefaultPort);
     row.insert(QStringLiteral("transport"), session->transport);
     row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
     row.insert(QStringLiteral("protocolVersion"), session->protocolVersion);
@@ -540,7 +310,7 @@ QVariantMap AppController::currentSession() const
     row.insert(QStringLiteral("clientId"), session->client ? session->client->clientId() : QString());
     row.insert(QStringLiteral("username"), session->client ? session->client->username() : QString());
     row.insert(QStringLiteral("cleanSession"), session->client ? session->client->cleanSession() : true);
-    row.insert(QStringLiteral("keepAliveSeconds"), session->client ? session->client->keepAlive() : kDefaultKeepAlive);
+    row.insert(QStringLiteral("keepAliveSeconds"), session->client ? session->client->keepAlive() : SessionConfig::kDefaultKeepAlive);
     row.insert(QStringLiteral("outputPaused"), session->outputPaused);
     row.insert(QStringLiteral("subscriptionCount"), session->subscriptions.size());
     return row;
@@ -647,7 +417,7 @@ QVariantList AppController::scriptLibraryModel() const
         row.insert(QStringLiteral("name"), script.name);
         row.insert(QStringLiteral("code"), script.code);
         row.insert(QStringLiteral("updatedAt"), script.updatedAt);
-        row.insert(QStringLiteral("filePath"), scriptFilePath(script.fileName));
+        row.insert(QStringLiteral("filePath"), ScriptStore::scriptFilePath(script.fileName));
         rows.append(row);
     }
     return rows;
@@ -739,33 +509,7 @@ void AppController::setThemeMode(const QString &mode)
 
 QVariantMap AppController::defaultSessionConfig() const
 {
-    QVariantMap config;
-    config.insert(QStringLiteral("name"), QStringLiteral("Session %1").arg(m_sessions.size() + 1));
-    config.insert(QStringLiteral("host"), QStringLiteral("broker.emqx.io"));
-    config.insert(QStringLiteral("port"), kDefaultPort);
-    config.insert(QStringLiteral("transport"), QStringLiteral("tcp"));
-    config.insert(QStringLiteral("protocolVersion"), 5);
-    config.insert(QStringLiteral("sslSecure"), true);
-    config.insert(QStringLiteral("alpn"), QString());
-    config.insert(QStringLiteral("certificateType"), QStringLiteral("ca"));
-    config.insert(QStringLiteral("caFile"), QString());
-    config.insert(QStringLiteral("clientCertificateFile"), QString());
-    config.insert(QStringLiteral("clientKeyFile"), QString());
-    config.insert(QStringLiteral("clientId"), generateClientId());
-    config.insert(QStringLiteral("username"), QString());
-    config.insert(QStringLiteral("password"), QString());
-    config.insert(QStringLiteral("cleanSession"), true);
-    config.insert(QStringLiteral("keepAliveSeconds"), kDefaultKeepAlive);
-    config.insert(QStringLiteral("connectTimeoutSeconds"), 10);
-    config.insert(QStringLiteral("sessionExpiryInterval"), 0);
-    config.insert(QStringLiteral("receiveMaximum"), QString());
-    config.insert(QStringLiteral("maximumPacketSize"), QString());
-    config.insert(QStringLiteral("topicAliasMaximum"), QString());
-    config.insert(QStringLiteral("requestResponseInformation"), false);
-    config.insert(QStringLiteral("requestProblemInformation"), false);
-    config.insert(QStringLiteral("authenticationMethod"), QString());
-    config.insert(QStringLiteral("authenticationData"), QString());
-    return config;
+    return SessionConfig::defaultConfig(m_sessions.size() + 1);
 }
 
 QVariantMap AppController::sessionConfigAt(int index) const
@@ -774,34 +518,7 @@ QVariantMap AppController::sessionConfigAt(int index) const
         return defaultSessionConfig();
     }
 
-    const auto &session = m_sessions.at(index);
-    QVariantMap config;
-    config.insert(QStringLiteral("name"), session.name);
-    config.insert(QStringLiteral("host"), session.client->hostname());
-    config.insert(QStringLiteral("port"), session.client->port());
-    config.insert(QStringLiteral("transport"), session.transport);
-    config.insert(QStringLiteral("protocolVersion"), session.protocolVersion);
-    config.insert(QStringLiteral("sslSecure"), session.sslSecure);
-    config.insert(QStringLiteral("alpn"), session.alpn);
-    config.insert(QStringLiteral("certificateType"), session.certificateType);
-    config.insert(QStringLiteral("caFile"), session.caFile);
-    config.insert(QStringLiteral("clientCertificateFile"), session.clientCertificateFile);
-    config.insert(QStringLiteral("clientKeyFile"), session.clientKeyFile);
-    config.insert(QStringLiteral("clientId"), session.client->clientId());
-    config.insert(QStringLiteral("username"), session.client->username());
-    config.insert(QStringLiteral("password"), session.client->password());
-    config.insert(QStringLiteral("cleanSession"), session.client->cleanSession());
-    config.insert(QStringLiteral("keepAliveSeconds"), session.client->keepAlive());
-    config.insert(QStringLiteral("connectTimeoutSeconds"), session.connectTimeoutSeconds);
-    config.insert(QStringLiteral("sessionExpiryInterval"), session.sessionExpiryInterval);
-    config.insert(QStringLiteral("receiveMaximum"), session.receiveMaximum > 0 ? QString::number(session.receiveMaximum) : QString());
-    config.insert(QStringLiteral("maximumPacketSize"), session.maximumPacketSize > 0 ? QString::number(session.maximumPacketSize) : QString());
-    config.insert(QStringLiteral("topicAliasMaximum"), session.topicAliasMaximum > 0 ? QString::number(session.topicAliasMaximum) : QString());
-    config.insert(QStringLiteral("requestResponseInformation"), session.requestResponseInformation);
-    config.insert(QStringLiteral("requestProblemInformation"), session.requestProblemInformation);
-    config.insert(QStringLiteral("authenticationMethod"), session.authenticationMethod);
-    config.insert(QStringLiteral("authenticationData"), session.authenticationData);
-    return config;
+    return SessionConfig::configFromSession(m_sessions.at(index));
 }
 
 bool AppController::updateSessionConfigAt(int index, const QVariantMap &config)
@@ -863,33 +580,7 @@ void AppController::duplicateSessionAt(int index)
     }
 
     const auto &source = m_sessions.at(index);
-    QVariantMap config {
-        {QStringLiteral("name"), QStringLiteral("%1 Copy").arg(source.name)},
-        {QStringLiteral("host"), source.client->hostname()},
-        {QStringLiteral("port"), source.client->port()},
-        {QStringLiteral("transport"), source.transport},
-        {QStringLiteral("protocolVersion"), source.protocolVersion},
-        {QStringLiteral("sslSecure"), source.sslSecure},
-        {QStringLiteral("alpn"), source.alpn},
-        {QStringLiteral("certificateType"), source.certificateType},
-        {QStringLiteral("caFile"), source.caFile},
-        {QStringLiteral("clientCertificateFile"), source.clientCertificateFile},
-        {QStringLiteral("clientKeyFile"), source.clientKeyFile},
-        {QStringLiteral("clientId"), generateClientId()},
-        {QStringLiteral("username"), source.client->username()},
-        {QStringLiteral("password"), source.client->password()},
-        {QStringLiteral("cleanSession"), source.client->cleanSession()},
-        {QStringLiteral("keepAliveSeconds"), source.client->keepAlive()},
-        {QStringLiteral("connectTimeoutSeconds"), source.connectTimeoutSeconds},
-        {QStringLiteral("sessionExpiryInterval"), source.sessionExpiryInterval},
-        {QStringLiteral("receiveMaximum"), source.receiveMaximum > 0 ? QString::number(source.receiveMaximum) : QString()},
-        {QStringLiteral("maximumPacketSize"), source.maximumPacketSize > 0 ? QString::number(source.maximumPacketSize) : QString()},
-        {QStringLiteral("topicAliasMaximum"), source.topicAliasMaximum > 0 ? QString::number(source.topicAliasMaximum) : QString()},
-        {QStringLiteral("requestResponseInformation"), source.requestResponseInformation},
-        {QStringLiteral("requestProblemInformation"), source.requestProblemInformation},
-        {QStringLiteral("authenticationMethod"), source.authenticationMethod},
-        {QStringLiteral("authenticationData"), source.authenticationData}
-    };
+    const QVariantMap config = SessionConfig::duplicateConfigFromSession(source);
 
     SessionState session = createDefaultSession(QStringLiteral("%1 Copy").arg(source.name));
     configureSession(session, config, false);
@@ -1043,14 +734,14 @@ bool AppController::upsertCurrentSubscription(
         SubscriptionEntry subscription;
         subscription.topic = filter;
         subscription.alias = displayAlias;
-        subscription.requestedQos = sanitizeQos(qos);
+        subscription.requestedQos = SessionConfig::sanitizeQos(qos);
         subscription.format = format;
         subscription.scriptId = sanitizedScriptId;
         session->subscriptions.append(subscription);
         entry = &session->subscriptions.last();
     } else {
         entry->alias = displayAlias;
-        entry->requestedQos = sanitizeQos(qos);
+        entry->requestedQos = SessionConfig::sanitizeQos(qos);
         entry->format = format;
         entry->scriptId = sanitizedScriptId;
         entry->paused = false;
@@ -1207,7 +898,7 @@ void AppController::publishCurrentSession(
     QVariantMap status = defaultPublishStatus();
     status.insert(QStringLiteral("state"), QStringLiteral("queued"));
     status.insert(QStringLiteral("topic"), trimmedTopic);
-    status.insert(QStringLiteral("qos"), sanitizeQos(qos));
+    status.insert(QStringLiteral("qos"), SessionConfig::sanitizeQos(qos));
     status.insert(QStringLiteral("retain"), retain);
     status.insert(QStringLiteral("format"), format);
     status.insert(QStringLiteral("formatName"), PayloadCodec::formatName(payloadFormat));
@@ -1215,7 +906,7 @@ void AppController::publishCurrentSession(
     status.insert(QStringLiteral("updatedAt"), timestampNow());
     session->publishStatus = status;
 
-    const qint32 messageId = session->client->publish(topicName, payloadBytes, sanitizeQos(qos), retain);
+    const qint32 messageId = session->client->publish(topicName, payloadBytes, SessionConfig::sanitizeQos(qos), retain);
     if (messageId < 0) {
         updatePublishStatus(*session, QStringLiteral("failed"), QStringLiteral("Qt MQTT rejected the publish request."));
         appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Publish rejected for %1").arg(trimmedTopic));
@@ -1226,7 +917,7 @@ void AppController::publishCurrentSession(
             QStringLiteral("Publish"),
             QStringLiteral("Queued %1 (QoS %2%3)")
                 .arg(trimmedTopic)
-                .arg(sanitizeQos(qos))
+                .arg(SessionConfig::sanitizeQos(qos))
                 .arg(retain ? QStringLiteral(", retain") : QString()));
     }
 
@@ -1255,19 +946,20 @@ QVariantList AppController::loadOlderCurrentEventRows()
         return {};
     }
 
-    QVariantList rows = loadHistoryRows(
-        *session,
+    QVariantList rows = EventRenderer::loadHistoryRows(
         m_historyStore.loadEntriesBefore(session->id, session->oldestLoadedEventId, kEventPageSize),
+        session->subscriptionFormats,
+        m_launchTimestamp,
         false);
     if (rows.isEmpty()) {
         session->loadedAllEventHistory = true;
         return {};
     }
 
-    if (containsRowsBeforeLaunch(rows, m_launchTimestamp)
-            && startsWithCurrentLaunchRows(session->eventRows, m_launchTimestamp)
-            && !containsLaunchDivider(session->eventRows)) {
-        rows.append(launchDividerRow(m_launchTimestamp));
+    if (EventRenderer::containsRowsBeforeLaunch(rows, m_launchTimestamp)
+            && EventRenderer::startsWithCurrentLaunchRows(session->eventRows, m_launchTimestamp)
+            && !EventRenderer::containsLaunchDivider(session->eventRows)) {
+        rows.append(EventRenderer::launchDividerRow(m_launchTimestamp));
     }
 
     QVariantList merged;
@@ -1279,7 +971,7 @@ QVariantList AppController::loadOlderCurrentEventRows()
         merged.append(item);
     }
     session->eventRows = merged;
-    session->oldestLoadedEventId = firstHistoryId(session->eventRows);
+    session->oldestLoadedEventId = EventRenderer::firstHistoryId(session->eventRows);
     emit scriptTestSamplesChanged();
     return rows;
 }
@@ -1288,7 +980,7 @@ QString AppController::upsertScript(const QString &id, const QString &name, cons
 {
     const QString trimmedName = name.trimmed();
     const QString scriptName = trimmedName.isEmpty() ? QStringLiteral("Untitled Script") : trimmedName;
-    const QString scriptCode = code.trimmed().isEmpty() ? defaultLuaScript() : code;
+    const QString scriptCode = code.trimmed().isEmpty() ? ScriptStore::defaultLuaScript() : code;
     const QString scriptId = id.trimmed().isEmpty() ? QUuid::createUuid().toString(QUuid::WithoutBraces) : id.trimmed();
     const QString updatedAt = timestampNow();
     const QVector<ScriptEntry> previousScripts = m_scripts;
@@ -1299,7 +991,7 @@ QString AppController::upsertScript(const QString &id, const QString &name, cons
             script.code = scriptCode;
             script.updatedAt = updatedAt;
             if (script.fileName.isEmpty()) {
-                script.fileName = scriptFileNameForId(script.id);
+                script.fileName = ScriptStore::scriptFileNameForId(script.id);
             }
             if (!saveScripts()) {
                 m_scripts = previousScripts;
@@ -1317,7 +1009,7 @@ QString AppController::upsertScript(const QString &id, const QString &name, cons
     script.name = scriptName;
     script.code = scriptCode;
     script.updatedAt = updatedAt;
-    script.fileName = scriptFileNameForId(script.id);
+    script.fileName = ScriptStore::scriptFileNameForId(script.id);
     m_scripts.append(script);
 
     if (!saveScripts()) {
@@ -1378,9 +1070,7 @@ bool AppController::deleteScript(const QString &id)
         }
         return false;
     }
-    if (!removedFileName.isEmpty()) {
-        QFile::remove(scriptFilePath(removedFileName));
-    }
+    ScriptStore::removeScriptFile(removedFileName);
     saveSessions();
     emit scriptLibraryChanged();
     emit currentSessionChanged();
@@ -1768,8 +1458,8 @@ void AppController::configureSession(SessionState &session, const QVariantMap &c
         session.name = name;
     }
 
-    session.transport = sanitizeTransport(config.value(QStringLiteral("transport")));
-    session.protocolVersion = sanitizeProtocolVersion(config.value(QStringLiteral("protocolVersion"), 5));
+    session.transport = SessionConfig::sanitizeTransport(config.value(QStringLiteral("transport")));
+    session.protocolVersion = SessionConfig::sanitizeProtocolVersion(config.value(QStringLiteral("protocolVersion"), 5));
     session.sslSecure = config.value(QStringLiteral("sslSecure"), true).toBool();
     session.alpn = config.value(QStringLiteral("alpn")).toString().trimmed();
     session.certificateType = config.value(QStringLiteral("certificateType"), QStringLiteral("ca")).toString() == QStringLiteral("self")
@@ -1779,11 +1469,11 @@ void AppController::configureSession(SessionState &session, const QVariantMap &c
     session.clientCertificateFile = config.value(QStringLiteral("clientCertificateFile")).toString().trimmed();
     session.clientKeyFile = config.value(QStringLiteral("clientKeyFile")).toString().trimmed();
     session.connectTimeoutSeconds =
-        sanitizeBoundedInt(config.value(QStringLiteral("connectTimeoutSeconds"), 10), 10, 1, 300);
-    session.sessionExpiryInterval = sanitizeOptionalUInt32(config.value(QStringLiteral("sessionExpiryInterval"), 0));
-    session.receiveMaximum = sanitizeOptionalUInt16(config.value(QStringLiteral("receiveMaximum")));
-    session.maximumPacketSize = sanitizeOptionalUInt32(config.value(QStringLiteral("maximumPacketSize")));
-    session.topicAliasMaximum = sanitizeOptionalUInt16(config.value(QStringLiteral("topicAliasMaximum")));
+        SessionConfig::sanitizeBoundedInt(config.value(QStringLiteral("connectTimeoutSeconds"), 10), 10, 1, 300);
+    session.sessionExpiryInterval = SessionConfig::sanitizeOptionalUInt32(config.value(QStringLiteral("sessionExpiryInterval"), 0));
+    session.receiveMaximum = SessionConfig::sanitizeOptionalUInt16(config.value(QStringLiteral("receiveMaximum")));
+    session.maximumPacketSize = SessionConfig::sanitizeOptionalUInt32(config.value(QStringLiteral("maximumPacketSize")));
+    session.topicAliasMaximum = SessionConfig::sanitizeOptionalUInt16(config.value(QStringLiteral("topicAliasMaximum")));
     session.requestResponseInformation =
         config.value(QStringLiteral("requestResponseInformation"), false).toBool();
     session.requestProblemInformation =
@@ -1797,18 +1487,19 @@ void AppController::configureSession(SessionState &session, const QVariantMap &c
     }
 
     session.client->setHostname(host);
-    session.client->setPort(sanitizePort(config.value(QStringLiteral("port")), session.transport));
+    session.client->setPort(SessionConfig::sanitizePort(config.value(QStringLiteral("port")), session.transport));
     session.client->setProtocolVersion(toProtocolVersion(session.protocolVersion));
 
     QString clientId = config.value(QStringLiteral("clientId")).toString().trimmed();
     if (clientId.isEmpty()) {
-        clientId = generateClientId();
+        clientId = SessionConfig::generateClientId();
     }
     session.client->setClientId(clientId);
     session.client->setUsername(config.value(QStringLiteral("username")).toString());
     session.client->setPassword(config.value(QStringLiteral("password")).toString());
     session.client->setCleanSession(config.value(QStringLiteral("cleanSession"), true).toBool());
-    session.client->setKeepAlive(sanitizeKeepAlive(config.value(QStringLiteral("keepAliveSeconds"), kDefaultKeepAlive)));
+    session.client->setKeepAlive(SessionConfig::sanitizeKeepAlive(
+        config.value(QStringLiteral("keepAliveSeconds"), SessionConfig::kDefaultKeepAlive)));
     session.client->setAutoKeepAlive(true);
     if (session.connectTimeoutTimer) {
         session.connectTimeoutTimer->setInterval(session.connectTimeoutSeconds * 1000);
@@ -1858,7 +1549,7 @@ void AppController::ensureSubscriptionActive(SessionState &session, Subscription
         return;
     }
 
-    QMqttSubscription *subscription = session.client->subscribe(filter, sanitizeQos(entry.requestedQos));
+    QMqttSubscription *subscription = session.client->subscribe(filter, SessionConfig::sanitizeQos(entry.requestedQos));
     if (!subscription) {
         entry.runtimeState = QStringLiteral("error");
         entry.lastError = QStringLiteral("Qt MQTT returned no subscription object.");
@@ -1978,16 +1669,7 @@ void AppController::appendEvent(SessionState &session, const QString &channel, c
     const QString timestamp = timestampNow();
     const qint64 historyId = m_historyStore.appendEvent(session.id, timestamp, channel, message);
 
-    QVariantMap row;
-    row.insert(QStringLiteral("historyId"), historyId);
-    row.insert(QStringLiteral("timestamp"), timestamp);
-    row.insert(QStringLiteral("kind"), QStringLiteral("event"));
-    row.insert(QStringLiteral("title"), channel);
-    row.insert(QStringLiteral("topic"), channel);
-    row.insert(QStringLiteral("payload"), message);
-    row.insert(QStringLiteral("payloadFormat"), QStringLiteral("Event"));
-    row.insert(QStringLiteral("payloadSize"), 0);
-    appendRenderedEventRow(session, row);
+    appendRenderedEventRow(session, EventRenderer::eventRow(historyId, timestamp, channel, message));
 }
 
 LuaScriptResult AppController::parseIncomingPayload(
@@ -2101,7 +1783,7 @@ void AppController::appendIncomingMessage(const QString &sessionId, const QStrin
     historyRow.insert(QStringLiteral("parse_error"), parseError);
     historyRow.insert(QStringLiteral("script_id"), scriptId);
     historyRow.insert(QStringLiteral("script_name"), scriptDisplayName);
-    appendRenderedEventRow(*session, renderHistoryRow(historyRow, session->subscriptionFormats));
+    appendRenderedEventRow(*session, EventRenderer::renderHistoryRow(historyRow, session->subscriptionFormats));
 }
 
 qreal AppController::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
@@ -2143,113 +1825,8 @@ void AppController::trimVisibleEventRows(SessionState &session)
     }
 
     session.eventRows.remove(0, overflow);
-    session.oldestLoadedEventId = firstHistoryId(session.eventRows);
+    session.oldestLoadedEventId = EventRenderer::firstHistoryId(session.eventRows);
     session.loadedAllEventHistory = false;
-}
-
-QVariantMap AppController::renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &subscriptionFormats) const
-{
-    const QString kind = row.value(QStringLiteral("entry_type"), QStringLiteral("message")).toString();
-    const QString timestamp = row.value(QStringLiteral("timestamp")).toString();
-    const QString topic = row.value(QStringLiteral("topic")).toString();
-
-    QVariantMap rendered;
-    rendered.insert(QStringLiteral("historyId"), row.value(QStringLiteral("id")).toLongLong());
-    rendered.insert(QStringLiteral("timestamp"), timestamp);
-    rendered.insert(QStringLiteral("topic"), topic);
-
-    if (kind == QStringLiteral("divider")) {
-        rendered.insert(QStringLiteral("kind"), QStringLiteral("divider"));
-        rendered.insert(QStringLiteral("title"), row.value(QStringLiteral("payload"), kStartupDividerLabel).toString());
-        rendered.insert(QStringLiteral("payload"), QString());
-        rendered.insert(QStringLiteral("payloadFormat"), QString());
-        rendered.insert(QStringLiteral("payloadSize"), 0);
-        return rendered;
-    }
-
-    if (kind == QStringLiteral("event")) {
-        rendered.insert(QStringLiteral("kind"), QStringLiteral("event"));
-        rendered.insert(QStringLiteral("title"), topic);
-        rendered.insert(QStringLiteral("payload"), row.value(QStringLiteral("payload")).toString());
-        rendered.insert(QStringLiteral("payloadFormat"), QStringLiteral("Event"));
-        rendered.insert(QStringLiteral("payloadSize"), 0);
-        return rendered;
-    }
-
-    QByteArray payloadBytes =
-        QByteArray::fromBase64(row.value(QStringLiteral("payload_b64")).toString().toLatin1());
-
-    const PayloadFormat format = PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
-    QString parseError;
-    QString renderedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, parseError);
-    if (!parseError.isEmpty()) {
-        renderedPayload = QStringLiteral("%1\nRaw(Base64): %2")
-                              .arg(renderedPayload, QString::fromLatin1(payloadBytes.toBase64()));
-    }
-
-    const QString scriptError = row.value(QStringLiteral("parse_error")).toString();
-    const QString parsedFormat = row.value(QStringLiteral("parsed_format")).toString();
-    const bool hasScriptResult = !parsedFormat.isEmpty() || !scriptError.isEmpty();
-    if (!scriptError.isEmpty()) {
-        renderedPayload = QStringLiteral("%1\nLua Error: %2")
-                              .arg(renderedPayload, scriptError);
-    } else if (hasScriptResult) {
-        renderedPayload = row.value(QStringLiteral("parsed_payload")).toString();
-    }
-
-    rendered.insert(QStringLiteral("kind"), QStringLiteral("message"));
-    rendered.insert(QStringLiteral("title"), topic);
-    rendered.insert(QStringLiteral("payload"), renderedPayload);
-    rendered.insert(
-        QStringLiteral("payloadFormat"),
-        !scriptError.isEmpty()
-            ? QStringLiteral("Lua Error")
-            : (hasScriptResult ? parsedFormat : PayloadCodec::formatName(format)));
-    rendered.insert(QStringLiteral("payloadSize"), payloadBytes.size());
-    rendered.insert(QStringLiteral("testPayload"), PayloadCodec::decodeForDisplay(format, payloadBytes, parseError));
-    rendered.insert(QStringLiteral("testFormat"), static_cast<int>(format));
-    rendered.insert(QStringLiteral("testFormatName"), PayloadCodec::formatName(format));
-    return rendered;
-}
-
-QVariantList AppController::loadHistoryRows(
-    const SessionState &session,
-    const QVariantList &rows,
-    bool includeLaunchDivider) const
-{
-    QVariantList previousRows;
-    QVariantList currentRows;
-    previousRows.reserve(rows.size());
-    currentRows.reserve(rows.size());
-
-    for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        if (row.value(QStringLiteral("entry_type")).toString() == QStringLiteral("divider")) {
-            continue;
-        }
-
-        const QVariantMap renderedRow = renderHistoryRow(row, session.subscriptionFormats);
-        if (row.value(QStringLiteral("timestamp")).toString() < m_launchTimestamp) {
-            previousRows.append(renderedRow);
-        } else {
-            currentRows.append(renderedRow);
-        }
-    }
-
-    QVariantList rendered;
-    rendered.reserve(previousRows.size() + currentRows.size() + (previousRows.isEmpty() ? 0 : 1));
-    for (const QVariant &item : previousRows) {
-        rendered.append(item);
-    }
-
-    if (includeLaunchDivider && !previousRows.isEmpty()) {
-        rendered.append(launchDividerRow(m_launchTimestamp));
-    }
-
-    for (const QVariant &item : currentRows) {
-        rendered.append(item);
-    }
-    return rendered;
 }
 
 void AppController::reloadCurrentSessionHistory()
@@ -2259,165 +1836,42 @@ void AppController::reloadCurrentSessionHistory()
         return;
     }
     const QVariantList rows = m_historyStore.loadEntries(session->id, kEventPageSize);
-    session->eventRows = loadHistoryRows(*session, rows, true);
-    session->oldestLoadedEventId = firstHistoryId(session->eventRows);
+    session->eventRows = EventRenderer::loadHistoryRows(
+        rows,
+        session->subscriptionFormats,
+        m_launchTimestamp,
+        true);
+    session->oldestLoadedEventId = EventRenderer::firstHistoryId(session->eventRows);
     session->loadedAllEventHistory = rows.size() < kEventPageSize;
     emit scriptTestSamplesChanged();
 }
 
 void AppController::loadScripts()
 {
-    m_scripts.clear();
-    m_scriptIndexWritable = true;
-
-    QFile indexFile(scriptIndexPath());
-    if (indexFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QJsonParseError parseError;
-        const QJsonDocument document = QJsonDocument::fromJson(indexFile.readAll(), &parseError);
-        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-            m_scriptIndexWritable = false;
-            return;
-        }
-
-        const QJsonArray scripts = document.object().value(QStringLiteral("scripts")).toArray();
-        m_scripts.reserve(scripts.size());
-        for (const QJsonValue &value : scripts) {
-            const QJsonObject object = value.toObject();
-            ScriptEntry script;
-            script.id = object.value(QStringLiteral("id")).toString();
-            script.name = object.value(QStringLiteral("name")).toString();
-            script.fileName = object.value(QStringLiteral("fileName")).toString(scriptFileNameForId(script.id));
-            script.updatedAt = object.value(QStringLiteral("updatedAt")).toString();
-            if (script.id.isEmpty() || script.name.trimmed().isEmpty()) {
-                continue;
-            }
-            script.code = readScriptFile(script.fileName);
-            if (script.code.trimmed().isEmpty()) {
-                script.code = defaultLuaScript();
-            }
-            m_scripts.append(script);
-        }
-    }
-
+    const ScriptStore::LoadResult result = ScriptStore::loadScripts();
+    m_scripts = result.scripts;
+    m_scriptIndexWritable = result.indexWritable;
 }
 
 bool AppController::saveScripts()
 {
-    if (!m_scriptIndexWritable) {
-        return false;
-    }
-    if (!ensureScriptStorageDir()) {
-        return false;
-    }
-
-    QJsonArray scripts;
-    for (auto &script : m_scripts) {
-        if (script.fileName.isEmpty()) {
-            script.fileName = scriptFileNameForId(script.id);
-        }
-        if (!writeTextFile(scriptFilePath(script.fileName), script.code.toUtf8())) {
-            return false;
-        }
-
-        QJsonObject object;
-        object.insert(QStringLiteral("id"), script.id);
-        object.insert(QStringLiteral("name"), script.name);
-        object.insert(QStringLiteral("fileName"), script.fileName);
-        object.insert(QStringLiteral("updatedAt"), script.updatedAt);
-        scripts.append(object);
-    }
-
-    QJsonObject root;
-    root.insert(QStringLiteral("version"), 1);
-    root.insert(QStringLiteral("scripts"), scripts);
-    return writeTextFile(scriptIndexPath(), QJsonDocument(root).toJson(QJsonDocument::Indented));
+    return ScriptStore::saveScripts(m_scripts, m_scriptIndexWritable);
 }
 
 void AppController::loadSessions()
 {
     const int count = m_settings.beginReadArray(QStringLiteral("sessions"));
     for (int i = 0; i < count; ++i) {
-        m_settings.setArrayIndex(i);
-
-        SessionState session;
-        session.id = m_settings.value(QStringLiteral("id")).toString();
-        session.name = m_settings.value(QStringLiteral("name")).toString();
-        if (session.id.isEmpty()) {
-            session.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-        }
-        if (session.name.isEmpty()) {
-            session.name = QStringLiteral("Session %1").arg(i + 1);
-        }
-
-        session.outputPaused = m_settings.value(QStringLiteral("outputPaused"), false).toBool();
-        session.transport = sanitizeTransport(
-            m_settings.value(QStringLiteral("transport"), QStringLiteral("tcp")));
-        session.protocolVersion = sanitizeProtocolVersion(
-            m_settings.value(QStringLiteral("protocolVersion"), 5));
-
-        const QVariantList subscriptions = m_settings.value(QStringLiteral("subscriptions")).toList();
-        for (const QVariant &item : subscriptions) {
-            const QVariantMap row = item.toMap();
-            const QString topic = row.value(QStringLiteral("topic")).toString().trimmed();
-            if (topic.isEmpty()) {
-                continue;
-            }
-
-            SubscriptionEntry entry;
-            entry.topic = topic;
-            entry.alias = row.value(QStringLiteral("alias")).toString().trimmed();
-            entry.requestedQos = sanitizeQos(row.value(QStringLiteral("qos"), 0).toInt());
-            entry.format = row.value(QStringLiteral("format"), 0).toInt();
-            entry.scriptId = scriptById(row.value(QStringLiteral("scriptId")).toString())
-                ? row.value(QStringLiteral("scriptId")).toString()
-                : QString();
-            entry.paused = row.value(QStringLiteral("paused"), false).toBool();
-            session.subscriptions.append(entry);
-            session.subscriptionFormats.insert(topic, entry.format);
-        }
+        SessionConfig::LoadedSession loaded = SessionConfig::readSessionSettings(
+            m_settings,
+            i,
+            [this](const QString &scriptId) { return scriptById(scriptId) != nullptr; });
+        SessionState session = loaded.session;
 
         session.client = new QMqttClient(this);
         session.client->setAutoKeepAlive(true);
-        QVariantMap config;
-        config.insert(QStringLiteral("name"), session.name);
-        config.insert(QStringLiteral("host"), m_settings.value(QStringLiteral("host"), QStringLiteral("broker.emqx.io")));
-        config.insert(QStringLiteral("port"), m_settings.value(QStringLiteral("port"), sanitizePort(QVariant(), session.transport)));
-        config.insert(QStringLiteral("transport"), session.transport);
-        config.insert(QStringLiteral("protocolVersion"), session.protocolVersion);
-        config.insert(QStringLiteral("sslSecure"), m_settings.value(QStringLiteral("sslSecure"), true).toBool());
-        config.insert(QStringLiteral("alpn"), m_settings.value(QStringLiteral("alpn")).toString());
-        config.insert(QStringLiteral("certificateType"), m_settings.value(QStringLiteral("certificateType"), QStringLiteral("ca")).toString());
-        config.insert(QStringLiteral("caFile"), m_settings.value(QStringLiteral("caFile")).toString());
-        config.insert(
-            QStringLiteral("clientCertificateFile"),
-            m_settings.value(QStringLiteral("clientCertificateFile")).toString());
-        config.insert(QStringLiteral("clientKeyFile"), m_settings.value(QStringLiteral("clientKeyFile")).toString());
-        config.insert(QStringLiteral("clientId"), m_settings.value(QStringLiteral("clientId"), generateClientId()));
-        config.insert(QStringLiteral("username"), m_settings.value(QStringLiteral("username")).toString());
-        config.insert(QStringLiteral("password"), m_settings.value(QStringLiteral("password")).toString());
-        config.insert(QStringLiteral("cleanSession"), m_settings.value(QStringLiteral("cleanSession"), true).toBool());
-        config.insert(
-            QStringLiteral("keepAliveSeconds"),
-            m_settings.value(QStringLiteral("keepAliveSeconds"), kDefaultKeepAlive));
-        config.insert(
-            QStringLiteral("connectTimeoutSeconds"),
-            m_settings.value(QStringLiteral("connectTimeoutSeconds"), 10));
-        config.insert(
-            QStringLiteral("sessionExpiryInterval"),
-            m_settings.value(QStringLiteral("sessionExpiryInterval"), 0));
-        config.insert(QStringLiteral("receiveMaximum"), m_settings.value(QStringLiteral("receiveMaximum")).toString());
-        config.insert(QStringLiteral("maximumPacketSize"), m_settings.value(QStringLiteral("maximumPacketSize")).toString());
-        config.insert(QStringLiteral("topicAliasMaximum"), m_settings.value(QStringLiteral("topicAliasMaximum")).toString());
-        config.insert(
-            QStringLiteral("requestResponseInformation"),
-            m_settings.value(QStringLiteral("requestResponseInformation"), false).toBool());
-        config.insert(
-            QStringLiteral("requestProblemInformation"),
-            m_settings.value(QStringLiteral("requestProblemInformation"), false).toBool());
-        config.insert(QStringLiteral("authenticationMethod"), m_settings.value(QStringLiteral("authenticationMethod")).toString());
-        config.insert(QStringLiteral("authenticationData"), m_settings.value(QStringLiteral("authenticationData")).toString());
         initializeSessionRuntime(&session);
-        configureSession(session, config, false);
+        configureSession(session, loaded.config, false);
         session.publishStatus = defaultPublishStatus();
         bindSessionSignals(&session);
         m_sessions.append(session);
@@ -2440,60 +1894,7 @@ void AppController::loadSessions()
 
 void AppController::saveSessions()
 {
-    m_settings.beginWriteArray(QStringLiteral("sessions"), m_sessions.size());
-    for (int i = 0; i < m_sessions.size(); ++i) {
-        const auto &session = m_sessions.at(i);
-        m_settings.setArrayIndex(i);
-        m_settings.setValue(QStringLiteral("id"), session.id);
-        m_settings.setValue(QStringLiteral("name"), session.name);
-        m_settings.setValue(QStringLiteral("host"), session.client->hostname());
-        m_settings.setValue(QStringLiteral("port"), session.client->port());
-        m_settings.setValue(QStringLiteral("transport"), session.transport);
-        m_settings.setValue(QStringLiteral("protocolVersion"), session.protocolVersion);
-        m_settings.setValue(QStringLiteral("sslSecure"), session.sslSecure);
-        m_settings.setValue(QStringLiteral("alpn"), session.alpn);
-        m_settings.setValue(QStringLiteral("certificateType"), session.certificateType);
-        m_settings.setValue(QStringLiteral("caFile"), session.caFile);
-        m_settings.setValue(QStringLiteral("clientCertificateFile"), session.clientCertificateFile);
-        m_settings.setValue(QStringLiteral("clientKeyFile"), session.clientKeyFile);
-        m_settings.setValue(QStringLiteral("clientId"), session.client->clientId());
-        m_settings.setValue(QStringLiteral("username"), session.client->username());
-        m_settings.setValue(QStringLiteral("password"), session.client->password());
-        m_settings.setValue(QStringLiteral("cleanSession"), session.client->cleanSession());
-        m_settings.setValue(QStringLiteral("keepAliveSeconds"), session.client->keepAlive());
-        m_settings.setValue(QStringLiteral("connectTimeoutSeconds"), session.connectTimeoutSeconds);
-        m_settings.setValue(QStringLiteral("sessionExpiryInterval"), session.sessionExpiryInterval);
-        m_settings.setValue(
-            QStringLiteral("receiveMaximum"),
-            session.receiveMaximum > 0 ? QString::number(session.receiveMaximum) : QString());
-        m_settings.setValue(
-            QStringLiteral("maximumPacketSize"),
-            session.maximumPacketSize > 0 ? QString::number(session.maximumPacketSize) : QString());
-        m_settings.setValue(
-            QStringLiteral("topicAliasMaximum"),
-            session.topicAliasMaximum > 0 ? QString::number(session.topicAliasMaximum) : QString());
-        m_settings.setValue(QStringLiteral("requestResponseInformation"), session.requestResponseInformation);
-        m_settings.setValue(QStringLiteral("requestProblemInformation"), session.requestProblemInformation);
-        m_settings.setValue(QStringLiteral("authenticationMethod"), session.authenticationMethod);
-        m_settings.setValue(QStringLiteral("authenticationData"), session.authenticationData);
-        m_settings.setValue(QStringLiteral("outputPaused"), session.outputPaused);
-
-        QVariantList subscriptions;
-        subscriptions.reserve(session.subscriptions.size());
-        for (const auto &entry : session.subscriptions) {
-            QVariantMap row;
-            row.insert(QStringLiteral("topic"), entry.topic);
-            row.insert(QStringLiteral("alias"), entry.alias);
-            row.insert(QStringLiteral("qos"), entry.requestedQos);
-            row.insert(QStringLiteral("format"), entry.format);
-            row.insert(QStringLiteral("scriptId"), entry.scriptId);
-            row.insert(QStringLiteral("paused"), entry.paused);
-            subscriptions.append(row);
-        }
-        m_settings.setValue(QStringLiteral("subscriptions"), subscriptions);
-    }
-    m_settings.endArray();
-    m_settings.sync();
+    SessionConfig::writeSessionSettings(m_settings, m_sessions);
 }
 
 AppController::SessionState AppController::createDefaultSession(const QString &name) const
@@ -2507,19 +1908,8 @@ AppController::SessionState AppController::createDefaultSession(const QString &n
     session.client = new QMqttClient(const_cast<AppController *>(this));
     session.client->setAutoKeepAlive(true);
     const_cast<AppController *>(this)->initializeSessionRuntime(&session);
-    QVariantMap config;
+    QVariantMap config = SessionConfig::defaultConfig(1);
     config.insert(QStringLiteral("name"), name);
-    config.insert(QStringLiteral("host"), QStringLiteral("broker.emqx.io"));
-    config.insert(QStringLiteral("port"), kDefaultPort);
-    config.insert(QStringLiteral("transport"), QStringLiteral("tcp"));
-    config.insert(QStringLiteral("protocolVersion"), 5);
-    config.insert(QStringLiteral("sslSecure"), true);
-    config.insert(QStringLiteral("certificateType"), QStringLiteral("ca"));
-    config.insert(QStringLiteral("clientId"), generateClientId());
-    config.insert(QStringLiteral("cleanSession"), true);
-    config.insert(QStringLiteral("keepAliveSeconds"), kDefaultKeepAlive);
-    config.insert(QStringLiteral("connectTimeoutSeconds"), 10);
-    config.insert(QStringLiteral("sessionExpiryInterval"), 0);
     const_cast<AppController *>(this)->configureSession(session, config, false);
     const_cast<AppController *>(this)->bindSessionSignals(&session);
     return session;
