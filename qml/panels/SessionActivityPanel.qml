@@ -23,6 +23,7 @@ AppPanel {
     readonly property int publishComposerMaxHeight: 460
     readonly property int maxEventRows: 1200
 
+    showTopBorder: false
     Layout.fillWidth: true
     Layout.fillHeight: true
 

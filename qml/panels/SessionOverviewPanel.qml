@@ -13,6 +13,7 @@ AppPanel {
     required property var appController
     required property SessionEditorDialog sessionEditor
 
+    showTopBorder: false
     Layout.fillWidth: true
     Layout.preferredHeight: currentSessionColumn.implicitHeight + 28
     Layout.minimumHeight: currentSessionColumn.implicitHeight + 28
