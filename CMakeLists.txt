@@ -56,6 +56,15 @@ qt_add_executable(mqtt_plus_app
     src/main.cpp
     src/appcontroller.cpp
     src/appcontroller.h
+    src/appcontrollerevents.cpp
+    src/appcontrollermodels.cpp
+    src/appcontrollermqtt.cpp
+    src/appcontrollerscripts.cpp
+    src/appcontrollersessions.cpp
+    src/appcontrollersubscriptions.cpp
+    src/appcontrollertheme.cpp
+    src/appcontrollerutils.cpp
+    src/appcontrollerutils.h
     src/eventrenderer.cpp
     src/eventrenderer.h
     src/historystore.cpp
