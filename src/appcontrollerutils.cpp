@@ -1,0 +1,225 @@
+#include "appcontrollerutils.h"
+
+#include <QAbstractSocket>
+#include <QDateTime>
+#include <QFile>
+#include <QRegularExpression>
+
+#include <algorithm>
+
+namespace AppControllerUtils {
+
+QString timestampNow()
+{
+    return QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
+}
+
+QString transportLabel(const QString &transport)
+{
+    return transport == QStringLiteral("tls") ? QStringLiteral("TLS") : QStringLiteral("TCP");
+}
+
+QString protocolVersionLabel(int protocolVersion)
+{
+    return protocolVersion >= 5 ? QStringLiteral("MQTT 5") : QStringLiteral("MQTT 3.1.1");
+}
+
+QList<QByteArray> alpnProtocols(const QString &alpn)
+{
+    QList<QByteArray> protocols;
+    const QStringList parts = alpn.split(QRegularExpression(QStringLiteral("[,;\\s]+")), Qt::SkipEmptyParts);
+    for (const QString &part : parts) {
+        protocols.append(part.trimmed().toUtf8());
+    }
+    return protocols;
+}
+
+QSslKey readPrivateKey(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+
+    const QByteArray keyData = file.readAll();
+    for (const QSsl::KeyAlgorithm algorithm : {QSsl::Rsa, QSsl::Dsa, QSsl::Ec}) {
+        QSslKey key(keyData, algorithm);
+        if (!key.isNull()) {
+            return key;
+        }
+    }
+    return {};
+}
+
+QString sanitizeThemeMode(const QString &value)
+{
+    const QString mode = value.trimmed().toLower();
+    if (mode == QStringLiteral("light") || mode == QStringLiteral("dark")) {
+        return mode;
+    }
+    return QStringLiteral("system");
+}
+
+QMqttClient::ProtocolVersion toProtocolVersion(int value)
+{
+    return value >= 5 ? QMqttClient::MQTT_5_0 : QMqttClient::MQTT_3_1_1;
+}
+
+QString subscriptionStateName(QMqttSubscription::SubscriptionState state)
+{
+    switch (state) {
+    case QMqttSubscription::Unsubscribed:
+        return QStringLiteral("unsubscribed");
+    case QMqttSubscription::SubscriptionPending:
+        return QStringLiteral("pending");
+    case QMqttSubscription::Subscribed:
+        return QStringLiteral("subscribed");
+    case QMqttSubscription::UnsubscriptionPending:
+        return QStringLiteral("unsubscribing");
+    case QMqttSubscription::Error:
+        return QStringLiteral("error");
+    }
+    return QStringLiteral("saved");
+}
+
+QString clientErrorName(QMqttClient::ClientError error)
+{
+    switch (error) {
+    case QMqttClient::NoError:
+        return QStringLiteral("No error");
+    case QMqttClient::InvalidProtocolVersion:
+        return QStringLiteral("Protocol version rejected by broker");
+    case QMqttClient::IdRejected:
+        return QStringLiteral("Client ID rejected");
+    case QMqttClient::ServerUnavailable:
+        return QStringLiteral("Broker unavailable");
+    case QMqttClient::BadUsernameOrPassword:
+        return QStringLiteral("Username or password rejected");
+    case QMqttClient::NotAuthorized:
+        return QStringLiteral("Not authorized");
+    case QMqttClient::TransportInvalid:
+        return QStringLiteral("Invalid transport");
+    case QMqttClient::ProtocolViolation:
+        return QStringLiteral("Protocol violation");
+    case QMqttClient::UnknownError:
+        return QStringLiteral("Unknown MQTT error");
+    case QMqttClient::Mqtt5SpecificError:
+        return QStringLiteral("MQTT 5 broker reported an error");
+    }
+    return QStringLiteral("MQTT error");
+}
+
+QString messageStatusName(QMqtt::MessageStatus status)
+{
+    switch (status) {
+    case QMqtt::MessageStatus::Unknown:
+        return QStringLiteral("queued");
+    case QMqtt::MessageStatus::Published:
+        return QStringLiteral("published");
+    case QMqtt::MessageStatus::Acknowledged:
+        return QStringLiteral("acknowledged");
+    case QMqtt::MessageStatus::Received:
+        return QStringLiteral("received");
+    case QMqtt::MessageStatus::Released:
+        return QStringLiteral("released");
+    case QMqtt::MessageStatus::Completed:
+        return QStringLiteral("completed");
+    }
+    return QStringLiteral("queued");
+}
+
+QString socketDiagnostic(QMqttClient *client)
+{
+    if (!client || !client->transport()) {
+        return QString();
+    }
+
+    const auto *socket = qobject_cast<QAbstractSocket *>(client->transport());
+    if (!socket) {
+        return QString();
+    }
+    return socket->errorString();
+}
+
+int topicSpecificityScore(const QString &filter)
+{
+    int score = filter.count('/');
+    for (const QChar character : filter) {
+        if (character != QLatin1Char('#')
+                && character != QLatin1Char('+')
+                && character != QLatin1Char('/')) {
+            ++score;
+        }
+    }
+    return score;
+}
+
+QString subscriptionDisplayState(
+    const AppController::SessionState &session,
+    const AppController::SubscriptionEntry &entry)
+{
+    if (entry.paused) {
+        return QStringLiteral("paused");
+    }
+    if (!session.client || session.client->state() != QMqttClient::Connected) {
+        return QStringLiteral("saved");
+    }
+    return entry.runtimeState.isEmpty() ? QStringLiteral("saved") : entry.runtimeState;
+}
+
+QString sessionStateName(const AppController::SessionState &session)
+{
+    if (session.disconnectRequested && session.client
+        && session.client->state() != QMqttClient::Disconnected) {
+        return QStringLiteral("disconnecting");
+    }
+
+    if (!session.client) {
+        return QStringLiteral("disconnected");
+    }
+
+    switch (session.client->state()) {
+    case QMqttClient::Disconnected:
+        return QStringLiteral("disconnected");
+    case QMqttClient::Connecting:
+        return QStringLiteral("connecting");
+    case QMqttClient::Connected:
+        return QStringLiteral("connected");
+    }
+    return QStringLiteral("disconnected");
+}
+
+QVariantMap defaultPublishStatus()
+{
+    QVariantMap status;
+    status.insert(QStringLiteral("state"), QStringLiteral("idle"));
+    status.insert(QStringLiteral("topic"), QString());
+    status.insert(QStringLiteral("reason"), QString());
+    status.insert(QStringLiteral("messageId"), -1);
+    status.insert(QStringLiteral("qos"), 0);
+    status.insert(QStringLiteral("retain"), false);
+    status.insert(QStringLiteral("updatedAt"), QString());
+    return status;
+}
+
+void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs)
+{
+    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
+    timestamps.erase(
+        std::remove_if(
+            timestamps.begin(),
+            timestamps.end(),
+            [cutoffMs](qint64 timestampMs) { return timestampMs < cutoffMs; }),
+        timestamps.end());
+}
+
+int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs)
+{
+    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
+    return static_cast<int>(std::count_if(
+        timestamps.cbegin(),
+        timestamps.cend(),
+        [cutoffMs](qint64 timestampMs) { return timestampMs >= cutoffMs; }));
+}
+
+} // namespace AppControllerUtils
