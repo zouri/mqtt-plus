@@ -4,8 +4,10 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Controls.Material
 import QtQuick.Layouts
-import "dialogs"
-import "panels"
+import "features/events"
+import "features/scripts"
+import "features/sessions"
+import "features/subscriptions"
 
 ApplicationWindow {
     id: root
@@ -38,21 +40,20 @@ ApplicationWindow {
     readonly property var session: root.appController.currentSession
     readonly property var status: root.appController.sessionStatus
     readonly property var publishStatus: root.appController.publishStatus
-    readonly property var eventStream: root.appController.eventStreamModel
 
     Component.onCompleted: {
-        sessionActivityPanel.reloadStream(root.eventStream || [])
+        sessionActivityPanel.resetStreamPosition()
     }
 
     Connections {
         target: root.appController
 
         function onEventStreamChanged() {
-            sessionActivityPanel.reloadStream(root.eventStream || [])
+            sessionActivityPanel.resetStreamPosition()
         }
 
         function onEventStreamRowAppended(row) {
-            sessionActivityPanel.appendStreamRow(row)
+            sessionActivityPanel.noteStreamRowAppended()
         }
     }
 

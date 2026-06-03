@@ -53,30 +53,57 @@ endif()
 qt_standard_project_setup(REQUIRES 6.11)
 
 qt_add_executable(mqtt_plus_app
-    src/main.cpp
-    src/appcontroller.cpp
-    src/appcontroller.h
-    src/appcontrollerevents.cpp
-    src/appcontrollermodels.cpp
-    src/appcontrollermqtt.cpp
-    src/appcontrollerscripts.cpp
-    src/appcontrollersessions.cpp
-    src/appcontrollersubscriptions.cpp
-    src/appcontrollertheme.cpp
-    src/appcontrollerutils.cpp
-    src/appcontrollerutils.h
-    src/eventrenderer.cpp
-    src/eventrenderer.h
-    src/historystore.cpp
-    src/historystore.h
-    src/luarunner.cpp
-    src/luarunner.h
-    src/payloadcodec.cpp
-    src/payloadcodec.h
-    src/scriptstore.cpp
-    src/scriptstore.h
-    src/sessionconfig.cpp
-    src/sessionconfig.h
+    src/app/main.cpp
+    src/app/appfacade.cpp
+    src/app/appfacade.h
+    src/app/appfacadeevents.cpp
+    src/app/appfacademodels.cpp
+    src/app/appfacademqtt.cpp
+    src/app/appfacadescripts.cpp
+    src/app/appfacadesessions.cpp
+    src/app/appfacadesubscriptions.cpp
+    src/app/appfacadetheme.cpp
+    src/app/appfacadeutils.cpp
+    src/app/appfacadeutils.h
+    src/controllers/themecontroller.cpp
+    src/controllers/themecontroller.h
+    src/controllers/scriptcontroller.cpp
+    src/controllers/scriptcontroller.h
+    src/controllers/sessioncontroller.cpp
+    src/controllers/sessioncontroller.h
+    src/controllers/subscriptioncontroller.cpp
+    src/controllers/subscriptioncontroller.h
+    src/controllers/mqttcontroller.cpp
+    src/controllers/mqttcontroller.h
+    src/controllers/eventcontroller.cpp
+    src/controllers/eventcontroller.h
+    src/domain/script.h
+    src/domain/session.h
+    src/domain/sessionconfig.cpp
+    src/domain/sessionconfig.h
+    src/domain/subscription.h
+    src/models/eventstreammodel.cpp
+    src/models/eventstreammodel.h
+    src/models/scriptlibrarymodel.cpp
+    src/models/scriptlibrarymodel.h
+    src/models/scripttestsamplesmodel.cpp
+    src/models/scripttestsamplesmodel.h
+    src/models/sessionlistmodel.cpp
+    src/models/sessionlistmodel.h
+    src/models/subscriptionlistmodel.cpp
+    src/models/subscriptionlistmodel.h
+    src/presentation/eventrenderer.cpp
+    src/presentation/eventrenderer.h
+    src/services/payload/payloadcodec.cpp
+    src/services/payload/payloadcodec.h
+    src/services/scripting/luarunner.cpp
+    src/services/scripting/luarunner.h
+    src/services/storage/historystore.cpp
+    src/services/storage/historystore.h
+    src/services/storage/scriptstore.cpp
+    src/services/storage/scriptstore.h
+    src/services/storage/sessionsettingsstore.cpp
+    src/services/storage/sessionsettingsstore.h
 )
 
 qt_add_qml_module(mqtt_plus_app
@@ -99,19 +126,19 @@ qt_add_qml_module(mqtt_plus_app
         qml/components/AppTextArea.qml
         qml/components/AppTextField.qml
         qml/AppUi.qml
-        qml/dialogs/AddSubscriptionDialog.qml
-        qml/dialogs/ScriptLibraryWindow.qml
+        qml/features/events/EventStreamView.qml
+        qml/features/events/SessionActivityPanel.qml
+        qml/features/publish/PublishComposer.qml
+        qml/features/scripts/ScriptLibraryWindow.qml
+        qml/features/scripts/ScriptListPane.qml
+        qml/features/scripts/ScriptTestPane.qml
+        qml/features/scripts/ScriptWorkspacePanel.qml
+        qml/features/sessions/SessionEditorDialog.qml
+        qml/features/sessions/SessionOverviewPanel.qml
+        qml/features/sessions/SessionSidebar.qml
+        qml/features/subscriptions/AddSubscriptionDialog.qml
+        qml/features/subscriptions/SubscriptionsPanel.qml
         qml/Main.qml
-        qml/panels/SessionActivityPanel.qml
-        qml/panels/SessionOverviewPanel.qml
-        qml/panels/SessionSidebar.qml
-        qml/panels/EventStreamView.qml
-        qml/panels/PublishComposer.qml
-        qml/panels/ScriptListPane.qml
-        qml/panels/ScriptTestPane.qml
-        qml/panels/ScriptWorkspacePanel.qml
-        qml/panels/SubscriptionsPanel.qml
-        qml/dialogs/SessionEditorDialog.qml
     RESOURCES
         qml/icons/material/chevron-down.svg
         qml/icons/material/chevron-up.svg
@@ -135,6 +162,11 @@ qt_add_resources(mqtt_plus_app app_icons
     PREFIX "/"
     FILES
         assets/icons/app-icon.png
+)
+
+target_include_directories(mqtt_plus_app
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
 target_link_libraries(mqtt_plus_app
