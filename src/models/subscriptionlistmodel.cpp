@@ -1,61 +1,5 @@
 #include "subscriptionlistmodel.h"
 
-namespace {
-
-bool sameSubscriptionIdentity(const QVector<SubscriptionListRow> &left, const QVector<SubscriptionListRow> &right)
-{
-    if (left.size() != right.size()) {
-        return false;
-    }
-
-    for (qsizetype i = 0; i < left.size(); ++i) {
-        if (left.at(i).topic != right.at(i).topic) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool rowsEqual(const SubscriptionListRow &left, const SubscriptionListRow &right)
-{
-    return left.topic == right.topic
-        && left.alias == right.alias
-        && left.displayName == right.displayName
-        && left.requestedQos == right.requestedQos
-        && left.grantedQos == right.grantedQos
-        && left.topicFps == right.topicFps
-        && left.format == right.format
-        && left.formatName == right.formatName
-        && left.scriptId == right.scriptId
-        && left.scriptName == right.scriptName
-        && left.paused == right.paused
-        && left.state == right.state
-        && left.lastError == right.lastError;
-}
-
-const QList<int> &allSubscriptionRoles()
-{
-    static const QList<int> roles {
-        SubscriptionListModel::TopicRole,
-        SubscriptionListModel::AliasRole,
-        SubscriptionListModel::DisplayNameRole,
-        SubscriptionListModel::RequestedQosRole,
-        SubscriptionListModel::GrantedQosRole,
-        SubscriptionListModel::TopicFpsRole,
-        SubscriptionListModel::FormatRole,
-        SubscriptionListModel::FormatNameRole,
-        SubscriptionListModel::ScriptIdRole,
-        SubscriptionListModel::ScriptNameRole,
-        SubscriptionListModel::PausedRole,
-        SubscriptionListModel::StateRole,
-        SubscriptionListModel::LastErrorRole,
-    };
-    return roles;
-}
-
-} // namespace
-
 SubscriptionListModel::SubscriptionListModel(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -140,20 +84,6 @@ QVariantMap SubscriptionListModel::rowAt(int row) const
 void SubscriptionListModel::setRows(const QVector<SubscriptionListRow> &rows)
 {
     const bool countWillChange = rows.size() != m_rows.size();
-
-    if (sameSubscriptionIdentity(m_rows, rows)) {
-        for (qsizetype row = 0; row < rows.size(); ++row) {
-            if (rowsEqual(m_rows.at(row), rows.at(row))) {
-                continue;
-            }
-
-            m_rows[row] = rows.at(row);
-            const QModelIndex changedIndex = index(static_cast<int>(row), 0);
-            emit dataChanged(changedIndex, changedIndex, allSubscriptionRoles());
-        }
-        return;
-    }
-
     beginResetModel();
     m_rows = rows;
     endResetModel();
