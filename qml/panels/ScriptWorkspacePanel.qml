@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import QtQuick.Shapes
 import "../components"
 
 Item {
@@ -16,9 +15,6 @@ Item {
     property string currentScriptId: ""
     property string savedScriptName: ""
     property string savedScriptCode: ""
-    property bool testSuccess: false
-    property string testState: ""
-    property string testOutput: ""
 
     readonly property bool hasUnsavedChanges: nameField.text !== control.savedScriptName
                                                || codeField.text !== control.savedScriptCode
@@ -44,9 +40,7 @@ Item {
     }
 
     function resetTestResult() {
-        control.testState = ""
-        control.testOutput = ""
-        control.testSuccess = false
+        scriptTestPane.resetResult()
     }
 
     function loadScript(row) {
@@ -114,30 +108,6 @@ Item {
         }
     }
 
-    function runTest() {
-        const result = control.appController.testScript(
-                    codeField.text,
-                    testTopicField.text,
-                    testPayloadField.text,
-                    testFormatField.currentIndex)
-        control.testSuccess = result.success
-        control.testState = result.success ? qsTr("OK") : qsTr("Error")
-        control.testOutput = result.success ? result.output : result.error
-        if (result.inputError && result.inputError.length > 0) {
-            control.testOutput = `${control.testOutput}\n${result.inputError}`
-        }
-    }
-
-    function applySample(sample) {
-        testTopicField.text = sample.topic || qsTr("test/topic")
-        testPayloadField.text = sample.payload || ""
-        testFormatField.currentIndex = Math.max(
-                    0,
-                    Math.min(testFormatField.count - 1, Number(sample.format || 0)))
-        control.resetTestResult()
-        control.runTest()
-    }
-
     Component.onCompleted: control.ensureSelection()
 
     Connections {
@@ -152,17 +122,6 @@ Item {
         anchors.fill: parent
         anchors.margins: 12
         spacing: 8
-
-        // AppSectionHeader {
-        //     ui: control.ui
-        //     title: qsTr("Lua Scripts")
-        //     titleSize: 17
-        //     meta: `${(control.appController.scriptLibraryModel || []).length}`
-        // }
-
-        // AppDivider {
-        //     ui: control.ui
-        // }
 
         SplitView {
             Layout.fillWidth: true
@@ -186,235 +145,17 @@ Item {
                 }
             }
 
-            Rectangle {
-                SplitView.preferredWidth: 260
-                SplitView.minimumWidth: 210
-                SplitView.maximumWidth: 340
-                radius: control.ui.innerRadius
-                color: control.ui.themePalette.innerPanelBg
-                border.color: control.ui.themePalette.innerPanelBorder
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 10
-
-                    ListView {
-                        id: scriptList
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
-                        spacing: 7
-                        model: control.appController.scriptLibraryModel
-                        reuseItems: true
-
-                        ScrollBar.vertical: ScrollBar {
-                            policy: ScrollBar.AsNeeded
-                        }
-
-                        delegate: Rectangle {
-                            id: scriptDelegate
-                            required property var modelData
-                            width: ListView.view.width
-                            implicitHeight: 54
-                            radius: control.ui.innerRadius
-                            color: scriptDelegate.modelData.id === control.currentScriptId
-                                   ? control.ui.themePalette.selectedBg
-                                   : (scriptMouse.containsMouse || activeFocus
-                                      ? control.ui.rowHover
-                                      : control.ui.themePalette.itemBg)
-                            border.color: scriptDelegate.modelData.id === control.currentScriptId
-                                          ? control.ui.themePalette.selectedBorder
-                                          : control.ui.themePalette.itemBorder
-                            activeFocusOnTab: true
-                            Accessible.role: Accessible.Button
-                            Accessible.name: qsTr("Lua script %1").arg(scriptDelegate.modelData.name)
-
-                            Column {
-                                anchors.fill: parent
-                                anchors.margins: 10
-                                spacing: 4
-
-                                Label {
-                                    text: scriptDelegate.modelData.name
-                                    width: parent.width
-                                    color: control.ui.textStrong
-                                    font.pixelSize: 12
-                                    font.bold: true
-                                    elide: Label.ElideRight
-                                }
-
-                                Label {
-                                    text: scriptDelegate.modelData.updatedAt || qsTr("Not saved")
-                                    width: parent.width
-                                    color: control.ui.textMuted
-                                    font.pixelSize: 10
-                                    elide: Label.ElideRight
-                                }
-                            }
-
-                            Keys.onPressed: (event) => {
-                                if (event.key === Qt.Key_Return
-                                        || event.key === Qt.Key_Enter
-                                        || event.key === Qt.Key_Space) {
-                                    control.loadScript(scriptDelegate.modelData)
-                                    event.accepted = true
-                                }
-                            }
-
-                            MouseArea {
-                                id: scriptMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-
-                                onClicked: {
-                                    scriptDelegate.forceActiveFocus()
-                                    control.loadScript(scriptDelegate.modelData)
-                                }
-                            }
-                        }
-
-                        footer: Item {
-                            width: scriptList.width
-                            height: 58
-
-                            Rectangle {
-                                id: addScriptDelegate
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                height: 48
-                                radius: control.ui.innerRadius
-                                color: addScriptMouse.containsMouse || activeFocus
-                                       ? control.ui.rowHover
-                                       : control.ui.themePalette.itemBg
-                                activeFocusOnTab: true
-                                Accessible.role: Accessible.Button
-                                Accessible.name: qsTr("New script")
-
-                                Keys.onPressed: (event) => {
-                                    if (event.key === Qt.Key_Return
-                                            || event.key === Qt.Key_Enter
-                                            || event.key === Qt.Key_Space) {
-                                        control.newScript()
-                                        event.accepted = true
-                                    }
-                                }
-
-                                Shape {
-                                    id: addScriptBorder
-                                    anchors.fill: parent
-                                    anchors.margins: 0.5
-                                    preferredRendererType: Shape.CurveRenderer
-                                    antialiasing: true
-
-                                    ShapePath {
-                                        fillColor: "transparent"
-                                        strokeColor: addScriptMouse.containsMouse || addScriptDelegate.activeFocus
-                                                     ? control.ui.themePalette.selectedBorder
-                                                     : control.ui.themePalette.itemBorder
-                                        strokeWidth: 1
-                                        strokeStyle: ShapePath.DashLine
-                                        dashPattern: [5, 4]
-                                        startX: control.ui.innerRadius
-                                        startY: 0
-
-                                        PathLine {
-                                            x: addScriptBorder.width - control.ui.innerRadius
-                                            y: 0
-                                        }
-                                        PathArc {
-                                            x: addScriptBorder.width
-                                            y: control.ui.innerRadius
-                                            radiusX: control.ui.innerRadius
-                                            radiusY: control.ui.innerRadius
-                                        }
-                                        PathLine {
-                                            x: addScriptBorder.width
-                                            y: addScriptBorder.height - control.ui.innerRadius
-                                        }
-                                        PathArc {
-                                            x: addScriptBorder.width - control.ui.innerRadius
-                                            y: addScriptBorder.height
-                                            radiusX: control.ui.innerRadius
-                                            radiusY: control.ui.innerRadius
-                                        }
-                                        PathLine {
-                                            x: control.ui.innerRadius
-                                            y: addScriptBorder.height
-                                        }
-                                        PathArc {
-                                            x: 0
-                                            y: addScriptBorder.height - control.ui.innerRadius
-                                            radiusX: control.ui.innerRadius
-                                            radiusY: control.ui.innerRadius
-                                        }
-                                        PathLine {
-                                            x: 0
-                                            y: control.ui.innerRadius
-                                        }
-                                        PathArc {
-                                            x: control.ui.innerRadius
-                                            y: 0
-                                            radiusX: control.ui.innerRadius
-                                            radiusY: control.ui.innerRadius
-                                        }
-                                    }
-                                }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 10
-                                    spacing: 8
-
-                                    ToolButton {
-                                        Layout.preferredWidth: 20
-                                        Layout.preferredHeight: 20
-                                        padding: 0
-                                        display: AbstractButton.IconOnly
-                                        icon.source: control.ui.materialIcon("plus")
-                                        icon.width: 16
-                                        icon.height: 16
-                                        icon.color: control.ui.textMuted
-                                        Accessible.ignored: true
-
-                                        background: Item {
-                                        }
-                                    }
-
-                                    Label {
-                                        Layout.fillWidth: true
-                                        text: qsTr("New script")
-                                        color: control.ui.textMuted
-                                        elide: Label.ElideRight
-                                        font.pixelSize: 13
-                                        font.bold: true
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: addScriptMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    cursorShape: Qt.PointingHandCursor
-
-                                    onPressed: addScriptDelegate.forceActiveFocus()
-                                    onClicked: control.newScript()
-                                }
-                            }
-                        }
-                    }
-                }
+            ScriptListPane {
+                ui: control.ui
+                appController: control.appController
+                currentScriptId: control.currentScriptId
+                onNewScriptRequested: control.newScript()
+                onScriptRequested: (row) => control.loadScript(row)
             }
 
-            Rectangle {
+            Item {
                 SplitView.fillWidth: true
                 SplitView.minimumWidth: 420
-                radius: control.ui.innerRadius
-                color: "transparent"
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -485,218 +226,11 @@ Item {
                 }
             }
 
-            Rectangle {
-                SplitView.preferredWidth: 370
-                SplitView.minimumWidth: 310
-                SplitView.maximumWidth: 480
-                radius: control.ui.innerRadius
-                color: control.ui.themePalette.innerPanelBg
-                border.color: control.ui.themePalette.innerPanelBorder
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 10
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: qsTr("Test")
-                        color: control.ui.textStrong
-                        font.pixelSize: 14
-                        font.bold: true
-                    }
-
-                    AppTextField {
-                        id: testTopicField
-                        ui: control.ui
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        placeholderText: qsTr("test/topic")
-                        text: "test/topic"
-                    }
-
-                    AppComboBox {
-                        id: testFormatField
-                        ui: control.ui
-                        Layout.fillWidth: true
-                        model: control.appController.payloadFormats
-                    }
-
-                    AppTextArea {
-                        id: testPayloadField
-                        ui: control.ui
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 120
-                        Layout.minimumHeight: 90
-                        Layout.minimumWidth: 0
-                        font.family: "Menlo"
-                        clip: true
-                        text: "{\"value\": 42}"
-                        placeholderText: qsTr("Test payload")
-                    }
-
-                    AppButton {
-                        ui: control.ui
-                        text: qsTr("Run Test")
-                        primary: true
-                        minimumWidth: 96
-                        onClicked: control.runTest()
-                    }
-
-                    AppTextArea {
-                        id: testResultField
-                        ui: control.ui
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 126
-                        Layout.minimumHeight: 90
-                        Layout.minimumWidth: 0
-                        readOnly: true
-                        font.family: "Menlo"
-                        color: control.testState.length === 0
-                               ? control.ui.textMuted
-                               : (control.testSuccess
-                                  ? control.ui.stateColor("subscribed")
-                                  : control.ui.themePalette.errorText)
-                        text: control.testState.length > 0
-                              ? `${control.testState}: ${control.testOutput}`
-                              : qsTr("Run a script test to see output.")
-                        wrapMode: TextEdit.WrapAnywhere
-                    }
-
-                    AppDivider {
-                        ui: control.ui
-                        Layout.fillWidth: true
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: qsTr("Recent Message Samples")
-                            color: control.ui.textStrong
-                            font.pixelSize: 13
-                            font.bold: true
-                            elide: Label.ElideRight
-                        }
-
-                        AppBadge {
-                            ui: control.ui
-                            label: `${sampleList.count}`
-                            horizontalPadding: 7
-                            verticalPadding: 4
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-
-                        Label {
-                            anchors.centerIn: parent
-                            width: parent.width - 24
-                            visible: sampleList.count === 0
-                            text: qsTr("No current session messages yet.")
-                            color: control.ui.textMuted
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.Wrap
-                            font.pixelSize: 12
-                        }
-
-                        ListView {
-                            id: sampleList
-                            anchors.fill: parent
-                            clip: true
-                            spacing: 7
-                            model: control.appController.scriptTestSamplesModel
-                            reuseItems: true
-
-                            ScrollBar.vertical: ScrollBar {
-                                policy: ScrollBar.AsNeeded
-                            }
-
-                            delegate: Rectangle {
-                                id: sampleDelegate
-                                required property var modelData
-                                width: ListView.view.width
-                                implicitHeight: sampleColumn.implicitHeight + 18
-                                radius: control.ui.innerRadius
-                                color: sampleMouse.containsMouse || activeFocus
-                                       ? control.ui.rowHover
-                                       : control.ui.themePalette.itemBg
-                                border.color: sampleMouse.containsMouse || activeFocus
-                                              ? control.ui.themePalette.selectedBorder
-                                              : control.ui.themePalette.itemBorder
-                                activeFocusOnTab: true
-                                Accessible.role: Accessible.Button
-                                Accessible.name: qsTr("Use sample from %1").arg(sampleDelegate.modelData.topic)
-
-                                Column {
-                                    id: sampleColumn
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.margins: 10
-                                    spacing: 5
-
-                                    RowLayout {
-                                        width: parent.width
-                                        spacing: 8
-
-                                        Label {
-                                            Layout.fillWidth: true
-                                            text: sampleDelegate.modelData.topic
-                                            color: control.ui.textStrong
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                            elide: Label.ElideRight
-                                        }
-
-                                        AppBadge {
-                                            ui: control.ui
-                                            label: sampleDelegate.modelData.formatName
-                                            badgeRadius: 7
-                                            horizontalPadding: 6
-                                            verticalPadding: 3
-                                        }
-                                    }
-
-                                    Label {
-                                        width: parent.width
-                                        text: qsTr("%1 • %2 B")
-                                              .arg(sampleDelegate.modelData.timestamp)
-                                              .arg(sampleDelegate.modelData.payloadSize)
-                                        color: control.ui.textMuted
-                                        font.pixelSize: 10
-                                        elide: Label.ElideRight
-                                    }
-                                }
-
-                                Keys.onPressed: (event) => {
-                                    if (event.key === Qt.Key_Return
-                                            || event.key === Qt.Key_Enter
-                                            || event.key === Qt.Key_Space) {
-                                        control.applySample(sampleDelegate.modelData)
-                                        event.accepted = true
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: sampleMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-
-                                    onClicked: {
-                                        sampleDelegate.forceActiveFocus()
-                                        control.applySample(sampleDelegate.modelData)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            ScriptTestPane {
+                id: scriptTestPane
+                ui: control.ui
+                appController: control.appController
+                scriptCode: codeField.text
             }
         }
     }

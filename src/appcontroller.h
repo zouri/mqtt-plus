@@ -170,6 +170,7 @@ private:
     void bindSessionSignals(SessionState *session);
     void configureSession(SessionState &session, const QVariantMap &config, bool keepNameFallback);
     void initializeSessionRuntime(SessionState *session);
+    void destroySessionRuntime(SessionState &session);
     void connectSession(SessionState &session, const QString &eventPrefix);
     QSslConfiguration sslConfigurationForSession(const SessionState &session, QString &errorMessage) const;
     void restoreActiveSubscriptions(SessionState &session, bool emitEvents);
@@ -184,6 +185,12 @@ private:
         const QString &state,
         const QString &reason = QString(),
         qint32 messageId = -1);
+    void notifyCurrentSessionViewsChanged();
+    void notifyCurrentSessionAndSubscriptionsChanged();
+    void notifySessionViewsChanged();
+    void notifySessionAndSubscriptionViewsChanged();
+    void notifySelectedSessionViewsChanged();
+    void notifySessionCollectionViewsChanged();
     void appendRenderedEventRow(SessionState &session, const QVariantMap &row);
     void appendEvent(SessionState &session, const QString &channel, const QString &message);
     void appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
@@ -203,8 +210,9 @@ private:
     void loadScripts();
     bool saveScripts();
     void loadSessions();
-    void saveSessions();
-    SessionState createDefaultSession(const QString &name) const;
+    bool saveSessions();
+    SessionState createDefaultSession(const QString &name);
+    void reportStorageError(const QString &message);
     void refreshSystemColorScheme();
 
     QVector<SessionState> m_sessions;

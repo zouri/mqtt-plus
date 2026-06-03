@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -13,6 +14,11 @@
 #include <QUuid>
 
 namespace {
+struct FileBackup {
+    bool existed = false;
+    QByteArray content;
+};
+
 QString scriptStorageDirPath()
 {
     const QString configRoot = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
@@ -27,10 +33,14 @@ QString scriptIndexPath()
     return QDir(scriptStorageDirPath()).filePath(QStringLiteral("index.json"));
 }
 
-bool ensureScriptStorageDir()
+bool ensureScriptStorageDir(QString &errorMessage)
 {
     QDir dir;
-    return dir.mkpath(scriptStorageDirPath());
+    if (dir.mkpath(scriptStorageDirPath())) {
+        return true;
+    }
+    errorMessage = QStringLiteral("Cannot create script storage directory: %1").arg(scriptStorageDirPath());
+    return false;
 }
 
 QString readScriptFile(const QString &fileName)
@@ -42,16 +52,45 @@ QString readScriptFile(const QString &fileName)
     return QString::fromUtf8(file.readAll());
 }
 
-bool writeTextFile(const QString &path, const QByteArray &content)
+bool writeTextFile(const QString &path, const QByteArray &content, QString &errorMessage)
 {
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        errorMessage = QStringLiteral("Cannot open %1 for writing: %2").arg(path, file.errorString());
         return false;
     }
     if (file.write(content) != content.size()) {
+        errorMessage = QStringLiteral("Cannot write %1: %2").arg(path, file.errorString());
         return false;
     }
-    return file.commit();
+    if (!file.commit()) {
+        errorMessage = QStringLiteral("Cannot commit %1: %2").arg(path, file.errorString());
+        return false;
+    }
+    return true;
+}
+
+FileBackup backupFile(const QString &path)
+{
+    FileBackup backup;
+    QFile file(path);
+    backup.existed = file.exists();
+    if (backup.existed && file.open(QIODevice::ReadOnly)) {
+        backup.content = file.readAll();
+    }
+    return backup;
+}
+
+void restoreBackups(const QHash<QString, FileBackup> &backups)
+{
+    QString ignoredError;
+    for (auto it = backups.constBegin(); it != backups.constEnd(); ++it) {
+        if (it.value().existed) {
+            writeTextFile(it.key(), it.value().content, ignoredError);
+        } else {
+            QFile::remove(it.key());
+        }
+    }
 }
 }
 
@@ -126,10 +165,24 @@ LoadResult loadScripts()
     return result;
 }
 
-bool saveScripts(QVector<AppController::ScriptEntry> &scripts, bool indexWritable)
+bool saveScripts(QVector<AppController::ScriptEntry> &scripts, bool indexWritable, QString &errorMessage)
 {
-    if (!indexWritable || !ensureScriptStorageDir()) {
+    errorMessage.clear();
+    if (!indexWritable) {
+        errorMessage = QStringLiteral("Script index is not writable.");
         return false;
+    }
+    if (!ensureScriptStorageDir(errorMessage)) {
+        return false;
+    }
+
+    QHash<QString, FileBackup> backups;
+    for (const auto &script : scripts) {
+        const QString fileName = script.fileName.isEmpty() ? scriptFileNameForId(script.id) : script.fileName;
+        const QString path = scriptFilePath(fileName);
+        if (!backups.contains(path)) {
+            backups.insert(path, backupFile(path));
+        }
     }
 
     QJsonArray scriptRows;
@@ -137,7 +190,8 @@ bool saveScripts(QVector<AppController::ScriptEntry> &scripts, bool indexWritabl
         if (script.fileName.isEmpty()) {
             script.fileName = scriptFileNameForId(script.id);
         }
-        if (!writeTextFile(scriptFilePath(script.fileName), script.code.toUtf8())) {
+        if (!writeTextFile(scriptFilePath(script.fileName), script.code.toUtf8(), errorMessage)) {
+            restoreBackups(backups);
             return false;
         }
 
@@ -152,7 +206,11 @@ bool saveScripts(QVector<AppController::ScriptEntry> &scripts, bool indexWritabl
     QJsonObject root;
     root.insert(QStringLiteral("version"), 1);
     root.insert(QStringLiteral("scripts"), scriptRows);
-    return writeTextFile(scriptIndexPath(), QJsonDocument(root).toJson(QJsonDocument::Indented));
+    if (!writeTextFile(scriptIndexPath(), QJsonDocument(root).toJson(QJsonDocument::Indented), errorMessage)) {
+        restoreBackups(backups);
+        return false;
+    }
+    return true;
 }
 
 void removeScriptFile(const QString &fileName)

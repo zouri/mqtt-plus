@@ -13,13 +13,14 @@ QVariantList AppController::sessionsModel() const
     QVariantList rows;
     rows.reserve(m_sessions.size());
     for (const auto &session : m_sessions) {
+        const auto *client = session.client;
         QVariantMap row;
         row.insert(QStringLiteral("id"), session.id);
         row.insert(QStringLiteral("name"), session.name);
-        row.insert(QStringLiteral("state"), sessionStateName(session));
-        row.insert(QStringLiteral("connected"), session.client && session.client->state() == QMqttClient::Connected);
-        row.insert(QStringLiteral("host"), session.client ? session.client->hostname() : QString());
-        row.insert(QStringLiteral("port"), session.client ? session.client->port() : SessionConfig::kDefaultPort);
+        row.insert(QStringLiteral("state"), sessionStateName(session, client));
+        row.insert(QStringLiteral("connected"), client && client->state() == QMqttClient::Connected);
+        row.insert(QStringLiteral("host"), client ? client->hostname() : QString());
+        row.insert(QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort);
         row.insert(QStringLiteral("transport"), session.transport);
         row.insert(QStringLiteral("transportLabel"), transportLabel(session.transport));
         row.insert(QStringLiteral("protocolVersion"), session.protocolVersion);
@@ -44,18 +45,19 @@ QVariantMap AppController::currentSession() const
     }
 
     QVariantMap row;
+    const auto *client = session->client;
     row.insert(QStringLiteral("id"), session->id);
     row.insert(QStringLiteral("name"), session->name);
-    row.insert(QStringLiteral("host"), session->client ? session->client->hostname() : QString());
-    row.insert(QStringLiteral("port"), session->client ? session->client->port() : SessionConfig::kDefaultPort);
+    row.insert(QStringLiteral("host"), client ? client->hostname() : QString());
+    row.insert(QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort);
     row.insert(QStringLiteral("transport"), session->transport);
     row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
     row.insert(QStringLiteral("protocolVersion"), session->protocolVersion);
     row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
-    row.insert(QStringLiteral("clientId"), session->client ? session->client->clientId() : QString());
-    row.insert(QStringLiteral("username"), session->client ? session->client->username() : QString());
-    row.insert(QStringLiteral("cleanSession"), session->client ? session->client->cleanSession() : true);
-    row.insert(QStringLiteral("keepAliveSeconds"), session->client ? session->client->keepAlive() : SessionConfig::kDefaultKeepAlive);
+    row.insert(QStringLiteral("clientId"), client ? client->clientId() : QString());
+    row.insert(QStringLiteral("username"), client ? client->username() : QString());
+    row.insert(QStringLiteral("cleanSession"), client ? client->cleanSession() : true);
+    row.insert(QStringLiteral("keepAliveSeconds"), client ? client->keepAlive() : SessionConfig::kDefaultKeepAlive);
     row.insert(QStringLiteral("outputPaused"), session->outputPaused);
     row.insert(QStringLiteral("subscriptionCount"), session->subscriptions.size());
     return row;
@@ -68,21 +70,22 @@ QVariantMap AppController::sessionStatus() const
         return {};
     }
 
-    const QString state = sessionStateName(*session);
+    const auto *client = session->client;
+    const QString state = sessionStateName(*session, client);
     QString summary;
     if (state == QStringLiteral("connected")) {
         summary = QStringLiteral("%1 • %2:%3 • %4")
                       .arg(protocolVersionLabel(session->protocolVersion))
-                      .arg(session->client->hostname())
-                      .arg(session->client->port())
+                      .arg(client ? client->hostname() : QString())
+                      .arg(client ? client->port() : SessionConfig::kDefaultPort)
                       .arg(transportLabel(session->transport));
         if (session->sessionRestored) {
             summary.append(QStringLiteral(" • session restored"));
         }
     } else if (state == QStringLiteral("connecting")) {
         summary = QStringLiteral("Connecting to %1:%2 over %3")
-                      .arg(session->client->hostname())
-                      .arg(session->client->port())
+                      .arg(client ? client->hostname() : QString())
+                      .arg(client ? client->port() : SessionConfig::kDefaultPort)
                       .arg(transportLabel(session->transport));
     } else if (state == QStringLiteral("disconnecting")) {
         summary = QStringLiteral("Disconnecting from broker");
@@ -128,7 +131,7 @@ QVariantList AppController::subscriptionsModel() const
         row.insert(QStringLiteral("scriptId"), subscription.scriptId);
         row.insert(QStringLiteral("scriptName"), scriptName(subscription.scriptId));
         row.insert(QStringLiteral("paused"), subscription.paused);
-        row.insert(QStringLiteral("state"), subscriptionDisplayState(*session, subscription));
+        row.insert(QStringLiteral("state"), subscriptionDisplayState(*session, subscription, session->client));
         row.insert(QStringLiteral("lastError"), subscription.lastError);
         rows.append(row);
     }
@@ -212,4 +215,3 @@ QString AppController::effectiveTheme() const
     }
     return m_systemDarkMode ? QStringLiteral("dark") : QStringLiteral("light");
 }
-

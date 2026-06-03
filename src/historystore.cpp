@@ -6,6 +6,8 @@
 #include <QStandardPaths>
 #include <QUuid>
 
+#include <algorithm>
+
 HistoryStore::HistoryStore()
 {
     m_connectionName = QStringLiteral("history-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
@@ -122,7 +124,7 @@ QVariantList HistoryStore::loadEntries(const QString &sessionId, int limit) cons
             ") recent_entries "
             "ORDER BY id ASC"));
     query.addBindValue(sessionId);
-    query.addBindValue(qMax(1, limit));
+    query.addBindValue((std::max)(1, limit));
 
     if (!query.exec()) {
         return result;
@@ -170,7 +172,7 @@ QVariantList HistoryStore::loadEntriesBefore(const QString &sessionId, qint64 be
             "ORDER BY id ASC"));
     query.addBindValue(sessionId);
     query.addBindValue(beforeId);
-    query.addBindValue(qMax(1, limit));
+    query.addBindValue((std::max)(1, limit));
 
     if (!query.exec()) {
         return result;

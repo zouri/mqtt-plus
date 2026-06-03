@@ -11,7 +11,7 @@ namespace AppControllerUtils {
 
 QString timestampNow()
 {
-    return QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
+    return QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
 }
 
 QString transportLabel(const QString &transport)
@@ -156,29 +156,30 @@ int topicSpecificityScore(const QString &filter)
 
 QString subscriptionDisplayState(
     const AppController::SessionState &session,
-    const AppController::SubscriptionEntry &entry)
+    const AppController::SubscriptionEntry &entry,
+    const QMqttClient *client)
 {
     if (entry.paused) {
         return QStringLiteral("paused");
     }
-    if (!session.client || session.client->state() != QMqttClient::Connected) {
+    if (!client || client->state() != QMqttClient::Connected) {
         return QStringLiteral("saved");
     }
     return entry.runtimeState.isEmpty() ? QStringLiteral("saved") : entry.runtimeState;
 }
 
-QString sessionStateName(const AppController::SessionState &session)
+QString sessionStateName(const AppController::SessionState &session, const QMqttClient *client)
 {
-    if (session.disconnectRequested && session.client
-        && session.client->state() != QMqttClient::Disconnected) {
+    if (session.disconnectRequested && client
+        && client->state() != QMqttClient::Disconnected) {
         return QStringLiteral("disconnecting");
     }
 
-    if (!session.client) {
+    if (!client) {
         return QStringLiteral("disconnected");
     }
 
-    switch (session.client->state()) {
+    switch (client->state()) {
     case QMqttClient::Disconnected:
         return QStringLiteral("disconnected");
     case QMqttClient::Connecting:
