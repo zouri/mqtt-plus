@@ -12,6 +12,6 @@ QString defaultLuaScript();
 QString scriptFilePath(const QString &fileName);
 QString scriptFileNameForId(const QString &id);
 LoadResult loadScripts();
-bool saveScripts(QVector<AppController::ScriptEntry> &scripts, bool indexWritable);
+bool saveScripts(QVector<AppController::ScriptEntry> &scripts, bool indexWritable, QString &errorMessage);
 void removeScriptFile(const QString &fileName);
 }

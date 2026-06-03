@@ -7,28 +7,29 @@
 #include <QSslConfiguration>
 #include <QSslSocket>
 
+#include <algorithm>
+
 using namespace AppControllerUtils;
 
 void AppController::connectCurrentSession()
 {
     auto *session = currentSessionState();
-    if (!session || !session->client) {
+    auto *client = session ? session->client : nullptr;
+    if (!session || !client) {
         return;
     }
 
-    if (session->client->hostname().trimmed().isEmpty()) {
+    if (client->hostname().trimmed().isEmpty()) {
         session->lastError = QStringLiteral("Broker host cannot be empty.");
         appendEvent(*session, QStringLiteral("Connection"), session->lastError);
-        emit sessionsChanged();
-        emit currentSessionChanged();
+        notifySessionViewsChanged();
         return;
     }
 
-    if (session->client->clientId().trimmed().isEmpty()) {
+    if (client->clientId().trimmed().isEmpty()) {
         session->lastError = QStringLiteral("Client ID cannot be empty.");
         appendEvent(*session, QStringLiteral("Connection"), session->lastError);
-        emit sessionsChanged();
-        emit currentSessionChanged();
+        notifySessionViewsChanged();
         return;
     }
 
@@ -38,14 +39,14 @@ void AppController::connectCurrentSession()
     updatePublishStatus(*session, QStringLiteral("idle"));
     connectSession(*session, QStringLiteral("Connecting to"));
 
-    emit sessionsChanged();
-    emit currentSessionChanged();
+    notifySessionViewsChanged();
 }
 
 void AppController::disconnectCurrentSession()
 {
     auto *session = currentSessionState();
-    if (!session || !session->client) {
+    auto *client = session ? session->client : nullptr;
+    if (!session || !client) {
         return;
     }
 
@@ -53,9 +54,8 @@ void AppController::disconnectCurrentSession()
     if (session->connectTimeoutTimer) {
         session->connectTimeoutTimer->stop();
     }
-    session->client->disconnectFromHost();
-    emit sessionsChanged();
-    emit currentSessionChanged();
+    client->disconnectFromHost();
+    notifySessionViewsChanged();
 }
 
 void AppController::publishCurrentSession(
@@ -66,7 +66,8 @@ void AppController::publishCurrentSession(
     bool retain)
 {
     auto *session = currentSessionState();
-    if (!session || !session->client) {
+    auto *client = session ? session->client : nullptr;
+    if (!session || !client) {
         return;
     }
 
@@ -82,7 +83,7 @@ void AppController::publishCurrentSession(
         return;
     }
 
-    if (session->client->state() != QMqttClient::Connected) {
+    if (client->state() != QMqttClient::Connected) {
         appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Connect before publishing."));
         return;
     }
@@ -94,7 +95,7 @@ void AppController::publishCurrentSession(
         appendEvent(
             *session,
             QStringLiteral("Publish"),
-            QStringLiteral("%1 (%2)").arg(error, PayloadCodec::formatName(payloadFormat)));
+            QStringLiteral("%1 (%2)").arg(error).arg(PayloadCodec::formatName(payloadFormat)));
         return;
     }
 
@@ -109,7 +110,7 @@ void AppController::publishCurrentSession(
     status.insert(QStringLiteral("updatedAt"), timestampNow());
     session->publishStatus = status;
 
-    const qint32 messageId = session->client->publish(topicName, payloadBytes, SessionConfig::sanitizeQos(qos), retain);
+    const qint32 messageId = client->publish(topicName, payloadBytes, SessionConfig::sanitizeQos(qos), retain);
     if (messageId < 0) {
         updatePublishStatus(*session, QStringLiteral("failed"), QStringLiteral("Qt MQTT rejected the publish request."));
         appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Publish rejected for %1").arg(trimmedTopic));
@@ -124,37 +125,37 @@ void AppController::publishCurrentSession(
                 .arg(retain ? QStringLiteral(", retain") : QString()));
     }
 
-    emit currentSessionChanged();
+    notifyCurrentSessionViewsChanged();
 }
 
 void AppController::bindSessionSignals(SessionState *session)
 {
-    if (!session || !session->client) {
+    auto *client = session ? session->client : nullptr;
+    if (!session || !client) {
         return;
     }
 
-    connect(session->client, &QMqttClient::connected, this, [this, sessionId = session->id]() {
+    connect(client, &QMqttClient::connected, this, [this, sessionId = session->id]() {
         if (auto *boundSession = sessionById(sessionId)) {
             if (boundSession->connectTimeoutTimer) {
                 boundSession->connectTimeoutTimer->stop();
             }
+            const auto *boundClient = boundSession->client;
             boundSession->disconnectRequested = false;
             boundSession->lastError.clear();
             boundSession->brokerInfo =
                 QStringLiteral("%1 • %2 • client %3")
                     .arg(protocolVersionLabel(boundSession->protocolVersion))
                     .arg(transportLabel(boundSession->transport))
-                    .arg(boundSession->client->clientId());
+                    .arg(boundClient ? boundClient->clientId() : QString());
             appendEvent(*boundSession, QStringLiteral("Connection"), QStringLiteral("Connected to broker"));
             restoreActiveSubscriptions(*boundSession, false);
         }
 
-        emit sessionsChanged();
-        emit currentSessionChanged();
-        emit subscriptionsChanged();
+        notifySessionAndSubscriptionViewsChanged();
     });
 
-    connect(session->client, &QMqttClient::disconnected, this, [this, sessionId = session->id]() {
+    connect(client, &QMqttClient::disconnected, this, [this, sessionId = session->id]() {
         if (auto *boundSession = sessionById(sessionId)) {
             if (boundSession->connectTimeoutTimer) {
                 boundSession->connectTimeoutTimer->stop();
@@ -166,19 +167,15 @@ void AppController::bindSessionSignals(SessionState *session)
             appendEvent(*boundSession, QStringLiteral("Connection"), message);
         }
 
-        emit sessionsChanged();
-        emit currentSessionChanged();
-        emit subscriptionsChanged();
+        notifySessionAndSubscriptionViewsChanged();
     });
 
-    connect(session->client, &QMqttClient::stateChanged, this, [this]() {
-        emit sessionsChanged();
-        emit currentSessionChanged();
-        emit subscriptionsChanged();
+    connect(client, &QMqttClient::stateChanged, this, [this]() {
+        notifySessionAndSubscriptionViewsChanged();
     });
 
     connect(
-        session->client,
+        client,
         &QMqttClient::errorChanged,
         this,
         [this, sessionId = session->id](QMqttClient::ClientError error) {
@@ -190,44 +187,42 @@ void AppController::bindSessionSignals(SessionState *session)
                 QString message = clientErrorName(error);
                 const QString socketText = socketDiagnostic(boundSession->client);
                 if (!socketText.isEmpty() && socketText != message) {
-                    message = QStringLiteral("%1 (%2)").arg(message, socketText);
+                    message = QStringLiteral("%1 (%2)").arg(message).arg(socketText);
                 }
                 boundSession->lastError = message;
                 appendEvent(*boundSession, QStringLiteral("Error"), message);
             }
 
-            emit sessionsChanged();
-            emit currentSessionChanged();
+            notifySessionViewsChanged();
         });
 
-    connect(session->client, &QMqttClient::brokerSessionRestored, this, [this, sessionId = session->id]() {
+    connect(client, &QMqttClient::brokerSessionRestored, this, [this, sessionId = session->id]() {
         if (auto *boundSession = sessionById(sessionId)) {
             boundSession->sessionRestored = true;
             appendEvent(*boundSession, QStringLiteral("Connection"), QStringLiteral("Broker session restored"));
         }
-        emit sessionsChanged();
-        emit currentSessionChanged();
+        notifySessionViewsChanged();
     });
 
     connect(
-        session->client,
+        client,
         &QMqttClient::messageReceived,
         this,
         [this, sessionId = session->id](const QByteArray &message, const QMqttTopicName &topic) {
             appendIncomingMessage(sessionId, topic.name(), message);
         });
 
-    connect(session->client, &QMqttClient::messageSent, this, [this, sessionId = session->id](qint32 messageId) {
+    connect(client, &QMqttClient::messageSent, this, [this, sessionId = session->id](qint32 messageId) {
         if (auto *boundSession = sessionById(sessionId)) {
             if (boundSession->publishStatus.value(QStringLiteral("messageId")).toInt() == messageId) {
                 updatePublishStatus(*boundSession, QStringLiteral("sent"), QString(), messageId);
             }
         }
-        emit currentSessionChanged();
+        notifyCurrentSessionViewsChanged();
     });
 
     connect(
-        session->client,
+        client,
         &QMqttClient::messageStatusChanged,
         this,
         [this, sessionId = session->id](
@@ -245,29 +240,29 @@ void AppController::bindSessionSignals(SessionState *session)
                 }
                 updatePublishStatus(*boundSession, messageStatusName(status), reason, messageId);
             }
-            emit currentSessionChanged();
+            notifyCurrentSessionViewsChanged();
         });
 
-    connect(session->client, &QMqttClient::pingResponseReceived, this, [this, sessionId = session->id]() {
+    connect(client, &QMqttClient::pingResponseReceived, this, [this, sessionId = session->id]() {
         if (auto *boundSession = sessionById(sessionId)) {
             boundSession->brokerInfo =
                 QStringLiteral("%1 • %2 • ping ok")
                     .arg(protocolVersionLabel(boundSession->protocolVersion))
                     .arg(transportLabel(boundSession->transport));
         }
-        emit sessionsChanged();
-        emit currentSessionChanged();
+        notifySessionViewsChanged();
     });
 }
 
 void AppController::connectSession(SessionState &session, const QString &eventPrefix)
 {
-    if (!session.client) {
+    auto *client = session.client;
+    if (!client) {
         return;
     }
 
     if (session.connectTimeoutTimer) {
-        session.connectTimeoutTimer->start(qMax(1, session.connectTimeoutSeconds) * 1000);
+        session.connectTimeoutTimer->start((std::max)(1, session.connectTimeoutSeconds) * 1000);
     }
 
     appendEvent(
@@ -275,8 +270,8 @@ void AppController::connectSession(SessionState &session, const QString &eventPr
         QStringLiteral("Connection"),
         QStringLiteral("%1 %2:%3 over %4 using %5")
             .arg(eventPrefix)
-            .arg(session.client->hostname())
-            .arg(session.client->port())
+            .arg(client->hostname())
+            .arg(client->port())
             .arg(transportLabel(session.transport))
             .arg(protocolVersionLabel(session.protocolVersion)));
 
@@ -291,9 +286,9 @@ void AppController::connectSession(SessionState &session, const QString &eventPr
             appendEvent(session, QStringLiteral("Error"), tlsError);
             return;
         }
-        session.client->connectToHostEncrypted(configuration);
+        client->connectToHostEncrypted(configuration);
     } else {
-        session.client->connectToHost();
+        client->connectToHost();
     }
 }
 
@@ -353,4 +348,3 @@ void AppController::updatePublishStatus(
         session.publishStatus.insert(QStringLiteral("messageId"), messageId);
     }
 }
-

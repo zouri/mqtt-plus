@@ -82,6 +82,9 @@ qt_add_executable(mqtt_plus_app
 qt_add_qml_module(mqtt_plus_app
     URI MqttPlusApp
     VERSION 1.0
+    # Qt 6.11 qmlimportscanner currently hangs on the generated module qmldir.
+    # Direct qmllint remains available through the generated qmllint targets.
+    NO_IMPORT_SCAN
     QML_FILES
         qml/components/AppBadge.qml
         qml/components/AppButton.qml
@@ -102,6 +105,10 @@ qt_add_qml_module(mqtt_plus_app
         qml/panels/SessionActivityPanel.qml
         qml/panels/SessionOverviewPanel.qml
         qml/panels/SessionSidebar.qml
+        qml/panels/EventStreamView.qml
+        qml/panels/PublishComposer.qml
+        qml/panels/ScriptListPane.qml
+        qml/panels/ScriptTestPane.qml
         qml/panels/ScriptWorkspacePanel.qml
         qml/panels/SubscriptionsPanel.qml
         qml/dialogs/SessionEditorDialog.qml

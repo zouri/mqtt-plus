@@ -17,35 +17,6 @@ AppPanel {
     Layout.fillHeight: true
     Layout.minimumHeight: 260
 
-    function syncSubscriptions(rows) {
-        let requiresReset = subscriptionListModel.count !== rows.length
-
-        if (!requiresReset) {
-            for (let i = 0; i < rows.length; ++i) {
-                if (subscriptionListModel.get(i).topic !== rows[i].topic) {
-                    requiresReset = true
-                    break
-                }
-            }
-        }
-
-        if (requiresReset) {
-            subscriptionListModel.clear()
-            for (let i = 0; i < rows.length; ++i) {
-                subscriptionListModel.append(rows[i])
-            }
-            return
-        }
-
-        for (let i = 0; i < rows.length; ++i) {
-            subscriptionListModel.set(i, rows[i])
-        }
-    }
-
-    ListModel {
-        id: subscriptionListModel
-    }
-
     Timer {
         id: subscriptionActionVisualResetTimer
         interval: 180
@@ -93,7 +64,7 @@ AppPanel {
             Layout.fillHeight: true
             clip: true
             spacing: 8
-            model: subscriptionListModel
+            model: control.appController.subscriptionsModel
             reuseItems: true
 
             ScrollBar.vertical: ScrollBar {

@@ -13,9 +13,19 @@
 #include <limits>
 
 namespace {
+constexpr qsizetype kMaxStructuredPayloadBytes = 16 * 1024 * 1024;
+constexpr int kMaxMsgPackDepth = 32;
+constexpr quint32 kMaxMsgPackStringBytes = 8 * 1024 * 1024;
+constexpr quint32 kMaxMsgPackContainerItems = 100000;
+
 QString formatErrorText(const QString &label, const QString &error)
 {
     return QStringLiteral("[%1 parse error] %2").arg(label, error);
+}
+
+bool isTooLarge(qsizetype size)
+{
+    return size > kMaxStructuredPayloadBytes;
 }
 
 QJsonValue toJsonValue(const QVariant &value)
@@ -78,17 +88,17 @@ bool appendMsgPackInt(QByteArray &buffer, qint64 value)
         appendU8(buffer, static_cast<quint8>(static_cast<qint8>(value)));
         return true;
     }
-    if (value >= std::numeric_limits<qint8>::min() && value <= std::numeric_limits<qint8>::max()) {
+    if (value >= (std::numeric_limits<qint8>::min)() && value <= (std::numeric_limits<qint8>::max)()) {
         appendU8(buffer, 0xD0);
         appendU8(buffer, static_cast<quint8>(static_cast<qint8>(value)));
         return true;
     }
-    if (value >= std::numeric_limits<qint16>::min() && value <= std::numeric_limits<qint16>::max()) {
+    if (value >= (std::numeric_limits<qint16>::min)() && value <= (std::numeric_limits<qint16>::max)()) {
         appendU8(buffer, 0xD1);
         appendU16(buffer, static_cast<quint16>(static_cast<qint16>(value)));
         return true;
     }
-    if (value >= std::numeric_limits<qint32>::min() && value <= std::numeric_limits<qint32>::max()) {
+    if (value >= (std::numeric_limits<qint32>::min)() && value <= (std::numeric_limits<qint32>::max)()) {
         appendU8(buffer, 0xD2);
         appendU32(buffer, static_cast<quint32>(static_cast<qint32>(value)));
         return true;
@@ -104,17 +114,17 @@ bool appendMsgPackUInt(QByteArray &buffer, quint64 value)
         appendU8(buffer, static_cast<quint8>(value));
         return true;
     }
-    if (value <= std::numeric_limits<quint8>::max()) {
+    if (value <= (std::numeric_limits<quint8>::max)()) {
         appendU8(buffer, 0xCC);
         appendU8(buffer, static_cast<quint8>(value));
         return true;
     }
-    if (value <= std::numeric_limits<quint16>::max()) {
+    if (value <= (std::numeric_limits<quint16>::max)()) {
         appendU8(buffer, 0xCD);
         appendU16(buffer, static_cast<quint16>(value));
         return true;
     }
-    if (value <= std::numeric_limits<quint32>::max()) {
+    if (value <= (std::numeric_limits<quint32>::max)()) {
         appendU8(buffer, 0xCE);
         appendU32(buffer, static_cast<quint32>(value));
         return true;
@@ -124,16 +134,20 @@ bool appendMsgPackUInt(QByteArray &buffer, quint64 value)
     return true;
 }
 
-bool appendMsgPackString(QByteArray &buffer, const QString &value)
+bool appendMsgPackString(QByteArray &buffer, const QString &value, QString &error)
 {
     const QByteArray utf8 = value.toUtf8();
+    if (isTooLarge(utf8.size())) {
+        error = QStringLiteral("MsgPack string exceeds the maximum supported size.");
+        return false;
+    }
     const quint32 len = static_cast<quint32>(utf8.size());
     if (len <= 31) {
         appendU8(buffer, static_cast<quint8>(0xA0 | len));
-    } else if (len <= std::numeric_limits<quint8>::max()) {
+    } else if (len <= (std::numeric_limits<quint8>::max)()) {
         appendU8(buffer, 0xD9);
         appendU8(buffer, static_cast<quint8>(len));
-    } else if (len <= std::numeric_limits<quint16>::max()) {
+    } else if (len <= (std::numeric_limits<quint16>::max)()) {
         appendU8(buffer, 0xDA);
         appendU16(buffer, static_cast<quint16>(len));
     } else {
@@ -146,10 +160,14 @@ bool appendMsgPackString(QByteArray &buffer, const QString &value)
 
 bool appendMsgPackArray(QByteArray &buffer, const QVariantList &array, QString &error)
 {
+    if (array.size() > static_cast<qsizetype>(kMaxMsgPackContainerItems)) {
+        error = QStringLiteral("MsgPack array exceeds the maximum item count.");
+        return false;
+    }
     const quint32 len = static_cast<quint32>(array.size());
     if (len <= 15) {
         appendU8(buffer, static_cast<quint8>(0x90 | len));
-    } else if (len <= std::numeric_limits<quint16>::max()) {
+    } else if (len <= (std::numeric_limits<quint16>::max)()) {
         appendU8(buffer, 0xDC);
         appendU16(buffer, static_cast<quint16>(len));
     } else {
@@ -166,10 +184,14 @@ bool appendMsgPackArray(QByteArray &buffer, const QVariantList &array, QString &
 
 bool appendMsgPackMap(QByteArray &buffer, const QVariantMap &map, QString &error)
 {
+    if (map.size() > static_cast<qsizetype>(kMaxMsgPackContainerItems)) {
+        error = QStringLiteral("MsgPack map exceeds the maximum item count.");
+        return false;
+    }
     const quint32 len = static_cast<quint32>(map.size());
     if (len <= 15) {
         appendU8(buffer, static_cast<quint8>(0x80 | len));
-    } else if (len <= std::numeric_limits<quint16>::max()) {
+    } else if (len <= (std::numeric_limits<quint16>::max)()) {
         appendU8(buffer, 0xDE);
         appendU16(buffer, static_cast<quint16>(len));
     } else {
@@ -177,7 +199,9 @@ bool appendMsgPackMap(QByteArray &buffer, const QVariantMap &map, QString &error
         appendU32(buffer, len);
     }
     for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
-        appendMsgPackString(buffer, it.key());
+        if (!appendMsgPackString(buffer, it.key(), error)) {
+            return false;
+        }
         if (!appendMsgPackValue(buffer, it.value(), error)) {
             return false;
         }
@@ -213,7 +237,7 @@ bool appendMsgPackValue(QByteArray &buffer, const QVariant &value, QString &erro
         return true;
     }
     case QMetaType::QString:
-        return appendMsgPackString(buffer, value.toString());
+        return appendMsgPackString(buffer, value.toString(), error);
     case QMetaType::QVariantList:
         return appendMsgPackArray(buffer, value.toList(), error);
     case QMetaType::QVariantMap:
@@ -232,7 +256,7 @@ bool appendMsgPackValue(QByteArray &buffer, const QVariant &value, QString &erro
 
 bool readBytes(QByteArrayView data, int &offset, int count, QByteArrayView &out)
 {
-    if (offset + count > data.size()) {
+    if (count < 0 || offset < 0 || offset > data.size() || count > data.size() - offset) {
         return false;
     }
     out = data.sliced(offset, count);
@@ -280,25 +304,38 @@ bool readU64(QByteArrayView data, int &offset, quint64 &out)
     return true;
 }
 
-bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString &error);
+bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString &error, int depth);
 
-bool parseMsgPackString(QByteArrayView data, int &offset, quint32 len, QVariant &out)
+bool parseMsgPackString(QByteArrayView data, int &offset, quint32 len, QVariant &out, QString &error)
 {
+    if (len > kMaxMsgPackStringBytes) {
+        error = QStringLiteral("MsgPack string exceeds the maximum length.");
+        return false;
+    }
+    if (len > static_cast<quint32>((std::numeric_limits<int>::max)())) {
+        error = QStringLiteral("MsgPack string length is too large.");
+        return false;
+    }
     QByteArrayView bytes;
     if (!readBytes(data, offset, static_cast<int>(len), bytes)) {
+        error = QStringLiteral("Unexpected end of MsgPack string.");
         return false;
     }
     out = QString::fromUtf8(bytes.data(), bytes.size());
     return true;
 }
 
-bool parseMsgPackArray(QByteArrayView data, int &offset, quint32 len, QVariant &out, QString &error)
+bool parseMsgPackArray(QByteArrayView data, int &offset, quint32 len, QVariant &out, QString &error, int depth)
 {
+    if (len > kMaxMsgPackContainerItems) {
+        error = QStringLiteral("MsgPack array exceeds the maximum item count.");
+        return false;
+    }
     QVariantList list;
     list.reserve(static_cast<int>(len));
     for (quint32 i = 0; i < len; ++i) {
         QVariant item;
-        if (!parseMsgPackValue(data, offset, item, error)) {
+        if (!parseMsgPackValue(data, offset, item, error, depth + 1)) {
             return false;
         }
         list.append(item);
@@ -307,12 +344,16 @@ bool parseMsgPackArray(QByteArrayView data, int &offset, quint32 len, QVariant &
     return true;
 }
 
-bool parseMsgPackMap(QByteArrayView data, int &offset, quint32 len, QVariant &out, QString &error)
+bool parseMsgPackMap(QByteArrayView data, int &offset, quint32 len, QVariant &out, QString &error, int depth)
 {
+    if (len > kMaxMsgPackContainerItems) {
+        error = QStringLiteral("MsgPack map exceeds the maximum item count.");
+        return false;
+    }
     QVariantMap map;
     for (quint32 i = 0; i < len; ++i) {
         QVariant keyVar;
-        if (!parseMsgPackValue(data, offset, keyVar, error)) {
+        if (!parseMsgPackValue(data, offset, keyVar, error, depth + 1)) {
             return false;
         }
         if (keyVar.userType() != QMetaType::QString) {
@@ -321,7 +362,7 @@ bool parseMsgPackMap(QByteArrayView data, int &offset, quint32 len, QVariant &ou
         }
 
         QVariant valueVar;
-        if (!parseMsgPackValue(data, offset, valueVar, error)) {
+        if (!parseMsgPackValue(data, offset, valueVar, error, depth + 1)) {
             return false;
         }
         map.insert(keyVar.toString(), valueVar);
@@ -330,8 +371,13 @@ bool parseMsgPackMap(QByteArrayView data, int &offset, quint32 len, QVariant &ou
     return true;
 }
 
-bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString &error)
+bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString &error, int depth)
 {
+    if (depth > kMaxMsgPackDepth) {
+        error = QStringLiteral("MsgPack nesting is too deep.");
+        return false;
+    }
+
     quint8 marker = 0;
     if (!readU8(data, offset, marker)) {
         error = QStringLiteral("Unexpected end of MsgPack payload.");
@@ -347,13 +393,13 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
         return true;
     }
     if ((marker & 0xE0) == 0xA0) {
-        return parseMsgPackString(data, offset, marker & 0x1F, out);
+        return parseMsgPackString(data, offset, marker & 0x1F, out, error);
     }
     if ((marker & 0xF0) == 0x90) {
-        return parseMsgPackArray(data, offset, marker & 0x0F, out, error);
+        return parseMsgPackArray(data, offset, marker & 0x0F, out, error, depth);
     }
     if ((marker & 0xF0) == 0x80) {
-        return parseMsgPackMap(data, offset, marker & 0x0F, out, error);
+        return parseMsgPackMap(data, offset, marker & 0x0F, out, error, depth);
     }
 
     switch (marker) {
@@ -472,7 +518,7 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
             error = QStringLiteral("Invalid str8 length.");
             return false;
         }
-        return parseMsgPackString(data, offset, len, out);
+        return parseMsgPackString(data, offset, len, out, error);
     }
     case 0xDA: {
         quint16 len = 0;
@@ -480,7 +526,7 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
             error = QStringLiteral("Invalid str16 length.");
             return false;
         }
-        return parseMsgPackString(data, offset, len, out);
+        return parseMsgPackString(data, offset, len, out, error);
     }
     case 0xDB: {
         quint32 len = 0;
@@ -488,7 +534,7 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
             error = QStringLiteral("Invalid str32 length.");
             return false;
         }
-        return parseMsgPackString(data, offset, len, out);
+        return parseMsgPackString(data, offset, len, out, error);
     }
     case 0xDC: {
         quint16 len = 0;
@@ -496,7 +542,7 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
             error = QStringLiteral("Invalid array16 length.");
             return false;
         }
-        return parseMsgPackArray(data, offset, len, out, error);
+        return parseMsgPackArray(data, offset, len, out, error, depth);
     }
     case 0xDD: {
         quint32 len = 0;
@@ -504,7 +550,7 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
             error = QStringLiteral("Invalid array32 length.");
             return false;
         }
-        return parseMsgPackArray(data, offset, len, out, error);
+        return parseMsgPackArray(data, offset, len, out, error, depth);
     }
     case 0xDE: {
         quint16 len = 0;
@@ -512,7 +558,7 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
             error = QStringLiteral("Invalid map16 length.");
             return false;
         }
-        return parseMsgPackMap(data, offset, len, out, error);
+        return parseMsgPackMap(data, offset, len, out, error, depth);
     }
     case 0xDF: {
         quint32 len = 0;
@@ -520,7 +566,7 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
             error = QStringLiteral("Invalid map32 length.");
             return false;
         }
-        return parseMsgPackMap(data, offset, len, out, error);
+        return parseMsgPackMap(data, offset, len, out, error, depth);
     }
     default:
         error = QStringLiteral("Unsupported MsgPack marker 0x%1").arg(QString::number(marker, 16));
@@ -577,8 +623,13 @@ QByteArray decodeBase64String(const QString &value, QString &error)
 
 QByteArray encodeJsonToUtf8(const QString &input, QString &error)
 {
+    const QByteArray inputBytes = input.toUtf8();
+    if (isTooLarge(inputBytes.size())) {
+        error = QStringLiteral("Structured payload exceeds the maximum supported size.");
+        return {};
+    }
     QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(input.toUtf8(), &parseError);
+    const QJsonDocument document = QJsonDocument::fromJson(inputBytes, &parseError);
     if (parseError.error != QJsonParseError::NoError || (!document.isArray() && !document.isObject())) {
         error = parseError.errorString().isEmpty()
                     ? QStringLiteral("Expected JSON object or array.")
@@ -590,8 +641,13 @@ QByteArray encodeJsonToUtf8(const QString &input, QString &error)
 
 QByteArray encodeCborFromJson(const QString &input, QString &error)
 {
+    const QByteArray inputBytes = input.toUtf8();
+    if (isTooLarge(inputBytes.size())) {
+        error = QStringLiteral("Structured payload exceeds the maximum supported size.");
+        return {};
+    }
     QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(input.toUtf8(), &parseError);
+    const QJsonDocument document = QJsonDocument::fromJson(inputBytes, &parseError);
     if (parseError.error != QJsonParseError::NoError || (!document.isArray() && !document.isObject())) {
         error = parseError.errorString().isEmpty()
                     ? QStringLiteral("Expected JSON object or array for CBOR.")
@@ -604,8 +660,13 @@ QByteArray encodeCborFromJson(const QString &input, QString &error)
 
 QByteArray encodeMsgPackFromJson(const QString &input, QString &error)
 {
+    const QByteArray inputBytes = input.toUtf8();
+    if (isTooLarge(inputBytes.size())) {
+        error = QStringLiteral("Structured payload exceeds the maximum supported size.");
+        return {};
+    }
     QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(input.toUtf8(), &parseError);
+    const QJsonDocument document = QJsonDocument::fromJson(inputBytes, &parseError);
     if (parseError.error != QJsonParseError::NoError || (!document.isArray() && !document.isObject())) {
         error = parseError.errorString().isEmpty()
                     ? QStringLiteral("Expected JSON object or array for MsgPack.")
@@ -718,6 +779,10 @@ QString PayloadCodec::decodeForDisplay(
         return QString::fromUtf8(payloadBytes);
 
     case PayloadFormat::Json: {
+        if (isTooLarge(payloadBytes.size())) {
+            error = formatErrorText(QStringLiteral("JSON"), QStringLiteral("Payload exceeds the maximum supported size."));
+            return error;
+        }
         QJsonParseError parseError;
         const QJsonDocument document = QJsonDocument::fromJson(payloadBytes, &parseError);
         if (parseError.error != QJsonParseError::NoError || (!document.isObject() && !document.isArray())) {
@@ -734,7 +799,11 @@ QString PayloadCodec::decodeForDisplay(
         return QString::fromLatin1(payloadBytes.toHex(' ').toUpper());
 
     case PayloadFormat::Cbor: {
-        QCborParserError parserError{};
+        if (isTooLarge(payloadBytes.size())) {
+            error = formatErrorText(QStringLiteral("CBOR"), QStringLiteral("Payload exceeds the maximum supported size."));
+            return error;
+        }
+        QCborParserError parserError = {};
         const QCborValue value = QCborValue::fromCbor(payloadBytes, &parserError);
         if (parserError.error != QCborError::NoError) {
             error = formatErrorText(
@@ -746,9 +815,13 @@ QString PayloadCodec::decodeForDisplay(
     }
 
     case PayloadFormat::MsgPack: {
+        if (isTooLarge(payloadBytes.size())) {
+            error = formatErrorText(QStringLiteral("MsgPack"), QStringLiteral("Payload exceeds the maximum supported size."));
+            return error;
+        }
         int offset = 0;
         QVariant value;
-        if (!parseMsgPackValue(QByteArrayView(payloadBytes), offset, value, error)) {
+        if (!parseMsgPackValue(QByteArrayView(payloadBytes), offset, value, error, 0)) {
             error = formatErrorText(QStringLiteral("MsgPack"), error);
             return error;
         }
