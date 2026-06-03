@@ -29,8 +29,7 @@ QString AppController::upsertScript(const QString &id, const QString &name, cons
                 return QString();
             }
             emit scriptLibraryChanged();
-            emit currentSessionChanged();
-            emit subscriptionsChanged();
+            notifyCurrentSessionAndSubscriptionsChanged();
             return script.id;
         }
     }
@@ -48,8 +47,7 @@ QString AppController::upsertScript(const QString &id, const QString &name, cons
         return QString();
     }
     emit scriptLibraryChanged();
-    emit currentSessionChanged();
-    emit subscriptionsChanged();
+    notifyCurrentSessionAndSubscriptionsChanged();
     return script.id;
 }
 
@@ -102,12 +100,10 @@ bool AppController::deleteScript(const QString &id)
         return false;
     }
     ScriptStore::removeScriptFile(removedFileName);
-    saveSessions();
+    const bool sessionsSaved = saveSessions();
     emit scriptLibraryChanged();
-    emit currentSessionChanged();
-    emit subscriptionsChanged();
-    emit sessionsChanged();
-    return true;
+    notifySessionAndSubscriptionViewsChanged();
+    return sessionsSaved;
 }
 
 QVariantMap AppController::testScript(const QString &code, const QString &topic, const QString &payload, int format) const
@@ -169,6 +165,10 @@ void AppController::loadScripts()
 
 bool AppController::saveScripts()
 {
-    return ScriptStore::saveScripts(m_scripts, m_scriptIndexWritable);
+    QString errorMessage;
+    if (ScriptStore::saveScripts(m_scripts, m_scriptIndexWritable, errorMessage)) {
+        return true;
+    }
+    reportStorageError(errorMessage.isEmpty() ? QStringLiteral("Cannot save scripts.") : errorMessage);
+    return false;
 }
-

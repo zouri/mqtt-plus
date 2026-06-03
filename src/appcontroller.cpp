@@ -33,3 +33,47 @@ AppController::AppController(QObject *parent)
     loadScripts();
     loadSessions();
 }
+
+void AppController::notifyCurrentSessionViewsChanged()
+{
+    emit currentSessionChanged();
+}
+
+void AppController::notifyCurrentSessionAndSubscriptionsChanged()
+{
+    emit currentSessionChanged();
+    emit subscriptionsChanged();
+}
+
+void AppController::notifySessionViewsChanged()
+{
+    emit sessionsChanged();
+    emit currentSessionChanged();
+}
+
+void AppController::notifySessionAndSubscriptionViewsChanged()
+{
+    emit sessionsChanged();
+    emit currentSessionChanged();
+    emit subscriptionsChanged();
+}
+
+void AppController::notifySelectedSessionViewsChanged()
+{
+    emit currentSessionIndexChanged();
+    emit currentSessionChanged();
+    emit subscriptionsChanged();
+    emit eventStreamChanged();
+    emit scriptLibraryChanged();
+    emit scriptTestSamplesChanged();
+}
+
+void AppController::notifySessionCollectionViewsChanged()
+{
+    emit sessionsChanged();
+    emit currentSessionIndexChanged();
+    emit currentSessionChanged();
+    emit subscriptionsChanged();
+    emit eventStreamChanged();
+    emit scriptLibraryChanged();
+}

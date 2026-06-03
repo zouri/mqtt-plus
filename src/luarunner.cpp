@@ -5,6 +5,8 @@
 #include <QJsonObject>
 #include <QJsonValue>
 
+#include <algorithm>
+
 extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
@@ -52,6 +54,16 @@ QString luaString(lua_State *state, int index)
     return data ? QString::fromUtf8(data, qsizetype(length)) : QString();
 }
 
+void pushString(lua_State *state, const QByteArray &bytes)
+{
+    lua_pushlstring(state, bytes.constData(), static_cast<size_t>(bytes.size()));
+}
+
+void pushString(lua_State *state, const QString &value)
+{
+    pushString(state, value.toUtf8());
+}
+
 bool isArrayTable(lua_State *state, int index, int &arrayLength)
 {
     const int absoluteIndex = lua_absindex(state, index);
@@ -71,7 +83,7 @@ bool isArrayTable(lua_State *state, int index, int &arrayLength)
             return false;
         }
 
-        maxIndex = qMax(maxIndex, static_cast<int>(key));
+        maxIndex = (std::max)(maxIndex, static_cast<int>(key));
         ++count;
         lua_pop(state, 1);
     }
@@ -169,31 +181,28 @@ void pushContext(lua_State *state, const LuaScriptContext &context)
 {
     lua_newtable(state);
 
-    lua_pushstring(state, context.topic.toUtf8().constData());
+    pushString(state, context.topic);
     lua_setfield(state, -2, "topic");
 
-    lua_pushlstring(
-        state,
-        context.payloadBytes.constData(),
-        static_cast<size_t>(context.payloadBytes.size()));
+    pushString(state, context.payloadBytes);
     lua_setfield(state, -2, "payload");
 
-    lua_pushstring(state, context.payloadBytes.toBase64().constData());
+    pushString(state, context.payloadBytes.toBase64());
     lua_setfield(state, -2, "payloadBase64");
 
-    lua_pushstring(state, context.payloadBytes.toHex(' ').toUpper().constData());
+    pushString(state, context.payloadBytes.toHex(' ').toUpper());
     lua_setfield(state, -2, "payloadHex");
 
-    lua_pushstring(state, context.decodedPayload.toUtf8().constData());
+    pushString(state, context.decodedPayload);
     lua_setfield(state, -2, "decoded");
 
-    lua_pushstring(state, context.decodeError.toUtf8().constData());
+    pushString(state, context.decodeError);
     lua_setfield(state, -2, "decodeError");
 
-    lua_pushstring(state, PayloadCodec::formatName(context.format).toUtf8().constData());
+    pushString(state, PayloadCodec::formatName(context.format));
     lua_setfield(state, -2, "format");
 
-    lua_pushstring(state, context.timestamp.toUtf8().constData());
+    pushString(state, context.timestamp);
     lua_setfield(state, -2, "timestamp");
 }
 }

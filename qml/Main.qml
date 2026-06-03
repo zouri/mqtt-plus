@@ -38,20 +38,14 @@ ApplicationWindow {
     readonly property var session: root.appController.currentSession
     readonly property var status: root.appController.sessionStatus
     readonly property var publishStatus: root.appController.publishStatus
-    readonly property var subscriptions: root.appController.subscriptionsModel
     readonly property var eventStream: root.appController.eventStreamModel
 
     Component.onCompleted: {
-        subscriptionsPanel.syncSubscriptions(root.appController.subscriptionsModel || [])
         sessionActivityPanel.reloadStream(root.eventStream || [])
     }
 
     Connections {
         target: root.appController
-
-        function onSubscriptionsChanged() {
-            subscriptionsPanel.syncSubscriptions(root.appController.subscriptionsModel || [])
-        }
 
         function onEventStreamChanged() {
             sessionActivityPanel.reloadStream(root.eventStream || [])

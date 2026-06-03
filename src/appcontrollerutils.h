@@ -32,8 +32,9 @@ QString socketDiagnostic(QMqttClient *client);
 int topicSpecificityScore(const QString &filter);
 QString subscriptionDisplayState(
     const AppController::SessionState &session,
-    const AppController::SubscriptionEntry &entry);
-QString sessionStateName(const AppController::SessionState &session);
+    const AppController::SubscriptionEntry &entry,
+    const QMqttClient *client);
+QString sessionStateName(const AppController::SessionState &session, const QMqttClient *client);
 QVariantMap defaultPublishStatus();
 void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs);
 int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs);
