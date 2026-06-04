@@ -357,10 +357,27 @@ bool SubscriptionController::currentSessionHasActiveSubscriptionFps(qint64 nowMs
 void SubscriptionController::refreshSubscriptionFps()
 {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    if (!currentSessionHasActiveSubscriptionFps(nowMs)) {
+    const auto *session = m_app.currentSessionState();
+    if (!session) {
+        m_app.m_subscriptionFpsRefreshTimer.stop();
+        m_app.m_subscriptionsModel.setTopicFpsRows({});
+        return;
+    }
+
+    bool hasActiveFps = false;
+    QVector<SubscriptionFpsRow> rows;
+    rows.reserve(session->subscriptions.size());
+    for (const auto &subscription : session->subscriptions) {
+        SubscriptionFpsRow row;
+        row.topic = subscription.topic;
+        row.topicFps = subscriptionFps(subscription, nowMs);
+        hasActiveFps = hasActiveFps || row.topicFps > 0.0;
+        rows.append(row);
+    }
+
+    if (!hasActiveFps) {
         m_app.m_subscriptionFpsRefreshTimer.stop();
     }
 
-    m_app.refreshSubscriptionsModel();
-    emit m_app.subscriptionsChanged();
+    m_app.m_subscriptionsModel.setTopicFpsRows(rows);
 }
