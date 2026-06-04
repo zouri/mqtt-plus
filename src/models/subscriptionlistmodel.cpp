@@ -1,5 +1,69 @@
 #include "subscriptionlistmodel.h"
 
+namespace {
+
+QList<int> changedRoles(const SubscriptionListRow &oldRow, const SubscriptionListRow &newRow)
+{
+    QList<int> roles;
+    if (oldRow.topic != newRow.topic) {
+        roles.append(SubscriptionListModel::TopicRole);
+    }
+    if (oldRow.alias != newRow.alias) {
+        roles.append(SubscriptionListModel::AliasRole);
+    }
+    if (oldRow.displayName != newRow.displayName) {
+        roles.append(SubscriptionListModel::DisplayNameRole);
+    }
+    if (oldRow.requestedQos != newRow.requestedQos) {
+        roles.append(SubscriptionListModel::RequestedQosRole);
+    }
+    if (oldRow.grantedQos != newRow.grantedQos) {
+        roles.append(SubscriptionListModel::GrantedQosRole);
+    }
+    if (oldRow.topicFps != newRow.topicFps) {
+        roles.append(SubscriptionListModel::TopicFpsRole);
+    }
+    if (oldRow.format != newRow.format) {
+        roles.append(SubscriptionListModel::FormatRole);
+    }
+    if (oldRow.formatName != newRow.formatName) {
+        roles.append(SubscriptionListModel::FormatNameRole);
+    }
+    if (oldRow.scriptId != newRow.scriptId) {
+        roles.append(SubscriptionListModel::ScriptIdRole);
+    }
+    if (oldRow.scriptName != newRow.scriptName) {
+        roles.append(SubscriptionListModel::ScriptNameRole);
+    }
+    if (oldRow.paused != newRow.paused) {
+        roles.append(SubscriptionListModel::PausedRole);
+    }
+    if (oldRow.state != newRow.state) {
+        roles.append(SubscriptionListModel::StateRole);
+    }
+    if (oldRow.lastError != newRow.lastError) {
+        roles.append(SubscriptionListModel::LastErrorRole);
+    }
+    return roles;
+}
+
+bool hasSameIdentityOrder(const QVector<SubscriptionListRow> &oldRows, const QVector<SubscriptionListRow> &newRows)
+{
+    if (oldRows.size() != newRows.size()) {
+        return false;
+    }
+
+    for (qsizetype i = 0; i < oldRows.size(); ++i) {
+        if (oldRows.at(i).topic != newRows.at(i).topic) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+} // namespace
+
 SubscriptionListModel::SubscriptionListModel(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -83,12 +147,43 @@ QVariantMap SubscriptionListModel::rowAt(int row) const
 
 void SubscriptionListModel::setRows(const QVector<SubscriptionListRow> &rows)
 {
+    if (hasSameIdentityOrder(m_rows, rows)) {
+        for (qsizetype i = 0; i < rows.size(); ++i) {
+            const QList<int> roles = changedRoles(m_rows.at(i), rows.at(i));
+            if (roles.isEmpty()) {
+                continue;
+            }
+
+            m_rows[i] = rows.at(i);
+            const QModelIndex rowIndex = index(static_cast<int>(i), 0);
+            emit dataChanged(rowIndex, rowIndex, roles);
+        }
+        return;
+    }
+
     const bool countWillChange = rows.size() != m_rows.size();
     beginResetModel();
     m_rows = rows;
     endResetModel();
     if (countWillChange) {
         emit countChanged();
+    }
+}
+
+void SubscriptionListModel::setTopicFpsRows(const QVector<SubscriptionFpsRow> &rows)
+{
+    if (rows.size() != m_rows.size()) {
+        return;
+    }
+
+    for (qsizetype i = 0; i < rows.size(); ++i) {
+        if (m_rows.at(i).topic != rows.at(i).topic || m_rows.at(i).topicFps == rows.at(i).topicFps) {
+            continue;
+        }
+
+        m_rows[i].topicFps = rows.at(i).topicFps;
+        const QModelIndex rowIndex = index(static_cast<int>(i), 0);
+        emit dataChanged(rowIndex, rowIndex, {TopicFpsRole});
     }
 }
 
