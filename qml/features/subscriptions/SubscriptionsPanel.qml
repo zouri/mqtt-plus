@@ -162,9 +162,8 @@ AppPanel {
                                 implicitHeight: 26
                                 iconSize: 13
                                 cornerRadius: 6
-                                restBg: "transparent"
-                                hoverBg: control.ui.themePalette.actionHoverBg
-                                pressedBg: control.ui.themePalette.actionPressedBg
+
+
                                 outlineColor: "transparent"
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::edit`
@@ -186,9 +185,6 @@ AppPanel {
                                 implicitHeight: 26
                                 iconSize: 13
                                 cornerRadius: 6
-                                restBg: "transparent"
-                                hoverBg: control.ui.themePalette.actionHoverBg
-                                pressedBg: control.ui.themePalette.actionPressedBg
                                 outlineColor: "transparent"
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::pause`
@@ -211,9 +207,6 @@ AppPanel {
                                 implicitHeight: 26
                                 iconSize: 12
                                 cornerRadius: 6
-                                restBg: "transparent"
-                                hoverBg: control.ui.themePalette.actionHoverBg
-                                pressedBg: control.ui.themePalette.actionPressedBg
                                 outlineColor: "transparent"
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::delete`
