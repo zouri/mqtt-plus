@@ -19,6 +19,11 @@ struct SubscriptionListRow {
     QString lastError;
 };
 
+struct SubscriptionFpsRow {
+    QString topic;
+    qreal topicFps = 0.0;
+};
+
 class SubscriptionListModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -52,6 +57,7 @@ public:
     Q_INVOKABLE QVariantMap rowAt(int row) const;
 
     void setRows(const QVector<SubscriptionListRow> &rows);
+    void setTopicFpsRows(const QVector<SubscriptionFpsRow> &rows);
 
 signals:
     void countChanged();
