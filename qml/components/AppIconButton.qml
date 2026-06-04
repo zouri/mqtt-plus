@@ -29,6 +29,12 @@ ToolButton {
                                 ? control.ui.themePalette.buttonDangerText
                                 : (control.primary ? control.ui.themePalette.buttonPrimaryText : control.ui.textStrong)
     property bool forceActive: false
+    readonly property color effectiveRestBg: control.restBg.a === 0
+                                           ? Qt.rgba(control.hoverBg.r,
+                                                     control.hoverBg.g,
+                                                     control.hoverBg.b,
+                                                     0)
+                                           : control.restBg
 
     implicitWidth: 30
     implicitHeight: 30
@@ -61,7 +67,7 @@ ToolButton {
         radius: control.cornerRadius
         color: control.down
                ? control.pressedBg
-               : ((control.hovered || control.forceActive) ? control.hoverBg : control.restBg)
+               : ((control.hovered || control.forceActive) ? control.hoverBg : control.effectiveRestBg)
         border.color: control.outlineColor
 
         Behavior on color {
