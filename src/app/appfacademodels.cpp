@@ -100,25 +100,25 @@ QVariantMap AppFacade::sessionStatus() const
     const QString state = sessionStateName(*session, client);
     QString summary;
     if (state == QStringLiteral("connected")) {
-        summary = QStringLiteral("%1 • %2:%3 • %4")
+        summary = tr("%1 • %2:%3 • %4")
                       .arg(protocolVersionLabel(session->protocolVersion))
                       .arg(client ? client->hostname() : QString())
                       .arg(client ? client->port() : SessionConfig::kDefaultPort)
                       .arg(transportLabel(session->transport));
         if (session->sessionRestored) {
-            summary.append(QStringLiteral(" • session restored"));
+            summary.append(tr(" • session restored"));
         }
     } else if (state == QStringLiteral("connecting")) {
-        summary = QStringLiteral("Connecting to %1:%2 over %3")
+        summary = tr("Connecting to %1:%2 over %3")
                       .arg(client ? client->hostname() : QString())
                       .arg(client ? client->port() : SessionConfig::kDefaultPort)
                       .arg(transportLabel(session->transport));
     } else if (state == QStringLiteral("disconnecting")) {
-        summary = QStringLiteral("Disconnecting from broker");
+        summary = tr("Disconnecting from broker");
     } else if (!session->lastError.isEmpty()) {
         summary = session->lastError;
     } else {
-        summary = QStringLiteral("Disconnected");
+        summary = tr("Disconnected");
     }
 
     QVariantMap row;
@@ -232,4 +232,19 @@ QString AppFacade::themeMode() const
 QString AppFacade::effectiveTheme() const
 {
     return m_themeController.effectiveTheme();
+}
+
+QString AppFacade::languageMode() const
+{
+    return m_languageController.mode();
+}
+
+QString AppFacade::effectiveLanguage() const
+{
+    return m_languageController.effectiveLanguage();
+}
+
+QVariantList AppFacade::availableLanguages() const
+{
+    return m_languageController.availableLanguages();
 }

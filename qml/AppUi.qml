@@ -69,6 +69,9 @@ QtObject {
         "buttonDangerHoverBg": root.isDarkTheme ? "#ee6879" : "#da445b",
         "buttonDangerPressedBg": root.isDarkTheme ? "#bd3d50" : "#a82639",
         "buttonDangerText": "#fff7f8",
+        "tooltipBg": root.isDarkTheme ? "#edf3fd" : "#172231",
+        "tooltipBorder": root.isDarkTheme ? "#ffffff" : "#31435a",
+        "tooltipText": root.isDarkTheme ? "#101824" : "#f7fbff",
         "fieldBg": root.isDarkTheme ? "#0e1722" : "#f8fbfe",
         "fieldBorder": root.isDarkTheme ? "#26364a" : "#d3ddea",
         "fieldFocusBorder": root.isDarkTheme ? "#6a93cb" : "#5e88bf",
@@ -131,17 +134,17 @@ QtObject {
     readonly property var themeModeMetaByMode: ({
         "system": {
             "icon": "contrast",
-            "label": "System",
+            "label": qsTr("System"),
             "next": "light"
         },
         "light": {
             "icon": "light-mode",
-            "label": "Light",
+            "label": qsTr("Light"),
             "next": "dark"
         },
         "dark": {
             "icon": "dark-mode",
-            "label": "Dark",
+            "label": qsTr("Dark"),
             "next": "system"
         }
     })
@@ -162,5 +165,46 @@ QtObject {
 
     function themeModeMeta(mode) {
         return root.themeModeMetaByMode[mode] || root.themeModeMetaByMode.system
+    }
+
+    function statusLabel(state) {
+        switch (state) {
+        case "connected":
+            return qsTr("Connected")
+        case "connecting":
+            return qsTr("Connecting")
+        case "disconnecting":
+            return qsTr("Disconnecting")
+        case "disconnected":
+            return qsTr("Disconnected")
+        case "subscribed":
+            return qsTr("Subscribed")
+        case "pending":
+            return qsTr("Pending")
+        case "queued":
+            return qsTr("Queued")
+        case "sent":
+            return qsTr("Sent")
+        case "published":
+            return qsTr("Published")
+        case "acknowledged":
+            return qsTr("Acknowledged")
+        case "completed":
+            return qsTr("Completed")
+        case "paused":
+            return qsTr("Paused")
+        case "saved":
+            return qsTr("Saved")
+        case "unsubscribed":
+            return qsTr("Unsubscribed")
+        case "error":
+            return qsTr("Error")
+        case "failed":
+            return qsTr("Failed")
+        case "idle":
+            return qsTr("Idle")
+        default:
+            return state || qsTr("Idle")
+        }
     }
 }

@@ -70,6 +70,7 @@
   - Sql
   - Mqtt
   - Svg
+  - LinguistTools
 - 通过 Qt Creator Kit、Qt 自带的 `qt-cmake`，或本机专用的 `CMakeUserPresets.json` 指定 Qt 安装路径。
 
 项目会在 CMake configure 阶段通过 `FetchContent` 从 `lua.org` 下载固定版本的 Lua 源码，并编译为项目内的静态库 `mqtt_plus_lua`。如果本机 Qt 没有安装 `Qt6Mqtt`，或 configure 阶段无法下载 Lua 源码，配置会失败。
@@ -103,6 +104,22 @@ cmake --build --preset qt6.11-debug --target all_qmllint
 ```
 
 `all_qmllint` 用于检查 QML 文件，建议在提交 UI 变更前运行。
+
+## 多语言
+
+应用当前支持英文和简体中文。英文是源码基线，简体中文翻译文件位于 `i18n/mqtt_plus_zh_CN.ts`，CMake 构建会生成并打包对应的 `.qm` 资源。
+
+更新翻译条目：
+
+```bash
+lupdate src qml -ts i18n/mqtt_plus_zh_CN.ts
+```
+
+发布翻译随正常构建生成：
+
+```bash
+cmake --build --preset qt6.11-debug
+```
 
 ## 运行
 

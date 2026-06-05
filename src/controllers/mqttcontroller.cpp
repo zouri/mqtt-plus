@@ -27,15 +27,15 @@ void MqttController::connectCurrentSession()
     }
 
     if (client->hostname().trimmed().isEmpty()) {
-        session->lastError = QStringLiteral("Broker host cannot be empty.");
-        m_app.appendEvent(*session, QStringLiteral("Connection"), session->lastError);
+        session->lastError = tr("Broker host cannot be empty.");
+        m_app.appendEvent(*session, tr("Connection"), session->lastError);
         m_app.notifySessionViewsChanged();
         return;
     }
 
     if (client->clientId().trimmed().isEmpty()) {
-        session->lastError = QStringLiteral("Client ID cannot be empty.");
-        m_app.appendEvent(*session, QStringLiteral("Connection"), session->lastError);
+        session->lastError = tr("Client ID cannot be empty.");
+        m_app.appendEvent(*session, tr("Connection"), session->lastError);
         m_app.notifySessionViewsChanged();
         return;
     }
@@ -44,7 +44,7 @@ void MqttController::connectCurrentSession()
     session->sessionRestored = false;
     session->lastError.clear();
     updatePublishStatus(*session, QStringLiteral("idle"));
-    connectSession(*session, QStringLiteral("Connecting to"));
+    connectSession(*session, tr("Connecting to"));
 
     m_app.notifySessionViewsChanged();
 }
@@ -80,18 +80,18 @@ void MqttController::publishCurrentSession(
 
     const QString trimmedTopic = topic.trimmed();
     if (trimmedTopic.isEmpty()) {
-        m_app.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Topic cannot be empty."));
+        m_app.appendEvent(*session, tr("Publish"), tr("Topic cannot be empty."));
         return;
     }
 
     const QMqttTopicName topicName(trimmedTopic);
     if (!topicName.isValid()) {
-        m_app.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Invalid topic name: %1").arg(trimmedTopic));
+        m_app.appendEvent(*session, tr("Publish"), tr("Invalid topic name: %1").arg(trimmedTopic));
         return;
     }
 
     if (client->state() != QMqttClient::Connected) {
-        m_app.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Connect before publishing."));
+        m_app.appendEvent(*session, tr("Publish"), tr("Connect before publishing."));
         return;
     }
 
@@ -101,8 +101,8 @@ void MqttController::publishCurrentSession(
     if (!PayloadCodec::encodeForPublish(payloadFormat, payload, payloadBytes, error)) {
         m_app.appendEvent(
             *session,
-            QStringLiteral("Publish"),
-            QStringLiteral("%1 (%2)").arg(error).arg(PayloadCodec::formatName(payloadFormat)));
+            tr("Publish"),
+            tr("%1 (%2)").arg(error).arg(PayloadCodec::formatName(payloadFormat)));
         return;
     }
 
@@ -119,17 +119,17 @@ void MqttController::publishCurrentSession(
 
     const qint32 messageId = client->publish(topicName, payloadBytes, SessionConfig::sanitizeQos(qos), retain);
     if (messageId < 0) {
-        updatePublishStatus(*session, QStringLiteral("failed"), QStringLiteral("Qt MQTT rejected the publish request."));
-        m_app.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Publish rejected for %1").arg(trimmedTopic));
+        updatePublishStatus(*session, QStringLiteral("failed"), tr("Qt MQTT rejected the publish request."));
+        m_app.appendEvent(*session, tr("Publish"), tr("Publish rejected for %1").arg(trimmedTopic));
     } else {
         updatePublishStatus(*session, QStringLiteral("queued"), QString(), messageId);
         m_app.appendEvent(
             *session,
-            QStringLiteral("Publish"),
-            QStringLiteral("Queued %1 (QoS %2%3)")
+            tr("Publish"),
+            tr("Queued %1 (QoS %2%3)")
                 .arg(trimmedTopic)
                 .arg(SessionConfig::sanitizeQos(qos))
-                .arg(retain ? QStringLiteral(", retain") : QString()));
+                .arg(retain ? tr(", retain") : QString()));
     }
 
     m_app.notifyCurrentSessionViewsChanged();
@@ -155,7 +155,7 @@ void MqttController::bindSessionSignals(SessionState *session)
                     .arg(protocolVersionLabel(boundSession->protocolVersion))
                     .arg(transportLabel(boundSession->transport))
                     .arg(boundClient ? boundClient->clientId() : QString());
-            m_app.appendEvent(*boundSession, QStringLiteral("Connection"), QStringLiteral("Connected to broker"));
+            m_app.appendEvent(*boundSession, tr("Connection"), tr("Connected to broker"));
             m_app.m_subscriptionController.restoreActiveSubscriptions(*boundSession, false);
         }
 
@@ -168,10 +168,10 @@ void MqttController::bindSessionSignals(SessionState *session)
                 boundSession->connectTimeoutTimer->stop();
             }
             const QString message = boundSession->disconnectRequested
-                ? QStringLiteral("Disconnected")
-                : QStringLiteral("Connection closed by broker");
+                ? tr("Disconnected")
+                : tr("Connection closed by broker");
             boundSession->disconnectRequested = false;
-            m_app.appendEvent(*boundSession, QStringLiteral("Connection"), message);
+            m_app.appendEvent(*boundSession, tr("Connection"), message);
         }
 
         m_app.notifySessionAndSubscriptionViewsChanged();
@@ -197,7 +197,7 @@ void MqttController::bindSessionSignals(SessionState *session)
                     message = QStringLiteral("%1 (%2)").arg(message).arg(socketText);
                 }
                 boundSession->lastError = message;
-                m_app.appendEvent(*boundSession, QStringLiteral("Error"), message);
+                m_app.appendEvent(*boundSession, tr("Error"), message);
             }
 
             m_app.notifySessionViewsChanged();
@@ -206,7 +206,7 @@ void MqttController::bindSessionSignals(SessionState *session)
     connect(client, &QMqttClient::brokerSessionRestored, this, [this, sessionId = session->id]() {
         if (auto *boundSession = m_app.sessionById(sessionId)) {
             boundSession->sessionRestored = true;
-            m_app.appendEvent(*boundSession, QStringLiteral("Connection"), QStringLiteral("Broker session restored"));
+            m_app.appendEvent(*boundSession, tr("Connection"), tr("Broker session restored"));
         }
         m_app.notifySessionViewsChanged();
     });
@@ -272,10 +272,10 @@ void MqttController::connectSession(SessionState &session, const QString &eventP
         session.connectTimeoutTimer->start((std::max)(1, session.connectTimeoutSeconds) * 1000);
     }
 
-    m_app.appendEvent(
+        m_app.appendEvent(
         session,
-        QStringLiteral("Connection"),
-        QStringLiteral("%1 %2:%3 over %4 using %5")
+        tr("Connection"),
+        tr("%1 %2:%3 over %4 using %5")
             .arg(eventPrefix)
             .arg(client->hostname())
             .arg(client->port())
@@ -290,7 +290,7 @@ void MqttController::connectSession(SessionState &session, const QString &eventP
                 session.connectTimeoutTimer->stop();
             }
             session.lastError = tlsError;
-            m_app.appendEvent(session, QStringLiteral("Error"), tlsError);
+            m_app.appendEvent(session, tr("Error"), tlsError);
             return;
         }
         client->connectToHostEncrypted(configuration);
@@ -313,7 +313,7 @@ QSslConfiguration MqttController::sslConfigurationForSession(const SessionState 
     if (!caPath.isEmpty()) {
         const QList<QSslCertificate> certificates = QSslCertificate::fromPath(caPath);
         if (certificates.isEmpty()) {
-            errorMessage = QStringLiteral("CA certificate file could not be loaded.");
+            errorMessage = tr("CA certificate file could not be loaded.");
             return configuration;
         }
         configuration.setCaCertificates(certificates);
@@ -323,7 +323,7 @@ QSslConfiguration MqttController::sslConfigurationForSession(const SessionState 
     if (!certificatePath.isEmpty()) {
         const QList<QSslCertificate> certificates = QSslCertificate::fromPath(certificatePath);
         if (certificates.isEmpty()) {
-            errorMessage = QStringLiteral("Client certificate file could not be loaded.");
+            errorMessage = tr("Client certificate file could not be loaded.");
             return configuration;
         }
         configuration.setLocalCertificate(certificates.first());
@@ -333,7 +333,7 @@ QSslConfiguration MqttController::sslConfigurationForSession(const SessionState 
     if (!keyPath.isEmpty()) {
         const QSslKey privateKey = readPrivateKey(keyPath);
         if (privateKey.isNull()) {
-            errorMessage = QStringLiteral("Client key file could not be loaded.");
+            errorMessage = tr("Client key file could not be loaded.");
             return configuration;
         }
         configuration.setPrivateKey(privateKey);

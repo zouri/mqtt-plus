@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
     AppFacade facade;
 
     QQmlApplicationEngine engine;
+    QObject::connect(&facade, &AppFacade::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
     engine.setInitialProperties({
         {QStringLiteral("app"), QVariant::fromValue(&facade)},
     });

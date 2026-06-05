@@ -20,6 +20,7 @@
 #include "controllers/mqttcontroller.h"
 #include "controllers/eventcontroller.h"
 #include "controllers/themecontroller.h"
+#include "controllers/languagecontroller.h"
 #include "services/storage/historystore.h"
 #include "services/scripting/luarunner.h"
 #include "models/eventstreammodel.h"
@@ -48,6 +49,9 @@ class AppFacade : public QObject
     Q_PROPERTY(QStringList payloadFormats READ payloadFormats CONSTANT)
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
     Q_PROPERTY(QString effectiveTheme READ effectiveTheme NOTIFY effectiveThemeChanged)
+    Q_PROPERTY(QString languageMode READ languageMode WRITE setLanguageMode NOTIFY languageModeChanged)
+    Q_PROPERTY(QString effectiveLanguage READ effectiveLanguage NOTIFY languageChanged)
+    Q_PROPERTY(QVariantList availableLanguages READ availableLanguages NOTIFY languageChanged)
 
 public:
     explicit AppFacade(QObject *parent = nullptr);
@@ -65,9 +69,13 @@ public:
     QStringList payloadFormats() const;
     QString themeMode() const;
     QString effectiveTheme() const;
+    QString languageMode() const;
+    QString effectiveLanguage() const;
+    QVariantList availableLanguages() const;
 
     void setCurrentSessionIndex(int index);
     void setThemeMode(const QString &mode);
+    void setLanguageMode(const QString &mode);
 
     Q_INVOKABLE QVariantMap defaultSessionConfig() const;
     Q_INVOKABLE QVariantMap sessionConfigAt(int index) const;
@@ -114,6 +122,8 @@ signals:
     void scriptTestSamplesChanged();
     void themeModeChanged();
     void effectiveThemeChanged();
+    void languageModeChanged();
+    void languageChanged();
 
 private:
     SessionState *currentSessionState();
@@ -177,6 +187,7 @@ private:
     MqttController m_mqttController;
     EventController m_eventController;
     ThemeController m_themeController;
+    LanguageController m_languageController;
     HistoryStore m_historyStore;
     SessionListModel m_sessionsModel;
     SubscriptionListModel m_subscriptionsModel;
