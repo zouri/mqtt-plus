@@ -149,7 +149,7 @@ bool SessionController::updateSessionConfigAt(int index, const QVariantMap &conf
 
     if (reconnect) {
         session->disconnectRequested = false;
-        m_app->connectSession(*session, QStringLiteral("Connecting to"));
+        m_app->connectSession(*session, tr("Connecting to"));
     }
 
     emit m_app->sessionsChanged();
@@ -166,7 +166,7 @@ void SessionController::addSessionWithConfig(const QVariantMap &config)
     }
 
     const QString fallbackName = config.value(QStringLiteral("name")).toString().trimmed().isEmpty()
-        ? QStringLiteral("Session %1").arg(m_sessions.size() + 1)
+        ? tr("Session %1").arg(m_sessions.size() + 1)
         : config.value(QStringLiteral("name")).toString().trimmed();
 
     SessionState session = m_app->createDefaultSession(fallbackName);
@@ -187,7 +187,7 @@ void SessionController::duplicateSessionAt(int index)
     const auto &source = m_sessions.at(index);
     const QVariantMap config = SessionSettingsStore::duplicateConfigFromState(source);
 
-    SessionState session = m_app->createDefaultSession(QStringLiteral("%1 Copy").arg(source.name));
+    SessionState session = m_app->createDefaultSession(tr("%1 Copy").arg(source.name));
     m_app->configureSession(session, config, false);
     session.outputPaused = source.outputPaused;
     session.subscriptionFormats = source.subscriptionFormats;

@@ -5,7 +5,7 @@ project(mqtt-plus VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg LinguistTools)
 
 include(GNUInstallDirs)
 
@@ -77,6 +77,8 @@ qt_add_executable(mqtt_plus_app
     src/controllers/mqttcontroller.h
     src/controllers/eventcontroller.cpp
     src/controllers/eventcontroller.h
+    src/controllers/languagecontroller.cpp
+    src/controllers/languagecontroller.h
     src/domain/script.h
     src/domain/session.h
     src/domain/sessionconfig.cpp
@@ -104,6 +106,13 @@ qt_add_executable(mqtt_plus_app
     src/services/storage/scriptstore.h
     src/services/storage/sessionsettingsstore.cpp
     src/services/storage/sessionsettingsstore.h
+)
+
+qt_add_translations(mqtt_plus_app
+    TS_FILES
+        i18n/mqtt_plus_zh_CN.ts
+    RESOURCE_PREFIX
+        "/i18n"
 )
 
 qt_add_qml_module(mqtt_plus_app

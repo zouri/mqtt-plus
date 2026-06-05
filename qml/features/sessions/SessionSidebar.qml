@@ -19,6 +19,17 @@ Rectangle {
     color: ui.themePalette.windowBg
     // border.color: ui.themePalette.sidebarBorder
 
+    function languageButtonEmoji(mode) {
+        switch (mode) {
+        case "en":
+            return "🇺🇸"
+        case "zh_CN":
+            return "🇨🇳"
+        default:
+            return "🌐"
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 8
@@ -309,6 +320,42 @@ Rectangle {
                 iconSize: 18
                 toolTipText: qsTr("Lua scripts")
                 onClicked: control.scriptWorkspaceRequested()
+            }
+
+            AppIconButton {
+                ui: control.ui
+                implicitWidth: 34
+                implicitHeight: 34
+                cornerRadius: 12
+                symbol: control.languageButtonEmoji(control.appController.languageMode)
+                symbolSize: 17
+                toolTipText: qsTr("Language")
+                onClicked: languageMenu.popup()
+            }
+
+            Menu {
+                id: languageMenu
+
+                MenuItem {
+                    text: qsTr("🌐 System")
+                    checkable: true
+                    checked: control.appController.languageMode === "system"
+                    onTriggered: control.appController.languageMode = "system"
+                }
+
+                MenuItem {
+                    text: qsTr("🇺🇸 English")
+                    checkable: true
+                    checked: control.appController.languageMode === "en"
+                    onTriggered: control.appController.languageMode = "en"
+                }
+
+                MenuItem {
+                    text: qsTr("🇨🇳 简体中文")
+                    checkable: true
+                    checked: control.appController.languageMode === "zh_CN"
+                    onTriggered: control.appController.languageMode = "zh_CN"
+                }
             }
 
             Item {

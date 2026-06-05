@@ -36,7 +36,7 @@ bool SubscriptionController::upsertCurrentSubscription(
 
     const QMqttTopicFilter topicFilter(filter);
     if (!topicFilter.isValid()) {
-        m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
+        m_app.appendEvent(*session, tr("Subscription"), tr("Invalid topic filter: %1").arg(filter));
         return false;
     }
 
@@ -123,7 +123,7 @@ void SubscriptionController::removeCurrentSubscription(const QString &topic)
         client->unsubscribe(QMqttTopicFilter(filter));
     }
 
-    m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Removed %1").arg(filter));
+    m_app.appendEvent(*session, tr("Subscription"), tr("Removed %1").arg(filter));
     session->subscriptionFormats.remove(filter);
     session->subscriptions.erase(it);
     m_app.saveSessions();
@@ -150,14 +150,14 @@ void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, 
         } else if (auto *client = session->client; client && client->state() == QMqttClient::Connected) {
             client->unsubscribe(QMqttTopicFilter(entry->topic));
         }
-        m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Paused %1").arg(entry->topic));
+        m_app.appendEvent(*session, tr("Subscription"), tr("Paused %1").arg(entry->topic));
     } else {
         entry->lastError.clear();
         auto *client = session->client;
         if (client && client->state() == QMqttClient::Connected) {
             ensureSubscriptionActive(*session, *entry, true);
         } else {
-            m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Queued %1 for reconnect").arg(entry->topic));
+            m_app.appendEvent(*session, tr("Subscription"), tr("Queued %1 for reconnect").arg(entry->topic));
         }
     }
 
@@ -238,9 +238,9 @@ void SubscriptionController::ensureSubscriptionActive(SessionState &session, Sub
     const QMqttTopicFilter filter(entry.topic);
     if (!filter.isValid()) {
         entry.runtimeState = QStringLiteral("error");
-        entry.lastError = QStringLiteral("Invalid topic filter.");
+        entry.lastError = tr("Invalid topic filter.");
         if (emitEvents) {
-            m_app.appendEvent(session, QStringLiteral("Subscription"), QStringLiteral("%1 is not a valid topic filter").arg(entry.topic));
+            m_app.appendEvent(session, tr("Subscription"), tr("%1 is not a valid topic filter").arg(entry.topic));
         }
         return;
     }
@@ -248,9 +248,9 @@ void SubscriptionController::ensureSubscriptionActive(SessionState &session, Sub
     QMqttSubscription *subscription = client->subscribe(filter, SessionConfig::sanitizeQos(entry.requestedQos));
     if (!subscription) {
         entry.runtimeState = QStringLiteral("error");
-        entry.lastError = QStringLiteral("Qt MQTT returned no subscription object.");
+        entry.lastError = tr("Qt MQTT returned no subscription object.");
         if (emitEvents) {
-            m_app.appendEvent(session, QStringLiteral("Subscription"), QStringLiteral("Failed to subscribe to %1").arg(entry.topic));
+            m_app.appendEvent(session, tr("Subscription"), tr("Failed to subscribe to %1").arg(entry.topic));
         }
         return;
     }
@@ -264,8 +264,8 @@ void SubscriptionController::ensureSubscriptionActive(SessionState &session, Sub
     if (emitEvents) {
         m_app.appendEvent(
             session,
-            QStringLiteral("Subscription"),
-            QStringLiteral("Requested %1 at QoS %2").arg(entry.topic).arg(entry.requestedQos));
+            tr("Subscription"),
+            tr("Requested %1 at QoS %2").arg(entry.topic).arg(entry.requestedQos));
     }
 }
 
@@ -311,21 +311,21 @@ void SubscriptionController::updateSubscriptionState(
         if (state == QMqttSubscription::Subscribed) {
             m_app.appendEvent(
                 *session,
-                QStringLiteral("Subscription"),
-                QStringLiteral("Subscribed to %1").arg(entry->topic));
+                tr("Subscription"),
+                tr("Subscribed to %1").arg(entry->topic));
         } else if (state == QMqttSubscription::Unsubscribed && entry->paused) {
             m_app.appendEvent(
                 *session,
-                QStringLiteral("Subscription"),
-                QStringLiteral("Paused %1").arg(entry->topic));
+                tr("Subscription"),
+                tr("Paused %1").arg(entry->topic));
         } else if (state == QMqttSubscription::Error) {
             const QString reason = entry->lastError.isEmpty()
-                ? QStringLiteral("Broker returned a subscription error.")
+                ? tr("Broker returned a subscription error.")
                 : entry->lastError;
             m_app.appendEvent(
                 *session,
-                QStringLiteral("Subscription"),
-                QStringLiteral("%1 failed: %2").arg(entry->topic).arg(reason));
+                tr("Subscription"),
+                tr("%1 failed: %2").arg(entry->topic).arg(reason));
         }
     }
 
