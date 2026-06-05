@@ -73,6 +73,17 @@ Rectangle {
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
 
+                function showSessionContextMenu(globalPosition) {
+                    const action = control.appController.showSessionContextMenu(sessionDelegate.index, globalPosition)
+                    if (action === "edit") {
+                        control.sessionEditor.openForEdit(sessionDelegate.index)
+                    } else if (action === "copy") {
+                        control.appController.duplicateSessionAt(sessionDelegate.index)
+                    } else if (action === "delete") {
+                        control.appController.removeSessionAt(sessionDelegate.index)
+                    }
+                }
+
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Return
                             || event.key === Qt.Key_Enter
@@ -82,7 +93,9 @@ Rectangle {
                     } else if (event.key === Qt.Key_Menu
                                || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
                         control.appController.currentSessionIndex = sessionDelegate.index
-                        sessionMenu.popup()
+                        sessionDelegate.showSessionContextMenu(
+                                    sessionDelegate.mapToGlobal(Qt.point(sessionDelegate.width - 8,
+                                                                         Math.round(sessionDelegate.height / 2))))
                         event.accepted = true
                     }
                 }
@@ -127,7 +140,8 @@ Rectangle {
                         sessionDelegate.forceActiveFocus()
                         if (mouse.button === Qt.RightButton) {
                             control.appController.currentSessionIndex = sessionDelegate.index
-                            sessionMenu.popup()
+                            sessionDelegate.showSessionContextMenu(
+                                        sessionDelegate.mapToGlobal(Qt.point(mouse.x, mouse.y)))
                         }
                     }
 
@@ -135,26 +149,6 @@ Rectangle {
                         if (mouse.button === Qt.LeftButton) {
                             control.appController.currentSessionIndex = sessionDelegate.index
                         }
-                    }
-                }
-
-                Menu {
-                    id: sessionMenu
-
-                    MenuItem {
-                        text: qsTr("Edit")
-                        onTriggered: control.sessionEditor.openForEdit(sessionDelegate.index)
-                    }
-
-                    MenuItem {
-                        text: qsTr("Copy")
-                        onTriggered: control.appController.duplicateSessionAt(sessionDelegate.index)
-                    }
-
-                    MenuItem {
-                        text: qsTr("Delete")
-                        enabled: control.appController.sessions.count > 1
-                        onTriggered: control.appController.removeSessionAt(sessionDelegate.index)
                     }
                 }
             }
@@ -312,6 +306,7 @@ Rectangle {
             }
 
             AppIconButton {
+                id: languageButton
                 ui: control.ui
                 implicitWidth: 34
                 implicitHeight: 34
@@ -330,32 +325,9 @@ Rectangle {
                 symbol: control.languageButtonEmoji(control.appController.languageMode)
                 symbolSize: 17
                 toolTipText: qsTr("Language")
-                onClicked: languageMenu.popup()
-            }
-
-            Menu {
-                id: languageMenu
-
-                MenuItem {
-                    text: qsTr("🌐 System")
-                    checkable: true
-                    checked: control.appController.languageMode === "system"
-                    onTriggered: control.appController.languageMode = "system"
-                }
-
-                MenuItem {
-                    text: qsTr("🇺🇸 English")
-                    checkable: true
-                    checked: control.appController.languageMode === "en"
-                    onTriggered: control.appController.languageMode = "en"
-                }
-
-                MenuItem {
-                    text: qsTr("🇨🇳 简体中文")
-                    checkable: true
-                    checked: control.appController.languageMode === "zh_CN"
-                    onTriggered: control.appController.languageMode = "zh_CN"
-                }
+                onClicked: control.appController.showLanguageMenu(
+                               languageButton.mapToGlobal(Qt.point(languageButton.width / 2,
+                                                                    languageButton.height)))
             }
 
             Item {
