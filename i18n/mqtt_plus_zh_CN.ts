@@ -106,6 +106,36 @@
             <source>Storage</source>
             <translation>存储</translation>
         </message>
+        <message>
+            <location filename="../src/app/appfacademenus.cpp" line="25" />
+            <source>Edit</source>
+            <translation>编辑</translation>
+        </message>
+        <message>
+            <location filename="../src/app/appfacademenus.cpp" line="26" />
+            <source>Copy</source>
+            <translation>复制</translation>
+        </message>
+        <message>
+            <location filename="../src/app/appfacademenus.cpp" line="27" />
+            <source>Delete</source>
+            <translation>删除</translation>
+        </message>
+        <message>
+            <location filename="../src/app/appfacademenus.cpp" line="49" />
+            <source>🌐 System</source>
+            <translation>🌐 跟随系统</translation>
+        </message>
+        <message>
+            <location filename="../src/app/appfacademenus.cpp" line="50" />
+            <source>🇺🇸 English</source>
+            <translation>🇺🇸 English</translation>
+        </message>
+        <message>
+            <location filename="../src/app/appfacademenus.cpp" line="51" />
+            <source>🇨🇳 简体中文</source>
+            <translation>🇨🇳 简体中文</translation>
+        </message>
     </context>
     <context>
         <name>AppFacadeUtils</name>

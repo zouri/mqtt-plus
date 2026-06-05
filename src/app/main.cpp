@@ -1,4 +1,4 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 {
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
     app.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app-icon.png")));
 
     AppFacade facade;

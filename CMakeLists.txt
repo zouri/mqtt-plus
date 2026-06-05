@@ -5,7 +5,7 @@ project(mqtt-plus VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg LinguistTools)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Widgets LinguistTools)
 
 include(GNUInstallDirs)
 
@@ -59,6 +59,7 @@ qt_add_executable(mqtt_plus_app
     src/app/appfacadeevents.cpp
     src/app/appfacademodels.cpp
     src/app/appfacademqtt.cpp
+    src/app/appfacademenus.cpp
     src/app/appfacadescripts.cpp
     src/app/appfacadesessions.cpp
     src/app/appfacadesubscriptions.cpp
@@ -188,6 +189,7 @@ target_link_libraries(mqtt_plus_app
         Qt6::QuickControls2
         Qt6::Sql
         Qt6::Svg
+        Qt6::Widgets
         MqttPlus::Lua
 )
 
