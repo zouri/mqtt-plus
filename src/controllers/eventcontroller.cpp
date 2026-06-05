@@ -119,7 +119,7 @@ LuaScriptResult EventController::parseIncomingPayload(
     const auto *script = m_app.m_scriptController.scriptById(subscription->scriptId);
     if (!script) {
         LuaScriptResult result;
-        result.error = QStringLiteral("Selected Lua script is missing.");
+        result.error = tr("Selected Lua script is missing.");
         return result;
     }
 

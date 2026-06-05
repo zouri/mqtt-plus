@@ -2,6 +2,7 @@
 
 #include "domain/sessionconfig.h"
 
+#include <QCoreApplication>
 #include <QMqttClient>
 #include <QUuid>
 
@@ -97,7 +98,9 @@ QVariantMap configFromState(const SessionState &session)
 QVariantMap duplicateConfigFromState(const SessionState &session)
 {
     QVariantMap config = configFromState(session);
-    config.insert(QStringLiteral("name"), QStringLiteral("%1 Copy").arg(session.name));
+    config.insert(
+        QStringLiteral("name"),
+        QCoreApplication::translate("SessionSettingsStore", "%1 Copy").arg(session.name));
     config.insert(QStringLiteral("clientId"), SessionConfig::generateClientId());
     return config;
 }
@@ -117,7 +120,7 @@ LoadedSession readSession(
         session.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     }
     if (session.name.isEmpty()) {
-        session.name = QStringLiteral("Session %1").arg(index + 1);
+        session.name = QCoreApplication::translate("SessionSettingsStore", "Session %1").arg(index + 1);
     }
 
     session.outputPaused = settings.value(QStringLiteral("outputPaused"), false).toBool();
@@ -217,8 +220,8 @@ bool writeSessions(QSettings &settings, const QVector<SessionState> &sessions, Q
     }
 
     errorMessage = settings.status() == QSettings::AccessError
-        ? QStringLiteral("Cannot write session settings: access denied.")
-        : QStringLiteral("Cannot write session settings: invalid settings format.");
+        ? QCoreApplication::translate("SessionSettingsStore", "Cannot write session settings: access denied.")
+        : QCoreApplication::translate("SessionSettingsStore", "Cannot write session settings: invalid settings format.");
     return false;
 }
 

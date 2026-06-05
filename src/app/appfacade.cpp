@@ -13,6 +13,7 @@ AppFacade::AppFacade(QObject *parent)
     , m_mqttController(this, this)
     , m_eventController(this, this)
     , m_themeController(&m_settings, this)
+    , m_languageController(&m_settings, this)
     , m_sessionsModel(this)
     , m_subscriptionsModel(this)
     , m_eventsModel(this)
@@ -24,6 +25,15 @@ AppFacade::AppFacade(QObject *parent)
     connect(&m_scriptController, &ScriptController::storageError, this, &AppFacade::reportStorageError);
     connect(&m_themeController, &ThemeController::modeChanged, this, &AppFacade::themeModeChanged);
     connect(&m_themeController, &ThemeController::effectiveThemeChanged, this, &AppFacade::effectiveThemeChanged);
+    connect(&m_languageController, &LanguageController::modeChanged, this, &AppFacade::languageModeChanged);
+    connect(&m_languageController, &LanguageController::languageChanged, this, [this]() {
+        refreshSessionsModel();
+        refreshSubscriptionsModel();
+        emit currentSessionChanged();
+        emit sessionsChanged();
+        emit subscriptionsChanged();
+        emit languageChanged();
+    });
 
     m_subscriptionFpsRefreshTimer.setInterval(kSubscriptionFpsRefreshIntervalMs);
     connect(

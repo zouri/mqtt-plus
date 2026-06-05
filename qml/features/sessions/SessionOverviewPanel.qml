@@ -33,7 +33,7 @@ AppPanel {
                 spacing: 3
 
                 Label {
-                    text: control.session.name || "No session"
+                    text: control.session.name || qsTr("No session")
                     color: control.ui.textStrong
                     font.pixelSize: 24
                     font.bold: true
@@ -69,7 +69,7 @@ AppPanel {
                 spacing: 2
 
                 Label {
-                    text: "Protocol"
+                    text: qsTr("Protocol")
                     color: control.ui.textMuted
                     font.pixelSize: 11
                 }
@@ -96,7 +96,7 @@ AppPanel {
                 spacing: 2
 
                 Label {
-                    text: "Client ID"
+                    text: qsTr("Client ID")
                     color: control.ui.textMuted
                     font.pixelSize: 11
                 }
@@ -125,7 +125,7 @@ AppPanel {
                     implicitHeight: 38
                     primary: !canDisconnect
                     danger: canDisconnect
-                    toolTipText: canDisconnect ? "Disconnect" : "Connect"
+                    toolTipText: canDisconnect ? qsTr("Disconnect") : qsTr("Connect")
 
                     onClicked: {
                         if (canDisconnect) {
@@ -143,7 +143,7 @@ AppPanel {
                     implicitWidth: 38
                     implicitHeight: 38
                     enabled: control.status.state === "disconnected"
-                    toolTipText: "Edit connection"
+                    toolTipText: qsTr("Edit connection")
                     onClicked: control.sessionEditor.openForEdit(control.appController.currentSessionIndex)
                 }
             }

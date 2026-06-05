@@ -39,7 +39,7 @@ Rectangle {
         }
 
         Label {
-            text: control.label
+            text: control.ui.statusLabel(control.label)
             color: control.badgeText
             font.pixelSize: 11
             font.bold: control.strong

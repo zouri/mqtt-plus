@@ -48,7 +48,7 @@ void ScriptController::loadScripts()
 QString ScriptController::upsertScript(const QString &id, const QString &name, const QString &code)
 {
     const QString trimmedName = name.trimmed();
-    const QString scriptName = trimmedName.isEmpty() ? QStringLiteral("Untitled Script") : trimmedName;
+    const QString scriptName = trimmedName.isEmpty() ? tr("Untitled Script") : trimmedName;
     const QString scriptCode = code.trimmed().isEmpty() ? ScriptStore::defaultLuaScript() : code;
     const QString scriptId = id.trimmed().isEmpty() ? QUuid::createUuid().toString(QUuid::WithoutBraces) : id.trimmed();
     const QString updatedAt = timestampNow();
@@ -155,6 +155,6 @@ bool ScriptController::saveScripts()
     if (ScriptStore::saveScripts(m_scripts, m_scriptIndexWritable, errorMessage)) {
         return true;
     }
-    emit storageError(errorMessage.isEmpty() ? QStringLiteral("Cannot save scripts.") : errorMessage);
+    emit storageError(errorMessage.isEmpty() ? tr("Cannot save scripts.") : errorMessage);
     return false;
 }
