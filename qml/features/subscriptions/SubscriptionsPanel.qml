@@ -156,15 +156,16 @@ AppPanel {
                             spacing: 1
 
                             AppIconButton {
+                                id: subscriptionEditButton
                                 ui: control.ui
                                 iconSource: control.ui.materialIcon("edit")
                                 implicitWidth: 26
                                 implicitHeight: 26
                                 iconSize: 13
                                 cornerRadius: 6
-
-
+                                restBg: "transparent"
                                 outlineColor: "transparent"
+
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::edit`
                                 toolTipText: qsTr("Edit script")
@@ -185,7 +186,9 @@ AppPanel {
                                 implicitHeight: 26
                                 iconSize: 13
                                 cornerRadius: 6
+                                restBg: "transparent"
                                 outlineColor: "transparent"
+
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::pause`
                                 toolTipText: subscriptionDelegate.paused ? qsTr("Resume topic") : qsTr("Pause topic")
@@ -205,9 +208,11 @@ AppPanel {
                                 iconSource: control.ui.materialIcon("xmark")
                                 implicitWidth: 26
                                 implicitHeight: 26
-                                iconSize: 12
+                                iconSize: 13
                                 cornerRadius: 6
+                                restBg: "transparent"
                                 outlineColor: "transparent"
+
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::delete`
                                 toolTipText: qsTr("Delete topic")
