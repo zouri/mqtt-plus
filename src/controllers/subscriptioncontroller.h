@@ -39,6 +39,7 @@ private:
     void updateSubscriptionState(
         const QString &sessionId,
         const QString &topic,
+        const QPointer<QMqttSubscription> &subscription,
         QMqttSubscription::SubscriptionState state);
 
     AppFacade &m_app;
