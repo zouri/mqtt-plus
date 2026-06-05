@@ -153,6 +153,10 @@ void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, 
         m_app.appendEvent(*session, tr("Subscription"), tr("Paused %1").arg(entry->topic));
     } else {
         entry->lastError.clear();
+        if (entry->runtimeSubscription) {
+            entry->runtimeSubscription->unsubscribe();
+            entry->runtimeSubscription.clear();
+        }
         auto *client = session->client;
         if (client && client->state() == QMqttClient::Connected) {
             ensureSubscriptionActive(*session, *entry, true);
@@ -280,19 +284,21 @@ void SubscriptionController::observeSubscription(SessionState &session, Subscrip
         subscription,
         &QMqttSubscription::stateChanged,
         this,
-        [this, sessionId = session.id, topic = entry.topic](QMqttSubscription::SubscriptionState state) {
-            updateSubscriptionState(sessionId, topic, state);
+        [this, sessionId = session.id, topic = entry.topic, subscription = QPointer<QMqttSubscription>(subscription)](
+            QMqttSubscription::SubscriptionState state) {
+            updateSubscriptionState(sessionId, topic, subscription, state);
         });
 }
 
 void SubscriptionController::updateSubscriptionState(
     const QString &sessionId,
     const QString &topic,
+    const QPointer<QMqttSubscription> &subscription,
     QMqttSubscription::SubscriptionState state)
 {
     auto *session = m_app.sessionById(sessionId);
     SubscriptionEntry *entry = subscriptionByTopic(session, topic);
-    if (!session || !entry) {
+    if (!session || !entry || entry->runtimeSubscription != subscription) {
         return;
     }
 
