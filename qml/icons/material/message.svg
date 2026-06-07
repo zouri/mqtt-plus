@@ -1,0 +1,4 @@
+<!-- Material-style message icon -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path fill="#000000" d="M4 4h16c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H7l-5 4V6c0-1.1.9-2 2-2zm1 14.15L6.3 17H20V6H4v12.15H5zM7 9h10v2H7V9zm0 3h7v2H7v-2z"/>
+</svg>

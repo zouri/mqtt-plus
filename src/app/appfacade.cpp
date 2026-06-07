@@ -2,6 +2,9 @@
 
 #include "app/appfacadeutils.h"
 
+#include <QClipboard>
+#include <QGuiApplication>
+
 using namespace AppFacadeUtils;
 
 AppFacade::AppFacade(QObject *parent)
@@ -101,4 +104,11 @@ void AppFacade::notifySessionCollectionViewsChanged()
     emit subscriptionsChanged();
     emit eventStreamChanged();
     emit scriptLibraryChanged();
+}
+
+void AppFacade::copyTextToClipboard(const QString &text) const
+{
+    if (auto *clipboard = QGuiApplication::clipboard()) {
+        clipboard->setText(text);
+    }
 }

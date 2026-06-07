@@ -127,11 +127,11 @@ QVariant EventStreamModel::roleValue(const QVariantMap &row, int role) const
     case TopicRole:
         return row.value(QStringLiteral("topic"));
     case TestPayloadRole:
-        return row.value(QStringLiteral("testPayload"));
+        return row.value(QStringLiteral("testPayload"), QString());
     case TestFormatRole:
-        return row.value(QStringLiteral("testFormat"));
+        return row.value(QStringLiteral("testFormat"), 0);
     case TestFormatNameRole:
-        return row.value(QStringLiteral("testFormatName"));
+        return row.value(QStringLiteral("testFormatName"), QString());
     default:
         return {};
     }

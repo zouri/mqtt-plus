@@ -50,7 +50,7 @@ void AppFacade::showLanguageMenu(const QPointF &globalPosition)
     languageGroup.setExclusive(true);
 
     QAction *systemAction = menu.addAction(tr("🌐 System"));
-    QAction *englishAction = menu.addAction(tr("🇺🇸 English"));
+    QAction *englishAction = menu.addAction(tr("🇬🇧 English"));
     QAction *simplifiedChineseAction = menu.addAction(tr("🇨🇳 简体中文"));
     const QList<QAction *> languageActions = {
         systemAction,

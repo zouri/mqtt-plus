@@ -125,6 +125,8 @@ QVariantMap AppFacade::sessionStatus() const
     row.insert(QStringLiteral("state"), state);
     row.insert(QStringLiteral("connected"), state == QStringLiteral("connected"));
     row.insert(QStringLiteral("summary"), summary);
+    row.insert(QStringLiteral("lastError"), session->lastError);
+    row.insert(QStringLiteral("hasError"), !session->lastError.isEmpty());
     row.insert(QStringLiteral("brokerInfo"), session->brokerInfo);
     row.insert(QStringLiteral("sessionRestored"), session->sessionRestored);
     row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
@@ -158,6 +160,8 @@ void AppFacade::refreshSubscriptionsModel()
         row.paused = subscription.paused;
         row.state = subscriptionDisplayState(*session, subscription, session->client);
         row.lastError = subscription.lastError;
+        row.receivedMessageCount = subscription.receivedMessageCount;
+        row.lastMessageTimestamp = subscription.lastMessageTimestamp;
         rows.append(row);
     }
     m_subscriptionsModel.setRows(rows);

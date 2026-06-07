@@ -137,6 +137,7 @@ qt_add_qml_module(mqtt_plus_app
         qml/components/AppTextField.qml
         qml/AppUi.qml
         qml/features/events/EventStreamView.qml
+        qml/features/events/LogPage.qml
         qml/features/events/SessionActivityPanel.qml
         qml/features/publish/PublishComposer.qml
         qml/features/scripts/ScriptLibraryWindow.qml
@@ -158,6 +159,8 @@ qt_add_qml_module(mqtt_plus_app
         qml/icons/material/edit.svg
         qml/icons/material/light-mode.svg
         qml/icons/material/link.svg
+        qml/icons/material/list.svg
+        qml/icons/material/message.svg
         qml/icons/material/pause.svg
         qml/icons/material/play.svg
         qml/icons/material/power.svg
