@@ -40,20 +40,34 @@ ApplicationWindow {
     readonly property var session: root.appController.currentSession
     readonly property var status: root.appController.sessionStatus
     readonly property var publishStatus: root.appController.publishStatus
+    property string currentWorkspacePage: "messages"
+
+    function resetVisibleStreams() {
+        sessionActivityPanel.resetStreamPosition()
+        logPage.resetStreamPosition()
+    }
+
+    function noteVisibleStreamRowAppended(row) {
+        if (root.currentWorkspacePage === "log") {
+            logPage.noteStreamRowAppended(row)
+        } else {
+            sessionActivityPanel.noteStreamRowAppended(row)
+        }
+    }
 
     Component.onCompleted: {
-        sessionActivityPanel.resetStreamPosition()
+        root.resetVisibleStreams()
     }
 
     Connections {
         target: root.appController
 
         function onEventStreamChanged() {
-            sessionActivityPanel.resetStreamPosition()
+            root.resetVisibleStreams()
         }
 
         function onEventStreamRowAppended(row) {
-            sessionActivityPanel.noteStreamRowAppended()
+            root.noteVisibleStreamRowAppended(row)
         }
     }
 
@@ -65,8 +79,10 @@ ApplicationWindow {
             ui: ui
             appController: root.appController
             sessionEditor: sessionEditor
+            currentPage: root.currentWorkspacePage
             Layout.preferredWidth: 238
             Layout.fillHeight: true
+            onPageRequested: (page) => root.currentWorkspacePage = page
             onScriptWorkspaceRequested: scriptLibraryWindow.openLibrary()
         }
 
@@ -106,14 +122,29 @@ ApplicationWindow {
                     }
                 }
 
-                SessionActivityPanel {
-                    id: sessionActivityPanel
-                    ui: ui
-                    appController: root.appController
-                    session: root.session
-                    status: root.status
-                    publishStatus: root.publishStatus
-                    fontFamily: root.font.family
+                StackLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    currentIndex: root.currentWorkspacePage === "log" ? 1 : 0
+
+                    SessionActivityPanel {
+                        id: sessionActivityPanel
+                        ui: ui
+                        appController: root.appController
+                        session: root.session
+                        status: root.status
+                        publishStatus: root.publishStatus
+                        fontFamily: root.font.family
+                    }
+
+                    LogPage {
+                        id: logPage
+                        ui: ui
+                        appController: root.appController
+                        session: root.session
+                        status: root.status
+                        fontFamily: root.font.family
+                    }
                 }
             }
         }

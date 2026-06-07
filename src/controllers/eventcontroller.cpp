@@ -153,6 +153,8 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
 
         subscription.recentMessageTimestampsMs.append(nowMs);
         pruneRecentMessageTimestamps(subscription.recentMessageTimestampsMs, nowMs);
+        subscription.receivedMessageCount += 1;
+        subscription.lastMessageTimestamp = timestamp;
         refreshCurrentSubscriptionFps = refreshCurrentSubscriptionFps || session == m_app.currentSessionState();
     }
 
@@ -188,6 +190,8 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         scriptDisplayName);
 
     if (refreshCurrentSubscriptionFps && !m_app.m_subscriptionFpsRefreshTimer.isActive()) {
+        m_app.refreshSubscriptionsModel();
+        emit m_app.subscriptionsChanged();
         m_app.m_subscriptionFpsRefreshTimer.start();
     }
 

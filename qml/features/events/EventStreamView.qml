@@ -10,11 +10,23 @@ Item {
 
     required property var appController
     required property var session
+    required property var status
     required property var ui
     required property string fontFamily
 
+    property string streamKind: "message"
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
+    property string filterText: ""
+    readonly property bool showingMessages: root.streamKind === "message"
+    readonly property string activeTitle: root.showingMessages ? qsTr("Messages") : qsTr("Log")
+    readonly property string searchPlaceholder: root.showingMessages
+                                                ? qsTr("Search topic or payload")
+                                                : qsTr("Search log channel or detail")
+    property int matchingEventCount: 0
+    property int activeKindCount: 0
+
+    signal publishDraftRequested(string topic, string payload, int format)
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -34,7 +46,14 @@ Item {
         })
     }
 
-    function noteStreamRowAppended() {
+    function noteStreamRowAppended(row) {
+        const rowKind = row && row.kind ? row.kind : ""
+        const rowMatchesCurrentView = rowKind === root.streamKind
+        if (!rowMatchesCurrentView) {
+            root.recomputeVisibleCount()
+            return
+        }
+
         const shouldStickToBottom = !eventList || eventList.shouldFollowOutput
 
         if (shouldStickToBottom && eventList) {
@@ -69,15 +88,84 @@ Item {
         })
     }
 
+    function rowMatches(kind, timestamp, title, topic, payload, payloadFormat) {
+        if (kind === "divider") {
+            return root.activeKindCount > 0 && root.filterText.trim().length === 0
+        }
+
+        if (kind !== root.streamKind) {
+            return false
+        }
+
+        const needle = root.filterText.trim().toLowerCase()
+        if (needle.length === 0) {
+            return true
+        }
+
+        return `${timestamp} ${title} ${topic} ${payload} ${payloadFormat}`.toLowerCase().indexOf(needle) >= 0
+    }
+
+    function recomputeVisibleCount() {
+        let visibleRows = 0
+        let activeRows = 0
+        const model = root.appController.events
+        const rowCount = model ? model.count : 0
+        for (let i = 0; i < rowCount; ++i) {
+            const row = model.rowAt(i)
+            if ((row.kind || "") === root.streamKind) {
+                activeRows += 1
+            }
+        }
+        root.activeKindCount = activeRows
+
+        for (let i = 0; i < rowCount; ++i) {
+            const row = model.rowAt(i)
+            if (root.rowMatches(row.kind || "",
+                                row.timestamp || "",
+                                row.title || "",
+                                row.topic || "",
+                                row.payload || "",
+                                row.payloadFormat || "")) {
+                visibleRows += 1
+            }
+        }
+        root.matchingEventCount = visibleRows
+    }
+
+    onFilterTextChanged: root.recomputeVisibleCount()
+    onStreamKindChanged: {
+        root.recomputeVisibleCount()
+        if (eventList) {
+            eventList.unreadCount = 0
+            Qt.callLater(function() {
+                if (eventList) {
+                    eventList.scrollToBottom()
+                }
+            })
+        }
+    }
+
+    Component.onCompleted: root.recomputeVisibleCount()
+
+    Connections {
+        target: root.appController.events
+
+        function onCountChanged() {
+            root.recomputeVisibleCount()
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 12
 
         AppSectionHeader {
             ui: root.ui
-            title: qsTr("Event Stream")
+            title: root.activeTitle
             titleSize: 17
-            meta: `${eventList.count}`
+            meta: root.filterText.length > 0
+                  ? qsTr("%1/%2").arg(root.matchingEventCount).arg(root.activeKindCount)
+                  : `${root.activeKindCount}`
 
             AppIconButton {
                 ui: root.ui
@@ -95,8 +183,21 @@ Item {
                 iconSize: 14
                 implicitWidth: 34
                 implicitHeight: 34
-                toolTipText: qsTr("Clear event stream")
+                toolTipText: qsTr("Clear history")
                 onClicked: root.appController.clearCurrentMessages()
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            AppTextField {
+                ui: root.ui
+                Layout.fillWidth: true
+                placeholderText: root.searchPlaceholder
+                text: root.filterText
+                onTextChanged: root.filterText = text
             }
         }
 
@@ -173,11 +274,22 @@ Item {
                     required property string kind
                     required property string timestamp
                     required property string title
+                    required property string topic
                     required property string payload
                     required property string payloadFormat
                     required property int payloadSize
+                    required property string testPayload
+                    required property int testFormat
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
+                    readonly property bool matchesFilter: root.rowMatches(
+                                                              eventDelegate.kind,
+                                                              eventDelegate.timestamp,
+                                                              eventDelegate.title,
+                                                              eventDelegate.topic,
+                                                              eventDelegate.payload,
+                                                              eventDelegate.payloadFormat)
                     width: ListView.view.width
+                    visible: eventDelegate.matchesFilter
                     radius: root.ui.innerRadius
                     color: eventDelegate.kind === "divider"
                            ? "transparent"
@@ -187,9 +299,11 @@ Item {
                                   : (eventDelegate.kind === "divider"
                                      ? "transparent"
                                      : root.ui.themePalette.innerPanelBorder)
-                    implicitHeight: eventDelegate.kind === "divider"
+                    implicitHeight: !eventDelegate.matchesFilter
+                                    ? 0
+                                    : (eventDelegate.kind === "divider"
                                     ? dividerRow.implicitHeight + 8
-                                    : rowBody.implicitHeight + 18
+                                    : rowBody.implicitHeight + 18)
 
                     RowLayout {
                         id: dividerRow
@@ -263,6 +377,56 @@ Item {
                                 horizontalPadding: 6
                                 verticalPadding: 3
                             }
+
+                            AppIconButton {
+                                ui: root.ui
+                                visible: eventDelegate.kind === "message"
+                                symbol: "T"
+                                symbolSize: 11
+                                implicitWidth: 26
+                                implicitHeight: 26
+                                cornerRadius: 6
+                                restBg: "transparent"
+                                outlineColor: "transparent"
+                                toolTipText: qsTr("Copy topic")
+                                onClicked: root.appController.copyTextToClipboard(eventDelegate.topic)
+                            }
+
+                            AppIconButton {
+                                ui: root.ui
+                                visible: eventDelegate.kind === "message"
+                                symbol: "P"
+                                symbolSize: 11
+                                implicitWidth: 26
+                                implicitHeight: 26
+                                cornerRadius: 6
+                                restBg: "transparent"
+                                outlineColor: "transparent"
+                                toolTipText: qsTr("Copy payload")
+                                onClicked: root.appController.copyTextToClipboard(
+                                               eventDelegate.testPayload.length > 0
+                                               ? eventDelegate.testPayload
+                                               : eventDelegate.payload)
+                            }
+
+                            AppIconButton {
+                                ui: root.ui
+                                visible: eventDelegate.kind === "message"
+                                iconSource: root.ui.materialIcon("send")
+                                implicitWidth: 26
+                                implicitHeight: 26
+                                iconSize: 12
+                                cornerRadius: 6
+                                restBg: "transparent"
+                                outlineColor: "transparent"
+                                toolTipText: qsTr("Use this message in publisher")
+                                onClicked: root.publishDraftRequested(
+                                               eventDelegate.topic,
+                                               eventDelegate.testPayload.length > 0
+                                               ? eventDelegate.testPayload
+                                               : eventDelegate.payload,
+                                               eventDelegate.testFormat)
+                            }
                         }
 
                         Text {
@@ -274,6 +438,57 @@ Item {
                             textFormat: Text.PlainText
                             wrapMode: Text.WrapAnywhere
                         }
+                    }
+                }
+            }
+
+            Rectangle {
+                visible: root.matchingEventCount === 0
+                anchors.centerIn: parent
+                width: Math.min(parent.width - 48, 420)
+                height: emptyStateColumn.implicitHeight + 28
+                radius: root.ui.innerRadius
+                color: root.ui.themePalette.innerPanelBg
+                border.color: root.ui.themePalette.innerPanelBorder
+
+                ColumnLayout {
+                    id: emptyStateColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 18
+                    anchors.rightMargin: 18
+                    spacing: 6
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: !root.showingMessages
+                              ? qsTr("No log entries")
+                              : (root.status.state !== "connected"
+                                 ? qsTr("Connect to start receiving messages")
+                                 : (Number(root.session.subscriptionCount || 0) === 0
+                                    ? qsTr("Add a subscription to listen for messages")
+                                    : qsTr("Waiting for messages")))
+                        color: root.ui.textStrong
+                        font.pixelSize: 14
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: !root.showingMessages
+                              ? qsTr("Connection, subscription, publish, and storage events appear here when they happen.")
+                              : (root.status.state !== "connected"
+                                 ? qsTr("Incoming MQTT messages will appear here after the broker is connected.")
+                                 : (Number(root.session.subscriptionCount || 0) === 0
+                                    ? qsTr("Subscriptions can be prepared offline and become active after connection.")
+                                    : qsTr("The stream will follow new messages automatically unless you scroll up.")))
+                        color: root.ui.textMuted
+                        font.pixelSize: 12
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
                     }
                 }
             }

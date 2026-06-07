@@ -128,8 +128,8 @@
         </message>
         <message>
             <location filename="../src/app/appfacademenus.cpp" line="50" />
-            <source>🇺🇸 English</source>
-            <translation>🇺🇸 English</translation>
+            <source>🇬🇧 English</source>
+            <translation>🇬🇧 English</translation>
         </message>
         <message>
             <location filename="../src/app/appfacademenus.cpp" line="51" />
@@ -1165,8 +1165,8 @@ Click to switch to %2</source>
         </message>
         <message>
             <location filename="../qml/features/sessions/SessionSidebar.qml" line="347" />
-            <source>🇺🇸 English</source>
-            <translation>🇺🇸 English</translation>
+            <source>🇬🇧 English</source>
+            <translation>🇬🇧 English</translation>
         </message>
         <message>
             <location filename="../qml/features/sessions/SessionSidebar.qml" line="354" />

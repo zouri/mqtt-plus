@@ -12,6 +12,8 @@ AppPanel {
     required property AddSubscriptionDialog addSubscriptionDialog
 
     property string subscriptionActionVisualKey: ""
+    readonly property var sessionStatus: control.appController.sessionStatus
+    readonly property bool connected: control.sessionStatus.state === "connected"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -53,9 +55,13 @@ AppPanel {
 
         Label {
             visible: subscriptionList.count === 0
-            text: qsTr("No topics yet. Use the + button to start listening.")
+            text: control.connected
+                  ? qsTr("No topics yet. Add a topic to start listening.")
+                  : qsTr("No topics yet. Add subscriptions now; they will listen after connecting.")
             color: control.ui.textMuted
             font.pixelSize: 12
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
 
         ListView {
@@ -86,13 +92,18 @@ AppPanel {
                 required property string subscriptionState
                 required property string lastError
                 required property real topicFps
+                required property real receivedMessageCount
+                required property string lastMessageTimestamp
+                readonly property string statusText: subscriptionDelegate.paused
+                                                     ? qsTr("Paused")
+                                                     : control.ui.statusLabel(subscriptionDelegate.subscriptionState)
                 width: ListView.view.width
                 radius: control.ui.innerRadius
                 color: control.ui.themePalette.itemBg
                 border.color: subscriptionDelegate.lastError.length > 0
                               ? control.ui.themePalette.errorText
                               : control.ui.themePalette.innerPanelBorder
-                implicitHeight: 82
+                implicitHeight: 100
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -143,13 +154,19 @@ AppPanel {
                         spacing: 8
 
                         Label {
-                            text: qsTr("FPS %1").arg(Math.round(Number(subscriptionDelegate.topicFps || 0)))
+                            text: qsTr("QoS %1 · %2 · %3 msg · %4/s")
+                                  .arg(subscriptionDelegate.requestedQos)
+                                  .arg(subscriptionDelegate.statusText)
+                                  .arg(Math.round(Number(subscriptionDelegate.receivedMessageCount || 0)))
+                                  .arg(Number(subscriptionDelegate.topicFps || 0).toFixed(1))
                             color: control.ui.textMuted
                             font.pixelSize: 11
+                            elide: Label.ElideRight
+                            Layout.fillWidth: true
                         }
 
                         Item {
-                            Layout.fillWidth: true
+                            Layout.preferredWidth: 4
                         }
 
                         RowLayout {
@@ -224,6 +241,16 @@ AppPanel {
                                 }
                             }
                         }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: subscriptionDelegate.lastMessageTimestamp.length > 0
+                              ? qsTr("Last message: %1").arg(subscriptionDelegate.lastMessageTimestamp)
+                              : qsTr("Last message: none")
+                        color: control.ui.textMuted
+                        font.pixelSize: 11
+                        elide: Label.ElideRight
                     }
 
                     Label {

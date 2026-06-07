@@ -12,7 +12,9 @@ Rectangle {
     required property AppUi ui
     required property var appController
     required property SessionEditorDialog sessionEditor
+    required property string currentPage
 
+    signal pageRequested(string page)
     signal scriptWorkspaceRequested()
 
     anchors.topMargin: 50
@@ -22,7 +24,7 @@ Rectangle {
     function languageButtonEmoji(mode) {
         switch (mode) {
         case "en":
-            return "🇺🇸"
+            return "🇬🇧"
         case "zh_CN":
             return "🇨🇳"
         default:
@@ -60,8 +62,11 @@ Rectangle {
                 required property int index
                 required property string name
                 required property string connectionState
+                required property string host
+                required property int port
+                required property string transportLabel
                 width: ListView.view.width
-                height: 48
+                height: 58
                 radius: control.ui.innerRadius
                 color: index === control.appController.currentSessionIndex
                        ? control.ui.themePalette.selectedBg
@@ -117,7 +122,7 @@ Rectangle {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 0
+                        spacing: 2
 
                         Label {
                             Layout.fillWidth: true
@@ -126,6 +131,14 @@ Rectangle {
                             elide: Label.ElideRight
                             font.pixelSize: 13
                             font.bold: true
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: `${sessionDelegate.host || "-"}:${sessionDelegate.port || "-"} · ${sessionDelegate.transportLabel || "TCP"}`
+                            color: control.ui.textMuted
+                            elide: Label.ElideRight
+                            font.pixelSize: 11
                         }
                     }
                 }
@@ -155,14 +168,14 @@ Rectangle {
 
             footer: Item {
                 width: sessionList.width
-                height: 52
+                height: 58
 
                 Rectangle {
                     id: addSessionDelegate
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    height: 48
+                    height: 52
                     radius: control.ui.innerRadius
                     color: addRowMouse.containsMouse || activeFocus
                            ? control.ui.rowHover
@@ -289,6 +302,30 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
+
+            AppIconButton {
+                ui: control.ui
+                implicitWidth: 34
+                implicitHeight: 34
+                cornerRadius: 12
+                iconSource: control.ui.materialIcon("message")
+                iconSize: 17
+                forceActive: control.currentPage === "messages"
+                toolTipText: qsTr("Messages")
+                onClicked: control.pageRequested("messages")
+            }
+
+            AppIconButton {
+                ui: control.ui
+                implicitWidth: 34
+                implicitHeight: 34
+                cornerRadius: 12
+                iconSource: control.ui.materialIcon("list")
+                iconSize: 17
+                forceActive: control.currentPage === "log"
+                toolTipText: qsTr("Log")
+                onClicked: control.pageRequested("log")
+            }
 
             AppIconButton {
                 ui: control.ui

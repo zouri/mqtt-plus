@@ -104,6 +104,7 @@ public:
         int format = 0,
         int qos = 0,
         bool retain = false);
+    Q_INVOKABLE void copyTextToClipboard(const QString &text) const;
     Q_INVOKABLE void clearCurrentMessages();
     Q_INVOKABLE int loadOlderCurrentSessionEvents();
     Q_INVOKABLE QString upsertScript(const QString &id, const QString &name, const QString &code);
