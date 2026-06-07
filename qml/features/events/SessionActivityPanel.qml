@@ -22,8 +22,8 @@ AppPanel {
         eventStreamView.resetStreamPosition()
     }
 
-    function noteStreamRowAppended() {
-        eventStreamView.noteStreamRowAppended()
+    function noteStreamRowAppended(row) {
+        eventStreamView.noteStreamRowAppended(row)
     }
 
     ColumnLayout {
@@ -36,10 +36,16 @@ AppPanel {
             ui: root.ui
             appController: root.appController
             session: root.session
+            status: root.status
             fontFamily: root.fontFamily
+            streamKind: "message"
+            onPublishDraftRequested: (topic, payload, format) => {
+                publishComposer.setDraft(topic, payload, format)
+            }
         }
 
         PublishComposer {
+            id: publishComposer
             ui: root.ui
             appController: root.appController
             publishStatus: root.publishStatus

@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../../components"
 
@@ -13,10 +14,27 @@ Item {
     required property var ui
 
     property bool expanded: true
-    property int composerHeight: 214
-    readonly property int collapsedHeight: 36
-    readonly property int minComposerHeight: 132
+    property int composerHeight: 286
+    readonly property int collapsedHeight: 38
+    readonly property int minComposerHeight: 204
     readonly property int maxComposerHeight: 460
+    property var recentDrafts: []
+    property bool repeatEnabled: false
+    property int repeatIntervalMs: 5000
+    readonly property bool isConnected: root.status.state === "connected"
+    readonly property bool hasTopic: publishTopicField.text.trim().length > 0
+    readonly property bool canPublish: root.isConnected && root.hasTopic
+    readonly property var recentDraftLabels: root.recentDrafts.map(function(draft) {
+        return qsTr("%1 · QoS %2 · %3").arg(draft.topic).arg(draft.qos).arg(draft.formatName)
+    })
+    readonly property string publishDisabledReason: !root.isConnected
+                                                  ? qsTr("Connect before publishing.")
+                                                  : (!root.hasTopic ? qsTr("Enter a topic to publish.") : "")
+    readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle"
+                                              ? (root.publishStatus.reason && root.publishStatus.reason.length > 0
+                                                 ? root.publishStatus.reason
+                                                 : qsTr("Publish status: %1").arg(root.ui.statusLabel(root.publishStatus.state)))
+                                              : ""
 
     Layout.fillWidth: true
     Layout.preferredHeight: resizeHandle.Layout.preferredHeight
@@ -41,6 +59,75 @@ Item {
 
     function resizeY(mouse) {
         return resizeMouse.mapToItem(root, mouse.x, mouse.y).y
+    }
+
+    function setDraft(topic, payload, format) {
+        publishTopicField.text = topic || ""
+        publishPayloadArea.text = payload || ""
+        if (format >= 0 && format < publishFormatBox.count) {
+            publishFormatBox.currentIndex = format
+        }
+        root.expanded = true
+        publishPayloadArea.forceActiveFocus()
+    }
+
+    function draftFromFields() {
+        return {
+            "topic": publishTopicField.text.trim(),
+            "payload": publishPayloadArea.text,
+            "format": publishFormatBox.currentIndex,
+            "formatName": publishFormatBox.currentText,
+            "qos": publishQosBox.currentIndex,
+            "retain": retainCheck.checked
+        }
+    }
+
+    function rememberDraft(draft) {
+        const key = `${draft.topic}\n${draft.payload}\n${draft.format}\n${draft.qos}\n${draft.retain}`
+        const nextDrafts = [draft]
+        for (let i = 0; i < root.recentDrafts.length && nextDrafts.length < 6; ++i) {
+            const current = root.recentDrafts[i]
+            const currentKey = `${current.topic}\n${current.payload}\n${current.format}\n${current.qos}\n${current.retain}`
+            if (currentKey !== key) {
+                nextDrafts.push(current)
+            }
+        }
+        root.recentDrafts = nextDrafts
+    }
+
+    function applyDraft(draft) {
+        if (!draft) {
+            return
+        }
+
+        publishTopicField.text = draft.topic || ""
+        publishPayloadArea.text = draft.payload || ""
+        publishFormatBox.currentIndex = Math.max(0, Math.min(publishFormatBox.count - 1, Number(draft.format || 0)))
+        publishQosBox.currentIndex = Math.max(0, Math.min(publishQosBox.count - 1, Number(draft.qos || 0)))
+        retainCheck.checked = Boolean(draft.retain)
+        root.expanded = true
+    }
+
+    function publishCurrentDraft() {
+        if (!root.canPublish) {
+            return
+        }
+
+        const draft = root.draftFromFields()
+        root.rememberDraft(draft)
+        root.appController.publishCurrentSession(
+                    draft.topic,
+                    draft.payload,
+                    draft.format,
+                    draft.qos,
+                    draft.retain)
+    }
+
+    Timer {
+        interval: root.repeatIntervalMs
+        running: root.repeatEnabled && root.canPublish
+        repeat: true
+        onTriggered: root.publishCurrentDraft()
     }
 
     ColumnLayout {
@@ -101,11 +188,51 @@ Item {
 
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 9
+                spacing: 8
 
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
+                    spacing: 8
+
+                    Label {
+                        text: qsTr("Publish Message")
+                        color: root.ui.textStrong
+                        font.pixelSize: 14
+                        font.bold: true
+                    }
+
+                    Label {
+                        visible: root.publishFeedback.length > 0
+                        text: root.publishFeedback
+                        color: root.publishStatus.state === "failed"
+                               ? root.ui.themePalette.errorText
+                               : root.ui.textMuted
+                        font.pixelSize: 11
+                        elide: Label.ElideRight
+                        Layout.fillWidth: true
+                    }
+
+                    Item {
+                        visible: root.publishFeedback.length === 0
+                        Layout.fillWidth: true
+                    }
+
+                    AppIconButton {
+                        ui: root.ui
+                        iconSource: root.ui.materialIcon(root.expanded ? "chevron-down" : "chevron-up")
+                        iconSize: 18
+                        implicitWidth: 34
+                        implicitHeight: 34
+                        toolTipText: root.expanded ? qsTr("Collapse publish") : qsTr("Expand publish")
+                        onClicked: root.expanded = !root.expanded
+                    }
+                }
+
+                RowLayout {
+                    visible: root.expanded
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: visible ? 36 : 0
                     spacing: 8
 
                     AppTextField {
@@ -126,7 +253,7 @@ Item {
                         ui: root.ui
                         id: publishFormatBox
                         model: root.appController.payloadFormats
-                        currentIndex: 0
+                        currentIndex: 1
                         Layout.preferredWidth: 126
                     }
 
@@ -135,15 +262,59 @@ Item {
                         id: retainCheck
                         text: qsTr("Retain")
                     }
+                }
 
-                    AppIconButton {
+                Label {
+                    visible: root.expanded && root.publishDisabledReason.length > 0
+                    Layout.fillWidth: true
+                    text: root.publishDisabledReason
+                    color: root.isConnected ? root.ui.textMuted : root.ui.themePalette.warningText
+                    font.pixelSize: 12
+                    elide: Label.ElideRight
+                }
+
+                RowLayout {
+                    visible: root.expanded
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: visible ? 32 : 0
+                    spacing: 8
+
+                    AppComboBox {
                         ui: root.ui
-                        iconSource: root.ui.materialIcon(root.expanded ? "chevron-down" : "chevron-up")
-                        iconSize: 18
-                        implicitWidth: 34
-                        implicitHeight: 34
-                        toolTipText: root.expanded ? qsTr("Collapse publish") : qsTr("Expand publish")
-                        onClicked: root.expanded = !root.expanded
+                        visible: root.recentDrafts.length > 0
+                        enabled: root.recentDrafts.length > 0
+                        Layout.preferredWidth: visible ? 220 : 0
+                        model: [qsTr("Recent publishes")].concat(root.recentDraftLabels)
+                        currentIndex: 0
+                        onActivated: (index) => {
+                            if (index > 0) {
+                                root.applyDraft(root.recentDrafts[index - 1])
+                                currentIndex = 0
+                            }
+                        }
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                    }
+
+                    AppCheckBox {
+                        ui: root.ui
+                        text: qsTr("Repeat")
+                        checked: root.repeatEnabled
+                        enabled: root.canPublish
+                        onToggled: root.repeatEnabled = checked
+                    }
+
+                    AppComboBox {
+                        ui: root.ui
+                        enabled: root.repeatEnabled
+                        Layout.preferredWidth: 82
+                        model: [qsTr("1s"), qsTr("5s"), qsTr("10s")]
+                        currentIndex: 1
+                        onCurrentIndexChanged: {
+                            root.repeatIntervalMs = currentIndex === 0 ? 1000 : (currentIndex === 1 ? 5000 : 10000)
+                        }
                     }
                 }
 
@@ -156,29 +327,23 @@ Item {
                         ui: root.ui
                         id: publishPayloadArea
                         anchors.fill: parent
-                        placeholderText: "{\"value\": 23.7}"
+                        placeholderText: publishFormatBox.currentText === "JSON"
+                                         ? "{\"value\": 23.7}"
+                                         : qsTr("Payload")
                         wrapMode: TextEdit.Wrap
                     }
 
-                    AppIconButton {
+                    AppButton {
                         ui: root.ui
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         anchors.rightMargin: 12
                         anchors.bottomMargin: 12
-                        iconSource: root.ui.materialIcon("send")
-                        iconSize: 15
-                        implicitWidth: 38
-                        implicitHeight: 38
+                        text: qsTr("Publish")
+                        minimumWidth: 86
                         primary: true
-                        toolTipText: qsTr("Publish message")
-                        enabled: root.status.state === "connected"
-                        onClicked: root.appController.publishCurrentSession(
-                                       publishTopicField.text,
-                                       publishPayloadArea.text,
-                                       publishFormatBox.currentIndex,
-                                       publishQosBox.currentIndex,
-                                       retainCheck.checked)
+                        enabled: root.canPublish
+                        onClicked: root.publishCurrentDraft()
                     }
                 }
             }

@@ -17,6 +17,8 @@ struct SubscriptionListRow {
     bool paused = false;
     QString state;
     QString lastError;
+    qint64 receivedMessageCount = 0;
+    QString lastMessageTimestamp;
 };
 
 struct SubscriptionFpsRow {
@@ -43,7 +45,9 @@ public:
         ScriptNameRole,
         PausedRole,
         StateRole,
-        LastErrorRole
+        LastErrorRole,
+        ReceivedMessageCountRole,
+        LastMessageTimestampRole
     };
     Q_ENUM(Role)
 
