@@ -21,10 +21,31 @@ Item {
     readonly property bool showingMessages: root.streamKind === "message"
     readonly property string activeTitle: root.showingMessages ? qsTr("Messages") : qsTr("Log")
     readonly property string searchPlaceholder: root.showingMessages
-                                                ? qsTr("Search Topic, Payload, QoS or retained")
+                                                ? qsTr("Search topic or content")
                                                 : qsTr("Search log channel or detail")
     property int matchingEventCount: 0
     property int activeKindCount: 0
+    readonly property bool hasFilter: root.filterText.trim().length > 0
+    readonly property bool connected: root.status.state === "connected"
+    readonly property int subscriptionCount: Number(root.session.subscriptionCount || 0)
+    readonly property string emptyTitle: root.hasFilter
+                                        ? (root.showingMessages ? qsTr("No matching messages") : qsTr("No matching log entries"))
+                                        : (!root.showingMessages
+                                           ? qsTr("No log entries")
+                                           : (!root.connected
+                                              ? qsTr("Connect to start receiving messages")
+                                              : (root.subscriptionCount === 0
+                                                 ? qsTr("Add a subscription to start listening")
+                                                 : qsTr("Waiting for messages"))))
+    readonly property string emptyDetail: root.hasFilter
+                                         ? qsTr("Adjust the search query or clear it to return to the live stream.")
+                                         : (!root.showingMessages
+                                            ? qsTr("Connection, subscription, publish, and storage events appear here.")
+                                            : (!root.connected
+                                               ? qsTr("Message history will appear here after this session is connected.")
+                                               : (root.subscriptionCount === 0
+                                                  ? qsTr("Subscriptions can be prepared offline and become active after connection.")
+                                                  : qsTr("The stream follows new messages automatically unless you scroll up."))))
 
     signal publishDraftRequested(string topic, string payload, int format)
 
@@ -161,7 +182,7 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 72
+            Layout.preferredHeight: 60
             color: root.ui.themePalette.windowBg
 
             Rectangle {
@@ -174,25 +195,25 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                spacing: 10
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 8
 
                 Label {
                     text: root.activeTitle
                     color: root.ui.textStrong
-                    font.pixelSize: 24
+                    font.pixelSize: 22
                     font.bold: true
                 }
 
                 AppBadge {
                     ui: root.ui
-                    label: root.filterText.length > 0
+                    label: root.hasFilter
                            ? qsTr("%1/%2").arg(root.matchingEventCount).arg(root.activeKindCount)
                            : `${root.activeKindCount}`
                     badgeRadius: 11
-                    horizontalPadding: 8
-                    verticalPadding: 4
+                    horizontalPadding: 7
+                    verticalPadding: 3
                     badgeBg: root.ui.themePalette.selectedBg
                     badgeBorder: "transparent"
                     badgeText: root.ui.themePalette.infoText
@@ -204,7 +225,7 @@ Item {
 
                 AppTextField {
                     ui: root.ui
-                    Layout.preferredWidth: Math.min(320, Math.max(220, root.width * 0.28))
+                    Layout.preferredWidth: Math.min(280, Math.max(200, root.width * 0.25))
                     placeholderText: root.searchPlaceholder
                     text: root.filterText
                     onTextChanged: root.filterText = text
@@ -213,7 +234,7 @@ Item {
                 AppComboBox {
                     ui: root.ui
                     visible: root.showingMessages
-                    Layout.preferredWidth: visible ? 110 : 0
+                    Layout.preferredWidth: visible ? 104 : 0
                     model: [qsTr("All directions"), qsTr("Received"), qsTr("Published")]
                 }
 
@@ -221,9 +242,9 @@ Item {
                     ui: root.ui
                     iconSource: root.ui.materialIcon(root.session.outputPaused ? "play" : "pause")
                     iconSize: 14
-                    implicitWidth: 36
-                    implicitHeight: 36
-                    cornerRadius: 18
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    cornerRadius: 16
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     toolTipText: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
@@ -234,9 +255,9 @@ Item {
                     ui: root.ui
                     iconSource: root.ui.materialIcon("delete")
                     iconSize: 14
-                    implicitWidth: 36
-                    implicitHeight: 36
-                    cornerRadius: 18
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    cornerRadius: 16
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     toolTipText: qsTr("Clear history")
@@ -247,9 +268,9 @@ Item {
 
         Label {
             visible: root.session.outputPaused
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
-            Layout.topMargin: 10
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            Layout.topMargin: 8
             text: qsTr("Output paused: incoming MQTT messages are still stored in history.")
             color: root.ui.themePalette.warningText
             font.pixelSize: 12
@@ -263,7 +284,7 @@ Item {
                 id: eventList
                 anchors.fill: parent
                 clip: true
-                spacing: 6
+                spacing: 4
                 model: root.appController.events
                 property bool shouldFollowOutput: true
                 property bool programmaticScroll: false
@@ -345,8 +366,8 @@ Item {
                     implicitHeight: !eventDelegate.matchesFilter
                                     ? 0
                                     : (eventDelegate.kind === "divider"
-                                    ? dividerRow.implicitHeight + 8
-                                    : rowBody.implicitHeight + 18)
+                                    ? dividerRow.implicitHeight + 6
+                                    : rowBody.implicitHeight + 14)
 
                     RowLayout {
                         id: dividerRow
@@ -375,13 +396,13 @@ Item {
                         visible: eventDelegate.kind !== "divider"
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.margins: 12
+                        anchors.margins: 10
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 6
+                        spacing: 5
 
                         RowLayout {
                             width: parent.width
-                            spacing: 8
+                            spacing: 6
 
                             Label {
                                 text: eventDelegate.timestamp
@@ -489,7 +510,7 @@ Item {
                 visible: root.matchingEventCount === 0
                 anchors.centerIn: parent
                 width: Math.min(parent.width - 48, 420)
-                height: emptyStateColumn.implicitHeight + 28
+                height: emptyStateColumn.implicitHeight + 20
                 radius: root.ui.innerRadius
                 color: "transparent"
                 border.color: "transparent"
@@ -499,16 +520,14 @@ Item {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 18
-                    anchors.rightMargin: 18
-                    spacing: 6
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 5
 
                     Label {
                         Layout.fillWidth: true
-                        text: root.filterText.length > 0
-                              ? qsTr("No matching messages")
-                              : (!root.showingMessages ? qsTr("No log entries") : qsTr("No matching messages"))
-                        color: root.ui.textMuted
+                        text: root.emptyTitle
+                        color: root.ui.textStrong
                         font.pixelSize: 14
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
@@ -516,15 +535,8 @@ Item {
                     }
 
                     Label {
-                        visible: false
                         Layout.fillWidth: true
-                        text: !root.showingMessages
-                              ? qsTr("Connection, subscription, publish, and storage events appear here when they happen.")
-                              : (root.status.state !== "connected"
-                                 ? qsTr("Incoming MQTT messages will appear here after the broker is connected.")
-                                 : (Number(root.session.subscriptionCount || 0) === 0
-                                    ? qsTr("Subscriptions can be prepared offline and become active after connection.")
-                                    : qsTr("The stream will follow new messages automatically unless you scroll up.")))
+                        text: root.emptyDetail
                         color: root.ui.textMuted
                         font.pixelSize: 12
                         horizontalAlignment: Text.AlignHCenter

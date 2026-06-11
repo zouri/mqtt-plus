@@ -10,29 +10,29 @@ QtObject {
 
     readonly property int panelRadius: 0
     readonly property int innerRadius: 12
-    readonly property int compactControlHeight: 34
+    readonly property int compactControlHeight: 30
     readonly property int compactCheckHeight: 28
-    readonly property int compactFontSize: 13
+    readonly property int compactFontSize: 12
 
     readonly property int materialTheme: root.isDarkTheme ? Material.Dark : Material.Light
     readonly property int materialAccent: Material.Blue
     readonly property int materialPrimary: Material.Blue
 
     readonly property var themePalette: ({
-        "windowBg": root.isDarkTheme ? "#000000" : "#ffffff",
+        "windowBg": root.isDarkTheme ? "#101114" : "#fdfdff",
         "headerBg": root.isDarkTheme ? "#1f2024" : "#fbfbfd",
         "headerBorder": root.isDarkTheme ? "#34363c" : "#e8e8ed",
         "sidebarBg": root.isDarkTheme ? "#1f2024" : "#fbfbfd",
         "sidebarBorder": root.isDarkTheme ? "#34363c" : "#e8e8ed",
-        "panelBg": root.isDarkTheme ? "#1c1c1e" : "#f5f5f7",
+        "panelBg": root.isDarkTheme ? "#18191d" : "#f5f5f7",
         "panelBorder": root.isDarkTheme ? "#34363c" : "#e8e8ed",
-        "rowHover": root.isDarkTheme ? "#2a2b30" : "#fbfbfd",
+        "rowHover": root.isDarkTheme ? "#25262b" : "#fbfbfd",
         "textStrong": root.isDarkTheme ? "#f5f5f7" : "#1d1d1f",
         "textMuted": root.isDarkTheme ? "#a1a1a6" : "#6e6e73",
-        "selectedBg": root.isDarkTheme ? "#112d4f" : "#e5f1ff",
+        "selectedBg": root.isDarkTheme ? "#122b47" : "#eef6ff",
         "selectedBorder": root.isDarkTheme ? "#2997ff" : "#0071e3",
-        "itemBg": root.isDarkTheme ? "#121214" : "#ffffff",
-        "itemBorder": root.isDarkTheme ? "#33343a" : "#d2d2d7",
+        "itemBg": root.isDarkTheme ? "#15161a" : "#ffffff",
+        "itemBorder": root.isDarkTheme ? "#2d2f35" : "#e1e1e6",
         "innerPanelBg": root.isDarkTheme ? "#222328" : "#fbfbfd",
         "innerPanelBorder": root.isDarkTheme ? "#34363c" : "#d2d2d7",
         "separator": root.isDarkTheme ? "#34363c" : "#e8e8ed",
@@ -72,7 +72,7 @@ QtObject {
         "tooltipBg": root.isDarkTheme ? "#edf3fd" : "#172231",
         "tooltipBorder": root.isDarkTheme ? "#ffffff" : "#31435a",
         "tooltipText": root.isDarkTheme ? "#101824" : "#f7fbff",
-        "fieldBg": root.isDarkTheme ? "#121214" : "#ffffff",
+        "fieldBg": root.isDarkTheme ? "#15161a" : "#ffffff",
         "fieldBorder": root.isDarkTheme ? "#42444a" : "#d2d2d7",
         "fieldFocusBorder": root.isDarkTheme ? "#2997ff" : "#0071e3",
         "fieldPlaceholder": root.isDarkTheme ? "#77777d" : "#86868b",

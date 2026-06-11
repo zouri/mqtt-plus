@@ -14,10 +14,10 @@ Item {
     required property var ui
 
     property bool expanded: true
-    property int composerHeight: 250
-    readonly property int collapsedHeight: 58
-    readonly property int minComposerHeight: 204
-    readonly property int maxComposerHeight: 460
+    property int composerHeight: 220
+    readonly property int collapsedHeight: 50
+    readonly property int minComposerHeight: 180
+    readonly property int maxComposerHeight: 420
     property var recentDrafts: []
     property bool repeatEnabled: false
     property int repeatIntervalMs: 5000
@@ -28,7 +28,7 @@ Item {
         return qsTr("%1 · QoS %2 · %3").arg(draft.topic).arg(draft.qos).arg(draft.formatName)
     })
     readonly property string publishDisabledReason: !root.isConnected
-                                                  ? qsTr("Connect before publishing.")
+                                                  ? qsTr("Connect this session before publishing messages.")
                                                   : (!root.hasTopic ? qsTr("Enter a topic to publish.") : "")
     readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle"
                                               ? (root.publishStatus.reason && root.publishStatus.reason.length > 0
@@ -191,21 +191,21 @@ Item {
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                anchors.topMargin: 14
-                anchors.bottomMargin: 14
-                spacing: 10
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.topMargin: 10
+                anchors.bottomMargin: 10
+                spacing: 7
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 32
-                    spacing: 8
+                    Layout.preferredHeight: 28
+                    spacing: 7
 
                     Label {
                         text: qsTr("Publish Message")
                         color: root.ui.textStrong
-                        font.pixelSize: 14
+                        font.pixelSize: 13
                         font.bold: true
                     }
 
@@ -236,44 +236,96 @@ Item {
                 RowLayout {
                     visible: root.expanded
                     Layout.fillWidth: true
-                    Layout.preferredHeight: visible ? 36 : 0
-                    spacing: 8
+                    Layout.preferredHeight: visible ? 52 : 0
+                    spacing: 7
 
-                    AppTextField {
-                        ui: root.ui
-                        id: publishTopicField
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        placeholderText: qsTr("Topic, e.g. home/living-room/light/set")
+                        spacing: 3
+
+                        Label {
+                            text: qsTr("Topic")
+                            color: root.ui.textMuted
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+
+                        AppTextField {
+                            ui: root.ui
+                            id: publishTopicField
+                            Layout.fillWidth: true
+                            enabled: root.isConnected
+                            placeholderText: qsTr("home/living-room/light/set")
+                        }
                     }
 
-                    AppComboBox {
-                        ui: root.ui
-                        id: publishQosBox
-                        model: [qsTr("QoS 0"), qsTr("QoS 1")]
-                        Layout.preferredWidth: 116
+                    ColumnLayout {
+                        Layout.preferredWidth: 104
+                        spacing: 3
+
+                        Label {
+                            text: qsTr("QoS")
+                            color: root.ui.textMuted
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+
+                        AppComboBox {
+                            ui: root.ui
+                            id: publishQosBox
+                            enabled: root.isConnected
+                            model: [qsTr("QoS 0"), qsTr("QoS 1")]
+                            Layout.fillWidth: true
+                        }
                     }
 
-                    AppComboBox {
-                        ui: root.ui
-                        id: publishFormatBox
-                        model: root.appController.payloadFormats
-                        currentIndex: 1
-                        Layout.preferredWidth: 126
+                    ColumnLayout {
+                        Layout.preferredWidth: 118
+                        spacing: 3
+
+                        Label {
+                            text: qsTr("Payload format")
+                            color: root.ui.textMuted
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+
+                        AppComboBox {
+                            ui: root.ui
+                            id: publishFormatBox
+                            enabled: root.isConnected
+                            model: root.appController.payloadFormats
+                            currentIndex: 1
+                            Layout.fillWidth: true
+                        }
                     }
 
-                    AppCheckBox {
-                        ui: root.ui
-                        id: retainCheck
-                        text: qsTr("Retain")
+                    ColumnLayout {
+                        Layout.preferredWidth: 78
+                        spacing: 3
+
+                        Label {
+                            text: qsTr("Retain")
+                            color: root.ui.textMuted
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+
+                        AppCheckBox {
+                            ui: root.ui
+                            id: retainCheck
+                            enabled: root.isConnected
+                            text: qsTr("Retain")
+                        }
                     }
                 }
 
                 Label {
-                    visible: false
+                    visible: root.expanded && root.publishDisabledReason.length > 0
                     Layout.fillWidth: true
                     text: root.publishDisabledReason
                     color: root.isConnected ? root.ui.textMuted : root.ui.themePalette.warningText
-                    font.pixelSize: 12
+                    font.pixelSize: 11
                     elide: Label.ElideRight
                 }
 
@@ -331,6 +383,7 @@ Item {
                         ui: root.ui
                         id: publishPayloadArea
                         anchors.fill: parent
+                        enabled: root.isConnected
                         placeholderText: publishFormatBox.currentText === "JSON"
                                          ? "{\"value\": 23.7}"
                                          : qsTr("Payload")
@@ -341,11 +394,11 @@ Item {
                         ui: root.ui
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.rightMargin: 12
-                        anchors.bottomMargin: 12
-                        implicitWidth: 38
-                        implicitHeight: 38
-                        cornerRadius: 19
+                        anchors.rightMargin: 10
+                        anchors.bottomMargin: 10
+                        implicitWidth: 34
+                        implicitHeight: 34
+                        cornerRadius: 17
                         iconSource: root.ui.materialIcon("send")
                         iconSize: 17
                         primary: true
