@@ -79,7 +79,7 @@
         <message>
             <location filename="../src/app/appfacademodels.cpp" line="121" />
             <source>Disconnected</source>
-            <translation>已断开</translation>
+            <translation>离线</translation>
         </message>
         <message>
             <location filename="../src/app/appfacadesessions.cpp" line="173" />
@@ -343,6 +343,42 @@ Lua 错误：%2</translation>
     <context>
         <name>EventStreamView</name>
         <message>
+            <source>Messages</source>
+            <translation>消息流</translation>
+        </message>
+        <message>
+            <source>Log</source>
+            <translation>日志</translation>
+        </message>
+        <message>
+            <source>Search Topic, Payload, QoS or retained</source>
+            <translation>搜索 Topic、Payload、QoS 或 retained</translation>
+        </message>
+        <message>
+            <source>Search log channel or detail</source>
+            <translation>搜索日志通道或详情</translation>
+        </message>
+        <message>
+            <source>All directions</source>
+            <translation>全部方向</translation>
+        </message>
+        <message>
+            <source>Received</source>
+            <translation>接收</translation>
+        </message>
+        <message>
+            <source>Published</source>
+            <translation>发布</translation>
+        </message>
+        <message>
+            <source>No matching messages</source>
+            <translation>没有匹配消息</translation>
+        </message>
+        <message>
+            <source>No log entries</source>
+            <translation>暂无日志记录</translation>
+        </message>
+        <message>
             <location filename="../qml/features/events/EventStreamView.qml" line="78" />
             <source>Event Stream</source>
             <translation>事件流</translation>
@@ -361,6 +397,10 @@ Lua 错误：%2</translation>
             <location filename="../qml/features/events/EventStreamView.qml" line="98" />
             <source>Clear event stream</source>
             <translation>清空事件流</translation>
+        </message>
+        <message>
+            <source>Clear history</source>
+            <translation>清空消息</translation>
         </message>
         <message>
             <location filename="../qml/features/events/EventStreamView.qml" line="109" />
@@ -397,6 +437,38 @@ Lua 错误：%2</translation>
             <location filename="../qml/Main.qml" line="16" />
             <source>MQTT Plus</source>
             <translation>MQTT Plus</translation>
+        </message>
+        <message>
+            <source>Cmd+Enter Publish</source>
+            <translation>⌘↵ 发布</translation>
+        </message>
+        <message>
+            <source>Workbench</source>
+            <translation>工作台</translation>
+        </message>
+        <message>
+            <source>History</source>
+            <translation>历史</translation>
+        </message>
+        <message>
+            <source>Lua scripts</source>
+            <translation>脚本管理</translation>
+        </message>
+        <message>
+            <source>Settings</source>
+            <translation>设置</translation>
+        </message>
+        <message>
+            <source>Appearance</source>
+            <translation>外观</translation>
+        </message>
+        <message>
+            <source>Current theme: %1</source>
+            <translation>当前主题：%1</translation>
+        </message>
+        <message>
+            <source>Switch Theme</source>
+            <translation>切换主题</translation>
         </message>
     </context>
     <context>
@@ -526,6 +598,22 @@ Lua 错误：%2</translation>
     <context>
         <name>PublishComposer</name>
         <message>
+            <source>Publish Message</source>
+            <translation>发布消息</translation>
+        </message>
+        <message>
+            <source>Collapse</source>
+            <translation>收起</translation>
+        </message>
+        <message>
+            <source>Expand</source>
+            <translation>展开</translation>
+        </message>
+        <message>
+            <source>Topic, e.g. home/living-room/light/set</source>
+            <translation>主题，例如 home/living-room/light/set</translation>
+        </message>
+        <message>
             <location filename="../qml/features/publish/PublishComposer.qml" line="115" />
             <source>Topic</source>
             <translation>主题</translation>
@@ -599,6 +687,14 @@ Lua 错误：%2</translation>
     </context>
     <context>
         <name>ScriptListPane</name>
+        <message>
+            <source>Search script name or description</source>
+            <translation>搜索脚本名称或说明</translation>
+        </message>
+        <message>
+            <source>Lua decoder · %1</source>
+            <translation>Lua decoder · %1</translation>
+        </message>
         <message>
             <location filename="../qml/features/scripts/ScriptListPane.qml" line="62" />
             <source>Lua script %1</source>
@@ -677,6 +773,50 @@ Lua 错误：%2</translation>
     </context>
     <context>
         <name>ScriptWorkspacePanel</name>
+        <message>
+            <source>Unsaved</source>
+            <translation>未保存</translation>
+        </message>
+        <message>
+            <source>Saved</source>
+            <translation>已保存</translation>
+        </message>
+        <message>
+            <source>Decode MQTT payloads with Lua.</source>
+            <translation>使用 Lua 解码 MQTT Payload。</translation>
+        </message>
+        <message>
+            <source>Structure valid</source>
+            <translation>结构校验通过</translation>
+        </message>
+        <message>
+            <source>Structure invalid: define function parse(ctx) ... end</source>
+            <translation>结构校验失败：请定义 function parse(ctx) ... end</translation>
+        </message>
+        <message>
+            <source>Script Manager</source>
+            <translation>脚本管理</translation>
+        </message>
+        <message>
+            <source>Description</source>
+            <translation>说明</translation>
+        </message>
+        <message>
+            <source>Device protocol or payload structure</source>
+            <translation>设备协议或 Payload 结构</translation>
+        </message>
+        <message>
+            <source>Lua decoder code</source>
+            <translation>Lua 解码代码</translation>
+        </message>
+        <message>
+            <source>Validate structure</source>
+            <translation>校验结构</translation>
+        </message>
+        <message>
+            <source>Save Script</source>
+            <translation>保存脚本</translation>
+        </message>
         <message>
             <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="57" />
             <source>New Lua Script</source>
@@ -1142,6 +1282,18 @@ Lua 错误：%2</translation>
             <translation>新建连接</translation>
         </message>
         <message>
+            <source>+ New connection</source>
+            <translation>+ 新建连接</translation>
+        </message>
+        <message>
+            <source>Hide connection list</source>
+            <translation>隐藏连接列表</translation>
+        </message>
+        <message>
+            <source>Show connection list</source>
+            <translation>显示连接列表</translation>
+        </message>
+        <message>
             <location filename="../qml/features/sessions/SessionSidebar.qml" line="308" />
             <source>Theme: %1
 Click to switch to %2</source>
@@ -1266,6 +1418,38 @@ Click to switch to %2</source>
     </context>
     <context>
         <name>SubscriptionsPanel</name>
+        <message>
+            <source>Filter Topic, e.g. sensor/+/temp</source>
+            <translation>过滤 Topic，例如 sensor/+/temp</translation>
+        </message>
+        <message>
+            <source>All</source>
+            <translation>全部</translation>
+        </message>
+        <message>
+            <source>Running</source>
+            <translation>运行中</translation>
+        </message>
+        <message>
+            <source>No topics yet. Add a topic to start listening.</source>
+            <translation>还没有主题。添加主题后开始监听。</translation>
+        </message>
+        <message>
+            <source>No topics yet. Add subscriptions now; they will listen after connecting.</source>
+            <translation>还没有主题。现在可以添加订阅，连接后会开始监听。</translation>
+        </message>
+        <message>
+            <source>QoS %1 · %2 · %3 msg · %4/s</source>
+            <translation>QoS %1 · %2 · %3 条 · %4/s</translation>
+        </message>
+        <message>
+            <source>Last message: %1</source>
+            <translation>最后更新：%1</translation>
+        </message>
+        <message>
+            <source>Last message: none</source>
+            <translation>最后更新：-</translation>
+        </message>
         <message>
             <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="34" />
             <source>Subscriptions</source>

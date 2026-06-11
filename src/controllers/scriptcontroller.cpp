@@ -45,10 +45,15 @@ void ScriptController::loadScripts()
     m_scriptIndexWritable = result.indexWritable;
 }
 
-QString ScriptController::upsertScript(const QString &id, const QString &name, const QString &code)
+QString ScriptController::upsertScript(
+    const QString &id,
+    const QString &name,
+    const QString &description,
+    const QString &code)
 {
     const QString trimmedName = name.trimmed();
     const QString scriptName = trimmedName.isEmpty() ? tr("Untitled Script") : trimmedName;
+    const QString scriptDescription = description.trimmed();
     const QString scriptCode = code.trimmed().isEmpty() ? ScriptStore::defaultLuaScript() : code;
     const QString scriptId = id.trimmed().isEmpty() ? QUuid::createUuid().toString(QUuid::WithoutBraces) : id.trimmed();
     const QString updatedAt = timestampNow();
@@ -57,6 +62,7 @@ QString ScriptController::upsertScript(const QString &id, const QString &name, c
     for (auto &script : m_scripts) {
         if (script.id == scriptId) {
             script.name = scriptName;
+            script.description = scriptDescription;
             script.code = scriptCode;
             script.updatedAt = updatedAt;
             if (script.fileName.isEmpty()) {
@@ -73,6 +79,7 @@ QString ScriptController::upsertScript(const QString &id, const QString &name, c
     ScriptEntry script;
     script.id = scriptId;
     script.name = scriptName;
+    script.description = scriptDescription;
     script.code = scriptCode;
     script.updatedAt = updatedAt;
     script.fileName = ScriptStore::scriptFileNameForId(script.id);

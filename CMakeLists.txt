@@ -152,11 +152,14 @@ qt_add_qml_module(mqtt_plus_app
         qml/Main.qml
     RESOURCES
         qml/icons/material/chevron-down.svg
+        qml/icons/material/chevron-left.svg
+        qml/icons/material/chevron-right.svg
         qml/icons/material/chevron-up.svg
         qml/icons/material/check.svg
         qml/icons/material/contrast.svg
         qml/icons/material/dark-mode.svg
         qml/icons/material/edit.svg
+        qml/icons/material/history.svg
         qml/icons/material/light-mode.svg
         qml/icons/material/link.svg
         qml/icons/material/list.svg
@@ -166,7 +169,9 @@ qt_add_qml_module(mqtt_plus_app
         qml/icons/material/power.svg
         qml/icons/material/script-development.svg
         qml/icons/material/send.svg
+        qml/icons/material/settings.svg
         qml/icons/material/delete.svg
+        qml/icons/material/workbench.svg
         qml/icons/material/xmark.svg
         qml/icons/material/plus.svg
 )

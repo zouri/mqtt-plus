@@ -13,34 +13,55 @@ Rectangle {
     required property var appController
     required property SessionEditorDialog sessionEditor
     required property string currentPage
+    property bool collapsed: false
 
     signal pageRequested(string page)
     signal scriptWorkspaceRequested()
+    signal collapseRequested()
+    signal expandRequested()
 
-    anchors.topMargin: 50
-    color: ui.themePalette.windowBg
-    // border.color: ui.themePalette.sidebarBorder
-
-    function languageButtonEmoji(mode) {
-        switch (mode) {
-        case "en":
-            return "🇬🇧"
-        case "zh_CN":
-            return "🇨🇳"
-        default:
-            return "🌐"
-        }
-    }
+    color: ui.themePalette.panelBg
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 6
+        anchors.margins: 16
+        visible: !control.collapsed
+        spacing: 18
 
-        AppSectionHeader {
-            ui: control.ui
-            title: qsTr("Connections")
-            titleSize: 15
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            Label {
+                text: qsTr("Connections")
+                color: control.ui.textStrong
+                font.pixelSize: 17
+                font.bold: true
+            }
+
+            AppBadge {
+                ui: control.ui
+                label: `${sessionList.count}`
+                horizontalPadding: 7
+                verticalPadding: 4
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            AppIconButton {
+                ui: control.ui
+                iconSource: control.ui.materialIcon("chevron-left")
+                iconSize: 18
+                implicitWidth: 34
+                implicitHeight: 34
+                cornerRadius: 17
+                restBg: control.ui.themePalette.windowBg
+                outlineColor: control.ui.themePalette.innerPanelBorder
+                toolTipText: qsTr("Hide connection list")
+                onClicked: control.collapseRequested()
+            }
         }
 
         ListView {
@@ -48,7 +69,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 4
+            spacing: 10
             currentIndex: control.appController.currentSessionIndex
             model: control.appController.sessions
             reuseItems: true
@@ -66,14 +87,15 @@ Rectangle {
                 required property int port
                 required property string transportLabel
                 width: ListView.view.width
-                height: 58
-                radius: control.ui.innerRadius
-                color: index === control.appController.currentSessionIndex
-                       ? control.ui.themePalette.selectedBg
-                       : (rowMouse.containsMouse || activeFocus ? control.ui.rowHover : control.ui.themePalette.itemBg)
+                height: 72
+                radius: 16
+                color: rowMouse.containsMouse || activeFocus
+                       ? control.ui.rowHover
+                       : control.ui.themePalette.itemBg
                 border.color: index === control.appController.currentSessionIndex
                               ? control.ui.themePalette.selectedBorder
                               : control.ui.themePalette.itemBorder
+                border.width: index === control.appController.currentSessionIndex ? 2 : 1
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
@@ -107,9 +129,9 @@ Rectangle {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 10
-                    spacing: 8
+                    anchors.leftMargin: 14
+                    anchors.rightMargin: 14
+                    spacing: 12
 
                     Rectangle {
                         implicitWidth: 8
@@ -135,11 +157,22 @@ Rectangle {
 
                         Label {
                             Layout.fillWidth: true
-                            text: `${sessionDelegate.host || "-"}:${sessionDelegate.port || "-"} · ${sessionDelegate.transportLabel || "TCP"}`
+                            text: sessionDelegate.transportLabel || "TCP"
                             color: control.ui.textMuted
                             elide: Label.ElideRight
                             font.pixelSize: 11
                         }
+                    }
+
+                    AppBadge {
+                        ui: control.ui
+                        label: control.ui.statusLabel(sessionDelegate.connectionState)
+                        badgeRadius: 13
+                        horizontalPadding: 10
+                        verticalPadding: 5
+                        badgeBg: control.ui.themePalette.chipBg
+                        badgeBorder: "transparent"
+                        badgeText: control.ui.textMuted
                     }
                 }
 
@@ -168,7 +201,7 @@ Rectangle {
 
             footer: Item {
                 width: sessionList.width
-                height: 58
+                height: 62
 
                 Rectangle {
                     id: addSessionDelegate
@@ -176,10 +209,8 @@ Rectangle {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     height: 52
-                    radius: control.ui.innerRadius
-                    color: addRowMouse.containsMouse || activeFocus
-                           ? control.ui.rowHover
-                           : control.ui.themePalette.itemBg
+                    radius: 16
+                    color: "transparent"
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Button
                     Accessible.name: qsTr("New connection")
@@ -257,30 +288,16 @@ Rectangle {
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 12
-                        anchors.rightMargin: 10
-                        spacing: 8
-
-                        ToolButton {
-                            Layout.preferredWidth: 20
-                            Layout.preferredHeight: 20
-                            padding: 0
-                            display: AbstractButton.IconOnly
-                            icon.source: control.ui.materialIcon("plus")
-                            icon.width: 16
-                            icon.height: 16
-                            icon.color: control.ui.textMuted
-                            Accessible.ignored: true
-
-                            background: Item {
-                            }
-                        }
+                        anchors.rightMargin: 12
+                        spacing: 6
 
                         Label {
                             Layout.fillWidth: true
-                            text: qsTr("New connection")
+                            text: qsTr("+ New connection")
                             color: control.ui.textMuted
                             elide: Label.ElideRight
-                            font.pixelSize: 13
+                            horizontalAlignment: Text.AlignHCenter
+                            font.pixelSize: 14
                             font.bold: true
                         }
                     }
@@ -299,77 +316,53 @@ Rectangle {
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
+    }
+
+    Rectangle {
+        visible: control.collapsed
+        anchors.fill: parent
+        color: control.ui.themePalette.panelBg
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: qsTr("Show connection list")
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.topMargin: 20
+            anchors.bottomMargin: 20
+            spacing: 12
 
             AppIconButton {
                 ui: control.ui
+                Layout.alignment: Qt.AlignHCenter
                 implicitWidth: 34
                 implicitHeight: 34
-                cornerRadius: 12
-                iconSource: control.ui.materialIcon("message")
-                iconSize: 17
-                forceActive: control.currentPage === "messages"
-                toolTipText: qsTr("Messages")
-                onClicked: control.pageRequested("messages")
-            }
-
-            AppIconButton {
-                ui: control.ui
-                implicitWidth: 34
-                implicitHeight: 34
-                cornerRadius: 12
-                iconSource: control.ui.materialIcon("list")
-                iconSize: 17
-                forceActive: control.currentPage === "log"
-                toolTipText: qsTr("Log")
-                onClicked: control.pageRequested("log")
-            }
-
-            AppIconButton {
-                ui: control.ui
-                readonly property string currentMode: control.appController.themeMode
-                readonly property var currentMeta: control.ui.themeModeMeta(currentMode)
-                implicitWidth: 34
-                implicitHeight: 34
-                cornerRadius: 12
-                iconSource: control.ui.materialIcon(currentMeta.icon)
+                cornerRadius: 17
+                iconSource: control.ui.materialIcon("chevron-right")
                 iconSize: 18
-                toolTipText: qsTr("Theme: %1\nClick to switch to %2")
-                             .arg(currentMeta.label)
-                             .arg(control.ui.themeModeMeta(currentMeta.next).label)
-                onClicked: control.appController.themeMode = currentMeta.next
+                restBg: control.ui.themePalette.windowBg
+                toolTipText: qsTr("Show connection list")
+                onClicked: control.expandRequested()
             }
 
-            AppIconButton {
-                id: languageButton
-                ui: control.ui
-                implicitWidth: 34
-                implicitHeight: 34
-                cornerRadius: 12
-                iconSource: control.ui.materialIcon("script-development")
-                iconSize: 18
-                toolTipText: qsTr("Lua scripts")
-                onClicked: control.scriptWorkspaceRequested()
-            }
-
-            AppIconButton {
-                ui: control.ui
-                implicitWidth: 34
-                implicitHeight: 34
-                cornerRadius: 12
-                symbol: control.languageButtonEmoji(control.appController.languageMode)
-                symbolSize: 17
-                toolTipText: qsTr("Language")
-                onClicked: control.appController.showLanguageMenu(
-                               languageButton.mapToGlobal(Qt.point(languageButton.width / 2,
-                                                                    languageButton.height)))
+            Label {
+                Layout.alignment: Qt.AlignHCenter
+                text: qsTr("Connections")
+                color: control.ui.textMuted
+                font.pixelSize: 12
+                font.bold: true
+                rotation: 90
             }
 
             Item {
-                Layout.fillWidth: true
+                Layout.fillHeight: true
             }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: control.expandRequested()
         }
     }
 }

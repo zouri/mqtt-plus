@@ -6,6 +6,7 @@
 struct ScriptLibraryRow {
     QString id;
     QString name;
+    QString description;
     QString code;
     QString updatedAt;
     QString filePath;
@@ -20,6 +21,7 @@ public:
     enum Role {
         IdRole = Qt::UserRole + 1,
         NameRole,
+        DescriptionRole,
         CodeRole,
         UpdatedAtRole,
         FilePathRole

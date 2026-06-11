@@ -21,7 +21,7 @@ Item {
     readonly property bool showingMessages: root.streamKind === "message"
     readonly property string activeTitle: root.showingMessages ? qsTr("Messages") : qsTr("Log")
     readonly property string searchPlaceholder: root.showingMessages
-                                                ? qsTr("Search topic or payload")
+                                                ? qsTr("Search Topic, Payload, QoS or retained")
                                                 : qsTr("Search log channel or detail")
     property int matchingEventCount: 0
     property int activeKindCount: 0
@@ -108,7 +108,7 @@ Item {
     function recomputeVisibleCount() {
         let visibleRows = 0
         let activeRows = 0
-        const model = root.appController.events
+        const model = root.appController ? root.appController.events : null
         const rowCount = model ? model.count : 0
         for (let i = 0; i < rowCount; ++i) {
             const row = model.rowAt(i)
@@ -148,7 +148,7 @@ Item {
     Component.onCompleted: root.recomputeVisibleCount()
 
     Connections {
-        target: root.appController.events
+        target: root.appController ? root.appController.events : null
 
         function onCountChanged() {
             root.recomputeVisibleCount()
@@ -157,56 +157,99 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 12
+        spacing: 0
 
-        AppSectionHeader {
-            ui: root.ui
-            title: root.activeTitle
-            titleSize: 17
-            meta: root.filterText.length > 0
-                  ? qsTr("%1/%2").arg(root.matchingEventCount).arg(root.activeKindCount)
-                  : `${root.activeKindCount}`
-
-            AppIconButton {
-                ui: root.ui
-                iconSource: root.ui.materialIcon(root.session.outputPaused ? "play" : "pause")
-                iconSize: 14
-                implicitWidth: 34
-                implicitHeight: 34
-                toolTipText: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
-                onClicked: root.appController.setCurrentOutputPaused(!root.session.outputPaused)
-            }
-
-            AppIconButton {
-                ui: root.ui
-                iconSource: root.ui.materialIcon("delete")
-                iconSize: 14
-                implicitWidth: 34
-                implicitHeight: 34
-                toolTipText: qsTr("Clear history")
-                onClicked: root.appController.clearCurrentMessages()
-            }
-        }
-
-        RowLayout {
+        Rectangle {
             Layout.fillWidth: true
-            spacing: 8
+            Layout.preferredHeight: 72
+            color: root.ui.themePalette.windowBg
 
-            AppTextField {
-                ui: root.ui
-                Layout.fillWidth: true
-                placeholderText: root.searchPlaceholder
-                text: root.filterText
-                onTextChanged: root.filterText = text
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 1
+                color: root.ui.themePalette.separator
             }
-        }
 
-        AppDivider {
-            ui: root.ui
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 20
+                anchors.rightMargin: 20
+                spacing: 10
+
+                Label {
+                    text: root.activeTitle
+                    color: root.ui.textStrong
+                    font.pixelSize: 24
+                    font.bold: true
+                }
+
+                AppBadge {
+                    ui: root.ui
+                    label: root.filterText.length > 0
+                           ? qsTr("%1/%2").arg(root.matchingEventCount).arg(root.activeKindCount)
+                           : `${root.activeKindCount}`
+                    badgeRadius: 11
+                    horizontalPadding: 8
+                    verticalPadding: 4
+                    badgeBg: root.ui.themePalette.selectedBg
+                    badgeBorder: "transparent"
+                    badgeText: root.ui.themePalette.infoText
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                AppTextField {
+                    ui: root.ui
+                    Layout.preferredWidth: Math.min(320, Math.max(220, root.width * 0.28))
+                    placeholderText: root.searchPlaceholder
+                    text: root.filterText
+                    onTextChanged: root.filterText = text
+                }
+
+                AppComboBox {
+                    ui: root.ui
+                    visible: root.showingMessages
+                    Layout.preferredWidth: visible ? 110 : 0
+                    model: [qsTr("All directions"), qsTr("Received"), qsTr("Published")]
+                }
+
+                AppIconButton {
+                    ui: root.ui
+                    iconSource: root.ui.materialIcon(root.session.outputPaused ? "play" : "pause")
+                    iconSize: 14
+                    implicitWidth: 36
+                    implicitHeight: 36
+                    cornerRadius: 18
+                    restBg: root.ui.themePalette.windowBg
+                    outlineColor: root.ui.themePalette.innerPanelBorder
+                    toolTipText: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
+                    onClicked: root.appController.setCurrentOutputPaused(!root.session.outputPaused)
+                }
+
+                AppIconButton {
+                    ui: root.ui
+                    iconSource: root.ui.materialIcon("delete")
+                    iconSize: 14
+                    implicitWidth: 36
+                    implicitHeight: 36
+                    cornerRadius: 18
+                    restBg: root.ui.themePalette.windowBg
+                    outlineColor: root.ui.themePalette.innerPanelBorder
+                    toolTipText: qsTr("Clear history")
+                    onClicked: root.appController.clearCurrentMessages()
+                }
+            }
         }
 
         Label {
             visible: root.session.outputPaused
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
+            Layout.topMargin: 10
             text: qsTr("Output paused: incoming MQTT messages are still stored in history.")
             color: root.ui.themePalette.warningText
             font.pixelSize: 12
@@ -448,8 +491,8 @@ Item {
                 width: Math.min(parent.width - 48, 420)
                 height: emptyStateColumn.implicitHeight + 28
                 radius: root.ui.innerRadius
-                color: root.ui.themePalette.innerPanelBg
-                border.color: root.ui.themePalette.innerPanelBorder
+                color: "transparent"
+                border.color: "transparent"
 
                 ColumnLayout {
                     id: emptyStateColumn
@@ -462,14 +505,10 @@ Item {
 
                     Label {
                         Layout.fillWidth: true
-                        text: !root.showingMessages
-                              ? qsTr("No log entries")
-                              : (root.status.state !== "connected"
-                                 ? qsTr("Connect to start receiving messages")
-                                 : (Number(root.session.subscriptionCount || 0) === 0
-                                    ? qsTr("Add a subscription to listen for messages")
-                                    : qsTr("Waiting for messages")))
-                        color: root.ui.textStrong
+                        text: root.filterText.length > 0
+                              ? qsTr("No matching messages")
+                              : (!root.showingMessages ? qsTr("No log entries") : qsTr("No matching messages"))
+                        color: root.ui.textMuted
                         font.pixelSize: 14
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
@@ -477,6 +516,7 @@ Item {
                     }
 
                     Label {
+                        visible: false
                         Layout.fillWidth: true
                         text: !root.showingMessages
                               ? qsTr("Connection, subscription, publish, and storage events appear here when they happen.")

@@ -24,7 +24,11 @@ public:
     QString scriptName(const QString &id) const;
 
     void loadScripts();
-    QString upsertScript(const QString &id, const QString &name, const QString &code);
+    QString upsertScript(
+        const QString &id,
+        const QString &name,
+        const QString &description,
+        const QString &code);
     DeleteResult deleteScript(const QString &id);
     QVariantMap testScript(const QString &code, const QString &topic, const QString &payload, int format) const;
     void removeScriptFile(const QString &fileName) const;
