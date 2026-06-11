@@ -187,6 +187,7 @@ void AppFacade::refreshScriptsModel()
         ScriptLibraryRow row;
         row.id = script.id;
         row.name = script.name;
+        row.description = script.description;
         row.code = script.code;
         row.updatedAt = script.updatedAt;
         row.filePath = ScriptStore::scriptFilePath(script.fileName);

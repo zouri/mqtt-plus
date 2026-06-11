@@ -1,8 +1,12 @@
 #include "app/appfacade.h"
 
-QString AppFacade::upsertScript(const QString &id, const QString &name, const QString &code)
+QString AppFacade::upsertScript(
+    const QString &id,
+    const QString &name,
+    const QString &description,
+    const QString &code)
 {
-    const QString savedId = m_scriptController.upsertScript(id, name, code);
+    const QString savedId = m_scriptController.upsertScript(id, name, description, code);
     if (savedId.isEmpty()) {
         return QString();
     }

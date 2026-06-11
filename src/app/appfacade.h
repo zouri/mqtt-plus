@@ -107,7 +107,11 @@ public:
     Q_INVOKABLE void copyTextToClipboard(const QString &text) const;
     Q_INVOKABLE void clearCurrentMessages();
     Q_INVOKABLE int loadOlderCurrentSessionEvents();
-    Q_INVOKABLE QString upsertScript(const QString &id, const QString &name, const QString &code);
+    Q_INVOKABLE QString upsertScript(
+        const QString &id,
+        const QString &name,
+        const QString &description,
+        const QString &code);
     Q_INVOKABLE bool deleteScript(const QString &id);
     Q_INVOKABLE QVariantMap testScript(
         const QString &code,

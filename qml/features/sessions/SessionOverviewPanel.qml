@@ -27,13 +27,16 @@ AppPanel {
 
     showTopBorder: false
     Layout.fillWidth: true
-    Layout.preferredHeight: currentSessionColumn.implicitHeight + 28
-    Layout.minimumHeight: currentSessionColumn.implicitHeight + 28
+    Layout.preferredHeight: 136
+    Layout.minimumHeight: 136
 
     ColumnLayout {
         id: currentSessionColumn
         anchors.fill: parent
-        anchors.margins: 14
+        anchors.leftMargin: 20
+        anchors.rightMargin: 20
+        anchors.topMargin: 18
+        anchors.bottomMargin: 16
         spacing: 10
 
         RowLayout {
@@ -42,12 +45,12 @@ AppPanel {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 3
+                spacing: 2
 
                 Label {
                     text: control.session.name || qsTr("No session")
                     color: control.ui.textStrong
-                    font.pixelSize: 24
+                    font.pixelSize: 30
                     font.bold: true
                     elide: Label.ElideRight
                     Layout.fillWidth: true
@@ -62,96 +65,92 @@ AppPanel {
                 }
             }
 
-            AppStatusBadge {
+            Button {
+                id: editButton
+                enabled: control.status.state === "disconnected"
+                text: qsTr("Edit connection")
+                font.pixelSize: 13
+                font.bold: true
+                leftPadding: 8
+                rightPadding: 8
+                topPadding: 4
+                bottomPadding: 4
+                icon.source: control.ui.materialIcon("edit")
+                icon.width: 15
+                icon.height: 15
+                icon.color: enabled ? control.ui.themePalette.infoText : control.ui.textMuted
+                contentItem: RowLayout {
+                    spacing: 5
+
+                    Image {
+                        source: editButton.icon.source
+                        sourceSize.width: 15
+                        sourceSize.height: 15
+                        Layout.preferredWidth: 15
+                        Layout.preferredHeight: 15
+                        opacity: editButton.enabled ? 1.0 : 0.45
+                    }
+
+                    Label {
+                        text: editButton.text
+                        color: editButton.enabled ? control.ui.themePalette.infoText : control.ui.textMuted
+                        font.pixelSize: editButton.font.pixelSize
+                        font.bold: true
+                    }
+                }
+                background: Rectangle {
+                    radius: 8
+                    color: editButton.hovered ? control.ui.themePalette.actionHoverBg : "transparent"
+                }
+                onClicked: control.sessionEditor.openForEdit(control.appController.currentSessionIndex)
+            }
+
+            AppButton {
                 ui: control.ui
-                status: control.status.state
-                badgeRadius: 11
-                horizontalPadding: 9
-                verticalPadding: 4
-                Layout.alignment: Qt.AlignTop
+                text: control.connectionActionText
+                minimumWidth: 74
+                primary: !control.canDisconnect
+
+                onClicked: {
+                    if (control.canDisconnect) {
+                        control.appController.disconnectCurrentSession()
+                    } else {
+                        control.appController.connectCurrentSession()
+                    }
+                }
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: 12
 
-            ColumnLayout {
+            Label {
+                text: qsTr("Protocol")
+                color: control.ui.textMuted
+                font.pixelSize: 12
+            }
+
+            Label {
+                text: control.session.protocolVersionName || "MQTT 5"
+                color: control.ui.textStrong
+                font.pixelSize: 13
+                font.bold: true
+            }
+
+            Label {
+                text: qsTr("Client ID")
+                color: control.ui.textMuted
+                font.pixelSize: 12
+            }
+
+            Label {
                 Layout.fillWidth: true
-                spacing: 2
-
-                Label {
-                    text: qsTr("Protocol")
-                    color: control.ui.textMuted
-                    font.pixelSize: 11
-                }
-
-                Label {
-                    text: control.session.protocolVersionName || "MQTT 5"
-                    color: control.ui.textStrong
-                    font.pixelSize: 13
-                    font.bold: true
-                }
-            }
-
-            Rectangle {
-                implicitWidth: 1
-                implicitHeight: 26
-                Layout.preferredWidth: 1
-                Layout.preferredHeight: 26
-                radius: 1
-                color: control.ui.themePalette.separator
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-
-                Label {
-                    text: qsTr("Client ID")
-                    color: control.ui.textMuted
-                    font.pixelSize: 11
-                }
-
-                Label {
-                    text: control.session.clientId || "-"
-                    color: control.ui.textStrong
-                    font.pixelSize: 13
-                    font.bold: true
-                    elide: Label.ElideRight
-                    Layout.fillWidth: true
-                }
-            }
-
-            RowLayout {
-                spacing: 8
-                Layout.alignment: Qt.AlignVCenter
-
-                AppButton {
-                    ui: control.ui
-                    text: control.connectionActionText
-                    minimumWidth: 92
-                    primary: !control.canDisconnect
-
-                    onClicked: {
-                        if (control.canDisconnect) {
-                            control.appController.disconnectCurrentSession()
-                        } else {
-                            control.appController.connectCurrentSession()
-                        }
-                    }
-                }
-
-                AppIconButton {
-                    ui: control.ui
-                    iconSource: control.ui.materialIcon("edit")
-                    iconSize: 17
-                    implicitWidth: 38
-                    implicitHeight: 38
-                    enabled: control.status.state === "disconnected"
-                    toolTipText: qsTr("Edit connection")
-                    onClicked: control.sessionEditor.openForEdit(control.appController.currentSessionIndex)
-                }
+                text: control.session.clientId || "-"
+                color: control.ui.textStrong
+                font.pixelSize: 13
+                font.bold: true
+                elide: Label.ElideRight
             }
         }
     }
