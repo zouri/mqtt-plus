@@ -12,11 +12,8 @@ Rectangle {
     required property AppUi ui
     required property var appController
     required property SessionEditorDialog sessionEditor
-    required property string currentPage
     property bool collapsed: false
 
-    signal pageRequested(string page)
-    signal scriptWorkspaceRequested()
     signal collapseRequested()
     signal expandRequested()
 
