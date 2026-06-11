@@ -4,10 +4,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Controls.Material
 import QtQuick.Layouts
-import "features/events"
-import "features/scripts"
-import "features/sessions"
-import "features/subscriptions"
+import "views"
 
 ApplicationWindow {
     id: root
@@ -37,23 +34,19 @@ ApplicationWindow {
     }
 
     readonly property var appController: root.app
-    readonly property var session: root.appController.currentSession
-    readonly property var status: root.appController.sessionStatus
-    readonly property var publishStatus: root.appController.publishStatus
     property string currentAppView: "workbench"
-    property string currentWorkspacePage: "messages"
     property bool connectionPaneCollapsed: false
 
     function resetVisibleStreams() {
-        sessionActivityPanel.resetStreamPosition()
-        logPage.resetStreamPosition()
+        workbenchPage.resetStreamPosition()
+        historyPage.resetStreamPosition()
     }
 
     function noteVisibleStreamRowAppended(row) {
-        if (root.currentAppView === "history" || root.currentWorkspacePage === "log") {
-            logPage.noteStreamRowAppended(row)
+        if (root.currentAppView === "history") {
+            historyPage.noteStreamRowAppended(row)
         } else {
-            sessionActivityPanel.noteStreamRowAppended(row)
+            workbenchPage.noteStreamRowAppended(row)
         }
     }
 
@@ -116,10 +109,7 @@ ApplicationWindow {
                         symbolColor: root.currentAppView === "workbench" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "workbench"
                         toolTipText: qsTr("Workbench")
-                        onClicked: {
-                            root.currentAppView = "workbench"
-                            root.currentWorkspacePage = "messages"
-                        }
+                        onClicked: root.currentAppView = "workbench"
                     }
 
                     AppIconButton {
@@ -135,10 +125,7 @@ ApplicationWindow {
                         symbolColor: root.currentAppView === "history" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "history"
                         toolTipText: qsTr("History")
-                        onClicked: {
-                            root.currentAppView = "history"
-                            root.currentWorkspacePage = "log"
-                        }
+                        onClicked: root.currentAppView = "history"
                     }
 
                     AppIconButton {
@@ -189,179 +176,37 @@ ApplicationWindow {
                                  ? 2
                                  : (root.currentAppView === "settings" ? 3 : 0))
 
-                RowLayout {
-                    spacing: 0
-
-                    SessionSidebar {
-                        ui: ui
-                        appController: root.appController
-                        sessionEditor: sessionEditor
-                        currentPage: root.currentWorkspacePage
-                        collapsed: root.connectionPaneCollapsed
-                        Layout.preferredWidth: root.connectionPaneCollapsed ? 48 : 282
-                        Layout.fillHeight: true
-                        onCollapseRequested: root.connectionPaneCollapsed = true
-                        onExpandRequested: root.connectionPaneCollapsed = false
-                    }
-
-                    Rectangle {
-                        Layout.preferredWidth: 410
-                        Layout.maximumWidth: 410
-                        Layout.minimumWidth: 410
-                        Layout.fillHeight: true
-                        color: ui.themePalette.windowBg
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: 0
-
-                            SessionOverviewPanel {
-                                ui: ui
-                                session: root.session
-                                status: root.status
-                                appController: root.appController
-                                sessionEditor: sessionEditor
-                            }
-
-                            SubscriptionsPanel {
-                                id: subscriptionsPanel
-                                ui: ui
-                                appController: root.appController
-                                addSubscriptionDialog: addSubscriptionDialog
-                            }
-                        }
-                    }
-
-                    SessionActivityPanel {
-                        id: sessionActivityPanel
-                        ui: ui
-                        appController: root.appController
-                        session: root.session
-                        status: root.status
-                        publishStatus: root.publishStatus
-                        fontFamily: root.font.family
-                    }
-                }
-
-                LogPage {
-                    id: logPage
+                WorkbenchView {
+                    id: workbenchPage
                     ui: ui
                     appController: root.appController
-                    session: root.session
-                    status: root.status
                     fontFamily: root.font.family
+                    connectionPaneCollapsed: root.connectionPaneCollapsed
+                    onCollapseRequested: root.connectionPaneCollapsed = true
+                    onExpandRequested: root.connectionPaneCollapsed = false
                 }
 
-                ScriptWorkspacePanel {
-                    id: scriptWorkspacePage
+                HistoryView {
+                    id: historyPage
                     ui: ui
                     appController: root.appController
                     fontFamily: root.font.family
                 }
 
-                Rectangle {
-                    color: ui.themePalette.windowBg
+                ScriptsView {
+                    id: scriptsPage
+                    ui: ui
+                    appController: root.appController
+                    fontFamily: root.font.family
+                }
 
-                    AppPanel {
-                        ui: ui
-                        anchors.fill: parent
-                        anchors.margins: 32
-                        showTopBorder: false
-                        showRightBorder: false
-                        showBottomBorder: false
-                        showLeftBorder: false
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: 18
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 12
-
-                                Label {
-                                    text: qsTr("Settings")
-                                    color: ui.textStrong
-                                    font.pixelSize: 28
-                                    font.bold: true
-                                }
-
-                                Item {
-                                    Layout.fillWidth: true
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 72
-                                radius: ui.innerRadius
-                                color: ui.themePalette.itemBg
-                                border.color: ui.themePalette.itemBorder
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 20
-                                    anchors.rightMargin: 20
-                                    spacing: 18
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 3
-
-                                        Label {
-                                            text: qsTr("Appearance")
-                                            color: ui.textStrong
-                                            font.pixelSize: 15
-                                            font.bold: true
-                                        }
-
-                                        Label {
-                                            text: qsTr("Current theme: %1").arg(ui.themeModeMeta(root.appController.themeMode).label)
-                                            color: ui.textMuted
-                                            font.pixelSize: 13
-                                        }
-                                    }
-
-                                    AppButton {
-                                        ui: ui
-                                        text: qsTr("Switch Theme")
-                                        minimumWidth: 116
-                                        onClicked: {
-                                            const meta = ui.themeModeMeta(root.appController.themeMode)
-                                            root.appController.themeMode = meta.next
-                                        }
-                                    }
-                                }
-                            }
-
-                            Item {
-                                Layout.fillHeight: true
-                            }
-                        }
-                    }
+                SettingsView {
+                    id: settingsPage
+                    ui: ui
+                    appController: root.appController
                 }
             }
         }
-    }
-
-    SessionEditorDialog {
-        id: sessionEditor
-        ui: ui
-        appController: root.appController
-    }
-
-    AddSubscriptionDialog {
-        id: addSubscriptionDialog
-        ui: ui
-        appController: root.appController
-    }
-
-    ScriptLibraryWindow {
-        id: scriptLibraryWindow
-        ui: ui
-        appController: root.appController
-        fontFamily: root.font.family
-        ownerWindow: root
     }
 
 }
