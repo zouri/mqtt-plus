@@ -29,6 +29,17 @@ ToolButton {
                                 ? control.ui.themePalette.buttonDangerText
                                 : (control.primary ? control.ui.themePalette.buttonPrimaryText : control.ui.textStrong)
     property bool forceActive: false
+    readonly property color disabledBg: Qt.rgba(control.ui.isDarkTheme ? 0.32 : 0.50,
+                                                control.ui.isDarkTheme ? 0.34 : 0.55,
+                                                control.ui.isDarkTheme ? 0.40 : 0.62,
+                                                control.ui.isDarkTheme ? 0.18 : 0.24)
+    readonly property color disabledSymbolColor: Qt.rgba(control.ui.isDarkTheme ? 0.82 : 0.28,
+                                                         control.ui.isDarkTheme ? 0.86 : 0.34,
+                                                         control.ui.isDarkTheme ? 0.92 : 0.42,
+                                                         control.ui.isDarkTheme ? 0.42 : 0.52)
+    readonly property color effectiveSymbolColor: control.enabled
+                                                  ? control.symbolColor
+                                                  : control.disabledSymbolColor
     readonly property color effectiveRestBg: control.restBg.a === 0
                                            ? Qt.rgba(control.hoverBg.r,
                                                      control.hoverBg.g,
@@ -45,7 +56,7 @@ ToolButton {
     icon.source: control.iconSource
     icon.width: control.iconSize
     icon.height: control.iconSize
-    icon.color: control.symbolColor
+    icon.color: control.effectiveSymbolColor
     font.pixelSize: control.symbolSize
     font.bold: true
     Accessible.name: control.toolTipText.length > 0 ? control.toolTipText : control.symbol
@@ -174,9 +185,11 @@ ToolButton {
 
     background: Rectangle {
         radius: control.cornerRadius
-        color: control.down
+        color: !control.enabled
+               ? control.disabledBg
+               : (control.down
                ? control.pressedBg
-               : ((control.hovered || control.forceActive) ? control.hoverBg : control.effectiveRestBg)
+               : ((control.hovered || control.forceActive) ? control.hoverBg : control.effectiveRestBg))
         border.color: control.outlineColor
 
         Behavior on color {
