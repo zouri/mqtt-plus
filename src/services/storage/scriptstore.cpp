@@ -149,6 +149,7 @@ LoadResult loadScripts()
             ScriptEntry script;
             script.id = object.value(QStringLiteral("id")).toString();
             script.name = object.value(QStringLiteral("name")).toString();
+            script.description = object.value(QStringLiteral("description")).toString();
             script.fileName = object.value(QStringLiteral("fileName")).toString(scriptFileNameForId(script.id));
             script.updatedAt = object.value(QStringLiteral("updatedAt")).toString();
             if (script.id.isEmpty() || script.name.trimmed().isEmpty()) {
@@ -198,6 +199,7 @@ bool saveScripts(QVector<ScriptEntry> &scripts, bool indexWritable, QString &err
         QJsonObject object;
         object.insert(QStringLiteral("id"), script.id);
         object.insert(QStringLiteral("name"), script.name);
+        object.insert(QStringLiteral("description"), script.description);
         object.insert(QStringLiteral("fileName"), script.fileName);
         object.insert(QStringLiteral("updatedAt"), script.updatedAt);
         scriptRows.append(object);

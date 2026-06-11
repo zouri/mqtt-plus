@@ -21,7 +21,7 @@ Button {
     }
 
     background: Rectangle {
-        radius: 10
+        radius: Math.round(height / 2)
         color: !control.enabled
                ? Qt.rgba(control.primary ? 0.55 : 0.5,
                          control.primary ? 0.6 : 0.55,

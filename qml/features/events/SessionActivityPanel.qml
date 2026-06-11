@@ -28,8 +28,7 @@ AppPanel {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 14
-        spacing: 12
+        spacing: 0
 
         EventStreamView {
             id: eventStreamView

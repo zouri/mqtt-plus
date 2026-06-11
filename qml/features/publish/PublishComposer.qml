@@ -14,8 +14,8 @@ Item {
     required property var ui
 
     property bool expanded: true
-    property int composerHeight: 286
-    readonly property int collapsedHeight: 38
+    property int composerHeight: 250
+    readonly property int collapsedHeight: 58
     readonly property int minComposerHeight: 204
     readonly property int maxComposerHeight: 460
     property var recentDrafts: []
@@ -137,8 +137,8 @@ Item {
         Item {
             id: resizeHandle
             Layout.fillWidth: true
-            Layout.preferredHeight: 12
-            Layout.minimumHeight: 12
+            Layout.preferredHeight: 1
+            Layout.minimumHeight: 1
             property real pressY: 0
             property int pressHeight: root.composerHeight
 
@@ -146,11 +146,9 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                height: 2
-                color: resizeMouse.containsMouse || resizeMouse.pressed
-                       ? root.ui.themePalette.selectedBorder
-                       : root.ui.themePalette.separator
-                opacity: resizeMouse.containsMouse || resizeMouse.pressed ? 1.0 : 0.65
+                height: 1
+                color: root.ui.themePalette.separator
+                opacity: 1.0
             }
 
             MouseArea {
@@ -186,13 +184,22 @@ Item {
             Layout.minimumHeight: root.expanded ? root.minComposerHeight : root.collapsedHeight
             clip: true
 
+            Rectangle {
+                anchors.fill: parent
+                color: root.ui.themePalette.windowBg
+            }
+
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 8
+                anchors.leftMargin: 20
+                anchors.rightMargin: 20
+                anchors.topMargin: 14
+                anchors.bottomMargin: 14
+                spacing: 10
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
+                    Layout.preferredHeight: 32
                     spacing: 8
 
                     Label {
@@ -218,13 +225,10 @@ Item {
                         Layout.fillWidth: true
                     }
 
-                    AppIconButton {
+                    AppButton {
                         ui: root.ui
-                        iconSource: root.ui.materialIcon(root.expanded ? "chevron-down" : "chevron-up")
-                        iconSize: 18
-                        implicitWidth: 34
-                        implicitHeight: 34
-                        toolTipText: root.expanded ? qsTr("Collapse publish") : qsTr("Expand publish")
+                        text: root.expanded ? qsTr("Collapse") : qsTr("Expand")
+                        minimumWidth: 74
                         onClicked: root.expanded = !root.expanded
                     }
                 }
@@ -239,14 +243,14 @@ Item {
                         ui: root.ui
                         id: publishTopicField
                         Layout.fillWidth: true
-                        placeholderText: qsTr("Topic")
+                        placeholderText: qsTr("Topic, e.g. home/living-room/light/set")
                     }
 
                     AppComboBox {
                         ui: root.ui
                         id: publishQosBox
                         model: [qsTr("QoS 0"), qsTr("QoS 1")]
-                        Layout.preferredWidth: 112
+                        Layout.preferredWidth: 116
                     }
 
                     AppComboBox {
@@ -265,7 +269,7 @@ Item {
                 }
 
                 Label {
-                    visible: root.expanded && root.publishDisabledReason.length > 0
+                    visible: false
                     Layout.fillWidth: true
                     text: root.publishDisabledReason
                     color: root.isConnected ? root.ui.textMuted : root.ui.themePalette.warningText
@@ -274,9 +278,9 @@ Item {
                 }
 
                 RowLayout {
-                    visible: root.expanded
+                    visible: false
                     Layout.fillWidth: true
-                    Layout.preferredHeight: visible ? 32 : 0
+                    Layout.preferredHeight: 0
                     spacing: 8
 
                     AppComboBox {
@@ -333,16 +337,20 @@ Item {
                         wrapMode: TextEdit.Wrap
                     }
 
-                    AppButton {
+                    AppIconButton {
                         ui: root.ui
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         anchors.rightMargin: 12
                         anchors.bottomMargin: 12
-                        text: qsTr("Publish")
-                        minimumWidth: 86
+                        implicitWidth: 38
+                        implicitHeight: 38
+                        cornerRadius: 19
+                        iconSource: root.ui.materialIcon("send")
+                        iconSize: 17
                         primary: true
                         enabled: root.canPublish
+                        toolTipText: qsTr("Publish message")
                         onClicked: root.publishCurrentDraft()
                     }
                 }

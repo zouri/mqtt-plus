@@ -15,7 +15,7 @@ Rectangle {
     default property alias panelContent: panelContentItem.data
 
     radius: inner ? control.ui.innerRadius : control.ui.panelRadius
-    color: inner ? control.ui.themePalette.innerPanelBg : control.ui.panelBg
+    color: inner ? control.ui.themePalette.innerPanelBg : control.ui.themePalette.windowBg
     border.width: 0
 
     Item {

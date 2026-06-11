@@ -27,6 +27,8 @@ QVariant ScriptLibraryModel::data(const QModelIndex &index, int role) const
         return row.id;
     case NameRole:
         return row.name;
+    case DescriptionRole:
+        return row.description;
     case CodeRole:
         return row.code;
     case UpdatedAtRole:
@@ -43,6 +45,7 @@ QHash<int, QByteArray> ScriptLibraryModel::roleNames() const
     return {
         {IdRole, "id"},
         {NameRole, "name"},
+        {DescriptionRole, "description"},
         {CodeRole, "code"},
         {UpdatedAtRole, "updatedAt"},
         {FilePathRole, "filePath"},
@@ -83,6 +86,7 @@ QVariantMap ScriptLibraryModel::rowToMap(const ScriptLibraryRow &row) const
     QVariantMap map;
     map.insert(QStringLiteral("id"), row.id);
     map.insert(QStringLiteral("name"), row.name);
+    map.insert(QStringLiteral("description"), row.description);
     map.insert(QStringLiteral("code"), row.code);
     map.insert(QStringLiteral("updatedAt"), row.updatedAt);
     map.insert(QStringLiteral("filePath"), row.filePath);
