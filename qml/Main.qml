@@ -83,7 +83,7 @@ ApplicationWindow {
             spacing: 0
 
             Rectangle {
-                Layout.preferredWidth: 74
+                Layout.preferredWidth: 64
                 Layout.fillHeight: true
                 color: ui.themePalette.sidebarBg
 
@@ -97,17 +97,17 @@ ApplicationWindow {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    anchors.topMargin: 20
-                    anchors.bottomMargin: 20
-                    spacing: 12
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    anchors.topMargin: 16
+                    anchors.bottomMargin: 16
+                    spacing: 10
 
                     AppIconButton {
                         ui: ui
-                        Layout.preferredWidth: 46
-                        Layout.preferredHeight: 46
-                        cornerRadius: 15
+                        Layout.preferredWidth: 40
+                        Layout.preferredHeight: 40
+                        cornerRadius: 13
                         iconSource: ui.materialIcon("workbench")
                         iconSize: 21
                         restBg: "transparent"
@@ -124,9 +124,9 @@ ApplicationWindow {
 
                     AppIconButton {
                         ui: ui
-                        Layout.preferredWidth: 46
-                        Layout.preferredHeight: 46
-                        cornerRadius: 15
+                        Layout.preferredWidth: 40
+                        Layout.preferredHeight: 40
+                        cornerRadius: 13
                         iconSource: ui.materialIcon("history")
                         iconSize: 20
                         restBg: "transparent"
@@ -143,9 +143,9 @@ ApplicationWindow {
 
                     AppIconButton {
                         ui: ui
-                        Layout.preferredWidth: 46
-                        Layout.preferredHeight: 46
-                        cornerRadius: 15
+                        Layout.preferredWidth: 40
+                        Layout.preferredHeight: 40
+                        cornerRadius: 13
                         iconSource: ui.materialIcon("script-development")
                         iconSize: 20
                         restBg: "transparent"
@@ -163,9 +163,9 @@ ApplicationWindow {
 
                     AppIconButton {
                         ui: ui
-                        Layout.preferredWidth: 46
-                        Layout.preferredHeight: 46
-                        cornerRadius: 15
+                        Layout.preferredWidth: 40
+                        Layout.preferredHeight: 40
+                        cornerRadius: 13
                         iconSource: ui.materialIcon("settings")
                         iconSize: 20
                         restBg: "transparent"
@@ -198,16 +198,16 @@ ApplicationWindow {
                         sessionEditor: sessionEditor
                         currentPage: root.currentWorkspacePage
                         collapsed: root.connectionPaneCollapsed
-                        Layout.preferredWidth: root.connectionPaneCollapsed ? 52 : 304
+                        Layout.preferredWidth: root.connectionPaneCollapsed ? 48 : 282
                         Layout.fillHeight: true
                         onCollapseRequested: root.connectionPaneCollapsed = true
                         onExpandRequested: root.connectionPaneCollapsed = false
                     }
 
                     Rectangle {
-                        Layout.preferredWidth: 450
-                        Layout.maximumWidth: 450
-                        Layout.minimumWidth: 450
+                        Layout.preferredWidth: 410
+                        Layout.maximumWidth: 410
+                        Layout.minimumWidth: 410
                         Layout.fillHeight: true
                         color: ui.themePalette.windowBg
 

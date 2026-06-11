@@ -19,6 +19,7 @@ AppPanel {
     readonly property bool isBusy: control.status.state === "connecting"
                                    || control.status.state === "disconnecting"
     readonly property bool hasError: Boolean(control.status.hasError)
+    readonly property string endpointText: `${control.session.host || "-"}:${control.session.port || "-"}`
     readonly property string connectionActionText: control.status.state === "connected"
                                                    ? qsTr("Disconnect")
                                                    : (control.status.state === "connecting"
@@ -27,39 +28,50 @@ AppPanel {
 
     showTopBorder: false
     Layout.fillWidth: true
-    Layout.preferredHeight: 136
-    Layout.minimumHeight: 136
+    Layout.preferredHeight: 126
+    Layout.minimumHeight: 126
 
     ColumnLayout {
         id: currentSessionColumn
         anchors.fill: parent
-        anchors.leftMargin: 20
-        anchors.rightMargin: 20
-        anchors.topMargin: 18
-        anchors.bottomMargin: 16
-        spacing: 10
+        anchors.leftMargin: 16
+        anchors.rightMargin: 16
+        anchors.topMargin: 12
+        anchors.bottomMargin: 12
+        spacing: 9
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: 10
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: 5
 
-                Label {
-                    text: control.session.name || qsTr("No session")
-                    color: control.ui.textStrong
-                    font.pixelSize: 30
-                    font.bold: true
-                    elide: Label.ElideRight
+                RowLayout {
                     Layout.fillWidth: true
+                    spacing: 8
+
+                    Label {
+                        text: control.session.name || qsTr("No session")
+                        color: control.ui.textStrong
+                        font.pixelSize: 24
+                        font.bold: true
+                        elide: Label.ElideRight
+                        Layout.fillWidth: true
+                    }
+
+                    AppStatusBadge {
+                        ui: control.ui
+                        status: control.status.state || "disconnected"
+                        label: control.status.state || "disconnected"
+                    }
                 }
 
                 Label {
-                    text: `${control.session.host || "-"}:${control.session.port || "-"}  (${control.session.transportLabel || "TCP"})`
+                    text: qsTr("%1  (%2)").arg(control.endpointText).arg(control.session.transportLabel || "TCP")
                     color: control.ui.textMuted
-                    font.pixelSize: 13
+                    font.pixelSize: 12
                     elide: Label.ElideRight
                     Layout.fillWidth: true
                 }
@@ -69,7 +81,7 @@ AppPanel {
                 id: editButton
                 enabled: control.status.state === "disconnected"
                 text: qsTr("Edit connection")
-                font.pixelSize: 13
+                font.pixelSize: 12
                 font.bold: true
                 leftPadding: 8
                 rightPadding: 8
@@ -99,7 +111,7 @@ AppPanel {
                     }
                 }
                 background: Rectangle {
-                    radius: 8
+                    radius: 10
                     color: editButton.hovered ? control.ui.themePalette.actionHoverBg : "transparent"
                 }
                 onClicked: control.sessionEditor.openForEdit(control.appController.currentSessionIndex)
@@ -123,32 +135,32 @@ AppPanel {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: 9
 
             Label {
                 text: qsTr("Protocol")
                 color: control.ui.textMuted
-                font.pixelSize: 12
+                font.pixelSize: 11
             }
 
             Label {
                 text: control.session.protocolVersionName || "MQTT 5"
                 color: control.ui.textStrong
-                font.pixelSize: 13
+                font.pixelSize: 12
                 font.bold: true
             }
 
             Label {
                 text: qsTr("Client ID")
                 color: control.ui.textMuted
-                font.pixelSize: 12
+                font.pixelSize: 11
             }
 
             Label {
                 Layout.fillWidth: true
                 text: control.session.clientId || "-"
                 color: control.ui.textStrong
-                font.pixelSize: 13
+                font.pixelSize: 12
                 font.bold: true
                 elide: Label.ElideRight
             }

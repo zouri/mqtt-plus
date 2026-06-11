@@ -17,10 +17,11 @@ AppPanel {
     property int matchingSubscriptionCount: 0
     readonly property var sessionStatus: control.appController ? control.appController.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
+    readonly property bool hasFilter: control.filterText.trim().length > 0 || control.filterMode !== "all"
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-    Layout.minimumHeight: 260
+    Layout.minimumHeight: 220
 
     Timer {
         id: subscriptionActionVisualResetTimer
@@ -73,17 +74,17 @@ AppPanel {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 16
-        anchors.rightMargin: 16
-        anchors.topMargin: 18
-        anchors.bottomMargin: 16
-        spacing: 12
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        anchors.topMargin: 12
+        anchors.bottomMargin: 12
+        spacing: 9
 
         AppSectionHeader {
             ui: control.ui
             title: qsTr("Subscriptions")
-            titleSize: 16
-            meta: control.filterText.length > 0 || control.filterMode !== "all"
+            titleSize: 15
+            meta: control.hasFilter
                   ? qsTr("%1/%2").arg(control.matchingSubscriptionCount).arg(subscriptionList.count)
                   : `${subscriptionList.count}`
 
@@ -103,12 +104,12 @@ AppPanel {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: 8
 
             AppTextField {
                 ui: control.ui
                 Layout.fillWidth: true
-                placeholderText: qsTr("Filter Topic, e.g. sensor/+/temp")
+                placeholderText: qsTr("Filter topic")
                 text: control.filterText
                 onTextChanged: control.filterText = text
             }
@@ -119,7 +120,7 @@ AppPanel {
                 AppButton {
                     ui: control.ui
                     text: qsTr("All")
-                    minimumWidth: 68
+                    minimumWidth: 58
                     primary: control.filterMode === "all"
                     onClicked: control.filterMode = "all"
                 }
@@ -127,22 +128,67 @@ AppPanel {
                 AppButton {
                     ui: control.ui
                     text: qsTr("Running")
-                    minimumWidth: 88
+                    minimumWidth: 76
                     primary: control.filterMode === "active"
                     onClicked: control.filterMode = "active"
                 }
             }
         }
 
-        Label {
+        Rectangle {
             visible: control.matchingSubscriptionCount === 0
-            text: control.connected
-                  ? qsTr("No topics yet. Add a topic to start listening.")
-                  : qsTr("No topics yet. Add subscriptions now; they will listen after connecting.")
-            color: control.ui.textMuted
-            font.pixelSize: 12
-            wrapMode: Text.Wrap
             Layout.fillWidth: true
+            Layout.preferredHeight: emptySubscriptionColumn.implicitHeight + 18
+            radius: control.ui.innerRadius
+            color: control.ui.themePalette.innerPanelBg
+            border.color: control.ui.themePalette.innerPanelBorder
+
+            ColumnLayout {
+                id: emptySubscriptionColumn
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                spacing: 6
+
+                Label {
+                    Layout.fillWidth: true
+                    text: control.hasFilter
+                          ? qsTr("No matching subscriptions")
+                          : (control.connected
+                             ? qsTr("No subscriptions yet")
+                             : qsTr("Subscriptions are ready after connecting"))
+                    color: control.ui.textStrong
+                    font.pixelSize: 12
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: control.hasFilter
+                          ? qsTr("Adjust the filter or show all subscriptions.")
+                          : (control.connected
+                             ? qsTr("Add a topic to start listening.")
+                             : qsTr("You can add topics now; they will start listening once connected."))
+                    color: control.ui.textMuted
+                    font.pixelSize: 11
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
+                }
+
+                AppButton {
+                    ui: control.ui
+                    visible: !control.hasFilter
+                    Layout.alignment: Qt.AlignHCenter
+                    text: qsTr("Add subscription")
+                    minimumWidth: 112
+                    primary: true
+                    onClicked: control.addSubscriptionDialog.openForCreate()
+                }
+            }
         }
 
         ListView {
@@ -150,7 +196,7 @@ AppPanel {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 8
+            spacing: 6
             model: control.appController.subscriptions
             reuseItems: true
 
@@ -191,20 +237,20 @@ AppPanel {
                 border.color: subscriptionDelegate.lastError.length > 0
                               ? control.ui.themePalette.errorText
                               : control.ui.themePalette.innerPanelBorder
-                implicitHeight: subscriptionDelegate.matchesFilter ? 132 : 0
+                implicitHeight: subscriptionDelegate.matchesFilter ? 112 : 0
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 16
-                    spacing: 10
+                    anchors.margins: 12
+                    spacing: 7
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 7
 
                         Rectangle {
-                            Layout.preferredWidth: 8
-                            Layout.preferredHeight: 8
+                            Layout.preferredWidth: 7
+                            Layout.preferredHeight: 7
                             radius: 4
                             color: control.ui.stateColor(subscriptionDelegate.subscriptionState)
                         }
@@ -213,7 +259,7 @@ AppPanel {
                             Layout.fillWidth: true
                             text: subscriptionDelegate.displayName
                             color: control.ui.textStrong
-                            font.pixelSize: 14
+                            font.pixelSize: 13
                             font.bold: true
                             elide: Label.ElideRight
                         }
@@ -239,7 +285,7 @@ AppPanel {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 6
 
                         Label {
                             text: qsTr("QoS %1 · %2 · %3 msg · %4/s")
@@ -248,7 +294,7 @@ AppPanel {
                                   .arg(Math.round(Number(subscriptionDelegate.receivedMessageCount || 0)))
                                   .arg(Number(subscriptionDelegate.topicFps || 0).toFixed(1))
                             color: control.ui.textMuted
-                            font.pixelSize: 13
+                            font.pixelSize: 12
                             elide: Label.ElideRight
                             Layout.fillWidth: true
                         }
@@ -264,10 +310,10 @@ AppPanel {
                                 id: subscriptionEditButton
                                 ui: control.ui
                                 iconSource: control.ui.materialIcon("edit")
-                                implicitWidth: 34
-                                implicitHeight: 34
+                                implicitWidth: 30
+                                implicitHeight: 30
                                 iconSize: 13
-                                cornerRadius: 17
+                                cornerRadius: 15
                                 restBg: control.ui.themePalette.itemBg
                                 outlineColor: control.ui.themePalette.innerPanelBorder
 
@@ -287,10 +333,10 @@ AppPanel {
                                 ui: control.ui
                                 id: subscriptionPauseButton
                                 iconSource: control.ui.materialIcon(subscriptionDelegate.paused ? "play" : "pause")
-                                implicitWidth: 34
-                                implicitHeight: 34
+                                implicitWidth: 30
+                                implicitHeight: 30
                                 iconSize: 13
-                                cornerRadius: 17
+                                cornerRadius: 15
                                 restBg: control.ui.themePalette.itemBg
                                 outlineColor: control.ui.themePalette.innerPanelBorder
 
@@ -311,10 +357,10 @@ AppPanel {
                                 ui: control.ui
                                 id: subscriptionDeleteButton
                                 iconSource: control.ui.materialIcon("xmark")
-                                implicitWidth: 34
-                                implicitHeight: 34
+                                implicitWidth: 30
+                                implicitHeight: 30
                                 iconSize: 13
-                                cornerRadius: 17
+                                cornerRadius: 15
                                 restBg: Qt.rgba(0.86, 0.15, 0.15, control.ui.isDarkTheme ? 0.22 : 0.06)
                                 outlineColor: control.ui.themePalette.innerPanelBorder
                                 symbolColor: control.ui.themePalette.errorText

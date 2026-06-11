@@ -24,18 +24,18 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 16
+        anchors.margins: 12
         visible: !control.collapsed
-        spacing: 18
+        spacing: 12
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: 8
 
             Label {
                 text: qsTr("Connections")
                 color: control.ui.textStrong
-                font.pixelSize: 17
+                font.pixelSize: 16
                 font.bold: true
             }
 
@@ -54,9 +54,9 @@ Rectangle {
                 ui: control.ui
                 iconSource: control.ui.materialIcon("chevron-left")
                 iconSize: 18
-                implicitWidth: 34
-                implicitHeight: 34
-                cornerRadius: 17
+                implicitWidth: 30
+                implicitHeight: 30
+                cornerRadius: 15
                 restBg: control.ui.themePalette.windowBg
                 outlineColor: control.ui.themePalette.innerPanelBorder
                 toolTipText: qsTr("Hide connection list")
@@ -69,7 +69,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 10
+            spacing: 8
             currentIndex: control.appController.currentSessionIndex
             model: control.appController.sessions
             reuseItems: true
@@ -86,16 +86,22 @@ Rectangle {
                 required property string host
                 required property int port
                 required property string transportLabel
+                readonly property bool selected: index === control.appController.currentSessionIndex
                 width: ListView.view.width
-                height: 72
-                radius: 16
-                color: rowMouse.containsMouse || activeFocus
-                       ? control.ui.rowHover
-                       : control.ui.themePalette.itemBg
-                border.color: index === control.appController.currentSessionIndex
-                              ? control.ui.themePalette.selectedBorder
+                height: 56
+                radius: control.ui.innerRadius
+                color: sessionDelegate.selected
+                       ? control.ui.themePalette.selectedBg
+                       : (rowMouse.containsMouse || activeFocus
+                          ? control.ui.rowHover
+                          : control.ui.themePalette.itemBg)
+                border.color: sessionDelegate.selected
+                              ? Qt.rgba(control.ui.themePalette.selectedBorder.r,
+                                        control.ui.themePalette.selectedBorder.g,
+                                        control.ui.themePalette.selectedBorder.b,
+                                        0.36)
                               : control.ui.themePalette.itemBorder
-                border.width: index === control.appController.currentSessionIndex ? 2 : 1
+                border.width: 1
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
@@ -129,16 +135,23 @@ Rectangle {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 14
-                    anchors.rightMargin: 14
-                    spacing: 12
+                    anchors.leftMargin: 11
+                    anchors.rightMargin: 10
+                    spacing: 8
 
                     Rectangle {
-                        implicitWidth: 8
-                        implicitHeight: 8
-                        Layout.preferredWidth: 8
-                        Layout.preferredHeight: 8
-                        radius: 4
+                        Layout.preferredWidth: 3
+                        Layout.preferredHeight: 30
+                        radius: 2
+                        color: sessionDelegate.selected
+                               ? control.ui.themePalette.selectedBorder
+                               : "transparent"
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: 7
+                        Layout.preferredHeight: 7
+                        radius: 3.5
                         color: control.ui.stateColor(sessionDelegate.connectionState)
                     }
 
@@ -151,7 +164,7 @@ Rectangle {
                             text: sessionDelegate.name
                             color: control.ui.textStrong
                             elide: Label.ElideRight
-                            font.pixelSize: 13
+                            font.pixelSize: 12
                             font.bold: true
                         }
 
@@ -160,16 +173,16 @@ Rectangle {
                             text: sessionDelegate.transportLabel || "TCP"
                             color: control.ui.textMuted
                             elide: Label.ElideRight
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                         }
                     }
 
                     AppBadge {
                         ui: control.ui
                         label: control.ui.statusLabel(sessionDelegate.connectionState)
-                        badgeRadius: 13
-                        horizontalPadding: 10
-                        verticalPadding: 5
+                        badgeRadius: 10
+                        horizontalPadding: 7
+                        verticalPadding: 3
                         badgeBg: control.ui.themePalette.chipBg
                         badgeBorder: "transparent"
                         badgeText: control.ui.textMuted
@@ -201,14 +214,14 @@ Rectangle {
 
             footer: Item {
                 width: sessionList.width
-                height: 62
+                height: 54
 
                 Rectangle {
                     id: addSessionDelegate
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    height: 52
+                    height: 44
                     radius: 16
                     color: "transparent"
                     activeFocusOnTab: true
@@ -287,8 +300,8 @@ Rectangle {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
                         spacing: 6
 
                         Label {
@@ -328,9 +341,9 @@ Rectangle {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.topMargin: 20
-            anchors.bottomMargin: 20
-            spacing: 12
+            anchors.topMargin: 16
+            anchors.bottomMargin: 16
+            spacing: 10
 
             AppIconButton {
                 ui: control.ui
