@@ -17,35 +17,8 @@ Item {
     property string streamKind: "message"
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
-    property string filterText: ""
     readonly property bool showingMessages: root.streamKind === "message"
     readonly property string activeTitle: root.showingMessages ? qsTr("Messages") : qsTr("Log")
-    readonly property string searchPlaceholder: root.showingMessages
-                                                ? qsTr("Search topic or content")
-                                                : qsTr("Search log channel or detail")
-    property int matchingEventCount: 0
-    property int activeKindCount: 0
-    readonly property bool hasFilter: root.filterText.trim().length > 0
-    readonly property bool connected: root.status.state === "connected"
-    readonly property int subscriptionCount: Number(root.session.subscriptionCount || 0)
-    readonly property string emptyTitle: root.hasFilter
-                                        ? (root.showingMessages ? qsTr("No matching messages") : qsTr("No matching log entries"))
-                                        : (!root.showingMessages
-                                           ? qsTr("No log entries")
-                                           : (!root.connected
-                                              ? qsTr("Connect to start receiving messages")
-                                              : (root.subscriptionCount === 0
-                                                 ? qsTr("Add a subscription to start listening")
-                                                 : qsTr("Waiting for messages"))))
-    readonly property string emptyDetail: root.hasFilter
-                                         ? qsTr("Adjust the search query or clear it to return to the live stream.")
-                                         : (!root.showingMessages
-                                            ? qsTr("Connection, subscription, publish, and storage events appear here.")
-                                            : (!root.connected
-                                               ? qsTr("Message history will appear here after this session is connected.")
-                                               : (root.subscriptionCount === 0
-                                                  ? qsTr("Subscriptions can be prepared offline and become active after connection.")
-                                                  : qsTr("The stream follows new messages automatically unless you scroll up."))))
 
     signal publishDraftRequested(string topic, string payload, int format)
 
@@ -69,9 +42,7 @@ Item {
 
     function noteStreamRowAppended(row) {
         const rowKind = row && row.kind ? row.kind : ""
-        const rowMatchesCurrentView = rowKind === root.streamKind
-        if (!rowMatchesCurrentView) {
-            root.recomputeVisibleCount()
+        if (rowKind !== root.streamKind) {
             return
         }
 
@@ -109,53 +80,7 @@ Item {
         })
     }
 
-    function rowMatches(kind, timestamp, title, topic, payload, payloadFormat) {
-        if (kind === "divider") {
-            return root.activeKindCount > 0 && root.filterText.trim().length === 0
-        }
-
-        if (kind !== root.streamKind) {
-            return false
-        }
-
-        const needle = root.filterText.trim().toLowerCase()
-        if (needle.length === 0) {
-            return true
-        }
-
-        return `${timestamp} ${title} ${topic} ${payload} ${payloadFormat}`.toLowerCase().indexOf(needle) >= 0
-    }
-
-    function recomputeVisibleCount() {
-        let visibleRows = 0
-        let activeRows = 0
-        const model = root.appController ? root.appController.events : null
-        const rowCount = model ? model.count : 0
-        for (let i = 0; i < rowCount; ++i) {
-            const row = model.rowAt(i)
-            if ((row.kind || "") === root.streamKind) {
-                activeRows += 1
-            }
-        }
-        root.activeKindCount = activeRows
-
-        for (let i = 0; i < rowCount; ++i) {
-            const row = model.rowAt(i)
-            if (root.rowMatches(row.kind || "",
-                                row.timestamp || "",
-                                row.title || "",
-                                row.topic || "",
-                                row.payload || "",
-                                row.payloadFormat || "")) {
-                visibleRows += 1
-            }
-        }
-        root.matchingEventCount = visibleRows
-    }
-
-    onFilterTextChanged: root.recomputeVisibleCount()
     onStreamKindChanged: {
-        root.recomputeVisibleCount()
         if (eventList) {
             eventList.unreadCount = 0
             Qt.callLater(function() {
@@ -163,16 +88,6 @@ Item {
                     eventList.scrollToBottom()
                 }
             })
-        }
-    }
-
-    Component.onCompleted: root.recomputeVisibleCount()
-
-    Connections {
-        target: root.appController ? root.appController.events : null
-
-        function onCountChanged() {
-            root.recomputeVisibleCount()
         }
     }
 
@@ -208,9 +123,7 @@ Item {
 
                 AppBadge {
                     ui: root.ui
-                    label: root.hasFilter
-                           ? qsTr("%1/%2").arg(root.matchingEventCount).arg(root.activeKindCount)
-                           : `${root.activeKindCount}`
+                    label: `${eventList.count}`
                     badgeRadius: 11
                     horizontalPadding: 7
                     verticalPadding: 3
@@ -221,21 +134,6 @@ Item {
 
                 Item {
                     Layout.fillWidth: true
-                }
-
-                AppTextField {
-                    ui: root.ui
-                    Layout.preferredWidth: Math.min(280, Math.max(200, root.width * 0.25))
-                    placeholderText: root.searchPlaceholder
-                    text: root.filterText
-                    onTextChanged: root.filterText = text
-                }
-
-                AppComboBox {
-                    ui: root.ui
-                    visible: root.showingMessages
-                    Layout.preferredWidth: visible ? 104 : 0
-                    model: [qsTr("All directions"), qsTr("Received"), qsTr("Published")]
                 }
 
                 AppIconButton {
@@ -345,15 +243,10 @@ Item {
                     required property string testPayload
                     required property int testFormat
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
-                    readonly property bool matchesFilter: root.rowMatches(
-                                                              eventDelegate.kind,
-                                                              eventDelegate.timestamp,
-                                                              eventDelegate.title,
-                                                              eventDelegate.topic,
-                                                              eventDelegate.payload,
-                                                              eventDelegate.payloadFormat)
+                    readonly property bool matchesStreamKind: eventDelegate.kind === root.streamKind
+                                                              || eventDelegate.kind === "divider"
                     width: ListView.view.width
-                    visible: eventDelegate.matchesFilter
+                    visible: eventDelegate.matchesStreamKind
                     radius: root.ui.innerRadius
                     color: eventDelegate.kind === "divider"
                            ? "transparent"
@@ -363,7 +256,7 @@ Item {
                                   : (eventDelegate.kind === "divider"
                                      ? "transparent"
                                      : root.ui.themePalette.innerPanelBorder)
-                    implicitHeight: !eventDelegate.matchesFilter
+                    implicitHeight: !eventDelegate.matchesStreamKind
                                     ? 0
                                     : (eventDelegate.kind === "divider"
                                     ? dividerRow.implicitHeight + 6
@@ -502,45 +395,6 @@ Item {
                             textFormat: Text.PlainText
                             wrapMode: Text.WrapAnywhere
                         }
-                    }
-                }
-            }
-
-            Rectangle {
-                visible: root.matchingEventCount === 0
-                anchors.centerIn: parent
-                width: Math.min(parent.width - 48, 420)
-                height: emptyStateColumn.implicitHeight + 20
-                radius: root.ui.innerRadius
-                color: "transparent"
-                border.color: "transparent"
-
-                ColumnLayout {
-                    id: emptyStateColumn
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 5
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: root.emptyTitle
-                        color: root.ui.textStrong
-                        font.pixelSize: 14
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: root.emptyDetail
-                        color: root.ui.textMuted
-                        font.pixelSize: 12
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
                     }
                 }
             }
