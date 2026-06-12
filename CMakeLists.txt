@@ -149,6 +149,10 @@ qt_add_qml_module(mqtt_plus_app
         qml/features/sessions/SessionSidebar.qml
         qml/features/subscriptions/AddSubscriptionDialog.qml
         qml/features/subscriptions/SubscriptionsPanel.qml
+        qml/views/HistoryView.qml
+        qml/views/SettingsView.qml
+        qml/views/ScriptsView.qml
+        qml/views/WorkbenchView.qml
         qml/Main.qml
     RESOURCES
         qml/icons/material/chevron-down.svg
