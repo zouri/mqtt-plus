@@ -9,16 +9,17 @@ Item {
     id: root
 
     required property var appController
+    required property var streamModel
+    required property var loadOlderRows
+    required property var clearRows
     required property var session
-    required property var status
     required property var ui
     required property string fontFamily
+    required property string title
 
-    property string streamKind: "message"
+    property bool showOutputControls: false
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
-    readonly property bool showingMessages: root.streamKind === "message"
-    readonly property string activeTitle: root.showingMessages ? qsTr("Messages") : qsTr("Log")
 
     signal publishDraftRequested(string topic, string payload, int format)
 
@@ -41,11 +42,6 @@ Item {
     }
 
     function noteStreamRowAppended(row) {
-        const rowKind = row && row.kind ? row.kind : ""
-        if (rowKind !== root.streamKind) {
-            return
-        }
-
         const shouldStickToBottom = !eventList || eventList.shouldFollowOutput
 
         if (shouldStickToBottom && eventList) {
@@ -67,7 +63,7 @@ Item {
         root.loadingOlderEvents = true
         const previousContentHeight = eventList.contentHeight
         const previousContentY = eventList.contentY
-        const insertedRows = root.appController.loadOlderCurrentSessionEvents()
+        const insertedRows = root.loadOlderRows()
         if (insertedRows === 0) {
             root.reachedHistoryStart = true
             root.loadingOlderEvents = false
@@ -78,17 +74,6 @@ Item {
             eventList.contentY = previousContentY + eventList.contentHeight - previousContentHeight
             root.loadingOlderEvents = false
         })
-    }
-
-    onStreamKindChanged: {
-        if (eventList) {
-            eventList.unreadCount = 0
-            Qt.callLater(function() {
-                if (eventList) {
-                    eventList.scrollToBottom()
-                }
-            })
-        }
     }
 
     ColumnLayout {
@@ -115,7 +100,7 @@ Item {
                 spacing: 8
 
                 Label {
-                    text: root.activeTitle
+                    text: root.title
                     color: root.ui.textStrong
                     font.pixelSize: 22
                     font.bold: true
@@ -138,6 +123,7 @@ Item {
 
                 AppIconButton {
                     ui: root.ui
+                    visible: root.showOutputControls
                     iconSource: root.ui.materialIcon(root.session.outputPaused ? "play" : "pause")
                     iconSize: 14
                     implicitWidth: 32
@@ -159,13 +145,13 @@ Item {
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     toolTipText: qsTr("Clear history")
-                    onClicked: root.appController.clearCurrentMessages()
+                    onClicked: root.clearRows()
                 }
             }
         }
 
         Label {
-            visible: root.session.outputPaused
+            visible: root.showOutputControls && root.session.outputPaused
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Layout.topMargin: 8
@@ -181,9 +167,11 @@ Item {
             ListView {
                 id: eventList
                 anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
                 clip: true
                 spacing: 4
-                model: root.appController.events
+                model: root.streamModel
                 property bool shouldFollowOutput: true
                 property bool programmaticScroll: false
                 property int unreadCount: 0
@@ -243,10 +231,7 @@ Item {
                     required property string testPayload
                     required property int testFormat
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
-                    readonly property bool matchesStreamKind: eventDelegate.kind === root.streamKind
-                                                              || eventDelegate.kind === "divider"
                     width: ListView.view.width
-                    visible: eventDelegate.matchesStreamKind
                     radius: root.ui.innerRadius
                     color: eventDelegate.kind === "divider"
                            ? "transparent"
@@ -256,11 +241,9 @@ Item {
                                   : (eventDelegate.kind === "divider"
                                      ? "transparent"
                                      : root.ui.themePalette.innerPanelBorder)
-                    implicitHeight: !eventDelegate.matchesStreamKind
-                                    ? 0
-                                    : (eventDelegate.kind === "divider"
+                    implicitHeight: eventDelegate.kind === "divider"
                                     ? dividerRow.implicitHeight + 6
-                                    : rowBody.implicitHeight + 14)
+                                    : rowBody.implicitHeight + 14
 
                     RowLayout {
                         id: dividerRow

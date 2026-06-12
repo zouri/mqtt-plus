@@ -29,12 +29,16 @@ public:
         const QString &timestamp,
         const QString &channel,
         const QString &message);
-    QVariantList loadEntries(const QString &sessionId, int limit) const;
-    QVariantList loadEntriesBefore(const QString &sessionId, qint64 beforeId, int limit) const;
+    QVariantList loadMessages(const QString &sessionId, int limit) const;
+    QVariantList loadMessagesBefore(const QString &sessionId, qint64 beforeId, int limit) const;
+    QVariantList loadLogs(const QString &sessionId, int limit) const;
+    QVariantList loadLogsBefore(const QString &sessionId, qint64 beforeId, int limit) const;
     void clearMessages(const QString &sessionId);
+    void clearLogs(const QString &sessionId);
 
 private:
     bool initialize();
+    bool resetLegacySchema();
 
     QSqlDatabase m_db;
     QString m_connectionName;

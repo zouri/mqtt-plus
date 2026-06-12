@@ -4,6 +4,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
+#include <QVariantMap>
 #include <QUuid>
 
 #include <algorithm>
@@ -53,10 +54,10 @@ qint64 HistoryStore::appendMessage(
     QSqlQuery query(m_db);
     query.prepare(
         QStringLiteral(
-            "INSERT INTO messages("
-            "session_id, timestamp, entry_type, topic, payload, payload_b64, "
+            "INSERT INTO mqtt_messages("
+            "session_id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name) "
-            "VALUES(?, ?, 'message', ?, ?, ?, ?, ?, ?, ?, ?)"));
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
     query.addBindValue(sessionId);
     query.addBindValue(timestamp);
     query.addBindValue(topic);
@@ -88,8 +89,8 @@ qint64 HistoryStore::appendEvent(
     QSqlQuery query(m_db);
     query.prepare(
         QStringLiteral(
-            "INSERT INTO messages(session_id, timestamp, entry_type, topic, payload, payload_b64) "
-            "VALUES(?, ?, 'event', ?, ?, '')"));
+            "INSERT INTO event_logs(session_id, timestamp, channel, message) "
+            "VALUES(?, ?, ?, ?)"));
     query.addBindValue(sessionId);
     query.addBindValue(timestamp);
     query.addBindValue(channel);
@@ -102,7 +103,7 @@ qint64 HistoryStore::appendEvent(
     return query.lastInsertId().toLongLong();
 }
 
-QVariantList HistoryStore::loadEntries(const QString &sessionId, int limit) const
+QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) const
 {
     QVariantList result;
     if (!isReady()) {
@@ -112,12 +113,12 @@ QVariantList HistoryStore::loadEntries(const QString &sessionId, int limit) cons
     QSqlQuery query(m_db);
     query.prepare(
         QStringLiteral(
-            "SELECT id, timestamp, entry_type, topic, payload, payload_b64, "
+            "SELECT id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name "
             "FROM ("
-            "    SELECT id, timestamp, entry_type, topic, payload, payload_b64, "
+            "    SELECT id, timestamp, topic, payload, payload_b64, "
             "    parsed_payload, parsed_format, parse_error, script_id, script_name "
-            "    FROM messages "
+            "    FROM mqtt_messages "
             "    WHERE session_id = ? "
             "    ORDER BY id DESC "
             "    LIMIT ?"
@@ -134,22 +135,22 @@ QVariantList HistoryStore::loadEntries(const QString &sessionId, int limit) cons
         QVariantMap row;
         row.insert(QStringLiteral("id"), query.value(0).toLongLong());
         row.insert(QStringLiteral("timestamp"), query.value(1).toString());
-        row.insert(QStringLiteral("entry_type"), query.value(2).toString());
-        row.insert(QStringLiteral("topic"), query.value(3).toString());
-        row.insert(QStringLiteral("payload"), query.value(4).toString());
-        row.insert(QStringLiteral("payload_b64"), query.value(5).toString());
-        row.insert(QStringLiteral("parsed_payload"), query.value(6).toString());
-        row.insert(QStringLiteral("parsed_format"), query.value(7).toString());
-        row.insert(QStringLiteral("parse_error"), query.value(8).toString());
-        row.insert(QStringLiteral("script_id"), query.value(9).toString());
-        row.insert(QStringLiteral("script_name"), query.value(10).toString());
+        row.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
+        row.insert(QStringLiteral("topic"), query.value(2).toString());
+        row.insert(QStringLiteral("payload"), query.value(3).toString());
+        row.insert(QStringLiteral("payload_b64"), query.value(4).toString());
+        row.insert(QStringLiteral("parsed_payload"), query.value(5).toString());
+        row.insert(QStringLiteral("parsed_format"), query.value(6).toString());
+        row.insert(QStringLiteral("parse_error"), query.value(7).toString());
+        row.insert(QStringLiteral("script_id"), query.value(8).toString());
+        row.insert(QStringLiteral("script_name"), query.value(9).toString());
         result.append(row);
     }
 
     return result;
 }
 
-QVariantList HistoryStore::loadEntriesBefore(const QString &sessionId, qint64 beforeId, int limit) const
+QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 beforeId, int limit) const
 {
     QVariantList result;
     if (!isReady() || beforeId <= 0) {
@@ -159,12 +160,12 @@ QVariantList HistoryStore::loadEntriesBefore(const QString &sessionId, qint64 be
     QSqlQuery query(m_db);
     query.prepare(
         QStringLiteral(
-            "SELECT id, timestamp, entry_type, topic, payload, payload_b64, "
+            "SELECT id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name "
             "FROM ("
-            "    SELECT id, timestamp, entry_type, topic, payload, payload_b64, "
+            "    SELECT id, timestamp, topic, payload, payload_b64, "
             "    parsed_payload, parsed_format, parse_error, script_id, script_name "
-            "    FROM messages "
+            "    FROM mqtt_messages "
             "    WHERE session_id = ? AND id < ? "
             "    ORDER BY id DESC "
             "    LIMIT ?"
@@ -182,15 +183,94 @@ QVariantList HistoryStore::loadEntriesBefore(const QString &sessionId, qint64 be
         QVariantMap row;
         row.insert(QStringLiteral("id"), query.value(0).toLongLong());
         row.insert(QStringLiteral("timestamp"), query.value(1).toString());
-        row.insert(QStringLiteral("entry_type"), query.value(2).toString());
-        row.insert(QStringLiteral("topic"), query.value(3).toString());
-        row.insert(QStringLiteral("payload"), query.value(4).toString());
-        row.insert(QStringLiteral("payload_b64"), query.value(5).toString());
-        row.insert(QStringLiteral("parsed_payload"), query.value(6).toString());
-        row.insert(QStringLiteral("parsed_format"), query.value(7).toString());
-        row.insert(QStringLiteral("parse_error"), query.value(8).toString());
-        row.insert(QStringLiteral("script_id"), query.value(9).toString());
-        row.insert(QStringLiteral("script_name"), query.value(10).toString());
+        row.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
+        row.insert(QStringLiteral("topic"), query.value(2).toString());
+        row.insert(QStringLiteral("payload"), query.value(3).toString());
+        row.insert(QStringLiteral("payload_b64"), query.value(4).toString());
+        row.insert(QStringLiteral("parsed_payload"), query.value(5).toString());
+        row.insert(QStringLiteral("parsed_format"), query.value(6).toString());
+        row.insert(QStringLiteral("parse_error"), query.value(7).toString());
+        row.insert(QStringLiteral("script_id"), query.value(8).toString());
+        row.insert(QStringLiteral("script_name"), query.value(9).toString());
+        result.append(row);
+    }
+
+    return result;
+}
+
+QVariantList HistoryStore::loadLogs(const QString &sessionId, int limit) const
+{
+    QVariantList result;
+    if (!isReady()) {
+        return result;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        QStringLiteral(
+            "SELECT id, timestamp, channel, message "
+            "FROM ("
+            "    SELECT id, timestamp, channel, message "
+            "    FROM event_logs "
+            "    WHERE session_id = ? "
+            "    ORDER BY id DESC "
+            "    LIMIT ?"
+            ") recent_logs "
+            "ORDER BY id ASC"));
+    query.addBindValue(sessionId);
+    query.addBindValue((std::max)(1, limit));
+
+    if (!query.exec()) {
+        return result;
+    }
+
+    while (query.next()) {
+        QVariantMap row;
+        row.insert(QStringLiteral("id"), query.value(0).toLongLong());
+        row.insert(QStringLiteral("timestamp"), query.value(1).toString());
+        row.insert(QStringLiteral("entry_type"), QStringLiteral("event"));
+        row.insert(QStringLiteral("topic"), query.value(2).toString());
+        row.insert(QStringLiteral("payload"), query.value(3).toString());
+        result.append(row);
+    }
+
+    return result;
+}
+
+QVariantList HistoryStore::loadLogsBefore(const QString &sessionId, qint64 beforeId, int limit) const
+{
+    QVariantList result;
+    if (!isReady() || beforeId <= 0) {
+        return result;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        QStringLiteral(
+            "SELECT id, timestamp, channel, message "
+            "FROM ("
+            "    SELECT id, timestamp, channel, message "
+            "    FROM event_logs "
+            "    WHERE session_id = ? AND id < ? "
+            "    ORDER BY id DESC "
+            "    LIMIT ?"
+            ") older_logs "
+            "ORDER BY id ASC"));
+    query.addBindValue(sessionId);
+    query.addBindValue(beforeId);
+    query.addBindValue((std::max)(1, limit));
+
+    if (!query.exec()) {
+        return result;
+    }
+
+    while (query.next()) {
+        QVariantMap row;
+        row.insert(QStringLiteral("id"), query.value(0).toLongLong());
+        row.insert(QStringLiteral("timestamp"), query.value(1).toString());
+        row.insert(QStringLiteral("entry_type"), QStringLiteral("event"));
+        row.insert(QStringLiteral("topic"), query.value(2).toString());
+        row.insert(QStringLiteral("payload"), query.value(3).toString());
         result.append(row);
     }
 
@@ -204,7 +284,21 @@ void HistoryStore::clearMessages(const QString &sessionId)
     }
 
     QSqlQuery query(m_db);
-    query.prepare(QStringLiteral("DELETE FROM messages WHERE session_id = ?"));
+    query.prepare(QStringLiteral("DELETE FROM mqtt_messages WHERE session_id = ?"));
+    query.addBindValue(sessionId);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+    }
+}
+
+void HistoryStore::clearLogs(const QString &sessionId)
+{
+    if (!isReady()) {
+        return;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("DELETE FROM event_logs WHERE session_id = ?"));
     query.addBindValue(sessionId);
     if (!query.exec()) {
         m_lastError = query.lastError().text();
@@ -236,13 +330,16 @@ bool HistoryStore::initialize()
     }
 
     QSqlQuery query(m_db);
+    if (!resetLegacySchema()) {
+        return false;
+    }
+
     if (!query.exec(
             QStringLiteral(
-                "CREATE TABLE IF NOT EXISTS messages ("
+                "CREATE TABLE IF NOT EXISTS mqtt_messages ("
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                 "session_id TEXT NOT NULL, "
                 "timestamp TEXT NOT NULL, "
-                "entry_type TEXT NOT NULL DEFAULT 'message', "
                 "topic TEXT NOT NULL, "
                 "payload TEXT NOT NULL DEFAULT '', "
                 "payload_b64 TEXT NOT NULL DEFAULT '', "
@@ -257,11 +354,62 @@ bool HistoryStore::initialize()
 
     if (!query.exec(
             QStringLiteral(
-                "CREATE INDEX IF NOT EXISTS idx_messages_session_id_id "
-                "ON messages(session_id, id)"))) {
+                "CREATE INDEX IF NOT EXISTS idx_mqtt_messages_session_id_id "
+                "ON mqtt_messages(session_id, id)"))) {
         m_lastError = query.lastError().text();
         return false;
     }
 
+    if (!query.exec(
+            QStringLiteral(
+                "CREATE TABLE IF NOT EXISTS event_logs ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "session_id TEXT NOT NULL, "
+                "timestamp TEXT NOT NULL, "
+                "channel TEXT NOT NULL, "
+                "message TEXT NOT NULL DEFAULT '')"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    if (!query.exec(
+            QStringLiteral(
+                "CREATE INDEX IF NOT EXISTS idx_event_logs_session_id_id "
+                "ON event_logs(session_id, id)"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    return true;
+}
+
+bool HistoryStore::resetLegacySchema()
+{
+    QSqlQuery query(m_db);
+    if (!query.exec(QStringLiteral("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'messages'"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    if (!query.next()) {
+        return true;
+    }
+
+    if (!query.exec(QStringLiteral("DROP TABLE IF EXISTS messages"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    if (!query.exec(QStringLiteral("DROP INDEX IF EXISTS idx_messages_session_id_id"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    if (!query.exec(QStringLiteral("DROP TABLE IF EXISTS mqtt_messages"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    if (!query.exec(QStringLiteral("DROP TABLE IF EXISTS event_logs"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
     return true;
 }

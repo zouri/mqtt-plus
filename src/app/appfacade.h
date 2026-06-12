@@ -40,7 +40,8 @@ class AppFacade : public QObject
     friend class SessionController;
     Q_PROPERTY(SessionListModel* sessions READ sessions CONSTANT)
     Q_PROPERTY(SubscriptionListModel* subscriptions READ subscriptions CONSTANT)
-    Q_PROPERTY(EventStreamModel* events READ events CONSTANT)
+    Q_PROPERTY(EventStreamModel* messages READ messages CONSTANT)
+    Q_PROPERTY(EventStreamModel* logs READ logs CONSTANT)
     Q_PROPERTY(ScriptLibraryModel* scripts READ scripts CONSTANT)
     Q_PROPERTY(ScriptTestSamplesModel* scriptTestSamples READ scriptTestSamples CONSTANT)
     Q_PROPERTY(int currentSessionIndex READ currentSessionIndex WRITE setCurrentSessionIndex NOTIFY currentSessionIndexChanged)
@@ -60,7 +61,8 @@ public:
 
     SessionListModel *sessions();
     SubscriptionListModel *subscriptions();
-    EventStreamModel *events();
+    EventStreamModel *messages();
+    EventStreamModel *logs();
     ScriptLibraryModel *scripts();
     ScriptTestSamplesModel *scriptTestSamples();
     int currentSessionIndex() const;
@@ -106,7 +108,9 @@ public:
         bool retain = false);
     Q_INVOKABLE void copyTextToClipboard(const QString &text) const;
     Q_INVOKABLE void clearCurrentMessages();
-    Q_INVOKABLE int loadOlderCurrentSessionEvents();
+    Q_INVOKABLE void clearCurrentLogs();
+    Q_INVOKABLE int loadOlderCurrentSessionMessages();
+    Q_INVOKABLE int loadOlderCurrentSessionLogs();
     Q_INVOKABLE QString upsertScript(
         const QString &id,
         const QString &name,
@@ -124,8 +128,10 @@ signals:
     void currentSessionIndexChanged();
     void currentSessionChanged();
     void subscriptionsChanged();
-    void eventStreamChanged();
-    void eventStreamRowAppended(const QVariantMap &row);
+    void messageStreamChanged();
+    void logStreamChanged();
+    void messageStreamRowAppended(const QVariantMap &row);
+    void logStreamRowAppended(const QVariantMap &row);
     void scriptLibraryChanged();
     void scriptTestSamplesChanged();
     void themeModeChanged();
@@ -162,7 +168,8 @@ private:
     void notifySessionAndSubscriptionViewsChanged();
     void notifySelectedSessionViewsChanged();
     void notifySessionCollectionViewsChanged();
-    void appendRenderedEventRow(SessionState &session, const QVariantMap &row);
+    void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
+    void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
     void appendEvent(SessionState &session, const QString &channel, const QString &message);
     void appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
     LuaScriptResult parseIncomingPayload(
@@ -176,7 +183,8 @@ private:
     qreal subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const;
     bool currentSessionHasActiveSubscriptionFps(qint64 nowMs) const;
     void refreshSubscriptionFps();
-    void trimVisibleEventRows(SessionState &session);
+    void trimVisibleMessageRows(SessionState &session);
+    void trimVisibleLogRows(SessionState &session);
     void reloadCurrentSessionHistory();
     void refreshSessionsModel();
     void refreshSubscriptionsModel();
@@ -199,7 +207,8 @@ private:
     HistoryStore m_historyStore;
     SessionListModel m_sessionsModel;
     SubscriptionListModel m_subscriptionsModel;
-    EventStreamModel m_eventsModel;
+    EventStreamModel m_messagesModel;
+    EventStreamModel m_logsModel;
     ScriptLibraryModel m_scriptsModel;
     ScriptTestSamplesModel m_scriptTestSamplesModel;
     QTimer m_subscriptionFpsRefreshTimer;

@@ -2,12 +2,10 @@
 
 #include "services/payload/payloadcodec.h"
 
-#include <QCoreApplication>
-
 namespace {
 QString startupDividerLabel()
 {
-    return QCoreApplication::translate("EventRenderer", "Current launch");
+    return QStringLiteral("Current launch");
 }
 
 bool isStartupDividerTitle(const QString &title)
@@ -87,7 +85,7 @@ QVariantMap eventRow(qint64 historyId, const QString &timestamp, const QString &
     row.insert(QStringLiteral("title"), channel);
     row.insert(QStringLiteral("topic"), channel);
     row.insert(QStringLiteral("payload"), message);
-    row.insert(QStringLiteral("payloadFormat"), QCoreApplication::translate("EventRenderer", "Event"));
+    row.insert(QStringLiteral("payloadFormat"), QStringLiteral("Event"));
     row.insert(QStringLiteral("payloadSize"), 0);
     return row;
 }
@@ -116,7 +114,7 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
         rendered.insert(QStringLiteral("kind"), QStringLiteral("event"));
         rendered.insert(QStringLiteral("title"), topic);
         rendered.insert(QStringLiteral("payload"), row.value(QStringLiteral("payload")).toString());
-        rendered.insert(QStringLiteral("payloadFormat"), QCoreApplication::translate("EventRenderer", "Event"));
+        rendered.insert(QStringLiteral("payloadFormat"), QStringLiteral("Event"));
         rendered.insert(QStringLiteral("payloadSize"), 0);
         return rendered;
     }
@@ -128,7 +126,7 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
     QString parseError;
     QString renderedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, parseError);
     if (!parseError.isEmpty()) {
-        renderedPayload = QCoreApplication::translate("EventRenderer", "%1\nRaw(Base64): %2")
+        renderedPayload = QStringLiteral("%1\nRaw(Base64): %2")
                               .arg(renderedPayload, QString::fromLatin1(payloadBytes.toBase64()));
     }
 
@@ -136,8 +134,7 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
     const QString parsedFormat = row.value(QStringLiteral("parsed_format")).toString();
     const bool hasScriptResult = !parsedFormat.isEmpty() || !scriptError.isEmpty();
     if (!scriptError.isEmpty()) {
-        renderedPayload = QCoreApplication::translate("EventRenderer", "%1\nLua Error: %2")
-                              .arg(renderedPayload, scriptError);
+        renderedPayload = QStringLiteral("%1\nLua Error: %2").arg(renderedPayload, scriptError);
     } else if (hasScriptResult) {
         renderedPayload = row.value(QStringLiteral("parsed_payload")).toString();
     }
@@ -148,7 +145,7 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
     rendered.insert(
         QStringLiteral("payloadFormat"),
         !scriptError.isEmpty()
-            ? QCoreApplication::translate("EventRenderer", "Lua Error")
+            ? QStringLiteral("Lua Error")
             : (hasScriptResult ? parsedFormat : PayloadCodec::formatName(format)));
     rendered.insert(QStringLiteral("payloadSize"), payloadBytes.size());
     rendered.insert(QStringLiteral("testPayload"), PayloadCodec::decodeForDisplay(format, payloadBytes, parseError));

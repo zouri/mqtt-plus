@@ -9,7 +9,6 @@ AppPanel {
 
     required property var appController
     required property var session
-    required property var status
     required property string fontFamily
 
     showTopBorder: false
@@ -31,9 +30,11 @@ AppPanel {
         anchors.margins: 14
         ui: root.ui
         appController: root.appController
+        streamModel: root.appController.logs
+        loadOlderRows: function() { return root.appController.loadOlderCurrentSessionLogs() }
+        clearRows: function() { root.appController.clearCurrentLogs() }
         session: root.session
-        status: root.status
         fontFamily: root.fontFamily
-        streamKind: "event"
+        title: qsTr("Log")
     }
 }
