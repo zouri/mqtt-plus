@@ -34,10 +34,13 @@ AppPanel {
             id: eventStreamView
             ui: root.ui
             appController: root.appController
+            streamModel: root.appController.messages
+            loadOlderRows: function() { return root.appController.loadOlderCurrentSessionMessages() }
+            clearRows: function() { root.appController.clearCurrentMessages() }
             session: root.session
-            status: root.status
             fontFamily: root.fontFamily
-            streamKind: "message"
+            title: qsTr("Messages")
+            showOutputControls: true
             onPublishDraftRequested: (topic, payload, format) => {
                 publishComposer.setDraft(topic, payload, format)
             }

@@ -19,7 +19,8 @@ AppFacade::AppFacade(QObject *parent)
     , m_languageController(&m_settings, this)
     , m_sessionsModel(this)
     , m_subscriptionsModel(this)
-    , m_eventsModel(this)
+    , m_messagesModel(this)
+    , m_logsModel(this)
     , m_scriptsModel(this)
     , m_scriptTestSamplesModel(this)
 {
@@ -81,12 +82,14 @@ void AppFacade::notifySessionAndSubscriptionViewsChanged()
 void AppFacade::notifySelectedSessionViewsChanged()
 {
     refreshSubscriptionsModel();
-    m_eventsModel.setRows(currentSessionState() ? currentSessionState()->eventRows : QVariantList {});
+    m_messagesModel.setRows(currentSessionState() ? currentSessionState()->messageRows : QVariantList {});
+    m_logsModel.setRows(currentSessionState() ? currentSessionState()->logRows : QVariantList {});
     refreshScriptTestSamplesModel();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
     emit subscriptionsChanged();
-    emit eventStreamChanged();
+    emit messageStreamChanged();
+    emit logStreamChanged();
     emit scriptLibraryChanged();
     emit scriptTestSamplesChanged();
 }
@@ -95,14 +98,16 @@ void AppFacade::notifySessionCollectionViewsChanged()
 {
     refreshSessionsModel();
     refreshSubscriptionsModel();
-    m_eventsModel.setRows(currentSessionState() ? currentSessionState()->eventRows : QVariantList {});
+    m_messagesModel.setRows(currentSessionState() ? currentSessionState()->messageRows : QVariantList {});
+    m_logsModel.setRows(currentSessionState() ? currentSessionState()->logRows : QVariantList {});
     refreshScriptsModel();
     refreshScriptTestSamplesModel();
     emit sessionsChanged();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
     emit subscriptionsChanged();
-    emit eventStreamChanged();
+    emit messageStreamChanged();
+    emit logStreamChanged();
     emit scriptLibraryChanged();
 }
 

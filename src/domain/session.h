@@ -39,9 +39,12 @@ struct SessionState {
     QVector<SubscriptionEntry> subscriptions;
     QHash<QString, int> subscriptionFormats;
     QVariantMap publishStatus;
-    QVariantList eventRows;
-    qint64 oldestLoadedEventId = 0;
-    bool loadedAllEventHistory = false;
+    QVariantList messageRows;
+    QVariantList logRows;
+    qint64 oldestLoadedMessageId = 0;
+    qint64 oldestLoadedLogId = 0;
+    bool loadedAllMessageHistory = false;
+    bool loadedAllLogHistory = false;
     QMqttClient *client = nullptr;
     QTimer *connectTimeoutTimer = nullptr;
 };

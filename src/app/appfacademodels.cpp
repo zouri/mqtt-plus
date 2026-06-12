@@ -18,9 +18,14 @@ SubscriptionListModel *AppFacade::subscriptions()
     return &m_subscriptionsModel;
 }
 
-EventStreamModel *AppFacade::events()
+EventStreamModel *AppFacade::messages()
 {
-    return &m_eventsModel;
+    return &m_messagesModel;
+}
+
+EventStreamModel *AppFacade::logs()
+{
+    return &m_logsModel;
 }
 
 ScriptLibraryModel *AppFacade::scripts()
@@ -208,14 +213,10 @@ void AppFacade::refreshScriptTestSamplesModel()
     QVector<ScriptTestSampleRow> rows;
     rows.reserve(kMaxScriptTestSamples);
 
-    for (auto it = session->eventRows.crbegin();
-         it != session->eventRows.crend() && rows.size() < kMaxScriptTestSamples;
+    for (auto it = session->messageRows.crbegin();
+         it != session->messageRows.crend() && rows.size() < kMaxScriptTestSamples;
          ++it) {
         const QVariantMap row = it->toMap();
-        if (row.value(QStringLiteral("kind")).toString() != QStringLiteral("message")) {
-            continue;
-        }
-
         ScriptTestSampleRow sample;
         sample.topic = row.value(QStringLiteral("topic")).toString();
         sample.payload = row.value(QStringLiteral("testPayload")).toString();
