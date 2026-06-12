@@ -27,9 +27,6 @@ Item {
     readonly property var recentDraftLabels: root.recentDrafts.map(function(draft) {
         return qsTr("%1 · QoS %2 · %3").arg(draft.topic).arg(draft.qos).arg(draft.formatName)
     })
-    readonly property string publishDisabledReason: !root.isConnected
-                                                  ? qsTr("Connect this session before publishing messages.")
-                                                  : (!root.hasTopic ? qsTr("Enter a topic to publish.") : "")
     readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle"
                                               ? (root.publishStatus.reason && root.publishStatus.reason.length > 0
                                                  ? root.publishStatus.reason
@@ -318,15 +315,6 @@ Item {
                             text: qsTr("Retain")
                         }
                     }
-                }
-
-                Label {
-                    visible: root.expanded && root.publishDisabledReason.length > 0
-                    Layout.fillWidth: true
-                    text: root.publishDisabledReason
-                    color: root.isConnected ? root.ui.textMuted : root.ui.themePalette.warningText
-                    font.pixelSize: 11
-                    elide: Label.ElideRight
                 }
 
                 RowLayout {

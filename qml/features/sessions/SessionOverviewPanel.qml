@@ -61,11 +61,6 @@ AppPanel {
                         Layout.fillWidth: true
                     }
 
-                    AppStatusBadge {
-                        ui: control.ui
-                        status: control.status.state || "disconnected"
-                        label: control.status.state || "disconnected"
-                    }
                 }
 
                 Label {

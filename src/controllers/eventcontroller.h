@@ -17,8 +17,11 @@ public:
     explicit EventController(AppFacade *app, QObject *parent = nullptr);
 
     void clearCurrentMessages();
-    int loadOlderCurrentSessionEvents();
-    void appendRenderedEventRow(SessionState &session, const QVariantMap &row);
+    void clearCurrentLogs();
+    int loadOlderCurrentSessionMessages();
+    int loadOlderCurrentSessionLogs();
+    void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
+    void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
     void appendEvent(SessionState &session, const QString &channel, const QString &message);
     LuaScriptResult parseIncomingPayload(
         const SessionState &session,
@@ -29,7 +32,8 @@ public:
         QString &scriptNameOut,
         QString &decodedPayloadOut) const;
     void appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
-    void trimVisibleEventRows(SessionState &session);
+    void trimVisibleMessageRows(SessionState &session);
+    void trimVisibleLogRows(SessionState &session);
     void reloadCurrentSessionHistory();
 
 private:

@@ -42,14 +42,6 @@ ApplicationWindow {
         historyPage.resetStreamPosition()
     }
 
-    function noteVisibleStreamRowAppended(row) {
-        if (root.currentAppView === "history") {
-            historyPage.noteStreamRowAppended(row)
-        } else {
-            workbenchPage.noteStreamRowAppended(row)
-        }
-    }
-
     Component.onCompleted: {
         root.resetVisibleStreams()
     }
@@ -57,12 +49,24 @@ ApplicationWindow {
     Connections {
         target: root.appController
 
-        function onEventStreamChanged() {
+        function onMessageStreamChanged() {
             root.resetVisibleStreams()
         }
 
-        function onEventStreamRowAppended(row) {
-            root.noteVisibleStreamRowAppended(row)
+        function onLogStreamChanged() {
+            root.resetVisibleStreams()
+        }
+
+        function onMessageStreamRowAppended(row) {
+            if (root.currentAppView !== "history") {
+                workbenchPage.noteStreamRowAppended(row)
+            }
+        }
+
+        function onLogStreamRowAppended(row) {
+            if (root.currentAppView === "history") {
+                historyPage.noteStreamRowAppended(row)
+            }
         }
     }
 

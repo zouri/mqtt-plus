@@ -5,14 +5,29 @@ void AppFacade::clearCurrentMessages()
     m_eventController.clearCurrentMessages();
 }
 
-int AppFacade::loadOlderCurrentSessionEvents()
+void AppFacade::clearCurrentLogs()
 {
-    return m_eventController.loadOlderCurrentSessionEvents();
+    m_eventController.clearCurrentLogs();
 }
 
-void AppFacade::appendRenderedEventRow(SessionState &session, const QVariantMap &row)
+int AppFacade::loadOlderCurrentSessionMessages()
 {
-    m_eventController.appendRenderedEventRow(session, row);
+    return m_eventController.loadOlderCurrentSessionMessages();
+}
+
+int AppFacade::loadOlderCurrentSessionLogs()
+{
+    return m_eventController.loadOlderCurrentSessionLogs();
+}
+
+void AppFacade::appendRenderedMessageRow(SessionState &session, const QVariantMap &row)
+{
+    m_eventController.appendRenderedMessageRow(session, row);
+}
+
+void AppFacade::appendRenderedLogRow(SessionState &session, const QVariantMap &row)
+{
+    m_eventController.appendRenderedLogRow(session, row);
 }
 
 void AppFacade::appendEvent(SessionState &session, const QString &channel, const QString &message)
@@ -44,9 +59,14 @@ void AppFacade::appendIncomingMessage(const QString &sessionId, const QString &t
     m_eventController.appendIncomingMessage(sessionId, topic, payloadBytes);
 }
 
-void AppFacade::trimVisibleEventRows(SessionState &session)
+void AppFacade::trimVisibleMessageRows(SessionState &session)
 {
-    m_eventController.trimVisibleEventRows(session);
+    m_eventController.trimVisibleMessageRows(session);
+}
+
+void AppFacade::trimVisibleLogRows(SessionState &session)
+{
+    m_eventController.trimVisibleLogRows(session);
 }
 
 void AppFacade::reloadCurrentSessionHistory()

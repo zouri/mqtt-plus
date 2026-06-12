@@ -171,7 +171,7 @@ void AppFacade::initializeSessionRuntime(SessionState *session)
             }
 
             boundSession->lastError = tr("Connection timed out.");
-            appendEvent(*boundSession, tr("Error"), boundSession->lastError);
+            appendEvent(*boundSession, QStringLiteral("Error"), QStringLiteral("Connection timed out."));
             client->disconnectFromHost();
             notifySessionViewsChanged();
         });
@@ -226,7 +226,7 @@ bool AppFacade::saveSessions()
     if (SessionSettingsStore::writeSessions(m_settings, m_sessionController.sessions(), errorMessage)) {
         return true;
     }
-    reportStorageError(errorMessage.isEmpty() ? tr("Cannot save sessions.") : errorMessage);
+    reportStorageError(errorMessage.isEmpty() ? QStringLiteral("Cannot save sessions.") : errorMessage);
     return false;
 }
 
@@ -238,7 +238,7 @@ void AppFacade::reportStorageError(const QString &message)
 
     if (auto *session = currentSessionState()) {
         session->lastError = message;
-        appendEvent(*session, tr("Storage"), message);
+        appendEvent(*session, QStringLiteral("Storage"), message);
     }
 
     notifySessionViewsChanged();

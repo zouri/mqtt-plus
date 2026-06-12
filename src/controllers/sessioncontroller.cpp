@@ -245,7 +245,7 @@ void SessionController::setCurrentOutputPaused(bool paused)
     m_app->saveSessions();
     if (!paused) {
         m_app->reloadCurrentSessionHistory();
-        emit m_app->eventStreamChanged();
+        emit m_app->messageStreamChanged();
     }
     m_app->notifyCurrentSessionViewsChanged();
 }

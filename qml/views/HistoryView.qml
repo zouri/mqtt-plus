@@ -21,7 +21,6 @@ Item {
         ui: root.ui
         appController: root.appController
         session: root.appController.currentSession
-        status: root.appController.sessionStatus
         fontFamily: root.fontFamily
     }
 
