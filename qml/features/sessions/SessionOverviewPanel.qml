@@ -28,17 +28,17 @@ AppPanel {
 
     showTopBorder: false
     Layout.fillWidth: true
-    Layout.preferredHeight: 126
-    Layout.minimumHeight: 126
+    Layout.preferredHeight: 108
+    Layout.minimumHeight: 108
 
     ColumnLayout {
         id: currentSessionColumn
         anchors.fill: parent
         anchors.leftMargin: 16
         anchors.rightMargin: 16
-        anchors.topMargin: 12
-        anchors.bottomMargin: 12
-        spacing: 9
+        anchors.topMargin: 10
+        anchors.bottomMargin: 10
+        spacing: 7
 
         RowLayout {
             Layout.fillWidth: true
@@ -46,7 +46,7 @@ AppPanel {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 5
+                spacing: 3
 
                 RowLayout {
                     Layout.fillWidth: true
