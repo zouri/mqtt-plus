@@ -131,8 +131,6 @@ qt_add_qml_module(mqtt_plus_app
         qml/components/AppIconButton.qml
         qml/components/AppPanel.qml
         qml/components/AppSectionHeader.qml
-        qml/components/AppSpinner.qml
-        qml/components/AppStatusBadge.qml
         qml/components/AppTextArea.qml
         qml/components/AppTextField.qml
         qml/AppUi.qml
@@ -140,7 +138,6 @@ qt_add_qml_module(mqtt_plus_app
         qml/features/events/LogPage.qml
         qml/features/events/SessionActivityPanel.qml
         qml/features/publish/PublishComposer.qml
-        qml/features/scripts/ScriptLibraryWindow.qml
         qml/features/scripts/ScriptListPane.qml
         qml/features/scripts/ScriptTestPane.qml
         qml/features/scripts/ScriptWorkspacePanel.qml
@@ -155,22 +152,14 @@ qt_add_qml_module(mqtt_plus_app
         qml/views/WorkbenchView.qml
         qml/Main.qml
     RESOURCES
-        qml/icons/material/chevron-down.svg
         qml/icons/material/chevron-left.svg
         qml/icons/material/chevron-right.svg
-        qml/icons/material/chevron-up.svg
         qml/icons/material/check.svg
-        qml/icons/material/contrast.svg
-        qml/icons/material/dark-mode.svg
         qml/icons/material/edit.svg
         qml/icons/material/history.svg
-        qml/icons/material/light-mode.svg
-        qml/icons/material/link.svg
-        qml/icons/material/list.svg
-        qml/icons/material/message.svg
+        qml/icons/material/more-horiz.svg
         qml/icons/material/pause.svg
         qml/icons/material/play.svg
-        qml/icons/material/power.svg
         qml/icons/material/script-development.svg
         qml/icons/material/send.svg
         qml/icons/material/settings.svg

@@ -35,40 +35,6 @@ ApplicationWindow {
 
     readonly property var appController: root.app
     property string currentAppView: "workbench"
-    property bool connectionPaneCollapsed: false
-
-    function resetVisibleStreams() {
-        workbenchPage.resetStreamPosition()
-        historyPage.resetStreamPosition()
-    }
-
-    Component.onCompleted: {
-        root.resetVisibleStreams()
-    }
-
-    Connections {
-        target: root.appController
-
-        function onMessageStreamChanged() {
-            root.resetVisibleStreams()
-        }
-
-        function onLogStreamChanged() {
-            root.resetVisibleStreams()
-        }
-
-        function onMessageStreamRowAppended(row) {
-            if (root.currentAppView !== "history") {
-                workbenchPage.noteStreamRowAppended(row)
-            }
-        }
-
-        function onLogStreamRowAppended(row) {
-            if (root.currentAppView === "history") {
-                historyPage.noteStreamRowAppended(row)
-            }
-        }
-    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -112,7 +78,7 @@ ApplicationWindow {
                         outlineColor: "transparent"
                         symbolColor: root.currentAppView === "workbench" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "workbench"
-                        toolTipText: qsTr("Workbench")
+                        accessibleName: qsTr("Workbench")
                         onClicked: root.currentAppView = "workbench"
                     }
 
@@ -128,7 +94,7 @@ ApplicationWindow {
                         outlineColor: "transparent"
                         symbolColor: root.currentAppView === "history" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "history"
-                        toolTipText: qsTr("History")
+                        accessibleName: qsTr("History")
                         onClicked: root.currentAppView = "history"
                     }
 
@@ -144,7 +110,7 @@ ApplicationWindow {
                         outlineColor: "transparent"
                         symbolColor: root.currentAppView === "scripts" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "scripts"
-                        toolTipText: qsTr("Lua scripts")
+                        accessibleName: qsTr("Lua scripts")
                         onClicked: root.currentAppView = "scripts"
                     }
 
@@ -164,7 +130,7 @@ ApplicationWindow {
                         outlineColor: "transparent"
                         symbolColor: root.currentAppView === "settings" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "settings"
-                        toolTipText: qsTr("Settings")
+                        accessibleName: qsTr("Settings")
                         onClicked: root.currentAppView = "settings"
                     }
 
@@ -185,9 +151,6 @@ ApplicationWindow {
                     ui: ui
                     appController: root.appController
                     fontFamily: root.font.family
-                    connectionPaneCollapsed: root.connectionPaneCollapsed
-                    onCollapseRequested: root.connectionPaneCollapsed = true
-                    onExpandRequested: root.connectionPaneCollapsed = false
                 }
 
                 HistoryView {

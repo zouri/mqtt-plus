@@ -40,14 +40,16 @@
 .
 ├── src/                    # C++ 应用逻辑
 │   ├── main.cpp            # Qt/QML 启动入口
-│   ├── appcontroller.*     # 暴露给 QML 的应用状态和操作
-│   ├── historystore.*      # SQLite 历史记录存储
-│   ├── payloadcodec.*      # 载荷格式编码和解码
-│   └── luarunner.*         # Lua 接收脚本运行环境
+│   ├── app/                # QML 门面和应用级协调逻辑
+│   ├── controllers/        # 会话、MQTT、订阅、事件、脚本等控制器
+│   ├── domain/             # 会话、订阅和脚本领域数据结构
+│   ├── models/             # 暴露给 QML 的列表模型
+│   ├── presentation/       # 事件流行渲染
+│   └── services/           # SQLite、载荷编解码、Lua 脚本等服务
 ├── qml/                    # Qt Quick 界面
 │   ├── Main.qml            # 主窗口
-│   ├── panels/             # 主界面面板
-│   ├── dialogs/            # 对话框
+│   ├── views/              # 顶层工作区、历史、脚本、设置视图
+│   ├── features/           # 业务功能组件
 │   └── components/         # 复用 UI 组件
 ├── assets/                 # 应用图标等资源
 ├── scripts/                # 平台打包脚本

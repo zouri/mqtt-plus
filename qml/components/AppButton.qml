@@ -8,6 +8,7 @@ Button {
 
     required property AppUi ui
     property bool primary: false
+    property bool danger: false
     property int minimumWidth: 92
 
     implicitHeight: control.ui.compactControlHeight
@@ -23,16 +24,22 @@ Button {
     background: Rectangle {
         radius: Math.round(height / 2)
         color: !control.enabled
-               ? Qt.rgba(control.primary ? 0.55 : 0.5,
-                         control.primary ? 0.6 : 0.55,
-                         control.primary ? 0.7 : 0.6,
+               ? Qt.rgba((control.primary || control.danger) ? 0.55 : 0.5,
+                         (control.primary || control.danger) ? 0.6 : 0.55,
+                         (control.primary || control.danger) ? 0.7 : 0.6,
                          control.ui.isDarkTheme ? 0.18 : 0.28)
                : (control.down
-                  ? (control.primary ? control.ui.themePalette.buttonPrimaryPressedBg : control.ui.themePalette.buttonPressedBg)
+                  ? (control.danger
+                     ? control.ui.themePalette.buttonDangerPressedBg
+                     : (control.primary ? control.ui.themePalette.buttonPrimaryPressedBg : control.ui.themePalette.buttonPressedBg))
                   : (control.hovered
-                     ? (control.primary ? control.ui.themePalette.buttonPrimaryHoverBg : control.ui.themePalette.buttonHoverBg)
-                     : (control.primary ? control.ui.themePalette.buttonPrimaryBg : control.ui.themePalette.buttonBg)))
-        border.color: control.primary ? "transparent" : control.ui.themePalette.buttonBorder
+                     ? (control.danger
+                        ? control.ui.themePalette.buttonDangerHoverBg
+                        : (control.primary ? control.ui.themePalette.buttonPrimaryHoverBg : control.ui.themePalette.buttonHoverBg))
+                     : (control.danger
+                        ? control.ui.themePalette.buttonDangerBg
+                        : (control.primary ? control.ui.themePalette.buttonPrimaryBg : control.ui.themePalette.buttonBg))))
+        border.color: control.primary || control.danger ? "transparent" : control.ui.themePalette.buttonBorder
 
         Behavior on color {
             ColorAnimation {
@@ -49,10 +56,12 @@ Button {
                          control.ui.isDarkTheme ? 0.86 : 0.34,
                          control.ui.isDarkTheme ? 0.92 : 0.42,
                          control.ui.isDarkTheme ? 0.42 : 0.52)
-               : (control.primary ? control.ui.themePalette.buttonPrimaryText : control.ui.textStrong)
+               : (control.danger
+                  ? control.ui.themePalette.buttonDangerText
+                  : (control.primary ? control.ui.themePalette.buttonPrimaryText : control.ui.textStrong))
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         font.pixelSize: control.font.pixelSize
-        font.bold: control.primary
+        font.bold: control.primary || control.danger
     }
 }

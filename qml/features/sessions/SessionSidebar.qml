@@ -21,13 +21,13 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
+        anchors.margins: 10
         visible: !control.collapsed
-        spacing: 12
+        spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: 7
 
             Label {
                 text: qsTr("Connections")
@@ -56,7 +56,7 @@ Rectangle {
                 cornerRadius: 15
                 restBg: control.ui.themePalette.windowBg
                 outlineColor: control.ui.themePalette.innerPanelBorder
-                toolTipText: qsTr("Hide connection list")
+                accessibleName: qsTr("Hide connection list")
                 onClicked: control.collapseRequested()
             }
         }
@@ -85,7 +85,7 @@ Rectangle {
                 required property string transportLabel
                 readonly property bool selected: index === control.appController.currentSessionIndex
                 width: ListView.view.width
-                height: 56
+                height: 54
                 radius: control.ui.innerRadius
                 color: sessionDelegate.selected
                        ? control.ui.themePalette.selectedBg
@@ -133,8 +133,8 @@ Rectangle {
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 11
-                    anchors.rightMargin: 10
-                    spacing: 8
+                    anchors.rightMargin: 9
+                    spacing: 7
 
                     Rectangle {
                         Layout.preferredWidth: 3
@@ -211,15 +211,15 @@ Rectangle {
 
             footer: Item {
                 width: sessionList.width
-                height: 54
+                height: 50
 
                 Rectangle {
                     id: addSessionDelegate
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
-                    height: 44
-                    radius: 16
+                    height: 42
+                    radius: control.ui.innerRadius
                     color: "transparent"
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Button
@@ -351,7 +351,7 @@ Rectangle {
                 iconSource: control.ui.materialIcon("chevron-right")
                 iconSize: 18
                 restBg: control.ui.themePalette.windowBg
-                toolTipText: qsTr("Show connection list")
+                accessibleName: qsTr("Show connection list")
                 onClicked: control.expandRequested()
             }
 
