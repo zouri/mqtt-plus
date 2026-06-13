@@ -251,7 +251,6 @@ Item {
                             ui: root.ui
                             id: publishTopicField
                             Layout.fillWidth: true
-                            enabled: root.isConnected
                             placeholderText: qsTr("home/living-room/light/set")
                         }
                     }
@@ -270,7 +269,6 @@ Item {
                         AppComboBox {
                             ui: root.ui
                             id: publishQosBox
-                            enabled: root.isConnected
                             model: [qsTr("QoS 0"), qsTr("QoS 1")]
                             Layout.fillWidth: true
                         }
@@ -290,7 +288,6 @@ Item {
                         AppComboBox {
                             ui: root.ui
                             id: publishFormatBox
-                            enabled: root.isConnected
                             model: root.appController.payloadFormats
                             currentIndex: 1
                             Layout.fillWidth: true
@@ -311,7 +308,6 @@ Item {
                         AppCheckBox {
                             ui: root.ui
                             id: retainCheck
-                            enabled: root.isConnected
                             text: qsTr("Retain")
                         }
                     }
@@ -371,7 +367,6 @@ Item {
                         ui: root.ui
                         id: publishPayloadArea
                         anchors.fill: parent
-                        enabled: root.isConnected
                         placeholderText: publishFormatBox.currentText === "JSON"
                                          ? "{\"value\": 23.7}"
                                          : qsTr("Payload")
