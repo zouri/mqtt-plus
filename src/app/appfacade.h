@@ -87,7 +87,7 @@ public:
     Q_INVOKABLE void duplicateSessionAt(int index);
     Q_INVOKABLE void removeSessionAt(int index);
     Q_INVOKABLE QString showSessionContextMenu(int index, const QPointF &globalPosition);
-    Q_INVOKABLE void showLanguageMenu(const QPointF &globalPosition);
+    Q_INVOKABLE QString showSubscriptionContextMenu(const QString &topic, const QPointF &globalPosition);
     Q_INVOKABLE void connectCurrentSession();
     Q_INVOKABLE void disconnectCurrentSession();
     Q_INVOKABLE void setCurrentOutputPaused(bool paused);

@@ -58,27 +58,27 @@
 <context>
     <name>AppFacade</name>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="103"/>
+        <location filename="../src/app/appfacademodels.cpp" line="108"/>
         <source>%1 • %2:%3 • %4</source>
         <translation>%1 • %2:%3 • %4</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="109"/>
+        <location filename="../src/app/appfacademodels.cpp" line="114"/>
         <source> • session restored</source>
         <translation> • 会话已恢复</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="112"/>
+        <location filename="../src/app/appfacademodels.cpp" line="117"/>
         <source>Connecting to %1:%2 over %3</source>
         <translation>正在通过 %3 连接到 %1:%2</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="117"/>
+        <location filename="../src/app/appfacademodels.cpp" line="122"/>
         <source>Disconnecting from broker</source>
         <translation>正在断开代理连接</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="121"/>
+        <location filename="../src/app/appfacademodels.cpp" line="126"/>
         <source>Disconnected</source>
         <translation>离线</translation>
     </message>
@@ -88,54 +88,24 @@
         <translation>连接超时。</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadesessions.cpp" line="174"/>
-        <source>Error</source>
-        <translation>错误</translation>
-    </message>
-    <message>
         <location filename="../src/app/appfacadesessions.cpp" line="214"/>
         <source>Session 1</source>
         <translation>会话 1</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadesessions.cpp" line="229"/>
-        <source>Cannot save sessions.</source>
-        <translation>无法保存会话。</translation>
-    </message>
-    <message>
-        <location filename="../src/app/appfacadesessions.cpp" line="241"/>
-        <source>Storage</source>
-        <translation>存储</translation>
-    </message>
-    <message>
-        <location filename="../src/app/appfacademenus.cpp" line="28"/>
+        <location filename="../src/app/appfacademenus.cpp" line="26"/>
         <source>Edit</source>
         <translation>编辑</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademenus.cpp" line="29"/>
+        <location filename="../src/app/appfacademenus.cpp" line="27"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademenus.cpp" line="30"/>
+        <location filename="../src/app/appfacademenus.cpp" line="28"/>
         <source>Delete</source>
         <translation>删除</translation>
-    </message>
-    <message>
-        <location filename="../src/app/appfacademenus.cpp" line="52"/>
-        <source>🌐 System</source>
-        <translation>🌐 跟随系统</translation>
-    </message>
-    <message>
-        <location filename="../src/app/appfacademenus.cpp" line="53"/>
-        <source>🇬🇧 English</source>
-        <translation>🇬🇧 English</translation>
-    </message>
-    <message>
-        <location filename="../src/app/appfacademenus.cpp" line="54"/>
-        <source>🇨🇳 简体中文</source>
-        <translation>🇨🇳 简体中文</translation>
     </message>
 </context>
 <context>
@@ -199,103 +169,103 @@
 <context>
     <name>AppUi</name>
     <message>
-        <location filename="../qml/AppUi.qml" line="137"/>
+        <location filename="../qml/AppUi.qml" line="107"/>
         <source>System</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="142"/>
+        <location filename="../qml/AppUi.qml" line="111"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="147"/>
+        <location filename="../qml/AppUi.qml" line="115"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="173"/>
+        <location filename="../qml/AppUi.qml" line="135"/>
         <source>Connected</source>
         <translation>已连接</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="175"/>
+        <location filename="../qml/AppUi.qml" line="137"/>
         <source>Connecting</source>
         <translation>连接中</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="177"/>
+        <location filename="../qml/AppUi.qml" line="139"/>
         <source>Disconnecting</source>
         <translation>断开中</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="179"/>
+        <location filename="../qml/AppUi.qml" line="141"/>
         <source>Disconnected</source>
         <translation>已断开</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="181"/>
+        <location filename="../qml/AppUi.qml" line="143"/>
         <source>Subscribed</source>
         <translation>已订阅</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="183"/>
+        <location filename="../qml/AppUi.qml" line="145"/>
         <source>Pending</source>
         <translation>等待中</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="185"/>
+        <location filename="../qml/AppUi.qml" line="147"/>
         <source>Queued</source>
         <translation>已排队</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="187"/>
+        <location filename="../qml/AppUi.qml" line="149"/>
         <source>Sent</source>
         <translation>已发送</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="189"/>
+        <location filename="../qml/AppUi.qml" line="151"/>
         <source>Published</source>
         <translation>已发布</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="191"/>
+        <location filename="../qml/AppUi.qml" line="153"/>
         <source>Acknowledged</source>
         <translation>已确认</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="193"/>
+        <location filename="../qml/AppUi.qml" line="155"/>
         <source>Completed</source>
         <translation>已完成</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="195"/>
+        <location filename="../qml/AppUi.qml" line="157"/>
         <source>Paused</source>
         <translation>已暂停</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="197"/>
+        <location filename="../qml/AppUi.qml" line="159"/>
         <source>Saved</source>
         <translation>已保存</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="199"/>
+        <location filename="../qml/AppUi.qml" line="161"/>
         <source>Unsubscribed</source>
         <translation>已取消订阅</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="201"/>
+        <location filename="../qml/AppUi.qml" line="163"/>
         <source>Error</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="203"/>
+        <location filename="../qml/AppUi.qml" line="165"/>
         <source>Failed</source>
         <translation>失败</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="205"/>
-        <location filename="../qml/AppUi.qml" line="207"/>
+        <location filename="../qml/AppUi.qml" line="167"/>
+        <location filename="../qml/AppUi.qml" line="169"/>
         <source>Idle</source>
         <translation>空闲</translation>
     </message>
@@ -303,200 +273,60 @@
 <context>
     <name>EventController</name>
     <message>
-        <location filename="../src/controllers/eventcontroller.cpp" line="122"/>
+        <location filename="../src/controllers/eventcontroller.cpp" line="185"/>
         <source>Selected Lua script is missing.</source>
         <translation>选择的 Lua 脚本不存在。</translation>
     </message>
 </context>
 <context>
-    <name>EventRenderer</name>
-    <message>
-        <location filename="../src/presentation/eventrenderer.cpp" line="10"/>
-        <source>Current launch</source>
-        <translation>当前启动</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/eventrenderer.cpp" line="90"/>
-        <location filename="../src/presentation/eventrenderer.cpp" line="119"/>
-        <source>Event</source>
-        <translation>事件</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/eventrenderer.cpp" line="131"/>
-        <source>%1
-Raw(Base64): %2</source>
-        <translation>%1
-原始数据(Base64): %2</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/eventrenderer.cpp" line="139"/>
-        <source>%1
-Lua Error: %2</source>
-        <translation>%1
-Lua 错误：%2</translation>
-    </message>
-    <message>
-        <location filename="../src/presentation/eventrenderer.cpp" line="151"/>
-        <source>Lua Error</source>
-        <translation>Lua 错误</translation>
-    </message>
-</context>
-<context>
     <name>EventStreamView</name>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="22"/>
-        <source>Messages</source>
-        <translation>消息流</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="22"/>
-        <source>Log</source>
-        <translation>日志</translation>
-    </message>
-    <message>
-        <source>Search Topic, Payload, QoS or retained</source>
-        <translation type="vanished">搜索 Topic、Payload、QoS 或 retained</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="25"/>
-        <source>Search log channel or detail</source>
-        <translation>搜索日志通道或详情</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="32"/>
-        <source>No matching log entries</source>
-        <translation>没有匹配日志</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="36"/>
-        <source>Connect to start receiving messages</source>
-        <translation>连接后开始接收消息</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="38"/>
-        <source>Add a subscription to start listening</source>
-        <translation>添加订阅以开始监听</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="39"/>
-        <source>Waiting for messages</source>
-        <translation>等待消息中</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="41"/>
-        <source>Adjust the search query or clear it to return to the live stream.</source>
-        <translation>调整搜索条件，或清空后返回实时消息流。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="43"/>
-        <source>Connection, subscription, publish, and storage events appear here.</source>
-        <translation>连接、订阅、发布和存储事件会显示在这里。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="45"/>
-        <source>Message history will appear here after this session is connected.</source>
-        <translation>当前会话连接后，消息历史会显示在这里。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="47"/>
-        <source>Subscriptions can be prepared offline and become active after connection.</source>
-        <translation>可以先离线准备订阅，连接后会自动生效。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="48"/>
-        <source>The stream follows new messages automatically unless you scroll up.</source>
-        <translation>除非向上滚动，消息流会自动跟随最新消息。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="212"/>
-        <source>%1/%2</source>
-        <translation>%1/%2</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="238"/>
-        <source>All directions</source>
-        <translation>全部方向</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="238"/>
-        <source>Received</source>
-        <translation>接收</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="238"/>
-        <source>Published</source>
-        <translation>发布</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="32"/>
-        <source>No matching messages</source>
-        <translation>没有匹配消息</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="24"/>
-        <source>Search topic or content</source>
-        <translation>搜索主题或内容</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="34"/>
-        <source>No log entries</source>
-        <translation>暂无日志记录</translation>
-    </message>
-    <message>
-        <source>Event Stream</source>
-        <translation type="vanished">事件流</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="250"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="134"/>
         <source>Resume output</source>
         <translation>恢复输出</translation>
     </message>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="250"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="134"/>
         <source>Pause output</source>
         <translation>暂停输出</translation>
     </message>
     <message>
-        <source>Clear event stream</source>
-        <translation type="vanished">清空事件流</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="263"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="147"/>
         <source>Clear history</source>
         <translation>清空消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="274"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="158"/>
         <source>Output paused: incoming MQTT messages are still stored in history.</source>
         <translation>输出已暂停：收到的 MQTT 消息仍会存入历史。</translation>
     </message>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="347"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="233"/>
         <source>%1 B</source>
         <translation>%1 B</translation>
     </message>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="455"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="331"/>
         <source>Copy topic</source>
         <translation>复制主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="469"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="345"/>
         <source>Copy payload</source>
         <translation>复制 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="486"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="362"/>
         <source>Use this message in publisher</source>
         <translation>用此消息填入发布区</translation>
     </message>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="567"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="404"/>
         <source>Scroll to latest, %1 unread</source>
         <translation>滚动到最新，%1 条未读</translation>
     </message>
     <message>
-        <location filename="../qml/features/events/EventStreamView.qml" line="568"/>
+        <location filename="../qml/features/events/EventStreamView.qml" line="405"/>
         <source>Scroll to latest</source>
         <translation>滚动到最新</translation>
     </message>
@@ -510,197 +340,75 @@ Lua 错误：%2</translation>
     </message>
 </context>
 <context>
+    <name>LogPage</name>
+    <message>
+        <location filename="../qml/features/events/LogPage.qml" line="38"/>
+        <source>Log</source>
+        <translation>日志</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="16"/>
+        <location filename="../qml/Main.qml" line="13"/>
         <source>MQTT Plus</source>
         <translation>MQTT Plus</translation>
     </message>
     <message>
-        <source>Cmd+Enter Publish</source>
-        <translation type="vanished">⌘↵ 发布</translation>
-    </message>
-    <message>
-        <location filename="../qml/Main.qml" line="118"/>
+        <location filename="../qml/Main.qml" line="115"/>
         <source>Workbench</source>
         <translation>工作台</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="137"/>
+        <location filename="../qml/Main.qml" line="131"/>
         <source>History</source>
         <translation>历史</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="156"/>
+        <location filename="../qml/Main.qml" line="147"/>
         <source>Lua scripts</source>
         <translation>脚本管理</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="176"/>
-        <location filename="../qml/Main.qml" line="283"/>
+        <location filename="../qml/Main.qml" line="167"/>
         <source>Settings</source>
         <translation>设置</translation>
-    </message>
-    <message>
-        <location filename="../qml/Main.qml" line="312"/>
-        <source>Appearance</source>
-        <translation>外观</translation>
-    </message>
-    <message>
-        <location filename="../qml/Main.qml" line="319"/>
-        <source>Current theme: %1</source>
-        <translation>当前主题：%1</translation>
-    </message>
-    <message>
-        <location filename="../qml/Main.qml" line="327"/>
-        <source>Switch Theme</source>
-        <translation>切换主题</translation>
     </message>
 </context>
 <context>
     <name>MqttController</name>
     <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="30"/>
+        <location filename="../src/controllers/mqttcontroller.cpp" line="59"/>
         <source>Broker host cannot be empty.</source>
         <translation>代理主机不能为空。</translation>
     </message>
     <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="31"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="38"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="158"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="174"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="209"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="277"/>
-        <source>Connection</source>
-        <translation>连接</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="37"/>
+        <location filename="../src/controllers/mqttcontroller.cpp" line="66"/>
         <source>Client ID cannot be empty.</source>
         <translation>客户端 ID 不能为空。</translation>
     </message>
     <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="47"/>
-        <source>Connecting to</source>
-        <translation>正在连接到</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="83"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="89"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="94"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="104"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="123"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="128"/>
-        <source>Publish</source>
-        <translation>发布</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="83"/>
-        <source>Topic cannot be empty.</source>
-        <translation>主题不能为空。</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="89"/>
-        <source>Invalid topic name: %1</source>
-        <translation>主题名称无效：%1</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="94"/>
-        <source>Connect before publishing.</source>
-        <translation>请先连接再发布。</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="105"/>
-        <source>%1 (%2)</source>
-        <translation>%1（%2）</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="122"/>
+        <location filename="../src/controllers/mqttcontroller.cpp" line="151"/>
         <source>Qt MQTT rejected the publish request.</source>
         <translation>Qt MQTT 拒绝了发布请求。</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="123"/>
-        <source>Publish rejected for %1</source>
-        <translation>%1 的发布被拒绝</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="129"/>
-        <source>Queued %1 (QoS %2%3)</source>
-        <translation>已将 %1 加入队列（QoS %2%3）</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="132"/>
-        <source>, retain</source>
-        <translation>，保留</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="158"/>
-        <source>Connected to broker</source>
-        <translation>已连接到代理</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="171"/>
-        <source>Disconnected</source>
-        <translation>已断开</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="172"/>
-        <source>Connection closed by broker</source>
-        <translation>连接已被代理关闭</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="200"/>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="293"/>
-        <source>Error</source>
-        <translation>错误</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="209"/>
-        <source>Broker session restored</source>
-        <translation>代理会话已恢复</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="278"/>
-        <source>%1 %2:%3 over %4 using %5</source>
-        <translation>%1 %2:%3，通过 %4，使用 %5</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="316"/>
-        <source>CA certificate file could not be loaded.</source>
-        <translation>无法加载 CA 证书文件。</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="326"/>
-        <source>Client certificate file could not be loaded.</source>
-        <translation>无法加载客户端证书文件。</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/mqttcontroller.cpp" line="336"/>
-        <source>Client key file could not be loaded.</source>
-        <translation>无法加载客户端密钥文件。</translation>
     </message>
 </context>
 <context>
     <name>PublishComposer</name>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="206"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="203"/>
         <source>Publish Message</source>
         <translation>发布消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="230"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="227"/>
         <source>Collapse</source>
         <translation>收起</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="230"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="227"/>
         <source>Expand</source>
         <translation>展开</translation>
-    </message>
-    <message>
-        <source>Topic, e.g. home/living-room/light/set</source>
-        <translation type="vanished">主题，例如 home/living-room/light/set</translation>
     </message>
     <message>
         <location filename="../qml/features/publish/PublishComposer.qml" line="28"/>
@@ -708,96 +416,78 @@ Lua 错误：%2</translation>
         <translation>%1 · QoS %2 · %3</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="31"/>
-        <source>Connect this session before publishing messages.</source>
-        <translation>连接当前会话后才能发布消息。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="32"/>
-        <source>Enter a topic to publish.</source>
-        <translation>输入主题后才能发布。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="36"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="33"/>
         <source>Publish status: %1</source>
         <translation>发布状态：%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="247"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="244"/>
         <source>Topic</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="258"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="255"/>
         <source>home/living-room/light/set</source>
         <translation>home/living-room/light/set</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="267"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="264"/>
         <source>QoS</source>
         <translation>QoS</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="277"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="274"/>
         <source>QoS 0</source>
         <translation>QoS 0</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="277"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="274"/>
         <source>QoS 1</source>
         <translation>QoS 1</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="287"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="284"/>
         <source>Payload format</source>
         <translation>Payload 格式</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="308"/>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="318"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="305"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="315"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="343"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="331"/>
         <source>Recent publishes</source>
         <translation>最近发布</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="359"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="347"/>
         <source>Repeat</source>
         <translation>重复</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="369"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="357"/>
         <source>1s</source>
         <translation>1 秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="369"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="357"/>
         <source>5s</source>
         <translation>5 秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="369"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="357"/>
         <source>10s</source>
         <translation>10 秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="389"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="377"/>
         <source>Payload</source>
         <translation>Payload</translation>
     </message>
     <message>
-        <source>Collapse publish</source>
-        <translation type="vanished">折叠发布区</translation>
-    </message>
-    <message>
-        <source>Expand publish</source>
-        <translation type="vanished">展开发布区</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/publish/PublishComposer.qml" line="406"/>
+        <location filename="../qml/features/publish/PublishComposer.qml" line="394"/>
         <source>Publish message</source>
         <translation>发布消息</translation>
     </message>
@@ -813,29 +503,6 @@ Lua 错误：%2</translation>
         <location filename="../src/controllers/scriptcontroller.cpp" line="165"/>
         <source>Cannot save scripts.</source>
         <translation>无法保存脚本。</translation>
-    </message>
-</context>
-<context>
-    <name>ScriptLibraryWindow</name>
-    <message>
-        <location filename="../qml/features/scripts/ScriptLibraryWindow.qml" line="115"/>
-        <source>Unsaved script changes</source>
-        <translation>脚本有未保存的更改</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptLibraryWindow.qml" line="123"/>
-        <source>The current script has unsaved changes. Save them before closing the script manager?</source>
-        <translation>当前脚本有未保存的更改。关闭脚本管理器前是否保存？</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptLibraryWindow.qml" line="139"/>
-        <source>Discard</source>
-        <translation>放弃</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptLibraryWindow.qml" line="149"/>
-        <source>Save and Close</source>
-        <translation>保存并关闭</translation>
     </message>
 </context>
 <context>
@@ -859,10 +526,6 @@ Lua 错误：%2</translation>
         <location filename="../qml/features/scripts/ScriptListPane.qml" line="143"/>
         <source>Not saved</source>
         <translation>未保存</translation>
-    </message>
-    <message>
-        <source>New script</source>
-        <translation type="vanished">新建脚本</translation>
     </message>
 </context>
 <context>
@@ -1002,25 +665,13 @@ Lua 错误：%2</translation>
         <source>function parse(ctx)</source>
         <translation>function parse(ctx)</translation>
     </message>
+</context>
+<context>
+    <name>SessionActivityPanel</name>
     <message>
-        <source>Unsaved changes</source>
-        <translation type="vanished">未保存更改</translation>
-    </message>
-    <message>
-        <source>Saved script</source>
-        <translation type="vanished">已保存脚本</translation>
-    </message>
-    <message>
-        <source>Draft script</source>
-        <translation type="vanished">草稿脚本</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation type="vanished">删除</translation>
-    </message>
-    <message>
-        <source>Save</source>
-        <translation type="vanished">保存</translation>
+        <location filename="../qml/features/events/SessionActivityPanel.qml" line="42"/>
+        <source>Messages</source>
+        <translation>消息流</translation>
     </message>
 </context>
 <context>
@@ -1353,12 +1004,12 @@ Lua 错误：%2</translation>
         <translation>无会话</translation>
     </message>
     <message>
-        <location filename="../qml/features/sessions/SessionOverviewPanel.qml" line="141"/>
+        <location filename="../qml/features/sessions/SessionOverviewPanel.qml" line="136"/>
         <source>Protocol</source>
         <translation>协议</translation>
     </message>
     <message>
-        <location filename="../qml/features/sessions/SessionOverviewPanel.qml" line="154"/>
+        <location filename="../qml/features/sessions/SessionOverviewPanel.qml" line="149"/>
         <source>Client ID</source>
         <translation>客户端 ID</translation>
     </message>
@@ -1383,12 +1034,12 @@ Lua 错误：%2</translation>
         <translation>重试</translation>
     </message>
     <message>
-        <location filename="../qml/features/sessions/SessionOverviewPanel.qml" line="72"/>
+        <location filename="../qml/features/sessions/SessionOverviewPanel.qml" line="67"/>
         <source>%1  (%2)</source>
         <translation>%1  (%2)</translation>
     </message>
     <message>
-        <location filename="../qml/features/sessions/SessionOverviewPanel.qml" line="83"/>
+        <location filename="../qml/features/sessions/SessionOverviewPanel.qml" line="78"/>
         <source>Edit connection</source>
         <translation>编辑连接</translation>
     </message>
@@ -1419,184 +1070,76 @@ Lua 错误：%2</translation>
 <context>
     <name>SessionSidebar</name>
     <message>
-        <source>EN</source>
-        <translation type="vanished">EN</translation>
-    </message>
-    <message>
-        <source>中文</source>
-        <translation type="vanished">中文</translation>
-    </message>
-    <message>
-        <source>Auto</source>
-        <translation type="vanished">自动</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/sessions/SessionSidebar.qml" line="36"/>
-        <location filename="../qml/features/sessions/SessionSidebar.qml" line="363"/>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="33"/>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="360"/>
         <source>Connections</source>
         <translation>连接</translation>
     </message>
     <message>
-        <location filename="../qml/features/sessions/SessionSidebar.qml" line="107"/>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="104"/>
         <source>Connection %1</source>
         <translation>连接 %1</translation>
     </message>
     <message>
-        <source>Edit</source>
-        <translation type="vanished">编辑</translation>
-    </message>
-    <message>
-        <source>Copy</source>
-        <translation type="vanished">复制</translation>
-    </message>
-    <message>
-        <source>Delete</source>
-        <translation type="vanished">删除</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/sessions/SessionSidebar.qml" line="229"/>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="226"/>
         <source>New connection</source>
         <translation>新建连接</translation>
     </message>
     <message>
-        <location filename="../qml/features/sessions/SessionSidebar.qml" line="309"/>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="306"/>
         <source>+ New connection</source>
         <translation>+ 新建连接</translation>
     </message>
     <message>
-        <location filename="../qml/features/sessions/SessionSidebar.qml" line="62"/>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="59"/>
         <source>Hide connection list</source>
         <translation>隐藏连接列表</translation>
     </message>
     <message>
-        <location filename="../qml/features/sessions/SessionSidebar.qml" line="340"/>
-        <location filename="../qml/features/sessions/SessionSidebar.qml" line="357"/>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="337"/>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="354"/>
         <source>Show connection list</source>
         <translation>显示连接列表</translation>
     </message>
+</context>
+<context>
+    <name>SettingsView</name>
     <message>
-        <source>Theme: %1
-Click to switch to %2</source>
-        <translation type="vanished">主题：%1
-点击切换到 %2</translation>
+        <location filename="../qml/views/SettingsView.qml" line="34"/>
+        <source>Settings</source>
+        <translation>设置</translation>
     </message>
     <message>
-        <source>Lua scripts</source>
-        <translation type="vanished">Lua 脚本</translation>
+        <location filename="../qml/views/SettingsView.qml" line="63"/>
+        <source>Appearance</source>
+        <translation>外观</translation>
     </message>
     <message>
-        <source>Language</source>
-        <translation type="vanished">语言</translation>
+        <location filename="../qml/views/SettingsView.qml" line="70"/>
+        <source>Current theme: %1</source>
+        <translation>当前主题：%1</translation>
     </message>
     <message>
-        <source>🌐 System</source>
-        <translation type="vanished">🌐 跟随系统</translation>
-    </message>
-    <message>
-        <source>🇬🇧 English</source>
-        <translation type="vanished">🇬🇧 English</translation>
-    </message>
-    <message>
-        <source>🇨🇳 简体中文</source>
-        <translation type="vanished">🇨🇳 简体中文</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation type="vanished">跟随系统</translation>
-    </message>
-    <message>
-        <source>English</source>
-        <translation type="vanished">English</translation>
-    </message>
-    <message>
-        <source>简体中文</source>
-        <translation type="vanished">简体中文</translation>
+        <location filename="../qml/views/SettingsView.qml" line="78"/>
+        <source>Switch Theme</source>
+        <translation>切换主题</translation>
     </message>
 </context>
 <context>
     <name>SubscriptionController</name>
     <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="39"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="126"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="153"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="164"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="247"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="257"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="271"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="320"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="325"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="333"/>
-        <source>Subscription</source>
-        <translation>订阅</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="39"/>
-        <source>Invalid topic filter: %1</source>
-        <translation>主题过滤器无效：%1</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="126"/>
-        <source>Removed %1</source>
-        <translation>已移除 %1</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="153"/>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="326"/>
-        <source>Paused %1</source>
-        <translation>已暂停 %1</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="164"/>
-        <source>Queued %1 for reconnect</source>
-        <translation>已将 %1 加入重连队列</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="245"/>
+        <location filename="../src/controllers/subscriptioncontroller.cpp" line="248"/>
         <source>Invalid topic filter.</source>
         <translation>主题过滤器无效。</translation>
     </message>
     <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="247"/>
-        <source>%1 is not a valid topic filter</source>
-        <translation>%1 不是有效的主题过滤器</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="255"/>
+        <location filename="../src/controllers/subscriptioncontroller.cpp" line="261"/>
         <source>Qt MQTT returned no subscription object.</source>
         <translation>Qt MQTT 未返回订阅对象。</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="257"/>
-        <source>Failed to subscribe to %1</source>
-        <translation>订阅 %1 失败</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="272"/>
-        <source>Requested %1 at QoS %2</source>
-        <translation>已请求以 QoS %2 订阅 %1</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="321"/>
-        <source>Subscribed to %1</source>
-        <translation>已订阅 %1</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="329"/>
-        <source>Broker returned a subscription error.</source>
-        <translation>代理返回了订阅错误。</translation>
-    </message>
-    <message>
-        <location filename="../src/controllers/subscriptioncontroller.cpp" line="334"/>
-        <source>%1 failed: %2</source>
-        <translation>%1 失败：%2</translation>
     </message>
 </context>
 <context>
     <name>SubscriptionsPanel</name>
-    <message>
-        <source>Filter Topic, e.g. sensor/+/temp</source>
-        <translation type="vanished">过滤 Topic，例如 sensor/+/temp</translation>
-    </message>
     <message>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="122"/>
         <source>All</source>
@@ -1606,14 +1149,6 @@ Click to switch to %2</source>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="130"/>
         <source>Running</source>
         <translation>运行中</translation>
-    </message>
-    <message>
-        <source>No topics yet. Add a topic to start listening.</source>
-        <translation type="vanished">还没有主题。添加主题后开始监听。</translation>
-    </message>
-    <message>
-        <source>No topics yet. Add subscriptions now; they will listen after connecting.</source>
-        <translation type="vanished">还没有主题。现在可以添加订阅，连接后会开始监听。</translation>
     </message>
     <message>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="291"/>
@@ -1644,14 +1179,6 @@ Click to switch to %2</source>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="100"/>
         <source>Add topic</source>
         <translation>添加主题</translation>
-    </message>
-    <message>
-        <source>No topics yet. Use the + button to start listening.</source>
-        <translation type="vanished">还没有主题。使用 + 按钮开始监听。</translation>
-    </message>
-    <message>
-        <source>FPS %1</source>
-        <translation type="vanished">FPS %1</translation>
     </message>
     <message>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="112"/>
@@ -1699,11 +1226,6 @@ Click to switch to %2</source>
         <translation>已暂停</translation>
     </message>
     <message>
-        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="322"/>
-        <source>Edit script</source>
-        <translation>编辑脚本</translation>
-    </message>
-    <message>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="345"/>
         <source>Resume topic</source>
         <translation>恢复主题</translation>
@@ -1714,9 +1236,29 @@ Click to switch to %2</source>
         <translation>暂停主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="370"/>
-        <source>Delete topic</source>
-        <translation>删除主题</translation>
+        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="357"/>
+        <source>More actions</source>
+        <translation>更多操作</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="431"/>
+        <source>Delete subscription?</source>
+        <translation>删除订阅？</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="441"/>
+        <source>Delete %1 from this connection?</source>
+        <translation>从当前连接中删除 %1？</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="457"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="465"/>
+        <source>Delete</source>
+        <translation>删除</translation>
     </message>
 </context>
 </TS>

@@ -178,7 +178,7 @@ Dialog {
                 iconSize: 15
                 implicitWidth: 36
                 implicitHeight: 36
-                toolTipText: qsTr("Cancel")
+                accessibleName: qsTr("Cancel")
                 onClicked: root.close()
             }
 
@@ -189,7 +189,7 @@ Dialog {
                 implicitWidth: 36
                 implicitHeight: 36
                 primary: true
-                toolTipText: root.editMode ? qsTr("Save subscription") : qsTr("Add subscription")
+                accessibleName: root.editMode ? qsTr("Save subscription") : qsTr("Add subscription")
                 onClicked: root.submit()
             }
         }

@@ -69,9 +69,6 @@ QtObject {
         "buttonDangerHoverBg": root.isDarkTheme ? "#ee6879" : "#da445b",
         "buttonDangerPressedBg": root.isDarkTheme ? "#bd3d50" : "#a82639",
         "buttonDangerText": "#fff7f8",
-        "tooltipBg": root.isDarkTheme ? "#edf3fd" : "#172231",
-        "tooltipBorder": root.isDarkTheme ? "#ffffff" : "#31435a",
-        "tooltipText": root.isDarkTheme ? "#101824" : "#f7fbff",
         "fieldBg": root.isDarkTheme ? "#15161a" : "#ffffff",
         "fieldBorder": root.isDarkTheme ? "#42444a" : "#d2d2d7",
         "fieldFocusBorder": root.isDarkTheme ? "#2997ff" : "#0071e3",
@@ -102,48 +99,16 @@ QtObject {
         "failed": "#ff8d94"
     })
 
-    readonly property var statusFills: ({
-        "dark": {
-            "connected": "#17472a",
-            "subscribed": "#17472a",
-            "acknowledged": "#17472a",
-            "completed": "#17472a",
-            "connecting": "#47361a",
-            "pending": "#47361a",
-            "queued": "#47361a",
-            "sent": "#47361a",
-            "published": "#47361a",
-            "error": "#43242a",
-            "failed": "#43242a"
-        },
-        "light": {
-            "connected": "#e4f6ea",
-            "subscribed": "#e4f6ea",
-            "acknowledged": "#e4f6ea",
-            "completed": "#e4f6ea",
-            "connecting": "#fff1d6",
-            "pending": "#fff1d6",
-            "queued": "#fff1d6",
-            "sent": "#fff1d6",
-            "published": "#fff1d6",
-            "error": "#fde7eb",
-            "failed": "#fde7eb"
-        }
-    })
-
     readonly property var themeModeMetaByMode: ({
         "system": {
-            "icon": "contrast",
             "label": qsTr("System"),
             "next": "light"
         },
         "light": {
-            "icon": "light-mode",
             "label": qsTr("Light"),
             "next": "dark"
         },
         "dark": {
-            "icon": "dark-mode",
             "label": qsTr("Dark"),
             "next": "system"
         }
@@ -151,12 +116,6 @@ QtObject {
 
     function stateColor(state) {
         return root.stateColors[state] || "#7f90a8"
-    }
-
-    function statusFill(state) {
-        const mode = root.isDarkTheme ? "dark" : "light"
-        const fills = root.statusFills[mode]
-        return fills[state] || (root.isDarkTheme ? "#253040" : "#e6edf5")
     }
 
     function materialIcon(name) {

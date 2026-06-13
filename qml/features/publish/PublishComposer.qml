@@ -386,7 +386,7 @@ Item {
                         iconSize: 17
                         primary: true
                         enabled: root.canPublish
-                        toolTipText: qsTr("Publish message")
+                        accessibleName: qsTr("Publish message")
                         onClicked: root.publishCurrentDraft()
                     }
                 }
