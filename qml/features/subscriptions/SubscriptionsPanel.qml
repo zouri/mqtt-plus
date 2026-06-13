@@ -92,9 +92,6 @@ AppPanel {
             ui: control.ui
             title: qsTr("Subscriptions")
             titleSize: 15
-            meta: control.hasFilter
-                  ? qsTr("%1/%2").arg(control.matchingSubscriptionCount).arg(subscriptionList.count)
-                  : `${subscriptionList.count}`
 
             AppIconButton {
                 ui: control.ui
@@ -304,6 +301,7 @@ AppPanel {
 
                         AppBadge {
                             ui: control.ui
+                            visible: subscriptionDelegate.scriptName.length === 0
                             label: subscriptionDelegate.formatName
                             Layout.maximumWidth: 92
                             badgeRadius: 8
