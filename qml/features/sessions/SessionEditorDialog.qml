@@ -303,7 +303,7 @@ Dialog {
                 iconSize: 15
                 implicitWidth: 34
                 implicitHeight: 34
-                toolTipText: qsTr("Cancel")
+                accessibleName: qsTr("Cancel")
                 onClicked: root.close()
             }
         }

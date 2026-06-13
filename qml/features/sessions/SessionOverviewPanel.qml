@@ -72,43 +72,19 @@ AppPanel {
                 }
             }
 
-            Button {
+            AppIconButton {
                 id: editButton
+                ui: control.ui
                 enabled: control.status.state === "disconnected"
-                text: qsTr("Edit connection")
-                font.pixelSize: 12
-                font.bold: true
-                leftPadding: 8
-                rightPadding: 8
-                topPadding: 4
-                bottomPadding: 4
-                icon.source: control.ui.materialIcon("edit")
-                icon.width: 15
-                icon.height: 15
-                icon.color: enabled ? control.ui.themePalette.infoText : control.ui.textMuted
-                contentItem: RowLayout {
-                    spacing: 5
-
-                    Image {
-                        source: editButton.icon.source
-                        sourceSize.width: 15
-                        sourceSize.height: 15
-                        Layout.preferredWidth: 15
-                        Layout.preferredHeight: 15
-                        opacity: editButton.enabled ? 1.0 : 0.45
-                    }
-
-                    Label {
-                        text: editButton.text
-                        color: editButton.enabled ? control.ui.themePalette.infoText : control.ui.textMuted
-                        font.pixelSize: editButton.font.pixelSize
-                        font.bold: true
-                    }
-                }
-                background: Rectangle {
-                    radius: 10
-                    color: editButton.hovered ? control.ui.themePalette.actionHoverBg : "transparent"
-                }
+                iconSource: control.ui.materialIcon("edit")
+                iconSize: 15
+                implicitWidth: 32
+                implicitHeight: 32
+                cornerRadius: 16
+                restBg: "transparent"
+                outlineColor: "transparent"
+                symbolColor: control.ui.themePalette.infoText
+                accessibleName: qsTr("Edit connection")
                 onClicked: control.sessionEditor.openForEdit(control.appController.currentSessionIndex)
             }
 

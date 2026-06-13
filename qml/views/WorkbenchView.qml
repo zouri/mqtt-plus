@@ -15,9 +15,8 @@ Item {
     property bool connectionPaneCollapsed: false
     readonly property var session: root.appController.currentSession
     readonly property var status: root.appController.sessionStatus
-
-    signal collapseRequested()
-    signal expandRequested()
+    readonly property int expandedConnectionPaneWidth: 248
+    readonly property int subscriptionPaneWidth: 360
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -30,6 +29,26 @@ Item {
         sessionActivityPanel.noteStreamRowAppended(row)
     }
 
+    Component.onCompleted: {
+        root.resetStreamPosition()
+    }
+
+    Connections {
+        target: root.appController
+
+        function onMessageStreamChanged() {
+            root.resetStreamPosition()
+        }
+
+        function onLogStreamChanged() {
+            root.resetStreamPosition()
+        }
+
+        function onMessageStreamRowAppended(row) {
+            root.noteStreamRowAppended(row)
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -39,16 +58,16 @@ Item {
             appController: root.appController
             sessionEditor: sessionEditorDialog
             collapsed: root.connectionPaneCollapsed
-            Layout.preferredWidth: root.connectionPaneCollapsed ? 48 : 282
+            Layout.preferredWidth: root.connectionPaneCollapsed ? 48 : root.expandedConnectionPaneWidth
             Layout.fillHeight: true
-            onCollapseRequested: root.collapseRequested()
-            onExpandRequested: root.expandRequested()
+            onCollapseRequested: root.connectionPaneCollapsed = true
+            onExpandRequested: root.connectionPaneCollapsed = false
         }
 
         Rectangle {
-            Layout.preferredWidth: 410
-            Layout.maximumWidth: 410
-            Layout.minimumWidth: 410
+            Layout.preferredWidth: root.subscriptionPaneWidth
+            Layout.maximumWidth: root.subscriptionPaneWidth
+            Layout.minimumWidth: root.subscriptionPaneWidth
             Layout.fillHeight: true
             color: root.ui.themePalette.windowBg
 

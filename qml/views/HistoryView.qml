@@ -31,4 +31,24 @@ Item {
     function noteStreamRowAppended(row) {
         logPage.noteStreamRowAppended(row)
     }
+
+    Component.onCompleted: {
+        root.resetStreamPosition()
+    }
+
+    Connections {
+        target: root.appController
+
+        function onMessageStreamChanged() {
+            root.resetStreamPosition()
+        }
+
+        function onLogStreamChanged() {
+            root.resetStreamPosition()
+        }
+
+        function onLogStreamRowAppended(row) {
+            root.noteStreamRowAppended(row)
+        }
+    }
 }

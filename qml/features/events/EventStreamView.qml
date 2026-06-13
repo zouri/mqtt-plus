@@ -131,7 +131,7 @@ Item {
                     cornerRadius: 16
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
-                    toolTipText: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
+                    accessibleName: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
                     onClicked: root.appController.setCurrentOutputPaused(!root.session.outputPaused)
                 }
 
@@ -144,7 +144,7 @@ Item {
                     cornerRadius: 16
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
-                    toolTipText: qsTr("Clear history")
+                    accessibleName: qsTr("Clear history")
                     onClicked: root.clearRows()
                 }
             }
@@ -328,7 +328,7 @@ Item {
                                 cornerRadius: 6
                                 restBg: "transparent"
                                 outlineColor: "transparent"
-                                toolTipText: qsTr("Copy topic")
+                                accessibleName: qsTr("Copy topic")
                                 onClicked: root.appController.copyTextToClipboard(eventDelegate.topic)
                             }
 
@@ -342,7 +342,7 @@ Item {
                                 cornerRadius: 6
                                 restBg: "transparent"
                                 outlineColor: "transparent"
-                                toolTipText: qsTr("Copy payload")
+                                accessibleName: qsTr("Copy payload")
                                 onClicked: root.appController.copyTextToClipboard(
                                                eventDelegate.testPayload.length > 0
                                                ? eventDelegate.testPayload
@@ -359,7 +359,7 @@ Item {
                                 cornerRadius: 6
                                 restBg: "transparent"
                                 outlineColor: "transparent"
-                                toolTipText: qsTr("Use this message in publisher")
+                                accessibleName: qsTr("Use this message in publisher")
                                 onClicked: root.publishDraftRequested(
                                                eventDelegate.topic,
                                                eventDelegate.testPayload.length > 0
