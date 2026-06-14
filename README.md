@@ -48,7 +48,7 @@
 │   └── services/           # SQLite、载荷编解码、Lua 脚本等服务
 ├── qml/                    # Qt Quick 界面
 │   ├── Main.qml            # 主窗口
-│   ├── views/              # 顶层工作区、历史、脚本、设置视图
+│   ├── features/           # 工作区、历史、脚本、设置等功能视图与组件
 │   ├── features/           # 业务功能组件
 │   └── components/         # 复用 UI 组件
 ├── assets/                 # 应用图标等资源

@@ -2,9 +2,8 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import "../features/events"
-import "../features/sessions"
-import "../features/subscriptions"
+import "../sessions"
+import "../subscriptions"
 
 Item {
     id: root

@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import "../../components"
-import "../publish"
+import "../streams"
 
 AppPanel {
     id: root

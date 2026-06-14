@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import "../components"
+import "../../components"
 
 Rectangle {
     id: root
@@ -13,27 +13,25 @@ Rectangle {
 
     color: root.ui.themePalette.windowBg
 
-    AppPanel {
-        ui: root.ui
+    ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 32
-        showTopBorder: false
-        showRightBorder: false
-        showBottomBorder: false
-        showLeftBorder: false
+        spacing: 0
 
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 18
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 60
+            color: root.ui.themePalette.windowBg
 
             RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
+                anchors.fill: parent
+                anchors.leftMargin: 32
+                anchors.rightMargin: 32
+                spacing: 10
 
                 Label {
                     text: qsTr("Settings")
                     color: root.ui.textStrong
-                    font.pixelSize: 28
+                    font.pixelSize: 22
                     font.bold: true
                 }
 
@@ -41,6 +39,25 @@ Rectangle {
                     Layout.fillWidth: true
                 }
             }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 32
+                anchors.rightMargin: 32
+                height: 1
+                color: root.ui.themePalette.separator
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.leftMargin: 20
+            Layout.rightMargin: 24
+            Layout.topMargin: 14
+            spacing: 12
 
             Rectangle {
                 Layout.fillWidth: true
