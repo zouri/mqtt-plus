@@ -340,9 +340,9 @@
     </message>
 </context>
 <context>
-    <name>LogPage</name>
+    <name>LogsView</name>
     <message>
-        <location filename="../qml/features/events/LogPage.qml" line="38"/>
+        <location filename="../qml/features/logs/LogsView.qml" line="54"/>
         <source>Log</source>
         <translation>日志</translation>
     </message>
@@ -361,8 +361,8 @@
     </message>
     <message>
         <location filename="../qml/Main.qml" line="131"/>
-        <source>History</source>
-        <translation>历史</translation>
+        <source>Logs</source>
+        <translation>日志</translation>
     </message>
     <message>
         <location filename="../qml/Main.qml" line="147"/>
@@ -529,139 +529,80 @@
     </message>
 </context>
 <context>
-    <name>ScriptTestPane</name>
+    <name>ScriptsView</name>
     <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="39"/>
-        <source>OK</source>
-        <translation>正常</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="39"/>
-        <source>Error</source>
-        <translation>错误</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="47"/>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="74"/>
-        <source>test/topic</source>
-        <translation>test/topic</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="63"/>
-        <source>Test</source>
-        <translation>测试</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="95"/>
-        <source>Test payload</source>
-        <translation>测试载荷</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="100"/>
-        <source>Run Test</source>
-        <translation>运行测试</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="122"/>
-        <source>Run a script test to see output.</source>
-        <translation>运行脚本测试后查看输出。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="137"/>
-        <source>Recent Message Samples</source>
-        <translation>最近消息样本</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="160"/>
-        <source>No current session messages yet.</source>
-        <translation>当前会话还没有消息。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="197"/>
-        <source>Use sample from %1</source>
-        <translation>使用来自 %1 的样本</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptTestPane.qml" line="231"/>
-        <source>%1 • %2 B</source>
-        <translation>%1 • %2 B</translation>
-    </message>
-</context>
-<context>
-    <name>ScriptWorkspacePanel</name>
-    <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="19"/>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="44"/>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="56"/>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="307"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="17"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="42"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="54"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="289"/>
         <source>Unsaved</source>
         <translation>未保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="44"/>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="102"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="42"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="95"/>
         <source>Saved</source>
         <translation>已保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="51"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="49"/>
         <source>Decode MQTT payloads with Lua.</source>
         <translation>使用 Lua 解码 MQTT Payload。</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="85"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="83"/>
         <source>Structure valid</source>
         <translation>结构校验通过</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="86"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="84"/>
         <source>Structure invalid: define function parse(ctx) ... end</source>
         <translation>结构校验失败：请定义 function parse(ctx) ... end</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="148"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="129"/>
         <source>Script Manager</source>
         <translation>脚本管理</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="242"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="223"/>
         <source>Description</source>
         <translation>说明</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="251"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="232"/>
         <source>Device protocol or payload structure</source>
         <translation>设备协议或 Payload 结构</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="262"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="243"/>
         <source>Lua decoder code</source>
         <translation>Lua 解码代码</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="319"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="301"/>
         <source>Validate structure</source>
         <translation>校验结构</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="326"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="308"/>
         <source>Save Script</source>
         <translation>保存脚本</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="50"/>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="171"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="48"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="152"/>
         <source>New Lua Script</source>
         <translation>新建 Lua 脚本</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="224"/>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="233"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="205"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="214"/>
         <source>Script name</source>
         <translation>脚本名称</translation>
     </message>
     <message>
-        <location filename="../qml/features/scripts/ScriptWorkspacePanel.qml" line="278"/>
+        <location filename="../qml/features/scripts/ScriptsView.qml" line="259"/>
         <source>function parse(ctx)</source>
         <translation>function parse(ctx)</translation>
     </message>
@@ -1105,22 +1046,22 @@
 <context>
     <name>SettingsView</name>
     <message>
-        <location filename="../qml/views/SettingsView.qml" line="34"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="34"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/views/SettingsView.qml" line="63"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="63"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="../qml/views/SettingsView.qml" line="70"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="70"/>
         <source>Current theme: %1</source>
         <translation>当前主题：%1</translation>
     </message>
     <message>
-        <location filename="../qml/views/SettingsView.qml" line="78"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="78"/>
         <source>Switch Theme</source>
         <translation>切换主题</translation>
     </message>

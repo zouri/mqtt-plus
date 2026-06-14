@@ -4,7 +4,10 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Controls.Material
 import QtQuick.Layouts
-import "views"
+import "features/logs"
+import "features/scripts"
+import "features/settings"
+import "features/workbench"
 
 ApplicationWindow {
     id: root
@@ -46,7 +49,7 @@ ApplicationWindow {
             spacing: 0
 
             Rectangle {
-                Layout.preferredWidth: 64
+                Layout.preferredWidth: 56
                 Layout.fillHeight: true
                 color: ui.themePalette.sidebarBg
 
@@ -60,8 +63,8 @@ ApplicationWindow {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
                     anchors.topMargin: 16
                     anchors.bottomMargin: 16
                     spacing: 10
@@ -79,6 +82,7 @@ ApplicationWindow {
                         symbolColor: root.currentAppView === "workbench" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "workbench"
                         accessibleName: qsTr("Workbench")
+                        toolTipText: qsTr("Workbench")
                         onClicked: root.currentAppView = "workbench"
                     }
 
@@ -87,15 +91,16 @@ ApplicationWindow {
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
                         cornerRadius: 13
-                        iconSource: ui.materialIcon("history")
+                        iconSource: ui.materialIcon("logs")
                         iconSize: 20
                         restBg: "transparent"
                         hoverBg: ui.themePalette.selectedBg
                         outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "history" ? ui.themePalette.infoText : ui.textMuted
-                        forceActive: root.currentAppView === "history"
-                        accessibleName: qsTr("History")
-                        onClicked: root.currentAppView = "history"
+                        symbolColor: root.currentAppView === "logs" ? ui.themePalette.infoText : ui.textMuted
+                        forceActive: root.currentAppView === "logs"
+                        accessibleName: qsTr("Logs")
+                        toolTipText: qsTr("Logs")
+                        onClicked: root.currentAppView = "logs"
                     }
 
                     AppIconButton {
@@ -111,6 +116,7 @@ ApplicationWindow {
                         symbolColor: root.currentAppView === "scripts" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "scripts"
                         accessibleName: qsTr("Lua scripts")
+                        toolTipText: qsTr("Lua scripts")
                         onClicked: root.currentAppView = "scripts"
                     }
 
@@ -131,6 +137,7 @@ ApplicationWindow {
                         symbolColor: root.currentAppView === "settings" ? ui.themePalette.infoText : ui.textMuted
                         forceActive: root.currentAppView === "settings"
                         accessibleName: qsTr("Settings")
+                        toolTipText: qsTr("Settings")
                         onClicked: root.currentAppView = "settings"
                     }
 
@@ -140,7 +147,7 @@ ApplicationWindow {
             StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                currentIndex: root.currentAppView === "history"
+                currentIndex: root.currentAppView === "logs"
                               ? 1
                               : (root.currentAppView === "scripts"
                                  ? 2
@@ -153,8 +160,8 @@ ApplicationWindow {
                     fontFamily: root.font.family
                 }
 
-                HistoryView {
-                    id: historyPage
+                LogsView {
+                    id: logsPage
                     ui: ui
                     appController: root.appController
                     fontFamily: root.font.family
@@ -164,7 +171,6 @@ ApplicationWindow {
                     id: scriptsPage
                     ui: ui
                     appController: root.appController
-                    fontFamily: root.font.family
                 }
 
                 SettingsView {

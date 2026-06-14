@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`src/` contains the C++20 application logic. `src/app/main.cpp` boots Qt/QML, `src/app/appfacade.*` exposes the app state to QML, `src/controllers/` coordinates sessions, MQTT, subscriptions, events, scripts, theme, and language, while `src/services/` contains storage, payload, and scripting services. `qml/` contains the UI entry point in `Main.qml`, top-level views in `qml/views/`, feature components in `qml/features/`, and reusable controls in `qml/components/`. `build/qt6.11-debug/` is generated output from CMake and should not be edited by hand.
+`src/` contains the C++20 application logic. `src/app/main.cpp` boots Qt/QML, `src/app/appfacade.*` exposes the app state to QML, `src/controllers/` coordinates sessions, MQTT, subscriptions, events, scripts, theme, and language, while `src/services/` contains storage, payload, and scripting services. `qml/` contains the UI entry point in `Main.qml`, feature views and components in `qml/features/`, and reusable controls in `qml/components/`. `build/qt6.11-debug/` is generated output from CMake and should not be edited by hand.
 
 ## Build, Test, and Development Commands
 Use the checked-in CMake preset for local work:

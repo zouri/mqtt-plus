@@ -3,12 +3,12 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import "../../components"
+import "../streams"
 
 AppPanel {
     id: root
 
     required property var appController
-    required property var session
     required property string fontFamily
 
     showTopBorder: false
@@ -23,6 +23,24 @@ AppPanel {
         logStreamView.noteStreamRowAppended(row)
     }
 
+    Component.onCompleted: root.resetStreamPosition()
+
+    Connections {
+        target: root.appController
+
+        function onMessageStreamChanged() {
+            root.resetStreamPosition()
+        }
+
+        function onLogStreamChanged() {
+            root.resetStreamPosition()
+        }
+
+        function onLogStreamRowAppended(row) {
+            root.noteStreamRowAppended(row)
+        }
+    }
+
     EventStreamView {
         id: logStreamView
 
@@ -33,7 +51,7 @@ AppPanel {
         streamModel: root.appController.logs
         loadOlderRows: function() { return root.appController.loadOlderCurrentSessionLogs() }
         clearRows: function() { root.appController.clearCurrentLogs() }
-        session: root.session
+        session: root.appController.currentSession
         fontFamily: root.fontFamily
         title: qsTr("Log")
     }

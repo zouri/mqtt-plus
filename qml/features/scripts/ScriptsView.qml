@@ -10,7 +10,6 @@ Item {
 
     required property AppUi ui
     required property var appController
-    required property string fontFamily
 
     property string currentScriptId: ""
     property string savedScriptName: ""
@@ -103,22 +102,6 @@ Item {
         control.validationOk = true
     }
 
-    function deleteCurrentScript() {
-        if (control.currentScriptId.length === 0) {
-            control.newScript()
-            return
-        }
-
-        if (control.appController.deleteScript(control.currentScriptId)) {
-            const scripts = control.appController.scripts
-            if (scripts && scripts.count > 0) {
-                control.loadScript(scripts.rowAt(0))
-            } else {
-                control.newScript()
-            }
-        }
-    }
-
     Component.onCompleted: control.ensureSelection()
 
     Connections {
@@ -135,7 +118,7 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 84
+            Layout.preferredHeight: 60
             color: control.ui.themePalette.windowBg
 
             RowLayout {
@@ -147,7 +130,7 @@ Item {
                 Label {
                     text: qsTr("Script Manager")
                     color: control.ui.textStrong
-                    font.pixelSize: 24
+                    font.pixelSize: 22
                     font.bold: true
                 }
 
