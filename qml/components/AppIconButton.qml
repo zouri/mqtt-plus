@@ -29,6 +29,8 @@ ToolButton {
                                 ? control.ui.themePalette.buttonDangerText
                                 : (control.primary ? control.ui.themePalette.buttonPrimaryText : control.ui.textStrong)
     property bool forceActive: false
+    property string toolTipText: ""
+    property int toolTipPosition: AppToolTip.Position.Right
     readonly property color disabledBg: Qt.rgba(control.ui.isDarkTheme ? 0.32 : 0.50,
                                                 control.ui.isDarkTheme ? 0.34 : 0.55,
                                                 control.ui.isDarkTheme ? 0.40 : 0.62,
@@ -87,5 +89,12 @@ ToolButton {
                 easing.type: Easing.OutCubic
             }
         }
+    }
+
+    AppToolTip {
+        ui: control.ui
+        text: control.toolTipText
+        position: control.toolTipPosition
+        active: control.hovered
     }
 }

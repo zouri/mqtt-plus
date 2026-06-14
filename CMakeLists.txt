@@ -133,40 +133,38 @@ qt_add_qml_module(mqtt_plus_app
         qml/components/AppSectionHeader.qml
         qml/components/AppTextArea.qml
         qml/components/AppTextField.qml
+        qml/components/AppToolTip.qml
         qml/AppUi.qml
-        qml/features/events/EventStreamView.qml
-        qml/features/events/LogPage.qml
-        qml/features/events/SessionActivityPanel.qml
-        qml/features/publish/PublishComposer.qml
+        qml/features/logs/LogsView.qml
         qml/features/scripts/ScriptListPane.qml
-        qml/features/scripts/ScriptTestPane.qml
-        qml/features/scripts/ScriptWorkspacePanel.qml
+        qml/features/scripts/ScriptsView.qml
         qml/features/sessions/SessionEditorDialog.qml
         qml/features/sessions/SessionOverviewPanel.qml
         qml/features/sessions/SessionSidebar.qml
+        qml/features/settings/SettingsView.qml
+        qml/features/streams/EventStreamView.qml
         qml/features/subscriptions/AddSubscriptionDialog.qml
         qml/features/subscriptions/SubscriptionsPanel.qml
-        qml/views/HistoryView.qml
-        qml/views/SettingsView.qml
-        qml/views/ScriptsView.qml
-        qml/views/WorkbenchView.qml
+        qml/features/workbench/PublishComposer.qml
+        qml/features/workbench/SessionActivityPanel.qml
+        qml/features/workbench/WorkbenchView.qml
         qml/Main.qml
     RESOURCES
-        qml/icons/material/chevron-left.svg
-        qml/icons/material/chevron-right.svg
-        qml/icons/material/check.svg
-        qml/icons/material/edit.svg
-        qml/icons/material/history.svg
-        qml/icons/material/more-horiz.svg
-        qml/icons/material/pause.svg
-        qml/icons/material/play.svg
-        qml/icons/material/script-development.svg
-        qml/icons/material/send.svg
-        qml/icons/material/settings.svg
-        qml/icons/material/delete.svg
-        qml/icons/material/workbench.svg
-        qml/icons/material/xmark.svg
-        qml/icons/material/plus.svg
+        qml/icons/chevron-left.svg
+        qml/icons/chevron-right.svg
+        qml/icons/check.svg
+        qml/icons/edit.svg
+        qml/icons/logs.svg
+        qml/icons/more-horiz.svg
+        qml/icons/pause.svg
+        qml/icons/play.svg
+        qml/icons/script-development.svg
+        qml/icons/send.svg
+        qml/icons/settings.svg
+        qml/icons/delete.svg
+        qml/icons/workbench.svg
+        qml/icons/xmark.svg
+        qml/icons/plus.svg
 )
 
 qt_add_resources(mqtt_plus_app app_icons

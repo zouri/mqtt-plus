@@ -32,7 +32,7 @@ Rectangle {
             Label {
                 text: qsTr("Connections")
                 color: control.ui.textStrong
-                font.pixelSize: 16
+                font.pixelSize: 22
                 font.bold: true
             }
 
@@ -79,7 +79,7 @@ Rectangle {
                 id: sessionDelegate
                 required property int index
                 required property string name
-                required property string connectionState
+                required property bool connected
                 required property string host
                 required property int port
                 required property string transportLabel
@@ -145,13 +145,6 @@ Rectangle {
                                : "transparent"
                     }
 
-                    Rectangle {
-                        Layout.preferredWidth: 7
-                        Layout.preferredHeight: 7
-                        radius: 3.5
-                        color: control.ui.stateColor(sessionDelegate.connectionState)
-                    }
-
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 2
@@ -174,15 +167,13 @@ Rectangle {
                         }
                     }
 
-                    AppBadge {
-                        ui: control.ui
-                        label: control.ui.statusLabel(sessionDelegate.connectionState)
-                        badgeRadius: 10
-                        horizontalPadding: 7
-                        verticalPadding: 3
-                        badgeBg: control.ui.themePalette.chipBg
-                        badgeBorder: "transparent"
-                        badgeText: control.ui.textMuted
+                    Rectangle {
+                        Layout.preferredWidth: 7
+                        Layout.preferredHeight: 7
+                        radius: 3.5
+                        color: sessionDelegate.connected
+                               ? control.ui.stateColor("connected")
+                               : control.ui.stateColor("disconnected")
                     }
                 }
 

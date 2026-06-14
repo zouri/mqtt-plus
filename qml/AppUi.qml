@@ -119,7 +119,7 @@ QtObject {
     }
 
     function materialIcon(name) {
-        return Qt.resolvedUrl(`icons/material/${name}.svg`)
+        return Qt.resolvedUrl(`icons/${name}.svg`)
     }
 
     function themeModeMeta(mode) {
