@@ -164,7 +164,6 @@ ApplicationWindow {
                     id: logsPage
                     ui: ui
                     appController: root.appController
-                    fontFamily: root.font.family
                 }
 
                 ScriptsView {
