@@ -342,9 +342,19 @@
 <context>
     <name>LogsView</name>
     <message>
-        <location filename="../qml/features/logs/LogsView.qml" line="54"/>
-        <source>Log</source>
+        <location filename="../qml/features/logs/LogsView.qml" line="154"/>
+        <source>Logs</source>
         <translation>日志</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/logs/LogsView.qml" line="216"/>
+        <source>No logs yet.</source>
+        <translation>暂无日志。</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/logs/LogsView.qml" line="182"/>
+        <source>Clear Log</source>
+        <translation>清空日志</translation>
     </message>
 </context>
 <context>

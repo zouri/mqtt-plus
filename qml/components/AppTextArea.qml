@@ -17,7 +17,13 @@ Control {
     property alias wrapMode: textArea.wrapMode
     property bool showLineNumbers: false
     property bool showFocusBorder: true
+    property int backgroundRadius: 12
+    property int backgroundBorderWidth: 1
+    property color backgroundColor: control.ui.themePalette.fieldBg
 
+    readonly property real contentY: contentRoot.editorContentY
+    readonly property real contentHeight: contentRoot.editorContentHeight
+    readonly property real viewportHeight: contentRoot.editorViewportHeight
     readonly property int lineCount: Math.max(1, textArea.text.split("\n").length)
     readonly property int lineNumberGutterWidth: control.showLineNumbers
                                                ? Math.max(42, 24 + String(control.lineCount).length * 8)
@@ -25,6 +31,21 @@ Control {
 
     clip: true
     font.pixelSize: 13
+
+    function setContentY(value) {
+        const viewport = contentRoot.editorViewport
+        if (!viewport) {
+            return
+        }
+        const maxContentY = Math.max(0, viewport.contentHeight - viewport.height)
+        viewport.contentY = Math.max(0, Math.min(value, maxContentY))
+    }
+
+    function scrollToBottom() {
+        Qt.callLater(function() {
+            control.setContentY(control.contentHeight - control.viewportHeight)
+        })
+    }
 
     FontMetrics {
         id: lineNumberFontMetrics
@@ -34,8 +55,9 @@ Control {
     }
 
     background: Rectangle {
-        radius: 12
-        color: control.ui.themePalette.fieldBg
+        radius: control.backgroundRadius
+        color: control.backgroundColor
+        border.width: control.backgroundBorderWidth
         border.color: textArea.activeFocus && control.showFocusBorder ? control.ui.themePalette.fieldFocusBorder : control.ui.themePalette.fieldBorder
 
         Behavior on border.color {
@@ -53,6 +75,12 @@ Control {
         readonly property real editorContentY: contentRoot.editorViewport
                                                ? Number(contentRoot.editorViewport.contentY || 0)
                                                : 0
+        readonly property real editorContentHeight: contentRoot.editorViewport
+                                                   ? Number(contentRoot.editorViewport.contentHeight || 0)
+                                                   : 0
+        readonly property real editorViewportHeight: contentRoot.editorViewport
+                                                   ? Number(contentRoot.editorViewport.height || 0)
+                                                   : 0
 
         ScrollView {
             id: editorScrollView
