@@ -483,13 +483,5 @@ bool HistoryStore::resetLegacySchema()
         m_lastError = query.lastError().text();
         return false;
     }
-    if (!query.exec(QStringLiteral("DROP TABLE IF EXISTS mqtt_messages"))) {
-        m_lastError = query.lastError().text();
-        return false;
-    }
-    if (!query.exec(QStringLiteral("DROP TABLE IF EXISTS event_logs"))) {
-        m_lastError = query.lastError().text();
-        return false;
-    }
     return true;
 }
