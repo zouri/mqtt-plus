@@ -14,7 +14,6 @@
 
 namespace AppFacadeUtils {
 
-constexpr int kEventPageSize = 500;
 constexpr int kMaxVisibleEventRows = 1200;
 constexpr qint64 kSubscriptionFpsWindowMs = 1000;
 constexpr int kSubscriptionFpsRefreshIntervalMs = 250;

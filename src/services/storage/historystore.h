@@ -35,6 +35,11 @@ public:
     QVariantList loadLogsBefore(const QString &sessionId, qint64 beforeId, int limit) const;
     void clearMessages(const QString &sessionId);
     void clearLogs(const QString &sessionId);
+    void clearAllMessages();
+    void clearAllLogs();
+    void clearSessionHistory(const QString &sessionId);
+    void pruneMessages(const QString &sessionId, int keepCount);
+    void pruneLogs(const QString &sessionId, int keepCount);
 
 private:
     bool initialize();
