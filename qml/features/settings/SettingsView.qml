@@ -11,7 +11,128 @@ Rectangle {
     required property AppUi ui
     required property var appController
 
+    readonly property var themeValues: ["system", "light", "dark"]
+    readonly property var themeLabels: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
+    readonly property var languageValues: ["system", "en", "zh_CN"]
+    readonly property var languageLabels: [qsTr("System"), qsTr("English"), qsTr("Simplified Chinese")]
+    readonly property var retentionValues: [1000, 5000, 10000, 0]
+    readonly property var messageRetentionLabels: [qsTr("1,000 messages"), qsTr("5,000 messages"), qsTr("10,000 messages"), qsTr("Unlimited")]
+    readonly property var logRetentionLabels: [qsTr("500 logs"), qsTr("2,000 logs"), qsTr("5,000 logs"), qsTr("Unlimited")]
+    readonly property var logRetentionValues: [500, 2000, 5000, 0]
+    readonly property var pageSizeValues: [200, 500, 1000]
+    readonly property var pageSizeLabels: [qsTr("200 rows"), qsTr("500 rows"), qsTr("1,000 rows")]
+    readonly property var cleanupValues: ["never", "current", "all"]
+    readonly property var cleanupLabels: [qsTr("Do not clear"), qsTr("Current session"), qsTr("All sessions")]
+
     color: root.ui.themePalette.windowBg
+
+    function optionIndex(values, value) {
+        for (let i = 0; i < values.length; ++i) {
+            if (values[i] === value) {
+                return i
+            }
+        }
+        return 0
+    }
+
+    function optionValue(values, index) {
+        return values[Math.max(0, Math.min(index, values.length - 1))]
+    }
+
+    component SettingsSection: Rectangle {
+        id: section
+
+        required property AppUi ui
+        property string title: ""
+        default property alias rows: sectionBody.data
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: sectionColumn.implicitHeight + 24
+        radius: section.ui.innerRadius
+        color: section.ui.themePalette.itemBg
+        border.color: section.ui.themePalette.itemBorder
+
+        ColumnLayout {
+            id: sectionColumn
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 6
+
+            Label {
+                Layout.fillWidth: true
+                text: section.title
+                color: section.ui.textStrong
+                font.pixelSize: 14
+                font.bold: true
+            }
+
+            ColumnLayout {
+                id: sectionBody
+                Layout.fillWidth: true
+                spacing: 0
+            }
+        }
+    }
+
+    component SettingRow: Rectangle {
+        id: settingRow
+
+        required property AppUi ui
+        property string title: ""
+        property string detail: ""
+        property bool showDivider: true
+        default property alias controls: controlRow.data
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: Math.max(54, rowLayout.implicitHeight + 14)
+        color: "transparent"
+
+        RowLayout {
+            id: rowLayout
+            anchors.fill: parent
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            spacing: 14
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+
+                Label {
+                    Layout.fillWidth: true
+                    text: settingRow.title
+                    color: settingRow.ui.textStrong
+                    font.pixelSize: 13
+                    font.bold: true
+                    elide: Label.ElideRight
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    visible: settingRow.detail.length > 0
+                    text: settingRow.detail
+                    color: settingRow.ui.textMuted
+                    font.pixelSize: 11
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            RowLayout {
+                id: controlRow
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 8
+            }
+        }
+
+        Rectangle {
+            visible: settingRow.showDivider
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: settingRow.ui.themePalette.separator
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -51,59 +172,217 @@ Rectangle {
             }
         }
 
-        ColumnLayout {
+        Flickable {
+            id: settingsFlickable
+
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 20
-            Layout.rightMargin: 24
-            Layout.topMargin: 14
-            spacing: 12
+            contentWidth: width
+            contentHeight: settingsContent.implicitHeight + 28
+            clip: true
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 72
-                radius: root.ui.innerRadius
-                color: root.ui.themePalette.itemBg
-                border.color: root.ui.themePalette.itemBorder
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+            }
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 20
-                    anchors.rightMargin: 20
-                    spacing: 18
+            ColumnLayout {
+                id: settingsContent
+                width: settingsFlickable.width
+                spacing: 12
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 3
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 2
+                }
 
-                        Label {
-                            text: qsTr("Appearance")
-                            color: root.ui.textStrong
-                            font.pixelSize: 15
-                            font.bold: true
-                        }
+                SettingsSection {
+                    ui: root.ui
+                    title: qsTr("Appearance")
+                    Layout.leftMargin: 20
+                    Layout.rightMargin: 24
 
-                        Label {
-                            text: qsTr("Current theme: %1").arg(root.ui.themeModeMeta(root.appController.themeMode).label)
-                            color: root.ui.textMuted
-                            font.pixelSize: 13
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Theme")
+                        detail: qsTr("Choose how the interface follows system appearance.")
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 150
+                            model: root.themeLabels
+                            currentIndex: root.optionIndex(root.themeValues, root.appController.themeMode)
+                            onActivated: (index) => root.appController.themeMode = root.optionValue(root.themeValues, index)
                         }
                     }
 
-                    AppButton {
+                    SettingRow {
                         ui: root.ui
-                        text: qsTr("Switch Theme")
-                        minimumWidth: 116
-                        onClicked: {
-                            const meta = root.ui.themeModeMeta(root.appController.themeMode)
-                            root.appController.themeMode = meta.next
+                        title: qsTr("Language")
+                        detail: qsTr("Switch the interface language.")
+                        showDivider: false
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 170
+                            model: root.languageLabels
+                            currentIndex: root.optionIndex(root.languageValues, root.appController.languageMode)
+                            onActivated: (index) => root.appController.languageMode = root.optionValue(root.languageValues, index)
                         }
                     }
                 }
-            }
 
-            Item {
-                Layout.fillHeight: true
+                SettingsSection {
+                    ui: root.ui
+                    title: qsTr("History")
+                    Layout.leftMargin: 20
+                    Layout.rightMargin: 24
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Saved messages")
+                        detail: qsTr("Maximum MQTT messages retained per connection.")
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 170
+                            model: root.messageRetentionLabels
+                            currentIndex: root.optionIndex(root.retentionValues, root.appController.messageRetentionLimit)
+                            onActivated: (index) => root.appController.messageRetentionLimit = root.optionValue(root.retentionValues, index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Saved logs")
+                        detail: qsTr("Maximum event log entries retained per connection.")
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 150
+                            model: root.logRetentionLabels
+                            currentIndex: root.optionIndex(root.logRetentionValues, root.appController.logRetentionLimit)
+                            onActivated: (index) => root.appController.logRetentionLimit = root.optionValue(root.logRetentionValues, index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("History page size")
+                        detail: qsTr("Rows loaded when opening a connection or scrolling back.")
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 130
+                            model: root.pageSizeLabels
+                            currentIndex: root.optionIndex(root.pageSizeValues, root.appController.historyPageSize)
+                            onActivated: (index) => root.appController.historyPageSize = root.optionValue(root.pageSizeValues, index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Delete connection history")
+                        detail: qsTr("Remove stored messages and logs when a connection is deleted.")
+                        showDivider: false
+
+                        AppCheckBox {
+                            ui: root.ui
+                            text: qsTr("Enabled")
+                            checked: root.appController.deleteHistoryWithSession
+                            onToggled: root.appController.deleteHistoryWithSession = checked
+                        }
+                    }
+                }
+
+                SettingsSection {
+                    ui: root.ui
+                    title: qsTr("Output")
+                    Layout.leftMargin: 20
+                    Layout.rightMargin: 24
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Save while paused")
+                        detail: qsTr("Keep storing incoming messages when output is paused.")
+                        showDivider: false
+
+                        AppCheckBox {
+                            ui: root.ui
+                            text: qsTr("Enabled")
+                            checked: root.appController.saveMessagesWhenOutputPaused
+                            onToggled: root.appController.saveMessagesWhenOutputPaused = checked
+                        }
+                    }
+                }
+
+                SettingsSection {
+                    ui: root.ui
+                    title: qsTr("Cleanup")
+                    Layout.leftMargin: 20
+                    Layout.rightMargin: 24
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Messages on exit")
+                        detail: qsTr("Choose whether MQTT messages are cleared when the app closes.")
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 150
+                            model: root.cleanupLabels
+                            currentIndex: root.optionIndex(root.cleanupValues, root.appController.clearMessagesOnExit)
+                            onActivated: (index) => root.appController.clearMessagesOnExit = root.optionValue(root.cleanupValues, index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Logs on exit")
+                        detail: qsTr("Choose whether event logs are cleared when the app closes.")
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 150
+                            model: root.cleanupLabels
+                            currentIndex: root.optionIndex(root.cleanupValues, root.appController.clearLogsOnExit)
+                            onActivated: (index) => root.appController.clearLogsOnExit = root.optionValue(root.cleanupValues, index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Manual cleanup")
+                        detail: qsTr("Clear stored data immediately.")
+                        showDivider: false
+
+                        AppButton {
+                            ui: root.ui
+                            text: qsTr("Messages")
+                            minimumWidth: 96
+                            onClicked: root.appController.clearAllMessages()
+                        }
+
+                        AppButton {
+                            ui: root.ui
+                            text: qsTr("Logs")
+                            minimumWidth: 74
+                            onClicked: root.appController.clearAllLogs()
+                        }
+
+                        AppButton {
+                            ui: root.ui
+                            text: qsTr("All")
+                            danger: true
+                            minimumWidth: 70
+                            onClicked: root.appController.clearAllHistory()
+                        }
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 14
+                }
             }
         }
     }

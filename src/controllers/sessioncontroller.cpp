@@ -214,6 +214,9 @@ void SessionController::removeSessionAt(int index)
     }
 
     SessionState removed = takeSessionAt(index);
+    if (m_app->deleteHistoryWithSession()) {
+        m_app->m_historyStore.clearSessionHistory(removed.id);
+    }
     m_app->destroySessionRuntime(removed);
 
     int indexAfterRemoval = m_currentIndex;

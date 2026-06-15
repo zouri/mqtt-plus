@@ -10,6 +10,52 @@ void AppFacade::clearCurrentLogs()
     m_eventController.clearCurrentLogs();
 }
 
+void AppFacade::clearAllMessages()
+{
+    m_historyStore.clearAllMessages();
+    for (auto &session : m_sessionController.sessions()) {
+        session.messageRows.clear();
+        session.oldestLoadedMessageId = 0;
+        session.loadedAllMessageHistory = true;
+    }
+    m_messagesModel.clear();
+    refreshScriptTestSamplesModel();
+    emit messageStreamChanged();
+    emit scriptTestSamplesChanged();
+}
+
+void AppFacade::clearAllLogs()
+{
+    m_historyStore.clearAllLogs();
+    for (auto &session : m_sessionController.sessions()) {
+        session.logRows.clear();
+        session.oldestLoadedLogId = 0;
+        session.loadedAllLogHistory = true;
+    }
+    m_logsModel.clear();
+    emit logStreamChanged();
+}
+
+void AppFacade::clearAllHistory()
+{
+    m_historyStore.clearAllMessages();
+    m_historyStore.clearAllLogs();
+    for (auto &session : m_sessionController.sessions()) {
+        session.messageRows.clear();
+        session.oldestLoadedMessageId = 0;
+        session.loadedAllMessageHistory = true;
+        session.logRows.clear();
+        session.oldestLoadedLogId = 0;
+        session.loadedAllLogHistory = true;
+    }
+    m_messagesModel.clear();
+    m_logsModel.clear();
+    refreshScriptTestSamplesModel();
+    emit messageStreamChanged();
+    emit logStreamChanged();
+    emit scriptTestSamplesChanged();
+}
+
 int AppFacade::loadOlderCurrentSessionMessages()
 {
     return m_eventController.loadOlderCurrentSessionMessages();
