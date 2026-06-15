@@ -263,6 +263,12 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         parseError,
         scriptId,
         scriptDisplayName);
+    if (historyId <= 0 && !m_app.m_historyStore.lastError().isEmpty()) {
+        appendEvent(
+            *session,
+            QStringLiteral("Storage"),
+            QStringLiteral("Cannot save incoming message: %1").arg(m_app.m_historyStore.lastError()));
+    }
     m_app.m_historyStore.pruneMessages(sessionId, m_app.messageRetentionLimit());
 
     if (refreshCurrentSubscriptionFps && !m_app.m_subscriptionFpsRefreshTimer.isActive()) {
