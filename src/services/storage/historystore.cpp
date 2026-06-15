@@ -305,6 +305,86 @@ void HistoryStore::clearLogs(const QString &sessionId)
     }
 }
 
+void HistoryStore::clearAllMessages()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    QSqlQuery query(m_db);
+    if (!query.exec(QStringLiteral("DELETE FROM mqtt_messages"))) {
+        m_lastError = query.lastError().text();
+    }
+}
+
+void HistoryStore::clearAllLogs()
+{
+    if (!isReady()) {
+        return;
+    }
+
+    QSqlQuery query(m_db);
+    if (!query.exec(QStringLiteral("DELETE FROM event_logs"))) {
+        m_lastError = query.lastError().text();
+    }
+}
+
+void HistoryStore::clearSessionHistory(const QString &sessionId)
+{
+    clearMessages(sessionId);
+    clearLogs(sessionId);
+}
+
+void HistoryStore::pruneMessages(const QString &sessionId, int keepCount)
+{
+    if (!isReady() || keepCount <= 0) {
+        return;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        QStringLiteral(
+            "DELETE FROM mqtt_messages "
+            "WHERE session_id = ? "
+            "AND id NOT IN ("
+            "    SELECT id FROM mqtt_messages "
+            "    WHERE session_id = ? "
+            "    ORDER BY id DESC "
+            "    LIMIT ?"
+            ")"));
+    query.addBindValue(sessionId);
+    query.addBindValue(sessionId);
+    query.addBindValue(keepCount);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+    }
+}
+
+void HistoryStore::pruneLogs(const QString &sessionId, int keepCount)
+{
+    if (!isReady() || keepCount <= 0) {
+        return;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(
+        QStringLiteral(
+            "DELETE FROM event_logs "
+            "WHERE session_id = ? "
+            "AND id NOT IN ("
+            "    SELECT id FROM event_logs "
+            "    WHERE session_id = ? "
+            "    ORDER BY id DESC "
+            "    LIMIT ?"
+            ")"));
+    query.addBindValue(sessionId);
+    query.addBindValue(sessionId);
+    query.addBindValue(keepCount);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+    }
+}
+
 bool HistoryStore::initialize()
 {
     const QString dataPath =

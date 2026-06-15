@@ -60,6 +60,7 @@ qt_add_executable(mqtt_plus_app
     src/app/appfacademodels.cpp
     src/app/appfacademqtt.cpp
     src/app/appfacademenus.cpp
+    src/app/appfacadepreferences.cpp
     src/app/appfacadescripts.cpp
     src/app/appfacadesessions.cpp
     src/app/appfacadesubscriptions.cpp
@@ -80,6 +81,8 @@ qt_add_executable(mqtt_plus_app
     src/controllers/eventcontroller.h
     src/controllers/languagecontroller.cpp
     src/controllers/languagecontroller.h
+    src/controllers/preferencescontroller.cpp
+    src/controllers/preferencescontroller.h
     src/domain/script.h
     src/domain/session.h
     src/domain/sessionconfig.cpp

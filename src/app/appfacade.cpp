@@ -17,6 +17,7 @@ AppFacade::AppFacade(QObject *parent)
     , m_eventController(this, this)
     , m_themeController(&m_settings, this)
     , m_languageController(&m_settings, this)
+    , m_preferencesController(&m_settings, this)
     , m_sessionsModel(this)
     , m_subscriptionsModel(this)
     , m_messagesModel(this)
@@ -38,6 +39,18 @@ AppFacade::AppFacade(QObject *parent)
         emit subscriptionsChanged();
         emit languageChanged();
     });
+    connect(&m_preferencesController, &PreferencesController::messageRetentionLimitChanged, this, &AppFacade::messageRetentionLimitChanged);
+    connect(&m_preferencesController, &PreferencesController::logRetentionLimitChanged, this, &AppFacade::logRetentionLimitChanged);
+    connect(&m_preferencesController, &PreferencesController::historyPageSizeChanged, this, [this]() {
+        reloadCurrentSessionHistory();
+        emit messageStreamChanged();
+        emit logStreamChanged();
+        emit historyPageSizeChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::deleteHistoryWithSessionChanged, this, &AppFacade::deleteHistoryWithSessionChanged);
+    connect(&m_preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, this, &AppFacade::saveMessagesWhenOutputPausedChanged);
+    connect(&m_preferencesController, &PreferencesController::clearMessagesOnExitChanged, this, &AppFacade::clearMessagesOnExitChanged);
+    connect(&m_preferencesController, &PreferencesController::clearLogsOnExitChanged, this, &AppFacade::clearLogsOnExitChanged);
 
     m_subscriptionFpsRefreshTimer.setInterval(kSubscriptionFpsRefreshIntervalMs);
     connect(
@@ -47,6 +60,36 @@ AppFacade::AppFacade(QObject *parent)
         &AppFacade::refreshSubscriptionFps);
     loadScripts();
     loadSessions();
+}
+
+AppFacade::~AppFacade()
+{
+    applyExitCleanup();
+}
+
+void AppFacade::applyExitCleanup()
+{
+    const auto clearMessages = [this](const QString &mode) {
+        if (mode == QStringLiteral("all")) {
+            m_historyStore.clearAllMessages();
+        } else if (mode == QStringLiteral("current")) {
+            if (auto *session = currentSessionState()) {
+                m_historyStore.clearMessages(session->id);
+            }
+        }
+    };
+    const auto clearLogs = [this](const QString &mode) {
+        if (mode == QStringLiteral("all")) {
+            m_historyStore.clearAllLogs();
+        } else if (mode == QStringLiteral("current")) {
+            if (auto *session = currentSessionState()) {
+                m_historyStore.clearLogs(session->id);
+            }
+        }
+    };
+
+    clearMessages(clearMessagesOnExit());
+    clearLogs(clearLogsOnExit());
 }
 
 void AppFacade::notifyCurrentSessionViewsChanged()

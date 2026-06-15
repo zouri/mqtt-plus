@@ -54,8 +54,9 @@ int EventController::loadOlderCurrentSessionMessages()
         return 0;
     }
 
+    const int pageSize = m_app.historyPageSize();
     QVariantList rows = EventRenderer::loadHistoryRows(
-        m_app.m_historyStore.loadMessagesBefore(session->id, session->oldestLoadedMessageId, kEventPageSize),
+        m_app.m_historyStore.loadMessagesBefore(session->id, session->oldestLoadedMessageId, pageSize),
         session->subscriptionFormats,
         m_app.m_launchTimestamp,
         false);
@@ -93,8 +94,9 @@ int EventController::loadOlderCurrentSessionLogs()
         return 0;
     }
 
+    const int pageSize = m_app.historyPageSize();
     QVariantList rows = EventRenderer::loadHistoryRows(
-        m_app.m_historyStore.loadLogsBefore(session->id, session->oldestLoadedLogId, kEventPageSize),
+        m_app.m_historyStore.loadLogsBefore(session->id, session->oldestLoadedLogId, pageSize),
         session->subscriptionFormats,
         m_app.m_launchTimestamp,
         false);
@@ -155,6 +157,7 @@ void EventController::appendEvent(SessionState &session, const QString &channel,
 {
     const QString timestamp = timestampNow();
     const qint64 historyId = m_app.m_historyStore.appendEvent(session.id, timestamp, channel, message);
+    m_app.m_historyStore.pruneLogs(session.id, m_app.logRetentionLimit());
 
     appendRenderedLogRow(session, EventRenderer::eventRow(historyId, timestamp, channel, message));
 }
@@ -221,6 +224,15 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         refreshCurrentSubscriptionFps = refreshCurrentSubscriptionFps || session == m_app.currentSessionState();
     }
 
+    if (session->outputPaused && !m_app.saveMessagesWhenOutputPaused()) {
+        if (refreshCurrentSubscriptionFps && !m_app.m_subscriptionFpsRefreshTimer.isActive()) {
+            m_app.refreshSubscriptionsModel();
+            emit m_app.subscriptionsChanged();
+            m_app.m_subscriptionFpsRefreshTimer.start();
+        }
+        return;
+    }
+
     const SubscriptionEntry *displaySubscription = m_app.m_subscriptionController.bestSubscriptionForTopic(*session, topic);
     QString scriptDisplayName;
     QString decodedPayload;
@@ -251,6 +263,7 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         parseError,
         scriptId,
         scriptDisplayName);
+    m_app.m_historyStore.pruneMessages(sessionId, m_app.messageRetentionLimit());
 
     if (refreshCurrentSubscriptionFps && !m_app.m_subscriptionFpsRefreshTimer.isActive()) {
         m_app.refreshSubscriptionsModel();
@@ -307,24 +320,25 @@ void EventController::reloadCurrentSessionHistory()
     if (!session) {
         return;
     }
-    const QVariantList messageRows = m_app.m_historyStore.loadMessages(session->id, kEventPageSize);
+    const int pageSize = m_app.historyPageSize();
+    const QVariantList messageRows = m_app.m_historyStore.loadMessages(session->id, pageSize);
     session->messageRows = EventRenderer::loadHistoryRows(
         messageRows,
         session->subscriptionFormats,
         m_app.m_launchTimestamp,
         true);
     session->oldestLoadedMessageId = EventRenderer::firstHistoryId(session->messageRows);
-    session->loadedAllMessageHistory = messageRows.size() < kEventPageSize;
+    session->loadedAllMessageHistory = messageRows.size() < pageSize;
     m_app.m_messagesModel.setRows(session->messageRows);
 
-    const QVariantList logRows = m_app.m_historyStore.loadLogs(session->id, kEventPageSize);
+    const QVariantList logRows = m_app.m_historyStore.loadLogs(session->id, pageSize);
     session->logRows = EventRenderer::loadHistoryRows(
         logRows,
         session->subscriptionFormats,
         m_app.m_launchTimestamp,
         true);
     session->oldestLoadedLogId = EventRenderer::firstHistoryId(session->logRows);
-    session->loadedAllLogHistory = logRows.size() < kEventPageSize;
+    session->loadedAllLogHistory = logRows.size() < pageSize;
     m_app.m_logsModel.setRows(session->logRows);
 
     m_app.refreshScriptTestSamplesModel();

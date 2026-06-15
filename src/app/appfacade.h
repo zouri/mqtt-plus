@@ -22,6 +22,7 @@
 #include "controllers/eventcontroller.h"
 #include "controllers/themecontroller.h"
 #include "controllers/languagecontroller.h"
+#include "controllers/preferencescontroller.h"
 #include "services/storage/historystore.h"
 #include "services/scripting/luarunner.h"
 #include "models/eventstreammodel.h"
@@ -54,10 +55,17 @@ class AppFacade : public QObject
     Q_PROPERTY(QString languageMode READ languageMode WRITE setLanguageMode NOTIFY languageModeChanged)
     Q_PROPERTY(QString effectiveLanguage READ effectiveLanguage NOTIFY languageChanged)
     Q_PROPERTY(QVariantList availableLanguages READ availableLanguages NOTIFY languageChanged)
+    Q_PROPERTY(int messageRetentionLimit READ messageRetentionLimit WRITE setMessageRetentionLimit NOTIFY messageRetentionLimitChanged)
+    Q_PROPERTY(int logRetentionLimit READ logRetentionLimit WRITE setLogRetentionLimit NOTIFY logRetentionLimitChanged)
+    Q_PROPERTY(int historyPageSize READ historyPageSize WRITE setHistoryPageSize NOTIFY historyPageSizeChanged)
+    Q_PROPERTY(bool deleteHistoryWithSession READ deleteHistoryWithSession WRITE setDeleteHistoryWithSession NOTIFY deleteHistoryWithSessionChanged)
+    Q_PROPERTY(bool saveMessagesWhenOutputPaused READ saveMessagesWhenOutputPaused WRITE setSaveMessagesWhenOutputPaused NOTIFY saveMessagesWhenOutputPausedChanged)
+    Q_PROPERTY(QString clearMessagesOnExit READ clearMessagesOnExit WRITE setClearMessagesOnExit NOTIFY clearMessagesOnExitChanged)
+    Q_PROPERTY(QString clearLogsOnExit READ clearLogsOnExit WRITE setClearLogsOnExit NOTIFY clearLogsOnExitChanged)
 
 public:
     explicit AppFacade(QObject *parent = nullptr);
-    ~AppFacade() override = default;
+    ~AppFacade() override;
 
     SessionListModel *sessions();
     SubscriptionListModel *subscriptions();
@@ -75,10 +83,24 @@ public:
     QString languageMode() const;
     QString effectiveLanguage() const;
     QVariantList availableLanguages() const;
+    int messageRetentionLimit() const;
+    int logRetentionLimit() const;
+    int historyPageSize() const;
+    bool deleteHistoryWithSession() const;
+    bool saveMessagesWhenOutputPaused() const;
+    QString clearMessagesOnExit() const;
+    QString clearLogsOnExit() const;
 
     void setCurrentSessionIndex(int index);
     void setThemeMode(const QString &mode);
     void setLanguageMode(const QString &mode);
+    void setMessageRetentionLimit(int limit);
+    void setLogRetentionLimit(int limit);
+    void setHistoryPageSize(int pageSize);
+    void setDeleteHistoryWithSession(bool enabled);
+    void setSaveMessagesWhenOutputPaused(bool enabled);
+    void setClearMessagesOnExit(const QString &mode);
+    void setClearLogsOnExit(const QString &mode);
 
     Q_INVOKABLE QVariantMap defaultSessionConfig() const;
     Q_INVOKABLE QVariantMap sessionConfigAt(int index) const;
@@ -109,6 +131,9 @@ public:
     Q_INVOKABLE void copyTextToClipboard(const QString &text) const;
     Q_INVOKABLE void clearCurrentMessages();
     Q_INVOKABLE void clearCurrentLogs();
+    Q_INVOKABLE void clearAllMessages();
+    Q_INVOKABLE void clearAllLogs();
+    Q_INVOKABLE void clearAllHistory();
     Q_INVOKABLE int loadOlderCurrentSessionMessages();
     Q_INVOKABLE int loadOlderCurrentSessionLogs();
     Q_INVOKABLE QString upsertScript(
@@ -138,6 +163,13 @@ signals:
     void effectiveThemeChanged();
     void languageModeChanged();
     void languageChanged();
+    void messageRetentionLimitChanged();
+    void logRetentionLimitChanged();
+    void historyPageSizeChanged();
+    void deleteHistoryWithSessionChanged();
+    void saveMessagesWhenOutputPausedChanged();
+    void clearMessagesOnExitChanged();
+    void clearLogsOnExitChanged();
 
 private:
     SessionState *currentSessionState();
@@ -195,6 +227,7 @@ private:
     bool saveSessions();
     SessionState createDefaultSession(const QString &name);
     void reportStorageError(const QString &message);
+    void applyExitCleanup();
 
     QSettings m_settings;
     SessionController m_sessionController;
@@ -204,6 +237,7 @@ private:
     EventController m_eventController;
     ThemeController m_themeController;
     LanguageController m_languageController;
+    PreferencesController m_preferencesController;
     HistoryStore m_historyStore;
     SessionListModel m_sessionsModel;
     SubscriptionListModel m_subscriptionsModel;
