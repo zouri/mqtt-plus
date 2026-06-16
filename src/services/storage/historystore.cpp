@@ -9,6 +9,13 @@
 
 #include <algorithm>
 
+namespace {
+QString nonNullString(const QString &value)
+{
+    return value.isNull() ? QStringLiteral("") : value;
+}
+} // namespace
+
 HistoryStore::HistoryStore()
 {
     m_connectionName = QStringLiteral("history-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
@@ -63,16 +70,17 @@ qint64 HistoryStore::appendMessage(
     query.addBindValue(topic);
     query.addBindValue(QString::fromUtf8(payloadBytes));
     query.addBindValue(QString::fromLatin1(payloadBytes.toBase64()));
-    query.addBindValue(parsedPayload);
-    query.addBindValue(parsedFormat);
-    query.addBindValue(parseError);
-    query.addBindValue(scriptId);
-    query.addBindValue(scriptName);
+    query.addBindValue(nonNullString(parsedPayload));
+    query.addBindValue(nonNullString(parsedFormat));
+    query.addBindValue(nonNullString(parseError));
+    query.addBindValue(nonNullString(scriptId));
+    query.addBindValue(nonNullString(scriptName));
 
     if (!query.exec()) {
         m_lastError = query.lastError().text();
         return 0;
     }
+    m_lastError.clear();
     return query.lastInsertId().toLongLong();
 }
 

@@ -38,4 +38,5 @@ public:
 
 private:
     AppFacade &m_app;
+    QString m_lastMessageStorageError;
 };
