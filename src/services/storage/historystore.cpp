@@ -1,6 +1,7 @@
 #include "historystore.h"
 
 #include <QDir>
+#include <QSet>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
@@ -8,6 +9,7 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <utility>
 
 namespace {
 QString nonNullString(const QString &value)
@@ -24,6 +26,7 @@ HistoryStore::HistoryStore()
 
 HistoryStore::~HistoryStore()
 {
+    flushPendingMessages();
     if (m_db.isValid()) {
         m_db.close();
         m_db = QSqlDatabase();
@@ -43,7 +46,7 @@ QString HistoryStore::lastError() const
     return m_lastError;
 }
 
-qint64 HistoryStore::appendMessage(
+qint64 HistoryStore::enqueueMessage(
     const QString &sessionId,
     const QString &timestamp,
     const QString &topic,
@@ -55,33 +58,103 @@ qint64 HistoryStore::appendMessage(
     const QString &scriptName)
 {
     if (!isReady()) {
+        if (m_lastError.isEmpty()) {
+            m_lastError = QStringLiteral("History database is not open.");
+        }
         return 0;
     }
 
+    if (m_nextMessageId <= 0) {
+        QSqlQuery nextIdQuery(m_db);
+        if (!nextIdQuery.exec(
+                QStringLiteral(
+                    "SELECT COALESCE("
+                    "    (SELECT seq FROM sqlite_sequence WHERE name = 'mqtt_messages'), "
+                    "    COALESCE(MAX(id), 0)"
+                    ") + 1 "
+                    "FROM mqtt_messages"))
+                || !nextIdQuery.next()) {
+            m_lastError = nextIdQuery.lastError().text();
+            return 0;
+        }
+        m_nextMessageId = nextIdQuery.value(0).toLongLong();
+    }
+
+    const qint64 reservedId = m_nextMessageId++;
+    m_pendingMessages.append(PendingMessage {
+        sessionId,
+        timestamp,
+        topic,
+        payloadBytes,
+        parsedPayload,
+        parsedFormat,
+        parseError,
+        scriptId,
+        scriptName,
+    });
+    return reservedId;
+}
+
+QStringList HistoryStore::flushPendingMessages()
+{
+    QStringList flushedSessionIds;
+    if (!isReady() || m_pendingMessages.isEmpty()) {
+        return flushedSessionIds;
+    }
+
     QSqlQuery query(m_db);
-    query.prepare(
+    if (!query.prepare(
         QStringLiteral(
             "INSERT INTO mqtt_messages("
             "session_id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name) "
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
-    query.addBindValue(sessionId);
-    query.addBindValue(timestamp);
-    query.addBindValue(topic);
-    query.addBindValue(QString::fromUtf8(payloadBytes));
-    query.addBindValue(QString::fromLatin1(payloadBytes.toBase64()));
-    query.addBindValue(nonNullString(parsedPayload));
-    query.addBindValue(nonNullString(parsedFormat));
-    query.addBindValue(nonNullString(parseError));
-    query.addBindValue(nonNullString(scriptId));
-    query.addBindValue(nonNullString(scriptName));
-
-    if (!query.exec()) {
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
         m_lastError = query.lastError().text();
-        return 0;
+        return flushedSessionIds;
     }
+
+    if (!m_db.transaction()) {
+        m_lastError = m_db.lastError().text();
+        return flushedSessionIds;
+    }
+
+    QSet<QString> seenSessionIds;
+    for (const PendingMessage &message : std::as_const(m_pendingMessages)) {
+        query.bindValue(0, message.sessionId);
+        query.bindValue(1, message.timestamp);
+        query.bindValue(2, message.topic);
+        query.bindValue(3, QString::fromUtf8(message.payloadBytes));
+        query.bindValue(4, QString::fromLatin1(message.payloadBytes.toBase64()));
+        query.bindValue(5, nonNullString(message.parsedPayload));
+        query.bindValue(6, nonNullString(message.parsedFormat));
+        query.bindValue(7, nonNullString(message.parseError));
+        query.bindValue(8, nonNullString(message.scriptId));
+        query.bindValue(9, nonNullString(message.scriptName));
+        if (!query.exec()) {
+            m_lastError = query.lastError().text();
+            m_db.rollback();
+            return {};
+        }
+        if (!seenSessionIds.contains(message.sessionId)) {
+            seenSessionIds.insert(message.sessionId);
+            flushedSessionIds.append(message.sessionId);
+        }
+    }
+
+    if (!m_db.commit()) {
+        m_lastError = m_db.lastError().text();
+        m_db.rollback();
+        return {};
+    }
+
+    m_pendingMessages.clear();
     m_lastError.clear();
-    return query.lastInsertId().toLongLong();
+    return flushedSessionIds;
+}
+
+int HistoryStore::pendingMessageCount() const
+{
+    return m_pendingMessages.size();
 }
 
 qint64 HistoryStore::appendEvent(
@@ -290,6 +363,7 @@ void HistoryStore::clearMessages(const QString &sessionId)
     if (!isReady()) {
         return;
     }
+    flushPendingMessages();
 
     QSqlQuery query(m_db);
     query.prepare(QStringLiteral("DELETE FROM mqtt_messages WHERE session_id = ?"));
@@ -304,6 +378,7 @@ void HistoryStore::clearLogs(const QString &sessionId)
     if (!isReady()) {
         return;
     }
+    flushPendingMessages();
 
     QSqlQuery query(m_db);
     query.prepare(QStringLiteral("DELETE FROM event_logs WHERE session_id = ?"));
@@ -318,6 +393,7 @@ void HistoryStore::clearAllMessages()
     if (!isReady()) {
         return;
     }
+    flushPendingMessages();
 
     QSqlQuery query(m_db);
     if (!query.exec(QStringLiteral("DELETE FROM mqtt_messages"))) {
@@ -330,6 +406,7 @@ void HistoryStore::clearAllLogs()
     if (!isReady()) {
         return;
     }
+    flushPendingMessages();
 
     QSqlQuery query(m_db);
     if (!query.exec(QStringLiteral("DELETE FROM event_logs"))) {

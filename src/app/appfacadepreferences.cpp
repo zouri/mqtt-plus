@@ -43,6 +43,7 @@ void AppFacade::setMessageRetentionLimit(int limit)
         return;
     }
     if (messageRetentionLimit() > 0) {
+        m_eventController.flushPendingMessageHistory();
         for (const auto &session : m_sessionController.sessions()) {
             m_historyStore.pruneMessages(session.id, messageRetentionLimit());
         }

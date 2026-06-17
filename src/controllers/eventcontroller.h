@@ -5,6 +5,7 @@
 #include "services/scripting/luarunner.h"
 
 #include <QObject>
+#include <QTimer>
 #include <QVariantMap>
 
 class AppFacade;
@@ -35,8 +36,13 @@ public:
     void trimVisibleMessageRows(SessionState &session);
     void trimVisibleLogRows(SessionState &session);
     void reloadCurrentSessionHistory();
+    void flushPendingMessageHistory();
 
 private:
+    void reportMessageStorageError(SessionState &session, const QString &message);
+    void scheduleMessageHistoryFlush();
+
     AppFacade &m_app;
+    QTimer m_messageHistoryFlushTimer;
     QString m_lastMessageStorageError;
 };

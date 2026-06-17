@@ -82,6 +82,12 @@ AppPanel {
         }
     }
 
+    onLogTextChanged: {
+        if (logTextArea.text !== root.logText) {
+            logTextArea.text = root.logText
+        }
+    }
+
     function resetStreamPosition() {
         root.loadingOlderLogs = false
         root.reachedLogStart = false
@@ -213,7 +219,6 @@ AppPanel {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 readOnly: true
-                text: root.logText
                 color: root.ui.textStrong
                 placeholderText: qsTr("No logs yet.")
                 showLineNumbers: true
