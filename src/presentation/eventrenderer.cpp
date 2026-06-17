@@ -1,6 +1,9 @@
 #include "eventrenderer.h"
 
+#include "app/appfacadeutils.h"
 #include "services/payload/payloadcodec.h"
+
+using namespace AppFacadeUtils;
 
 namespace {
 QString startupDividerLabel()
@@ -42,8 +45,11 @@ bool containsRowsBeforeLaunch(const QVariantList &rows, const QString &launchTim
 {
     for (const QVariant &item : rows) {
         const QVariantMap row = item.toMap();
+        const QString rowTimestamp = row.value(
+            QStringLiteral("timestampRaw"),
+            row.value(QStringLiteral("timestamp"))).toString();
         if (row.value(QStringLiteral("kind")).toString() != QStringLiteral("divider")
-                && row.value(QStringLiteral("timestamp")).toString() < launchTimestamp) {
+                && rowTimestamp < launchTimestamp) {
             return true;
         }
     }
@@ -57,7 +63,9 @@ bool startsWithCurrentLaunchRows(const QVariantList &rows, const QString &launch
         if (row.value(QStringLiteral("kind")).toString() == QStringLiteral("divider")) {
             continue;
         }
-        return row.value(QStringLiteral("timestamp")).toString() >= launchTimestamp;
+        return row.value(
+                   QStringLiteral("timestampRaw"),
+                   row.value(QStringLiteral("timestamp"))).toString() >= launchTimestamp;
     }
     return false;
 }
@@ -65,7 +73,8 @@ bool startsWithCurrentLaunchRows(const QVariantList &rows, const QString &launch
 QVariantMap launchDividerRow(const QString &launchTimestamp)
 {
     QVariantMap dividerRow;
-    dividerRow.insert(QStringLiteral("timestamp"), launchTimestamp);
+    dividerRow.insert(QStringLiteral("timestamp"), displayTimestamp(launchTimestamp));
+    dividerRow.insert(QStringLiteral("timestampRaw"), launchTimestamp);
     dividerRow.insert(QStringLiteral("historyId"), 0);
     dividerRow.insert(QStringLiteral("kind"), QStringLiteral("divider"));
     dividerRow.insert(QStringLiteral("title"), startupDividerLabel());
@@ -80,7 +89,8 @@ QVariantMap eventRow(qint64 historyId, const QString &timestamp, const QString &
 {
     QVariantMap row;
     row.insert(QStringLiteral("historyId"), historyId);
-    row.insert(QStringLiteral("timestamp"), timestamp);
+    row.insert(QStringLiteral("timestamp"), displayTimestamp(timestamp));
+    row.insert(QStringLiteral("timestampRaw"), timestamp);
     row.insert(QStringLiteral("kind"), QStringLiteral("event"));
     row.insert(QStringLiteral("title"), channel);
     row.insert(QStringLiteral("topic"), channel);
@@ -98,7 +108,8 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
 
     QVariantMap rendered;
     rendered.insert(QStringLiteral("historyId"), row.value(QStringLiteral("id")).toLongLong());
-    rendered.insert(QStringLiteral("timestamp"), timestamp);
+    rendered.insert(QStringLiteral("timestamp"), displayTimestamp(timestamp));
+    rendered.insert(QStringLiteral("timestampRaw"), timestamp);
     rendered.insert(QStringLiteral("topic"), topic);
 
     if (kind == QStringLiteral("divider")) {

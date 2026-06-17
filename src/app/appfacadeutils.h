@@ -19,6 +19,7 @@ constexpr qint64 kSubscriptionFpsWindowMs = 1000;
 constexpr int kSubscriptionFpsRefreshIntervalMs = 250;
 
 QString timestampNow();
+QString displayTimestamp(const QString &timestamp);
 QString transportLabel(const QString &transport);
 QString protocolVersionLabel(int protocolVersion);
 QList<QByteArray> alpnProtocols(const QString &alpn);

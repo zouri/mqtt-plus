@@ -3,7 +3,9 @@
 #include <QByteArray>
 #include <QSqlDatabase>
 #include <QString>
+#include <QStringList>
 #include <QVariantList>
+#include <QVector>
 
 class HistoryStore
 {
@@ -14,7 +16,7 @@ public:
     bool isReady() const;
     QString lastError() const;
 
-    qint64 appendMessage(
+    qint64 enqueueMessage(
         const QString &sessionId,
         const QString &timestamp,
         const QString &topic,
@@ -24,6 +26,8 @@ public:
         const QString &parseError = QString(),
         const QString &scriptId = QString(),
         const QString &scriptName = QString());
+    QStringList flushPendingMessages();
+    int pendingMessageCount() const;
     qint64 appendEvent(
         const QString &sessionId,
         const QString &timestamp,
@@ -42,10 +46,24 @@ public:
     void pruneLogs(const QString &sessionId, int keepCount);
 
 private:
+    struct PendingMessage {
+        QString sessionId;
+        QString timestamp;
+        QString topic;
+        QByteArray payloadBytes;
+        QString parsedPayload;
+        QString parsedFormat;
+        QString parseError;
+        QString scriptId;
+        QString scriptName;
+    };
+
     bool initialize();
     bool resetLegacySchema();
 
     QSqlDatabase m_db;
     QString m_connectionName;
     QString m_lastError;
+    QVector<PendingMessage> m_pendingMessages;
+    qint64 m_nextMessageId = 0;
 };

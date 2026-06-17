@@ -69,6 +69,8 @@ AppFacade::~AppFacade()
 
 void AppFacade::applyExitCleanup()
 {
+    m_eventController.flushPendingMessageHistory();
+
     const auto clearMessages = [this](const QString &mode) {
         if (mode == QStringLiteral("all")) {
             m_historyStore.clearAllMessages();
