@@ -93,6 +93,7 @@ AppPanel {
                 text: control.connectionActionText
                 minimumWidth: 74
                 primary: !control.canDisconnect
+                danger: control.canDisconnect
 
                 onClicked: {
                     if (control.canDisconnect) {
