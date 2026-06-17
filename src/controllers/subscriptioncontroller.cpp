@@ -72,26 +72,76 @@ bool SubscriptionController::upsertCurrentSubscription(
     return saved;
 }
 
-bool SubscriptionController::updateCurrentSubscription(const QString &topic, const QString &alias, const QString &scriptId)
+bool SubscriptionController::updateCurrentSubscription(
+    const QString &topic,
+    const QString &newTopic,
+    const QString &alias,
+    const QString &scriptId)
 {
     auto *session = m_app.currentSessionState();
     if (!session) {
         return false;
     }
 
-    SubscriptionEntry *entry = subscriptionByTopic(session, topic.trimmed());
+    const QString previousFilter = topic.trimmed();
+    const QString filter = newTopic.trimmed();
+    if (filter.isEmpty()) {
+        return false;
+    }
+
+    const QMqttTopicFilter topicFilter(filter);
+    if (!topicFilter.isValid()) {
+        m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
+        return false;
+    }
+
+    SubscriptionEntry *entry = subscriptionByTopic(session, previousFilter);
     if (!entry) {
+        return false;
+    }
+
+    if (filter != previousFilter && subscriptionByTopic(session, filter)) {
+        m_app.appendEvent(
+            *session,
+            QStringLiteral("Subscription"),
+            QStringLiteral("%1 already exists").arg(filter));
         return false;
     }
 
     const QString sanitizedScriptId = m_app.m_scriptController.scriptById(scriptId) ? scriptId : QString();
     const QString displayAlias = alias.trimmed();
-    if (entry->alias == displayAlias && entry->scriptId == sanitizedScriptId) {
+    const bool topicChanged = entry->topic != filter;
+    if (!topicChanged && entry->alias == displayAlias && entry->scriptId == sanitizedScriptId) {
         return true;
+    }
+
+    if (topicChanged) {
+        if (entry->runtimeSubscription) {
+            entry->runtimeSubscription->unsubscribe();
+            entry->runtimeSubscription.clear();
+        } else if (auto *client = session->client; client && client->state() == QMqttClient::Connected) {
+            client->unsubscribe(QMqttTopicFilter(entry->topic));
+        }
+
+        session->subscriptionFormats.remove(entry->topic);
+        entry->topic = filter;
+        entry->grantedQos = -1;
+        entry->runtimeState = entry->paused ? QStringLiteral("paused") : QStringLiteral("saved");
+        entry->lastError.clear();
+        entry->receivedMessageCount = 0;
+        entry->lastMessageTimestamp.clear();
+        entry->recentMessageTimestampsMs.clear();
+        session->subscriptionFormats.insert(filter, entry->format);
     }
 
     entry->alias = displayAlias;
     entry->scriptId = sanitizedScriptId;
+
+    auto *client = session->client;
+    if (topicChanged && !entry->paused && client && client->state() == QMqttClient::Connected) {
+        ensureSubscriptionActive(*session, *entry, true);
+    }
+
     const bool saved = m_app.saveSessions();
     m_app.notifyCurrentSessionAndSubscriptionsChanged();
     return saved;

@@ -65,7 +65,7 @@ Dialog {
     function submit() {
         const scriptId = root.scriptOptionIds[scriptField.currentIndex] || ""
         if (root.editMode) {
-            if (appController.updateCurrentSubscription(root.editTopic, aliasField.text, scriptId)) {
+            if (appController.updateCurrentSubscription(root.editTopic, topicField.text, aliasField.text, scriptId)) {
                 close()
             }
             return
@@ -127,7 +127,6 @@ Dialog {
             id: topicField
             Layout.fillWidth: true
             placeholderText: qsTr("sensor/+/temperature")
-            readOnly: root.editMode
         }
 
         AppTextField {

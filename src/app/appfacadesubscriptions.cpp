@@ -10,9 +10,13 @@ bool AppFacade::upsertCurrentSubscription(
     return m_subscriptionController.upsertCurrentSubscription(topic, qos, format, scriptId, alias);
 }
 
-bool AppFacade::updateCurrentSubscription(const QString &topic, const QString &alias, const QString &scriptId)
+bool AppFacade::updateCurrentSubscription(
+    const QString &topic,
+    const QString &newTopic,
+    const QString &alias,
+    const QString &scriptId)
 {
-    return m_subscriptionController.updateCurrentSubscription(topic, alias, scriptId);
+    return m_subscriptionController.updateCurrentSubscription(topic, newTopic, alias, scriptId);
 }
 
 void AppFacade::removeCurrentSubscription(const QString &topic)
