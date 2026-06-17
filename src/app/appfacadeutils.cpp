@@ -15,6 +15,23 @@ QString timestampNow()
     return QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
 }
 
+QString displayTimestamp(const QString &timestamp)
+{
+    if (timestamp.isEmpty()) {
+        return {};
+    }
+
+    QDateTime dateTime = QDateTime::fromString(timestamp, Qt::ISODateWithMs);
+    if (!dateTime.isValid()) {
+        dateTime = QDateTime::fromString(timestamp, Qt::ISODate);
+    }
+    if (!dateTime.isValid()) {
+        return timestamp;
+    }
+
+    return dateTime.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz"));
+}
+
 QString transportLabel(const QString &transport)
 {
     return transport == QStringLiteral("tls") ? QStringLiteral("TLS") : QStringLiteral("TCP");

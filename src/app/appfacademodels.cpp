@@ -166,7 +166,7 @@ void AppFacade::refreshSubscriptionsModel()
         row.state = subscriptionDisplayState(*session, subscription, session->client);
         row.lastError = subscription.lastError;
         row.receivedMessageCount = subscription.receivedMessageCount;
-        row.lastMessageTimestamp = subscription.lastMessageTimestamp;
+        row.lastMessageTimestamp = displayTimestamp(subscription.lastMessageTimestamp);
         rows.append(row);
     }
     m_subscriptionsModel.setRows(rows);
@@ -175,7 +175,11 @@ void AppFacade::refreshSubscriptionsModel()
 QVariantMap AppFacade::publishStatus() const
 {
     const auto *session = currentSessionState();
-    return session ? session->publishStatus : defaultPublishStatus();
+    QVariantMap status = session ? session->publishStatus : defaultPublishStatus();
+    status.insert(
+        QStringLiteral("updatedAt"),
+        displayTimestamp(status.value(QStringLiteral("updatedAt")).toString()));
+    return status;
 }
 
 QStringList AppFacade::payloadFormats() const
@@ -194,7 +198,7 @@ void AppFacade::refreshScriptsModel()
         row.name = script.name;
         row.description = script.description;
         row.code = script.code;
-        row.updatedAt = script.updatedAt;
+        row.updatedAt = displayTimestamp(script.updatedAt);
         row.filePath = ScriptStore::scriptFilePath(script.fileName);
         rows.append(row);
     }

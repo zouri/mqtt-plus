@@ -9,10 +9,22 @@
 
 using namespace AppFacadeUtils;
 
+namespace {
+constexpr int kMessageHistoryFlushIntervalMs = 250;
+constexpr int kMessageHistoryFlushBatchSize = 200;
+}
+
 EventController::EventController(AppFacade *app, QObject *parent)
     : QObject(parent)
     , m_app(*app)
 {
+    m_messageHistoryFlushTimer.setInterval(kMessageHistoryFlushIntervalMs);
+    m_messageHistoryFlushTimer.setSingleShot(true);
+    connect(
+        &m_messageHistoryFlushTimer,
+        &QTimer::timeout,
+        this,
+        &EventController::flushPendingMessageHistory);
 }
 
 void EventController::clearCurrentMessages()
@@ -53,6 +65,8 @@ int EventController::loadOlderCurrentSessionMessages()
     if (!session || session->loadedAllMessageHistory || session->oldestLoadedMessageId <= 0) {
         return 0;
     }
+
+    flushPendingMessageHistory();
 
     const int pageSize = m_app.historyPageSize();
     QVariantList rows = EventRenderer::loadHistoryRows(
@@ -253,7 +267,7 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         ? scriptResult.error
         : QString();
 
-    const qint64 historyId = m_app.m_historyStore.appendMessage(
+    const qint64 historyId = m_app.m_historyStore.enqueueMessage(
         sessionId,
         timestamp,
         topic,
@@ -263,17 +277,14 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         parseError,
         scriptId,
         scriptDisplayName);
-    if (historyId <= 0 && !m_app.m_historyStore.lastError().isEmpty()) {
-        const QString storageError =
-            QStringLiteral("Cannot save incoming message: %1").arg(m_app.m_historyStore.lastError());
-        if (storageError != m_lastMessageStorageError) {
-            m_lastMessageStorageError = storageError;
-            appendEvent(*session, QStringLiteral("Storage"), storageError);
-        }
+    if (historyId <= 0) {
+        reportMessageStorageError(
+            *session,
+            QStringLiteral("Cannot queue incoming message: %1").arg(m_app.m_historyStore.lastError()));
     } else {
         m_lastMessageStorageError.clear();
+        scheduleMessageHistoryFlush();
     }
-    m_app.m_historyStore.pruneMessages(sessionId, m_app.messageRetentionLimit());
 
     if (refreshCurrentSubscriptionFps && !m_app.m_subscriptionFpsRefreshTimer.isActive()) {
         m_app.refreshSubscriptionsModel();
@@ -330,6 +341,8 @@ void EventController::reloadCurrentSessionHistory()
     if (!session) {
         return;
     }
+    flushPendingMessageHistory();
+
     const int pageSize = m_app.historyPageSize();
     const QVariantList messageRows = m_app.m_historyStore.loadMessages(session->id, pageSize);
     session->messageRows = EventRenderer::loadHistoryRows(
@@ -353,4 +366,50 @@ void EventController::reloadCurrentSessionHistory()
 
     m_app.refreshScriptTestSamplesModel();
     emit m_app.scriptTestSamplesChanged();
+}
+
+void EventController::flushPendingMessageHistory()
+{
+    if (m_app.m_historyStore.pendingMessageCount() <= 0) {
+        return;
+    }
+
+    const QStringList flushedSessionIds = m_app.m_historyStore.flushPendingMessages();
+    if (flushedSessionIds.isEmpty() && !m_app.m_historyStore.lastError().isEmpty()) {
+        if (auto *session = m_app.currentSessionState()) {
+            reportMessageStorageError(
+                *session,
+                QStringLiteral("Cannot save queued messages: %1").arg(m_app.m_historyStore.lastError()));
+        }
+        return;
+    }
+
+    if (m_app.messageRetentionLimit() > 0) {
+        for (const QString &flushedSessionId : flushedSessionIds) {
+            m_app.m_historyStore.pruneMessages(flushedSessionId, m_app.messageRetentionLimit());
+        }
+    }
+    m_lastMessageStorageError.clear();
+}
+
+void EventController::reportMessageStorageError(SessionState &session, const QString &message)
+{
+    if (message == m_lastMessageStorageError) {
+        return;
+    }
+
+    m_lastMessageStorageError = message;
+    appendEvent(session, QStringLiteral("Storage"), message);
+}
+
+void EventController::scheduleMessageHistoryFlush()
+{
+    if (m_app.m_historyStore.pendingMessageCount() >= kMessageHistoryFlushBatchSize) {
+        flushPendingMessageHistory();
+        return;
+    }
+
+    if (!m_messageHistoryFlushTimer.isActive()) {
+        m_messageHistoryFlushTimer.start();
+    }
 }
