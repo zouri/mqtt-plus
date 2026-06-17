@@ -21,7 +21,11 @@ public:
         int format,
         const QString &scriptId,
         const QString &alias);
-    bool updateCurrentSubscription(const QString &topic, const QString &alias, const QString &scriptId);
+    bool updateCurrentSubscription(
+        const QString &topic,
+        const QString &newTopic,
+        const QString &alias,
+        const QString &scriptId);
     void removeCurrentSubscription(const QString &topic);
     void setCurrentSubscriptionPaused(const QString &topic, bool paused);
 

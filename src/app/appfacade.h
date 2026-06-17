@@ -119,7 +119,11 @@ public:
         int format = 0,
         const QString &scriptId = QString(),
         const QString &alias = QString());
-    Q_INVOKABLE bool updateCurrentSubscription(const QString &topic, const QString &alias, const QString &scriptId);
+    Q_INVOKABLE bool updateCurrentSubscription(
+        const QString &topic,
+        const QString &newTopic,
+        const QString &alias,
+        const QString &scriptId);
     Q_INVOKABLE void removeCurrentSubscription(const QString &topic);
     Q_INVOKABLE void setCurrentSubscriptionPaused(const QString &topic, bool paused);
     Q_INVOKABLE void publishCurrentSession(
