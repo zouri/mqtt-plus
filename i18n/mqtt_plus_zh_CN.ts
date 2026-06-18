@@ -1331,12 +1331,20 @@
     <message>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="127"/>
         <source>All</source>
+        <comment>subscription filter</comment>
         <translation>全部</translation>
     </message>
     <message>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="135"/>
-        <source>Running</source>
-        <translation>运行中</translation>
+        <source>Active</source>
+        <comment>subscription filter</comment>
+        <translation>订阅</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="135"/>
+        <source>Paused</source>
+        <comment>subscription filter</comment>
+        <translation>暂停</translation>
     </message>
     <message>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="336"/>
