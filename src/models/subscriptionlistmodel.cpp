@@ -44,12 +44,6 @@ QList<int> changedRoles(const SubscriptionListRow &oldRow, const SubscriptionLis
     if (oldRow.lastError != newRow.lastError) {
         roles.append(SubscriptionListModel::LastErrorRole);
     }
-    if (oldRow.receivedMessageCount != newRow.receivedMessageCount) {
-        roles.append(SubscriptionListModel::ReceivedMessageCountRole);
-    }
-    if (oldRow.lastMessageTimestamp != newRow.lastMessageTimestamp) {
-        roles.append(SubscriptionListModel::LastMessageTimestampRole);
-    }
     return roles;
 }
 
@@ -119,10 +113,6 @@ QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
         return row.state;
     case LastErrorRole:
         return row.lastError;
-    case ReceivedMessageCountRole:
-        return row.receivedMessageCount;
-    case LastMessageTimestampRole:
-        return row.lastMessageTimestamp;
     default:
         return {};
     }
@@ -144,8 +134,6 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
         {PausedRole, "paused"},
         {StateRole, "subscriptionState"},
         {LastErrorRole, "lastError"},
-        {ReceivedMessageCountRole, "receivedMessageCount"},
-        {LastMessageTimestampRole, "lastMessageTimestamp"},
     };
 }
 
@@ -215,7 +203,5 @@ QVariantMap SubscriptionListModel::rowToMap(const SubscriptionListRow &row) cons
     map.insert(QStringLiteral("paused"), row.paused);
     map.insert(QStringLiteral("state"), row.state);
     map.insert(QStringLiteral("lastError"), row.lastError);
-    map.insert(QStringLiteral("receivedMessageCount"), row.receivedMessageCount);
-    map.insert(QStringLiteral("lastMessageTimestamp"), row.lastMessageTimestamp);
     return map;
 }

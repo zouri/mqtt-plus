@@ -233,8 +233,6 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
 
         subscription.recentMessageTimestampsMs.append(nowMs);
         pruneRecentMessageTimestamps(subscription.recentMessageTimestampsMs, nowMs);
-        subscription.receivedMessageCount += 1;
-        subscription.lastMessageTimestamp = timestamp;
         refreshCurrentSubscriptionFps = refreshCurrentSubscriptionFps || session == m_app.currentSessionState();
     }
 
