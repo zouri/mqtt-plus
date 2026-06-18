@@ -26,10 +26,57 @@ ToolTip {
                                                || control.position === AppToolTip.Position.Right
     readonly property int arrowDepth: control.showArrow ? 7 : 0
     readonly property int arrowSpan: control.showArrow ? 12 : 0
+    readonly property int bubblePaddingX: 11
+    readonly property int bubblePaddingY: 6
+    readonly property int bubbleRadius: 7
     readonly property color bubbleColor: control.ui.isDarkTheme ? "#303136" : "#ffffff"
     readonly property color borderColor: control.ui.isDarkTheme
                                         ? Qt.rgba(1, 1, 1, 0.10)
                                         : Qt.rgba(0, 0, 0, 0.10)
+
+    function clamp(value, minimum, maximum) {
+        return Math.max(minimum, Math.min(maximum, value))
+    }
+
+    function bubblePath(x, y, width, height, radius) {
+        const right = x + width
+        const bottom = y + height
+        const depth = control.arrowDepth
+        const halfSpan = control.arrowSpan / 2
+        const centerX = control.clamp(x + width / 2, x + radius + halfSpan, right - radius - halfSpan)
+        const centerY = control.clamp(y + height / 2, y + radius + halfSpan, bottom - radius - halfSpan)
+        const hasArrow = control.showArrow && depth > 0 && halfSpan > 0
+        const topArrow = hasArrow && control.position === AppToolTip.Position.Bottom
+        const rightArrow = hasArrow && control.position === AppToolTip.Position.Left
+        const bottomArrow = hasArrow && control.position === AppToolTip.Position.Top
+        const leftArrow = hasArrow && control.position === AppToolTip.Position.Right
+        const path = [
+            `M ${x + radius} ${y}`,
+            topArrow
+                ? `L ${centerX - halfSpan} ${y} L ${centerX} ${y - depth} L ${centerX + halfSpan} ${y}`
+                : "",
+            `L ${right - radius} ${y}`,
+            `Q ${right} ${y} ${right} ${y + radius}`,
+            rightArrow
+                ? `L ${right} ${centerY - halfSpan} L ${right + depth} ${centerY} L ${right} ${centerY + halfSpan}`
+                : "",
+            `L ${right} ${bottom - radius}`,
+            `Q ${right} ${bottom} ${right - radius} ${bottom}`,
+            bottomArrow
+                ? `L ${centerX + halfSpan} ${bottom} L ${centerX} ${bottom + depth} L ${centerX - halfSpan} ${bottom}`
+                : "",
+            `L ${x + radius} ${bottom}`,
+            `Q ${x} ${bottom} ${x} ${bottom - radius}`,
+            leftArrow
+                ? `L ${x} ${centerY + halfSpan} L ${x - depth} ${centerY} L ${x} ${centerY - halfSpan}`
+                : "",
+            `L ${x} ${y + radius}`,
+            `Q ${x} ${y} ${x + radius} ${y}`,
+            "Z"
+        ]
+
+        return path.filter(part => part.length > 0).join(" ")
+    }
 
     x: {
         if (!parent) {
@@ -101,20 +148,21 @@ ToolTip {
     }
 
     contentItem: Item {
-        implicitWidth: bubble.implicitWidth + (control.horizontalPosition ? control.arrowDepth : 0)
-        implicitHeight: bubble.implicitHeight + (control.horizontalPosition ? 0 : control.arrowDepth)
+        id: surface
 
-        Rectangle {
+        readonly property real bubbleWidth: body.width + control.bubblePaddingX * 2
+        readonly property real bubbleHeight: body.implicitHeight + control.bubblePaddingY * 2
+        readonly property real bubbleX: control.position === AppToolTip.Position.Right ? control.arrowDepth : 0
+        readonly property real bubbleY: control.position === AppToolTip.Position.Bottom ? control.arrowDepth : 0
+
+        implicitWidth: surface.bubbleWidth + (control.horizontalPosition ? control.arrowDepth : 0)
+        implicitHeight: surface.bubbleHeight + (control.horizontalPosition ? 0 : control.arrowDepth)
+
+        Shape {
             id: bubble
 
-            x: control.position === AppToolTip.Position.Right ? control.arrowDepth : 0
-            y: control.position === AppToolTip.Position.Bottom ? control.arrowDepth : 0
-            implicitWidth: body.width + 22
-            implicitHeight: body.implicitHeight + 12
-            radius: 7
-            color: control.bubbleColor
-            border.color: control.borderColor
-            border.width: 1
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
             layer.enabled: control.visible
             layer.effect: MultiEffect {
                 shadowEnabled: true
@@ -124,81 +172,33 @@ ToolTip {
                 shadowVerticalOffset: 5
             }
 
-            Label {
-                id: body
+            ShapePath {
+                fillColor: control.bubbleColor
+                strokeColor: control.borderColor
+                strokeWidth: 1
 
-                anchors.centerIn: parent
-                width: Math.min(implicitWidth, control.maxTextWidth)
-                text: control.text
-                color: control.ui.textStrong
-                font: control.font
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                wrapMode: Text.WordWrap
+                PathSvg {
+                    path: control.bubblePath(surface.bubbleX,
+                                             surface.bubbleY,
+                                             surface.bubbleWidth,
+                                             surface.bubbleHeight,
+                                             control.bubbleRadius)
+                }
             }
         }
 
-        Shape {
-            id: arrow
+        Label {
+            id: body
 
-            visible: control.showArrow
-            x: {
-                switch (control.position) {
-                case AppToolTip.Position.Left:
-                    return bubble.width
-                case AppToolTip.Position.Right:
-                    return 0
-                case AppToolTip.Position.Top:
-                case AppToolTip.Position.Bottom:
-                    return Math.round((bubble.width - width) / 2)
-                }
-                return 0
-            }
-            y: {
-                switch (control.position) {
-                case AppToolTip.Position.Top:
-                    return bubble.height
-                case AppToolTip.Position.Bottom:
-                    return 0
-                case AppToolTip.Position.Left:
-                case AppToolTip.Position.Right:
-                    return Math.round((bubble.height - height) / 2)
-                }
-                return 0
-            }
-            width: control.horizontalPosition ? control.arrowDepth : control.arrowSpan
-            height: control.horizontalPosition ? control.arrowSpan : control.arrowDepth
-            preferredRendererType: Shape.CurveRenderer
-
-            ShapePath {
-                fillColor: control.bubbleColor
-                strokeColor: "transparent"
-                startX: control.position === AppToolTip.Position.Right ? arrow.width : 0
-                startY: control.position === AppToolTip.Position.Bottom ? arrow.height : 0
-
-                PathLine {
-                    x: control.position === AppToolTip.Position.Right
-                       ? arrow.width
-                       : (control.position === AppToolTip.Position.Left ? 0 : arrow.width)
-                    y: control.position === AppToolTip.Position.Bottom
-                       ? arrow.height
-                       : (control.position === AppToolTip.Position.Top ? 0 : arrow.height)
-                }
-
-                PathLine {
-                    x: control.horizontalPosition
-                       ? (control.position === AppToolTip.Position.Left ? arrow.width : 0)
-                       : Math.round(arrow.width / 2)
-                    y: control.horizontalPosition
-                       ? Math.round(arrow.height / 2)
-                       : (control.position === AppToolTip.Position.Top ? arrow.height : 0)
-                }
-
-                PathLine {
-                    x: control.position === AppToolTip.Position.Right ? arrow.width : 0
-                    y: control.position === AppToolTip.Position.Bottom ? arrow.height : 0
-                }
-            }
+            x: surface.bubbleX + control.bubblePaddingX
+            y: surface.bubbleY + Math.round((surface.bubbleHeight - implicitHeight) / 2)
+            width: Math.min(implicitWidth, control.maxTextWidth)
+            text: control.text
+            color: control.ui.textStrong
+            font: control.font
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            wrapMode: Text.WordWrap
         }
     }
 
