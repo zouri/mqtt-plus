@@ -10,6 +10,8 @@ Button {
     property bool primary: false
     property bool danger: false
     property int minimumWidth: 92
+    property string toolTipText: ""
+    property int toolTipPosition: AppToolTip.Position.Right
 
     implicitHeight: control.ui.compactControlHeight
     implicitWidth: Math.max(minimumWidth, contentItem.implicitWidth + leftPadding + rightPadding)
@@ -63,5 +65,12 @@ Button {
         verticalAlignment: Text.AlignVCenter
         font.pixelSize: control.font.pixelSize
         font.bold: control.primary || control.danger
+    }
+
+    AppToolTip {
+        ui: control.ui
+        text: control.toolTipText
+        position: control.toolTipPosition
+        active: control.hovered
     }
 }
