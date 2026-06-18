@@ -1058,6 +1058,11 @@
         <source>Show connection list</source>
         <translation>显示连接列表</translation>
     </message>
+    <message>
+        <location filename="../qml/features/sessions/SessionSidebar.qml" line="360"/>
+        <source>Expand</source>
+        <translation>展开</translation>
+    </message>
 </context>
 <context>
     <name>SettingsView</name>
