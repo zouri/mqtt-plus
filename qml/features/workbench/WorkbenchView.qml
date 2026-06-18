@@ -57,7 +57,7 @@ Item {
             appController: root.appController
             sessionEditor: sessionEditorDialog
             collapsed: root.connectionPaneCollapsed
-            Layout.preferredWidth: root.connectionPaneCollapsed ? 48 : root.expandedConnectionPaneWidth
+            Layout.preferredWidth: root.connectionPaneCollapsed ? 32 : root.expandedConnectionPaneWidth
             Layout.fillHeight: true
             onCollapseRequested: root.connectionPaneCollapsed = true
             onExpandRequested: root.connectionPaneCollapsed = false

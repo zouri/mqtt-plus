@@ -48,14 +48,19 @@ Rectangle {
             }
 
             AppIconButton {
+                id: collapseButton
                 ui: control.ui
                 iconSource: control.ui.materialIcon("chevron-left")
                 iconSize: 18
-                implicitWidth: 30
-                implicitHeight: 30
-                cornerRadius: 15
-                restBg: control.ui.themePalette.windowBg
-                outlineColor: control.ui.themePalette.innerPanelBorder
+                implicitWidth: 24
+                implicitHeight: 24
+                cornerRadius: 12
+                restBg: "transparent"
+                hoverBg: control.ui.themePalette.windowBg
+                pressedBg: control.ui.themePalette.actionPressedBg
+                outlineColor: collapseButton.hovered || collapseButton.down
+                              ? control.ui.themePalette.innerPanelBorder
+                              : "transparent"
                 accessibleName: qsTr("Hide connection list")
                 onClicked: control.collapseRequested()
             }
@@ -320,49 +325,52 @@ Rectangle {
     }
 
     Rectangle {
+        id: collapsedBar
         visible: control.collapsed
         anchors.fill: parent
-        color: control.ui.themePalette.panelBg
+        color: collapsedMouse.containsMouse || activeFocus
+               ? control.ui.themePalette.rowHover
+               : control.ui.themePalette.panelBg
+        border.color: "transparent"
         activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: qsTr("Show connection list")
 
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.topMargin: 16
-            anchors.bottomMargin: 16
-            spacing: 10
+        AppIconButton {
+            ui: control.ui
+            anchors.top: parent.top
+            anchors.topMargin: 10
+            anchors.horizontalCenter: parent.horizontalCenter
+            implicitWidth: 24
+            implicitHeight: 24
+            cornerRadius: 12
+            iconSource: control.ui.materialIcon("chevron-right")
+            iconSize: 18
+            restBg: "transparent"
+            hoverBg: "transparent"
+            pressedBg: "transparent"
+            outlineColor: "transparent"
+            accessibleName: qsTr("Show connection list")
+            onClicked: control.expandRequested()
+        }
 
-            AppIconButton {
-                ui: control.ui
-                Layout.alignment: Qt.AlignHCenter
-                implicitWidth: 34
-                implicitHeight: 34
-                cornerRadius: 17
-                iconSource: control.ui.materialIcon("chevron-right")
-                iconSize: 18
-                restBg: control.ui.themePalette.windowBg
-                accessibleName: qsTr("Show connection list")
-                onClicked: control.expandRequested()
-            }
-
-            Label {
-                Layout.alignment: Qt.AlignHCenter
-                text: qsTr("Connections")
-                color: control.ui.textMuted
-                font.pixelSize: 12
-                font.bold: true
-                rotation: 90
-            }
-
-            Item {
-                Layout.fillHeight: true
-            }
+        Label {
+            anchors.centerIn: parent
+            width: parent.width
+            text: qsTr("Expand").split("").join("\n")
+            color: control.ui.textMuted
+            font.pixelSize: 10
+            horizontalAlignment: Text.AlignHCenter
+            lineHeight: 0.86
+            lineHeightMode: Text.ProportionalHeight
         }
 
         MouseArea {
+            id: collapsedMouse
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
+            onPressed: collapsedBar.forceActiveFocus()
             onClicked: control.expandRequested()
         }
     }

@@ -161,6 +161,8 @@ qt_add_qml_module(mqtt_plus_app
         qml/icons/more-horiz.svg
         qml/icons/pause.svg
         qml/icons/play.svg
+        qml/icons/plug.svg
+        qml/icons/plug-off.svg
         qml/icons/script-development.svg
         qml/icons/send.svg
         qml/icons/settings.svg
