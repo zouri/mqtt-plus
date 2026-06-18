@@ -32,6 +32,7 @@ public:
     SubscriptionEntry *subscriptionByTopic(SessionState *session, const QString &topic);
     const SubscriptionEntry *subscriptionByTopic(const SessionState *session, const QString &topic) const;
     const SubscriptionEntry *bestSubscriptionForTopic(const SessionState &session, const QString &topic) const;
+    void resetRuntimeSubscriptions(SessionState &session);
     void restoreActiveSubscriptions(SessionState &session, bool emitEvents);
     void ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents);
     qreal subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const;
