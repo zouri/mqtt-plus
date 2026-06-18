@@ -17,6 +17,13 @@ AppPanel {
     property string pendingDeleteTopic: ""
     property string pendingDeleteDisplayName: ""
     property int matchingSubscriptionCount: 0
+    readonly property var filterModeValues: ["all", "subscribed", "paused"]
+    readonly property var filterModeLabels: [
+        qsTr("All", "subscription filter"),
+        qsTr("Active", "subscription filter"),
+        qsTr("Paused", "subscription filter")
+    ]
+    readonly property int filterModeIndex: Math.max(0, control.filterModeValues.indexOf(control.filterMode))
     readonly property var sessionStatus: control.appController ? control.appController.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
     readonly property bool hasFilter: control.filterText.trim().length > 0 || control.filterMode !== "all"
@@ -33,7 +40,11 @@ AppPanel {
     }
 
     function rowMatches(topic, alias, displayName, formatName, paused) {
-        if (control.filterMode === "active" && paused) {
+        if (control.filterMode === "subscribed" && paused) {
+            return false
+        }
+
+        if (control.filterMode === "paused" && !paused) {
             return false
         }
 
@@ -88,25 +99,6 @@ AppPanel {
         anchors.bottomMargin: 10
         spacing: 8
 
-        AppSectionHeader {
-            ui: control.ui
-            title: qsTr("Subscriptions")
-            titleSize: 15
-
-            AppIconButton {
-                ui: control.ui
-                iconSource: control.ui.materialIcon("plus")
-                iconSize: 16
-                implicitWidth: 34
-                implicitHeight: 34
-                cornerRadius: 17
-                restBg: control.ui.themePalette.windowBg
-                outlineColor: control.ui.themePalette.innerPanelBorder
-                accessibleName: qsTr("Add topic")
-                onClicked: control.addSubscriptionDialog.openForCreate()
-            }
-        }
-
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -119,24 +111,27 @@ AppPanel {
                 onTextChanged: control.filterText = text
             }
 
-            RowLayout {
-                spacing: 0
+            AppComboBox {
+                ui: control.ui
+                Layout.preferredWidth: 72
+                leftPadding: 8
+                rightPadding: 24
+                model: control.filterModeLabels
+                currentIndex: control.filterModeIndex
+                onActivated: (index) => control.filterMode = control.filterModeValues[index] || "all"
+            }
 
-                AppButton {
-                    ui: control.ui
-                    text: qsTr("All")
-                    minimumWidth: 58
-                    primary: control.filterMode === "all"
-                    onClicked: control.filterMode = "all"
-                }
-
-                AppButton {
-                    ui: control.ui
-                    text: qsTr("Running")
-                    minimumWidth: 76
-                    primary: control.filterMode === "active"
-                    onClicked: control.filterMode = "active"
-                }
+            AppIconButton {
+                ui: control.ui
+                iconSource: control.ui.materialIcon("plus")
+                iconSize: 16
+                implicitWidth: 34
+                implicitHeight: 34
+                cornerRadius: 17
+                restBg: control.ui.themePalette.windowBg
+                outlineColor: control.ui.themePalette.innerPanelBorder
+                accessibleName: qsTr("Add topic")
+                onClicked: control.addSubscriptionDialog.openForCreate()
             }
         }
 
