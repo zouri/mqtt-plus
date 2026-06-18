@@ -16,8 +16,6 @@ struct SubscriptionEntry {
     bool paused = false;
     QString runtimeState = QStringLiteral("saved");
     QString lastError;
-    qint64 receivedMessageCount = 0;
-    QString lastMessageTimestamp;
     QPointer<QMqttSubscription> runtimeSubscription;
     QVector<qint64> recentMessageTimestampsMs;
 };

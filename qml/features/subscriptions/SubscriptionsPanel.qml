@@ -224,17 +224,15 @@ AppPanel {
                 required property string subscriptionState
                 required property string lastError
                 required property real topicFps
-                required property real receivedMessageCount
-                required property string lastMessageTimestamp
                 readonly property bool matchesFilter: control.rowMatches(
                                                           subscriptionDelegate.topic,
                                                           subscriptionDelegate.alias,
                                                           subscriptionDelegate.displayName,
                                                           subscriptionDelegate.formatName,
                                                           subscriptionDelegate.paused)
-                readonly property string statusText: subscriptionDelegate.paused
-                                                     ? qsTr("Paused")
-                                                     : control.ui.statusLabel(subscriptionDelegate.subscriptionState)
+                readonly property string metaText: qsTr("QoS %1 · %2/s")
+                                                   .arg(subscriptionDelegate.requestedQos)
+                                                   .arg(Number(subscriptionDelegate.topicFps || 0).toFixed(1))
                 readonly property string menuVisualKey: `${subscriptionDelegate.topic}::menu`
                 width: ListView.view.width
                 visible: subscriptionDelegate.matchesFilter
@@ -243,7 +241,9 @@ AppPanel {
                 border.color: subscriptionDelegate.lastError.length > 0
                               ? control.ui.themePalette.errorText
                               : control.ui.themePalette.innerPanelBorder
-                implicitHeight: subscriptionDelegate.matchesFilter ? 100 : 0
+                implicitHeight: subscriptionDelegate.matchesFilter
+                                ? (subscriptionDelegate.lastError.length > 0 ? 88 : 70)
+                                : 0
                 activeFocusOnTab: true
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
@@ -328,11 +328,7 @@ AppPanel {
                         spacing: 6
 
                         Label {
-                            text: qsTr("QoS %1 · %2 · %3 msg · %4/s")
-                                  .arg(subscriptionDelegate.requestedQos)
-                                  .arg(subscriptionDelegate.statusText)
-                                  .arg(Math.round(Number(subscriptionDelegate.receivedMessageCount || 0)))
-                                  .arg(Number(subscriptionDelegate.topicFps || 0).toFixed(1))
+                            text: subscriptionDelegate.metaText
                             color: control.ui.textMuted
                             font.pixelSize: 12
                             elide: Label.ElideRight
@@ -395,17 +391,8 @@ AppPanel {
                     }
 
                     Label {
-                        Layout.fillWidth: true
-                        text: subscriptionDelegate.lastMessageTimestamp.length > 0
-                              ? qsTr("Last message: %1").arg(subscriptionDelegate.lastMessageTimestamp)
-                              : qsTr("Last message: none")
-                        color: control.ui.textMuted
-                        font.pixelSize: 12
-                        elide: Label.ElideRight
-                    }
-
-                    Label {
                         visible: subscriptionDelegate.lastError.length > 0
+                        Layout.fillWidth: true
                         text: subscriptionDelegate.lastError
                         color: control.ui.themePalette.errorText
                         font.pixelSize: 11
