@@ -200,6 +200,7 @@ void MqttController::bindSessionSignals(SessionState *session)
                 ? QStringLiteral("Disconnected")
                 : QStringLiteral("Connection closed by broker");
             boundSession->disconnectRequested = false;
+            m_app.m_subscriptionController.resetRuntimeSubscriptions(*boundSession);
             m_app.appendEvent(*boundSession, QStringLiteral("Connection"), message);
         }
 
