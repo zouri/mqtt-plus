@@ -25,6 +25,11 @@ AppPanel {
                                                    : (control.status.state === "connecting"
                                                       ? qsTr("Connecting...")
                                                       : (control.hasError ? qsTr("Retry") : qsTr("Connect")))
+    readonly property url connectionActionIcon: control.status.state === "connecting"
+                                                ? control.ui.materialIcon("xmark")
+                                                : (control.canDisconnect
+                                                   ? control.ui.materialIcon("plug-off")
+                                                   : control.ui.materialIcon("plug"))
 
     showTopBorder: false
     Layout.fillWidth: true
@@ -81,19 +86,24 @@ AppPanel {
                 implicitWidth: 32
                 implicitHeight: 32
                 cornerRadius: 16
-                restBg: "transparent"
-                outlineColor: "transparent"
+                restBg: control.ui.themePalette.innerPanelBg
+                outlineColor: control.ui.themePalette.innerPanelBorder
                 symbolColor: control.ui.themePalette.infoText
                 accessibleName: qsTr("Edit connection")
                 onClicked: control.sessionEditor.openForEdit(control.appController.currentSessionIndex)
             }
 
-            AppButton {
+            AppIconButton {
                 ui: control.ui
-                text: control.connectionActionText
-                minimumWidth: 74
+                iconSource: control.connectionActionIcon
+                iconSize: 16
+                implicitWidth: 32
+                implicitHeight: 32
+                cornerRadius: 16
                 primary: !control.canDisconnect
                 danger: control.canDisconnect
+                accessibleName: control.connectionActionText
+                toolTipText: control.connectionActionText
 
                 onClicked: {
                     if (control.canDisconnect) {

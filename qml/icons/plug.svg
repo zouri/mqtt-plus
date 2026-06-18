@@ -1,0 +1,4 @@
+<!-- Material-style plug icon -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path fill="#000000" d="M7 2h2v6h6V2h2v6h2v4c0 3.16-2.46 5.75-5.56 5.98V22h-2v-4.02C8.36 17.72 6 15.14 6 12V8h1zm1 8v2c0 2.21 1.79 4 4 4s4-1.79 4-4v-2z"/>
+</svg>
