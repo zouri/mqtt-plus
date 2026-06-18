@@ -128,8 +128,6 @@ bool SubscriptionController::updateCurrentSubscription(
         entry->grantedQos = -1;
         entry->runtimeState = entry->paused ? QStringLiteral("paused") : QStringLiteral("saved");
         entry->lastError.clear();
-        entry->receivedMessageCount = 0;
-        entry->lastMessageTimestamp.clear();
         entry->recentMessageTimestampsMs.clear();
         session->subscriptionFormats.insert(filter, entry->format);
     }

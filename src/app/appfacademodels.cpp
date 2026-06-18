@@ -165,8 +165,6 @@ void AppFacade::refreshSubscriptionsModel()
         row.paused = subscription.paused;
         row.state = subscriptionDisplayState(*session, subscription, session->client);
         row.lastError = subscription.lastError;
-        row.receivedMessageCount = subscription.receivedMessageCount;
-        row.lastMessageTimestamp = displayTimestamp(subscription.lastMessageTimestamp);
         rows.append(row);
     }
     m_subscriptionsModel.setRows(rows);

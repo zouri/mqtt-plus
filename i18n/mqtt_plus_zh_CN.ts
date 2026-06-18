@@ -1339,19 +1339,9 @@
         <translation>运行中</translation>
     </message>
     <message>
-        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="331"/>
-        <source>QoS %1 · %2 · %3 msg · %4/s</source>
-        <translation>QoS %1 · %2 · %3 条 · %4/s</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="400"/>
-        <source>Last message: %1</source>
-        <translation>最后更新：%1</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="401"/>
-        <source>Last message: none</source>
-        <translation>最后更新：-</translation>
+        <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="336"/>
+        <source>QoS %1 · %2/s</source>
+        <translation>QoS %1 · %2/s</translation>
     </message>
     <message>
         <location filename="../qml/features/subscriptions/SubscriptionsPanel.qml" line="93"/>
