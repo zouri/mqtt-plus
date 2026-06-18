@@ -276,6 +276,16 @@ void SubscriptionController::restoreActiveSubscriptions(SessionState &session, b
     }
 }
 
+void SubscriptionController::resetRuntimeSubscriptions(SessionState &session)
+{
+    for (auto &entry : session.subscriptions) {
+        entry.runtimeSubscription.clear();
+        entry.runtimeState = entry.paused ? QStringLiteral("paused") : QStringLiteral("saved");
+        entry.grantedQos = -1;
+        entry.lastError.clear();
+    }
+}
+
 void SubscriptionController::ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents)
 {
     auto *client = session.client;
