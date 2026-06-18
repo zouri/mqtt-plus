@@ -13,6 +13,10 @@ ComboBox {
     leftPadding: 12
     rightPadding: 32
 
+    HoverHandler {
+        cursorShape: control.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+    }
+
     delegate: ItemDelegate {
         id: comboDelegate
         required property var modelData

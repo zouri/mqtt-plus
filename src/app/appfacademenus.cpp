@@ -54,8 +54,6 @@ QString AppFacade::showSubscriptionContextMenu(const QString &topic, const QPoin
     QMenu menu;
     QAction *editAction = menu.addAction(tr("Edit"));
     QAction *deleteAction = menu.addAction(tr("Delete"));
-    editAction->setIcon(QIcon(QStringLiteral(":/qt/qml/MqttPlusApp/qml/icons/edit.svg")));
-    deleteAction->setIcon(QIcon(QStringLiteral(":/qt/qml/MqttPlusApp/qml/icons/delete.svg")));
 
     QAction *selectedAction = menu.exec(menuPosition(globalPosition));
     if (selectedAction == editAction) {

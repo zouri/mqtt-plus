@@ -12,6 +12,10 @@ CheckBox {
     font.pixelSize: control.ui.compactFontSize
     spacing: 8
 
+    HoverHandler {
+        cursorShape: control.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+    }
+
     indicator: Rectangle {
         implicitWidth: 18
         implicitHeight: 18

@@ -131,6 +131,8 @@ AppPanel {
                 restBg: control.ui.themePalette.windowBg
                 outlineColor: control.ui.themePalette.innerPanelBorder
                 accessibleName: qsTr("Add topic")
+                toolTipText: qsTr("Add subscription")
+                toolTipPosition: AppToolTip.Position.Bottom
                 onClicked: control.addSubscriptionDialog.openForCreate()
             }
         }
@@ -186,6 +188,8 @@ AppPanel {
                     text: qsTr("Add subscription")
                     minimumWidth: 112
                     primary: true
+                    toolTipText: qsTr("Add subscription")
+                    toolTipPosition: AppToolTip.Position.Bottom
                     onClicked: control.addSubscriptionDialog.openForCreate()
                 }
             }

@@ -434,6 +434,10 @@ Dialog {
                             checked: true
                             font.pixelSize: root.ui.compactFontSize
                             palette.windowText: root.ui.textStrong
+
+                            HoverHandler {
+                                cursorShape: caSignedRadio.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            }
                         }
 
                         RadioButton {
@@ -442,6 +446,10 @@ Dialog {
                             text: qsTr("CA or self signed certificates")
                             font.pixelSize: root.ui.compactFontSize
                             palette.windowText: root.ui.textStrong
+
+                            HoverHandler {
+                                cursorShape: selfSignedRadio.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            }
                         }
                     }
 
