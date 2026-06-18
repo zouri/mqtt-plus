@@ -187,6 +187,7 @@ Rectangle {
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    cursorShape: Qt.PointingHandCursor
 
                     onPressed: (mouse) => {
                         sessionDelegate.forceActiveFocus()
