@@ -65,9 +65,6 @@ QString ScriptController::upsertScript(
             script.description = scriptDescription;
             script.code = scriptCode;
             script.updatedAt = updatedAt;
-            if (script.fileName.isEmpty()) {
-                script.fileName = ScriptStore::scriptFileNameForId(script.id);
-            }
             if (!saveScripts()) {
                 m_scripts = previousScripts;
                 return QString();
