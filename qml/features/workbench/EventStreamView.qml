@@ -82,7 +82,7 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
+            Layout.preferredHeight: 52
             color: root.ui.themePalette.windowBg
 
             Rectangle {

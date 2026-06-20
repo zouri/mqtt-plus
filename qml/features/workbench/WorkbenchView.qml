@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import "../sessions"
-import "../subscriptions"
 
 Item {
     id: root
@@ -21,30 +20,30 @@ Item {
     Layout.fillHeight: true
 
     function resetStreamPosition() {
-        sessionActivityPanel.resetStreamPosition()
+        sessionActivityPanel.resetStreamPosition();
     }
 
     function noteStreamRowAppended(row) {
-        sessionActivityPanel.noteStreamRowAppended(row)
+        sessionActivityPanel.noteStreamRowAppended(row);
     }
 
     Component.onCompleted: {
-        root.resetStreamPosition()
+        root.resetStreamPosition();
     }
 
     Connections {
         target: root.appController
 
         function onMessageStreamChanged() {
-            root.resetStreamPosition()
+            root.resetStreamPosition();
         }
 
         function onLogStreamChanged() {
-            root.resetStreamPosition()
+            root.resetStreamPosition();
         }
 
         function onMessageStreamRowAppended(row) {
-            root.noteStreamRowAppended(row)
+            root.noteStreamRowAppended(row);
         }
     }
 
