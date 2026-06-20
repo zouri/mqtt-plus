@@ -52,66 +52,17 @@ endif()
 
 qt_standard_project_setup(REQUIRES 6.11)
 
+file(
+    GLOB_RECURSE MQTT_PLUS_APP_SOURCES
+    CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "src/*.cpp"
+    "src/*.h"
+)
+list(SORT MQTT_PLUS_APP_SOURCES)
+
 qt_add_executable(mqtt_plus_app
-    src/app/main.cpp
-    src/app/appfacade.cpp
-    src/app/appfacade.h
-    src/app/appfacadeevents.cpp
-    src/app/appfacademodels.cpp
-    src/app/appfacademqtt.cpp
-    src/app/appfacademenus.cpp
-    src/app/appfacadepreferences.cpp
-    src/app/appfacadescripts.cpp
-    src/app/appfacadesessions.cpp
-    src/app/appfacadesubscriptions.cpp
-    src/app/appfacadetheme.cpp
-    src/app/appfacadeutils.cpp
-    src/app/appfacadeutils.h
-    src/controllers/themecontroller.cpp
-    src/controllers/themecontroller.h
-    src/controllers/scriptcontroller.cpp
-    src/controllers/scriptcontroller.h
-    src/controllers/sessioncontroller.cpp
-    src/controllers/sessioncontroller.h
-    src/controllers/subscriptioncontroller.cpp
-    src/controllers/subscriptioncontroller.h
-    src/controllers/mqttcontroller.cpp
-    src/controllers/mqttcontroller.h
-    src/controllers/eventcontroller.cpp
-    src/controllers/eventcontroller.h
-    src/controllers/languagecontroller.cpp
-    src/controllers/languagecontroller.h
-    src/controllers/preferencescontroller.cpp
-    src/controllers/preferencescontroller.h
-    src/domain/script.h
-    src/domain/session.h
-    src/domain/sessionconfig.cpp
-    src/domain/sessionconfig.h
-    src/domain/subscription.h
-    src/models/eventstreammodel.cpp
-    src/models/eventstreammodel.h
-    src/models/scriptlibrarymodel.cpp
-    src/models/scriptlibrarymodel.h
-    src/models/scripttestsamplesmodel.cpp
-    src/models/scripttestsamplesmodel.h
-    src/models/sessionlistmodel.cpp
-    src/models/sessionlistmodel.h
-    src/models/subscriptionfiltermodel.cpp
-    src/models/subscriptionfiltermodel.h
-    src/models/subscriptionlistmodel.cpp
-    src/models/subscriptionlistmodel.h
-    src/presentation/eventrenderer.cpp
-    src/presentation/eventrenderer.h
-    src/services/payload/payloadcodec.cpp
-    src/services/payload/payloadcodec.h
-    src/services/scripting/luarunner.cpp
-    src/services/scripting/luarunner.h
-    src/services/storage/historystore.cpp
-    src/services/storage/historystore.h
-    src/services/storage/scriptstore.cpp
-    src/services/storage/scriptstore.h
-    src/services/storage/sessionsettingsstore.cpp
-    src/services/storage/sessionsettingsstore.h
+    ${MQTT_PLUS_APP_SOURCES}
 )
 
 qt_add_translations(mqtt_plus_app
