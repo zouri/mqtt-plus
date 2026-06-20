@@ -116,12 +116,6 @@ LoadedSession readSession(
     auto &session = loaded.session;
     session.id = settings.value(QStringLiteral("id")).toString();
     session.name = settings.value(QStringLiteral("name")).toString();
-    if (session.id.isEmpty()) {
-        session.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    }
-    if (session.name.isEmpty()) {
-        session.name = QCoreApplication::translate("SessionSettingsStore", "Session %1").arg(index + 1);
-    }
 
     session.outputPaused = settings.value(QStringLiteral("outputPaused"), false).toBool();
     session.transport = SessionConfig::sanitizeTransport(settings.value(QStringLiteral("transport"), QStringLiteral("tcp")));

@@ -150,7 +150,7 @@ LoadResult loadScripts()
             script.id = object.value(QStringLiteral("id")).toString();
             script.name = object.value(QStringLiteral("name")).toString();
             script.description = object.value(QStringLiteral("description")).toString();
-            script.fileName = object.value(QStringLiteral("fileName")).toString(scriptFileNameForId(script.id));
+            script.fileName = object.value(QStringLiteral("fileName")).toString();
             script.updatedAt = object.value(QStringLiteral("updatedAt")).toString();
             if (script.id.isEmpty() || script.name.trimmed().isEmpty()) {
                 continue;
@@ -179,8 +179,7 @@ bool saveScripts(QVector<ScriptEntry> &scripts, bool indexWritable, QString &err
 
     QHash<QString, FileBackup> backups;
     for (const auto &script : scripts) {
-        const QString fileName = script.fileName.isEmpty() ? scriptFileNameForId(script.id) : script.fileName;
-        const QString path = scriptFilePath(fileName);
+        const QString path = scriptFilePath(script.fileName);
         if (!backups.contains(path)) {
             backups.insert(path, backupFile(path));
         }
@@ -188,9 +187,6 @@ bool saveScripts(QVector<ScriptEntry> &scripts, bool indexWritable, QString &err
 
     QJsonArray scriptRows;
     for (auto &script : scripts) {
-        if (script.fileName.isEmpty()) {
-            script.fileName = scriptFileNameForId(script.id);
-        }
         if (!writeTextFile(scriptFilePath(script.fileName), script.code.toUtf8(), errorMessage)) {
             restoreBackups(backups);
             return false;
