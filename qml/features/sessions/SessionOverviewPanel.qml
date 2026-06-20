@@ -32,18 +32,20 @@ AppPanel {
                                                    : control.ui.materialIcon("plug"))
 
     showTopBorder: false
+    showRightBorder: false
+    showBottomBorder: false
+
     Layout.fillWidth: true
-    Layout.preferredHeight: 108
-    Layout.minimumHeight: 108
+    Layout.minimumHeight: 70
+    Layout.preferredHeight: 80
 
     ColumnLayout {
         id: currentSessionColumn
         anchors.fill: parent
+        anchors.topMargin: 0
         anchors.leftMargin: 16
         anchors.rightMargin: 16
-        anchors.topMargin: 10
-        anchors.bottomMargin: 10
-        spacing: 7
+        anchors.bottomMargin: 8
 
         RowLayout {
             Layout.fillWidth: true
