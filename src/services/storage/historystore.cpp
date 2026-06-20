@@ -495,9 +495,6 @@ bool HistoryStore::initialize()
     }
 
     QSqlQuery query(m_db);
-    if (!resetLegacySchema()) {
-        return false;
-    }
 
     if (!query.exec(
             QStringLiteral(
@@ -545,28 +542,5 @@ bool HistoryStore::initialize()
         return false;
     }
 
-    return true;
-}
-
-bool HistoryStore::resetLegacySchema()
-{
-    QSqlQuery query(m_db);
-    if (!query.exec(QStringLiteral("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'messages'"))) {
-        m_lastError = query.lastError().text();
-        return false;
-    }
-
-    if (!query.next()) {
-        return true;
-    }
-
-    if (!query.exec(QStringLiteral("DROP TABLE IF EXISTS messages"))) {
-        m_lastError = query.lastError().text();
-        return false;
-    }
-    if (!query.exec(QStringLiteral("DROP INDEX IF EXISTS idx_messages_session_id_id"))) {
-        m_lastError = query.lastError().text();
-        return false;
-    }
     return true;
 }

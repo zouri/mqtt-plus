@@ -59,7 +59,6 @@ private:
     };
 
     bool initialize();
-    bool resetLegacySchema();
 
     QSqlDatabase m_db;
     QString m_connectionName;
