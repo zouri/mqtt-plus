@@ -4,6 +4,7 @@ project(mqtt-plus VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Widgets LinguistTools)
 
@@ -107,11 +108,6 @@ target_include_directories(mqtt_plus_app
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
-
-# target_compile_definitions(mqtt_plus_app
-#     PRIVATE
-#         $<$<CONFIG:Debug>:QT_QML_DEBUG>
-# )
 
 target_link_libraries(mqtt_plus_app
     PRIVATE
