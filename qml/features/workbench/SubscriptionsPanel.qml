@@ -9,14 +9,13 @@ AppPanel {
     id: control
 
     required property var appController
-    required property AddSubscriptionDialog addSubscriptionDialog
+    required property var addSubscriptionDialog
 
     property string subscriptionActionVisualKey: ""
     property string filterText: ""
     property string filterMode: "all"
     property string pendingDeleteTopic: ""
     property string pendingDeleteDisplayName: ""
-    property int matchingSubscriptionCount: 0
     readonly property var filterModeValues: ["all", "subscribed", "paused"]
     readonly property var filterModeLabels: [
         qsTr("All", "subscription filter"),
@@ -24,6 +23,8 @@ AppPanel {
         qsTr("Paused", "subscription filter")
     ]
     readonly property int filterModeIndex: Math.max(0, control.filterModeValues.indexOf(control.filterMode))
+    readonly property var subscriptionModel: control.appController ? control.appController.filteredSubscriptions : null
+    readonly property int matchingSubscriptionCount: control.subscriptionModel ? control.subscriptionModel.count : 0
     readonly property var sessionStatus: control.appController ? control.appController.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
     readonly property bool hasFilter: control.filterText.trim().length > 0 || control.filterMode !== "all"
@@ -39,56 +40,24 @@ AppPanel {
         onTriggered: control.subscriptionActionVisualKey = ""
     }
 
-    function rowMatches(topic, alias, displayName, formatName, paused) {
-        if (control.filterMode === "subscribed" && paused) {
-            return false
-        }
-
-        if (control.filterMode === "paused" && !paused) {
-            return false
-        }
-
-        const needle = control.filterText.trim().toLowerCase()
-        if (needle.length === 0) {
-            return true
-        }
-
-        return `${topic} ${alias} ${displayName} ${formatName}`.toLowerCase().indexOf(needle) >= 0
-    }
-
-    function recomputeVisibleCount() {
-        let visibleRows = 0
-        const model = control.appController ? control.appController.subscriptions : null
-        const rowCount = model ? model.count : 0
-        for (let i = 0; i < rowCount; ++i) {
-            const row = model.rowAt(i)
-            if (control.rowMatches(row.topic || "",
-                                   row.alias || "",
-                                   row.displayName || "",
-                                   row.formatName || "",
-                                   Boolean(row.paused))) {
-                visibleRows += 1
-            }
-        }
-        control.matchingSubscriptionCount = visibleRows
-    }
-
     function requestDeleteSubscription(topic, displayName) {
         control.pendingDeleteTopic = topic
         control.pendingDeleteDisplayName = displayName
         deleteSubscriptionDialog.open()
     }
 
-    onFilterTextChanged: control.recomputeVisibleCount()
-    onFilterModeChanged: control.recomputeVisibleCount()
-    Component.onCompleted: control.recomputeVisibleCount()
+    Binding {
+        target: control.subscriptionModel
+        property: "filterText"
+        value: control.filterText
+        when: control.subscriptionModel !== null
+    }
 
-    Connections {
-        target: control.appController ? control.appController.subscriptions : null
-
-        function onCountChanged() {
-            control.recomputeVisibleCount()
-        }
+    Binding {
+        target: control.subscriptionModel
+        property: "filterMode"
+        value: control.filterMode
+        when: control.subscriptionModel !== null
     }
 
     ColumnLayout {
@@ -201,7 +170,7 @@ AppPanel {
             Layout.fillHeight: true
             clip: true
             spacing: 7
-            model: control.appController.subscriptions
+            model: control.subscriptionModel
             reuseItems: true
 
             ScrollBar.vertical: ScrollBar {
@@ -223,26 +192,17 @@ AppPanel {
                 required property string subscriptionState
                 required property string lastError
                 required property real topicFps
-                readonly property bool matchesFilter: control.rowMatches(
-                                                          subscriptionDelegate.topic,
-                                                          subscriptionDelegate.alias,
-                                                          subscriptionDelegate.displayName,
-                                                          subscriptionDelegate.formatName,
-                                                          subscriptionDelegate.paused)
                 readonly property string metaText: qsTr("QoS %1 · %2/s")
                                                    .arg(subscriptionDelegate.requestedQos)
                                                    .arg(Number(subscriptionDelegate.topicFps || 0).toFixed(1))
                 readonly property string menuVisualKey: `${subscriptionDelegate.topic}::menu`
                 width: ListView.view.width
-                visible: subscriptionDelegate.matchesFilter
                 radius: control.ui.innerRadius
                 color: control.ui.themePalette.itemBg
                 border.color: subscriptionDelegate.lastError.length > 0
                               ? control.ui.themePalette.errorText
                               : control.ui.themePalette.innerPanelBorder
-                implicitHeight: subscriptionDelegate.matchesFilter
-                                ? (subscriptionDelegate.lastError.length > 0 ? 88 : 70)
-                                : 0
+                implicitHeight: subscriptionDelegate.lastError.length > 0 ? 88 : 70
                 activeFocusOnTab: true
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
@@ -254,7 +214,7 @@ AppPanel {
                                 subscriptionDelegate.topic, globalPosition)
                     if (action === "edit") {
                         control.addSubscriptionDialog.openForEdit(
-                                    control.appController.subscriptions.rowAt(subscriptionDelegate.index))
+                                    control.subscriptionModel.rowAt(subscriptionDelegate.index))
                     } else if (action === "delete") {
                         control.requestDeleteSubscription(subscriptionDelegate.topic,
                                                           subscriptionDelegate.displayName)

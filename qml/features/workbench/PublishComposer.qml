@@ -18,15 +18,9 @@ Item {
     readonly property int collapsedHeight: 50
     readonly property int minComposerHeight: 180
     readonly property int maxComposerHeight: 420
-    property var recentDrafts: []
-    property bool repeatEnabled: false
-    property int repeatIntervalMs: 5000
     readonly property bool isConnected: root.status.state === "connected"
     readonly property bool hasTopic: publishTopicField.text.trim().length > 0
     readonly property bool canPublish: root.isConnected && root.hasTopic
-    readonly property var recentDraftLabels: root.recentDrafts.map(function(draft) {
-        return qsTr("%1 · QoS %2 · %3").arg(draft.topic).arg(draft.qos).arg(draft.formatName)
-    })
     readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle"
                                               ? (root.publishStatus.reason && root.publishStatus.reason.length > 0
                                                  ? root.publishStatus.reason
@@ -73,36 +67,9 @@ Item {
             "topic": publishTopicField.text.trim(),
             "payload": publishPayloadArea.text,
             "format": publishFormatBox.currentIndex,
-            "formatName": publishFormatBox.currentText,
             "qos": publishQosBox.currentIndex,
             "retain": retainCheck.checked
         }
-    }
-
-    function rememberDraft(draft) {
-        const key = `${draft.topic}\n${draft.payload}\n${draft.format}\n${draft.qos}\n${draft.retain}`
-        const nextDrafts = [draft]
-        for (let i = 0; i < root.recentDrafts.length && nextDrafts.length < 6; ++i) {
-            const current = root.recentDrafts[i]
-            const currentKey = `${current.topic}\n${current.payload}\n${current.format}\n${current.qos}\n${current.retain}`
-            if (currentKey !== key) {
-                nextDrafts.push(current)
-            }
-        }
-        root.recentDrafts = nextDrafts
-    }
-
-    function applyDraft(draft) {
-        if (!draft) {
-            return
-        }
-
-        publishTopicField.text = draft.topic || ""
-        publishPayloadArea.text = draft.payload || ""
-        publishFormatBox.currentIndex = Math.max(0, Math.min(publishFormatBox.count - 1, Number(draft.format || 0)))
-        publishQosBox.currentIndex = Math.max(0, Math.min(publishQosBox.count - 1, Number(draft.qos || 0)))
-        retainCheck.checked = Boolean(draft.retain)
-        root.expanded = true
     }
 
     function publishCurrentDraft() {
@@ -111,20 +78,12 @@ Item {
         }
 
         const draft = root.draftFromFields()
-        root.rememberDraft(draft)
         root.appController.publishCurrentSession(
                     draft.topic,
                     draft.payload,
                     draft.format,
                     draft.qos,
                     draft.retain)
-    }
-
-    Timer {
-        interval: root.repeatIntervalMs
-        running: root.repeatEnabled && root.canPublish
-        repeat: true
-        onTriggered: root.publishCurrentDraft()
     }
 
     ColumnLayout {
@@ -309,51 +268,6 @@ Item {
                             ui: root.ui
                             id: retainCheck
                             text: qsTr("Retain")
-                        }
-                    }
-                }
-
-                RowLayout {
-                    visible: false
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 0
-                    spacing: 8
-
-                    AppComboBox {
-                        ui: root.ui
-                        visible: root.recentDrafts.length > 0
-                        enabled: root.recentDrafts.length > 0
-                        Layout.preferredWidth: visible ? 220 : 0
-                        model: [qsTr("Recent publishes")].concat(root.recentDraftLabels)
-                        currentIndex: 0
-                        onActivated: (index) => {
-                            if (index > 0) {
-                                root.applyDraft(root.recentDrafts[index - 1])
-                                currentIndex = 0
-                            }
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                    }
-
-                    AppCheckBox {
-                        ui: root.ui
-                        text: qsTr("Repeat")
-                        checked: root.repeatEnabled
-                        enabled: root.canPublish
-                        onToggled: root.repeatEnabled = checked
-                    }
-
-                    AppComboBox {
-                        ui: root.ui
-                        enabled: root.repeatEnabled
-                        Layout.preferredWidth: 82
-                        model: [qsTr("1s"), qsTr("5s"), qsTr("10s")]
-                        currentIndex: 1
-                        onCurrentIndexChanged: {
-                            root.repeatIntervalMs = currentIndex === 0 ? 1000 : (currentIndex === 1 ? 5000 : 10000)
                         }
                     }
                 }

@@ -172,6 +172,7 @@ Item {
                 clip: true
                 spacing: 4
                 model: root.streamModel
+                reuseItems: true
                 property bool shouldFollowOutput: true
                 property bool programmaticScroll: false
                 property int unreadCount: 0

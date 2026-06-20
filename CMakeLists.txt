@@ -96,6 +96,8 @@ qt_add_executable(mqtt_plus_app
     src/models/scripttestsamplesmodel.h
     src/models/sessionlistmodel.cpp
     src/models/sessionlistmodel.h
+    src/models/subscriptionfiltermodel.cpp
+    src/models/subscriptionfiltermodel.h
     src/models/subscriptionlistmodel.cpp
     src/models/subscriptionlistmodel.h
     src/presentation/eventrenderer.cpp

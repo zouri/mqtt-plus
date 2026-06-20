@@ -29,6 +29,7 @@
 #include "models/scriptlibrarymodel.h"
 #include "models/scripttestsamplesmodel.h"
 #include "models/sessionlistmodel.h"
+#include "models/subscriptionfiltermodel.h"
 #include "models/subscriptionlistmodel.h"
 #include "services/payload/payloadcodec.h"
 
@@ -41,6 +42,7 @@ class AppFacade : public QObject
     friend class SessionController;
     Q_PROPERTY(SessionListModel* sessions READ sessions CONSTANT)
     Q_PROPERTY(SubscriptionListModel* subscriptions READ subscriptions CONSTANT)
+    Q_PROPERTY(SubscriptionFilterModel* filteredSubscriptions READ filteredSubscriptions CONSTANT)
     Q_PROPERTY(EventStreamModel* messages READ messages CONSTANT)
     Q_PROPERTY(EventStreamModel* logs READ logs CONSTANT)
     Q_PROPERTY(ScriptLibraryModel* scripts READ scripts CONSTANT)
@@ -69,6 +71,7 @@ public:
 
     SessionListModel *sessions();
     SubscriptionListModel *subscriptions();
+    SubscriptionFilterModel *filteredSubscriptions();
     EventStreamModel *messages();
     EventStreamModel *logs();
     ScriptLibraryModel *scripts();
@@ -245,6 +248,7 @@ private:
     HistoryStore m_historyStore;
     SessionListModel m_sessionsModel;
     SubscriptionListModel m_subscriptionsModel;
+    SubscriptionFilterModel m_filteredSubscriptionsModel;
     EventStreamModel m_messagesModel;
     EventStreamModel m_logsModel;
     ScriptLibraryModel m_scriptsModel;
