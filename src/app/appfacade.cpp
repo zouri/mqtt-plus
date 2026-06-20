@@ -20,12 +20,14 @@ AppFacade::AppFacade(QObject *parent)
     , m_preferencesController(&m_settings, this)
     , m_sessionsModel(this)
     , m_subscriptionsModel(this)
+    , m_filteredSubscriptionsModel(this)
     , m_messagesModel(this)
     , m_logsModel(this)
     , m_scriptsModel(this)
     , m_scriptTestSamplesModel(this)
 {
     m_sessionController.setFacade(this);
+    m_filteredSubscriptionsModel.setSourceModel(&m_subscriptionsModel);
     m_launchTimestamp = timestampNow();
     connect(&m_scriptController, &ScriptController::storageError, this, &AppFacade::reportStorageError);
     connect(&m_themeController, &ThemeController::modeChanged, this, &AppFacade::themeModeChanged);

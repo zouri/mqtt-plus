@@ -18,6 +18,11 @@ SubscriptionListModel *AppFacade::subscriptions()
     return &m_subscriptionsModel;
 }
 
+SubscriptionFilterModel *AppFacade::filteredSubscriptions()
+{
+    return &m_filteredSubscriptionsModel;
+}
+
 EventStreamModel *AppFacade::messages()
 {
     return &m_messagesModel;

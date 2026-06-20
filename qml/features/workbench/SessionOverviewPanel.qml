@@ -11,7 +11,7 @@ AppPanel {
     required property var session
     required property var status
     required property var appController
-    required property SessionEditorDialog sessionEditor
+    required property var sessionEditor
 
     readonly property bool canDisconnect: control.status.state === "connected"
                                            || control.status.state === "connecting"
