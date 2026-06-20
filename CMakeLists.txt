@@ -119,6 +119,19 @@ qt_add_translations(mqtt_plus_app
         "/i18n"
 )
 
+file(GLOB_RECURSE QML_FILES
+    CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "qml/*.qml"
+)
+file(GLOB_RECURSE SVG_RESOURCES
+    CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "resources/*.svg"
+)
+list(SORT QML_FILES)
+list(SORT SVG_RESOURCES)
+
 qt_add_qml_module(mqtt_plus_app
     URI MqttPlusApp
     VERSION 1.0
@@ -126,50 +139,9 @@ qt_add_qml_module(mqtt_plus_app
     # Direct qmllint remains available through the generated qmllint targets.
     NO_IMPORT_SCAN
     QML_FILES
-        qml/components/AppBadge.qml
-        qml/components/AppButton.qml
-        qml/components/AppCheckBox.qml
-        qml/components/AppComboBox.qml
-        qml/components/AppDivider.qml
-        qml/components/AppIconButton.qml
-        qml/components/AppPanel.qml
-        qml/components/AppSectionHeader.qml
-        qml/components/AppTextArea.qml
-        qml/components/AppTextField.qml
-        qml/components/AppToolTip.qml
-        qml/AppUi.qml
-        qml/features/logs/LogsView.qml
-        qml/features/scripts/ScriptListPane.qml
-        qml/features/scripts/ScriptsView.qml
-        qml/features/sessions/SessionEditorDialog.qml
-        qml/features/sessions/SessionOverviewPanel.qml
-        qml/features/sessions/SessionSidebar.qml
-        qml/features/settings/SettingsView.qml
-        qml/features/streams/EventStreamView.qml
-        qml/features/subscriptions/AddSubscriptionDialog.qml
-        qml/features/subscriptions/SubscriptionsPanel.qml
-        qml/features/workbench/PublishComposer.qml
-        qml/features/workbench/SessionActivityPanel.qml
-        qml/features/workbench/WorkbenchView.qml
-        qml/Main.qml
+        ${QML_FILES}
     RESOURCES
-        qml/icons/chevron-left.svg
-        qml/icons/chevron-right.svg
-        qml/icons/check.svg
-        qml/icons/edit.svg
-        qml/icons/logs.svg
-        qml/icons/more-horiz.svg
-        qml/icons/pause.svg
-        qml/icons/play.svg
-        qml/icons/plug.svg
-        qml/icons/plug-off.svg
-        qml/icons/script-development.svg
-        qml/icons/send.svg
-        qml/icons/settings.svg
-        qml/icons/delete.svg
-        qml/icons/workbench.svg
-        qml/icons/xmark.svg
-        qml/icons/plus.svg
+        ${SVG_RESOURCES}
 )
 
 qt_add_resources(mqtt_plus_app app_icons
@@ -182,6 +154,11 @@ target_include_directories(mqtt_plus_app
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
+
+# target_compile_definitions(mqtt_plus_app
+#     PRIVATE
+#         $<$<CONFIG:Debug>:QT_QML_DEBUG>
+# )
 
 target_link_libraries(mqtt_plus_app
     PRIVATE

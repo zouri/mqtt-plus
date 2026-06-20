@@ -27,8 +27,8 @@ QString AppFacade::showSessionContextMenu(int index, const QPointF &globalPositi
     QAction *editAction = menu.addAction(tr("Edit"));
     QAction *copyAction = menu.addAction(tr("Copy"));
     QAction *deleteAction = menu.addAction(tr("Delete"));
-    editAction->setIcon(QIcon(QStringLiteral(":/qt/qml/MqttPlusApp/qml/icons/edit.svg")));
-    deleteAction->setIcon(QIcon(QStringLiteral(":/qt/qml/MqttPlusApp/qml/icons/delete.svg")));
+    editAction->setIcon(QIcon(QStringLiteral(":/qt/qml/MqttPlusApp/resources/edit.svg")));
+    deleteAction->setIcon(QIcon(QStringLiteral(":/qt/qml/MqttPlusApp/resources/delete.svg")));
     deleteAction->setEnabled(m_sessionController.sessions().size() > 1);
 
     QAction *selectedAction = menu.exec(menuPosition(globalPosition));
