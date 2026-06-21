@@ -40,6 +40,21 @@ QString AppFacade::clearLogsOnExit() const
     return m_preferencesController.clearLogsOnExit();
 }
 
+int AppFacade::windowWidth() const
+{
+    return m_preferencesController.windowWidth();
+}
+
+int AppFacade::windowHeight() const
+{
+    return m_preferencesController.windowHeight();
+}
+
+bool AppFacade::windowMaximized() const
+{
+    return m_preferencesController.windowMaximized();
+}
+
 void AppFacade::setMessageRetentionLimit(int limit)
 {
     const int previousLimit = messageRetentionLimit();
@@ -102,4 +117,14 @@ void AppFacade::setClearMessagesOnExit(const QString &mode)
 void AppFacade::setClearLogsOnExit(const QString &mode)
 {
     m_preferencesController.setClearLogsOnExit(mode);
+}
+
+void AppFacade::setWindowMaximized(bool maximized)
+{
+    m_preferencesController.setWindowMaximized(maximized);
+}
+
+void AppFacade::saveWindowGeometry(int width, int height)
+{
+    m_preferencesController.setWindowGeometry(width, height);
 }

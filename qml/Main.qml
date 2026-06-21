@@ -14,13 +14,80 @@ ApplicationWindow {
     required property var app
 
     readonly property string appTitle: qsTr("MQTT Plus")
+    readonly property int defaultWindowWidth: 1480
+    readonly property int defaultWindowHeight: 820
+    readonly property int minimumWindowWidth: 1100
+    readonly property int minimumWindowHeight: 700
+    property bool windowGeometryReady: false
 
-    width: 1480
-    height: 820
+    width: root.defaultWindowWidth
+    height: root.defaultWindowHeight
+    minimumWidth: root.minimumWindowWidth
+    minimumHeight: root.minimumWindowHeight
     visible: true
     flags: Qt.Window
     title: root.appTitle
     topPadding: 0
+
+    function clampWindowWidth(value) {
+        const availableWidth = Screen.desktopAvailableWidth > 0
+                             ? Screen.desktopAvailableWidth
+                             : root.defaultWindowWidth
+        return Math.max(root.minimumWidth, Math.min(Math.round(value), availableWidth))
+    }
+
+    function clampWindowHeight(value) {
+        const availableHeight = Screen.desktopAvailableHeight > 0
+                              ? Screen.desktopAvailableHeight
+                              : root.defaultWindowHeight
+        return Math.max(root.minimumHeight, Math.min(Math.round(value), availableHeight))
+    }
+
+    function persistWindowGeometry() {
+        if (!root.windowGeometryReady || root.visibility !== Window.Windowed) {
+            return
+        }
+
+        root.appController.saveWindowGeometry(root.width, root.height)
+    }
+
+    function restoreWindowGeometry() {
+        root.width = root.clampWindowWidth(root.appController.windowWidth)
+        root.height = root.clampWindowHeight(root.appController.windowHeight)
+        root.windowGeometryReady = true
+
+        if (root.appController.windowMaximized) {
+            Qt.callLater(function() {
+                root.showMaximized()
+            })
+        }
+    }
+
+    Component.onCompleted: root.restoreWindowGeometry()
+    onWidthChanged: windowGeometrySaveTimer.restart()
+    onHeightChanged: windowGeometrySaveTimer.restart()
+    onVisibilityChanged: {
+        if (!root.windowGeometryReady) {
+            return
+        }
+
+        root.appController.windowMaximized = root.visibility === Window.Maximized
+        if (root.visibility === Window.Windowed) {
+            windowGeometrySaveTimer.restart()
+        }
+    }
+    onClosing: function() {
+        windowGeometrySaveTimer.stop()
+        root.persistWindowGeometry()
+        root.appController.windowMaximized = root.visibility === Window.Maximized
+    }
+
+    Timer {
+        id: windowGeometrySaveTimer
+        interval: 250
+        repeat: false
+        onTriggered: root.persistWindowGeometry()
+    }
 
     AppUi {
         id: ui

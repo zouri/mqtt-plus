@@ -41,6 +41,26 @@ int sanitizePayloadLimit(const QVariant &value, int fallback)
     return (std::clamp)(bytes, 64 * 1024, 16 * 1024 * 1024);
 }
 
+int sanitizeWindowWidth(const QVariant &value, int fallback)
+{
+    bool ok = false;
+    const int width = value.toInt(&ok);
+    if (!ok) {
+        return fallback;
+    }
+    return (std::clamp)(width, 1100, 10000);
+}
+
+int sanitizeWindowHeight(const QVariant &value, int fallback)
+{
+    bool ok = false;
+    const int height = value.toInt(&ok);
+    if (!ok) {
+        return fallback;
+    }
+    return (std::clamp)(height, 700, 10000);
+}
+
 QString sanitizeCleanupMode(const QString &value)
 {
     const QString mode = value.trimmed();
@@ -79,6 +99,12 @@ PreferencesController::PreferencesController(QSettings *settings, QObject *paren
         m_settings->value(QStringLiteral("cleanup/clearMessagesOnExit"), m_clearMessagesOnExit).toString());
     m_clearLogsOnExit = sanitizeCleanupMode(
         m_settings->value(QStringLiteral("cleanup/clearLogsOnExit"), m_clearLogsOnExit).toString());
+    m_windowWidth =
+        sanitizeWindowWidth(m_settings->value(QStringLiteral("window/width"), m_windowWidth), m_windowWidth);
+    m_windowHeight =
+        sanitizeWindowHeight(m_settings->value(QStringLiteral("window/height"), m_windowHeight), m_windowHeight);
+    m_windowMaximized =
+        m_settings->value(QStringLiteral("window/maximized"), m_windowMaximized).toBool();
 }
 
 int PreferencesController::messageRetentionLimit() const
@@ -119,6 +145,21 @@ QString PreferencesController::clearMessagesOnExit() const
 QString PreferencesController::clearLogsOnExit() const
 {
     return m_clearLogsOnExit;
+}
+
+int PreferencesController::windowWidth() const
+{
+    return m_windowWidth;
+}
+
+int PreferencesController::windowHeight() const
+{
+    return m_windowHeight;
+}
+
+bool PreferencesController::windowMaximized() const
+{
+    return m_windowMaximized;
 }
 
 void PreferencesController::setMessageRetentionLimit(int limit)
@@ -213,6 +254,44 @@ void PreferencesController::setClearLogsOnExit(const QString &mode)
     m_clearLogsOnExit = sanitized;
     syncValue(QStringLiteral("cleanup/clearLogsOnExit"), m_clearLogsOnExit);
     emit clearLogsOnExitChanged();
+}
+
+void PreferencesController::setWindowGeometry(int width, int height)
+{
+    const int sanitizedWidth = sanitizeWindowWidth(width, m_windowWidth);
+    const int sanitizedHeight = sanitizeWindowHeight(height, m_windowHeight);
+    if (sanitizedWidth == m_windowWidth && sanitizedHeight == m_windowHeight) {
+        return;
+    }
+
+    const bool widthChanged = sanitizedWidth != m_windowWidth;
+    const bool heightChanged = sanitizedHeight != m_windowHeight;
+    m_windowWidth = sanitizedWidth;
+    m_windowHeight = sanitizedHeight;
+
+    if (m_settings) {
+        m_settings->setValue(QStringLiteral("window/width"), m_windowWidth);
+        m_settings->setValue(QStringLiteral("window/height"), m_windowHeight);
+        m_settings->sync();
+    }
+
+    if (widthChanged) {
+        emit windowWidthChanged();
+    }
+    if (heightChanged) {
+        emit windowHeightChanged();
+    }
+}
+
+void PreferencesController::setWindowMaximized(bool maximized)
+{
+    if (maximized == m_windowMaximized) {
+        return;
+    }
+
+    m_windowMaximized = maximized;
+    syncValue(QStringLiteral("window/maximized"), m_windowMaximized);
+    emit windowMaximizedChanged();
 }
 
 void PreferencesController::syncValue(const QString &key, const QVariant &value)
