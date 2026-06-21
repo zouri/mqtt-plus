@@ -20,6 +20,9 @@ public:
     bool saveMessagesWhenOutputPaused() const;
     QString clearMessagesOnExit() const;
     QString clearLogsOnExit() const;
+    int windowWidth() const;
+    int windowHeight() const;
+    bool windowMaximized() const;
 
 public slots:
     void setMessageRetentionLimit(int limit);
@@ -30,6 +33,8 @@ public slots:
     void setSaveMessagesWhenOutputPaused(bool enabled);
     void setClearMessagesOnExit(const QString &mode);
     void setClearLogsOnExit(const QString &mode);
+    void setWindowGeometry(int width, int height);
+    void setWindowMaximized(bool maximized);
 
 signals:
     void messageRetentionLimitChanged();
@@ -40,6 +45,9 @@ signals:
     void saveMessagesWhenOutputPausedChanged();
     void clearMessagesOnExitChanged();
     void clearLogsOnExitChanged();
+    void windowWidthChanged();
+    void windowHeightChanged();
+    void windowMaximizedChanged();
 
 private:
     void syncValue(const QString &key, const QVariant &value);
@@ -53,4 +61,7 @@ private:
     bool m_saveMessagesWhenOutputPaused = true;
     QString m_clearMessagesOnExit = QStringLiteral("never");
     QString m_clearLogsOnExit = QStringLiteral("never");
+    int m_windowWidth = 1480;
+    int m_windowHeight = 820;
+    bool m_windowMaximized = false;
 };
