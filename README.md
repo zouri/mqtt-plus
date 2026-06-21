@@ -99,7 +99,7 @@
 macOS 调试构建：
 
 ```bash
-cd /path/to/mqtt-plus
+cd /path/to/mqtts
 cmake --preset qt6.11-debug
 cmake --build --preset qt6.11-debug
 cmake --build --preset qt6.11-debug --target all_qmllint
@@ -139,14 +139,14 @@ macOS 调试构建完成后，可以直接运行 app bundle 内的可执行文�
 ### macOS
 
 ```bash
-cd /path/to/mqtt-plus
-./scripts/package-macos.sh
+cd /path/to/mqtts
+./scripts/package-macos.sh /path/to/Qt/6.11.x/macos
 ```
 
-指定 Qt 路径：
+也可以通过环境变量指定 Qt 路径：
 
 ```bash
-./scripts/package-macos.sh /path/to/Qt/6.11.x/macos
+QT_PREFIX=/path/to/Qt/6.11.x/macos ./scripts/package-macos.sh
 ```
 
 生成的 DMG 会写入 `dist/`。
@@ -248,16 +248,31 @@ end
 
 这些数据是本机运行时产物，不应提交到仓库。
 
+当前版本会随会话配置保存 MQTT 用户名和密码。开源发布前请确认凭据策略：
+
+- 若继续使用 `QSettings`，需要在发布说明和安全文档中明确本机凭据保存方式。
+- 若希望默认更安全，建议接入 QtKeychain 或平台凭据存储，例如 macOS Keychain、Linux Secret Service、Windows Credential Manager。
+
+## 开源发布准备
+
+发布到 GitHub 前请先确认：
+
+- 已选择并添加项目开源许可证。
+- 已补充第三方依赖和资源许可说明，参见 `THIRD_PARTY_NOTICES.md`。
+- 已阅读开源前检查清单，参见 `docs/OPEN_SOURCE_CHECKLIST.md`。
+- 已确认安全说明中的凭据、Lua 脚本和本地数据策略，参见 `docs/SECURITY_NOTES.md`。
+
 ## 验证建议
 
-当前工程暂未注册自动化测试，`ctest --test-dir build/qt6.11-debug -N` 会显示 `0` 个测试。提交变更前建议至少执行：
+当前工程已注册 Qt Test 单元测试。提交变更前建议至少执行：
 
 ```bash
 cmake --build --preset qt6.11-debug
 cmake --build --preset qt6.11-debug --target all_qmllint
+ctest --test-dir build/qt6.11-debug --output-on-failure
 ```
 
-同时手动验证以下流程：
+涉及 MQTT 连接、界面交互或历史记录行为的变更，还应手动验证以下流程：
 
 - 创建或编辑会话。
 - 连接和断开 Broker。
