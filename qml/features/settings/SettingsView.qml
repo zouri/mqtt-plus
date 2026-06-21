@@ -21,6 +21,8 @@ Rectangle {
     readonly property var logRetentionValues: [500, 2000, 5000, 0]
     readonly property var pageSizeValues: [200, 500, 1000]
     readonly property var pageSizeLabels: [qsTr("200 rows"), qsTr("500 rows"), qsTr("1,000 rows")]
+    readonly property var payloadLimitValues: [262144, 1048576, 5242880, 16777216]
+    readonly property var payloadLimitLabels: [qsTr("256 KiB"), qsTr("1 MiB"), qsTr("5 MiB"), qsTr("16 MiB")]
     readonly property var cleanupValues: ["never", "current", "all"]
     readonly property var cleanupLabels: [qsTr("Do not clear"), qsTr("Current session"), qsTr("All sessions")]
 
@@ -276,6 +278,20 @@ Rectangle {
                             model: root.pageSizeLabels
                             currentIndex: root.optionIndex(root.pageSizeValues, root.appController.historyPageSize)
                             onActivated: (index) => root.appController.historyPageSize = root.optionValue(root.pageSizeValues, index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Max payload size")
+                        detail: qsTr("Largest incoming MQTT payload decoded, scripted, and fully stored.")
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 130
+                            model: root.payloadLimitLabels
+                            currentIndex: root.optionIndex(root.payloadLimitValues, root.appController.maxIncomingPayloadBytes)
+                            onActivated: (index) => root.appController.maxIncomingPayloadBytes = root.optionValue(root.payloadLimitValues, index)
                         }
                     }
 

@@ -15,6 +15,11 @@ int AppFacade::historyPageSize() const
     return m_preferencesController.historyPageSize();
 }
 
+int AppFacade::maxIncomingPayloadBytes() const
+{
+    return m_preferencesController.maxIncomingPayloadBytes();
+}
+
 bool AppFacade::deleteHistoryWithSession() const
 {
     return m_preferencesController.deleteHistoryWithSession();
@@ -72,6 +77,11 @@ void AppFacade::setLogRetentionLimit(int limit)
 void AppFacade::setHistoryPageSize(int pageSize)
 {
     m_preferencesController.setHistoryPageSize(pageSize);
+}
+
+void AppFacade::setMaxIncomingPayloadBytes(int bytes)
+{
+    m_preferencesController.setMaxIncomingPayloadBytes(bytes);
 }
 
 void AppFacade::setDeleteHistoryWithSession(bool enabled)

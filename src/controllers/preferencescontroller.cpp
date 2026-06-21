@@ -28,6 +28,19 @@ int sanitizePageSize(const QVariant &value, int fallback)
     return (std::clamp)(pageSize, 50, 5000);
 }
 
+int sanitizePayloadLimit(const QVariant &value, int fallback)
+{
+    bool ok = false;
+    const int bytes = value.toInt(&ok);
+    if (!ok) {
+        return fallback;
+    }
+    if (bytes <= 0) {
+        return 0;
+    }
+    return (std::clamp)(bytes, 64 * 1024, 16 * 1024 * 1024);
+}
+
 QString sanitizeCleanupMode(const QString &value)
 {
     const QString mode = value.trimmed();
@@ -55,6 +68,9 @@ PreferencesController::PreferencesController(QSettings *settings, QObject *paren
     m_historyPageSize = sanitizePageSize(
         m_settings->value(QStringLiteral("history/pageSize"), m_historyPageSize),
         m_historyPageSize);
+    m_maxIncomingPayloadBytes = sanitizePayloadLimit(
+        m_settings->value(QStringLiteral("history/maxIncomingPayloadBytes"), m_maxIncomingPayloadBytes),
+        m_maxIncomingPayloadBytes);
     m_deleteHistoryWithSession =
         m_settings->value(QStringLiteral("history/deleteHistoryWithSession"), m_deleteHistoryWithSession).toBool();
     m_saveMessagesWhenOutputPaused =
@@ -78,6 +94,11 @@ int PreferencesController::logRetentionLimit() const
 int PreferencesController::historyPageSize() const
 {
     return m_historyPageSize;
+}
+
+int PreferencesController::maxIncomingPayloadBytes() const
+{
+    return m_maxIncomingPayloadBytes;
 }
 
 bool PreferencesController::deleteHistoryWithSession() const
@@ -134,6 +155,18 @@ void PreferencesController::setHistoryPageSize(int pageSize)
     m_historyPageSize = sanitized;
     syncValue(QStringLiteral("history/pageSize"), m_historyPageSize);
     emit historyPageSizeChanged();
+}
+
+void PreferencesController::setMaxIncomingPayloadBytes(int bytes)
+{
+    const int sanitized = sanitizePayloadLimit(bytes, m_maxIncomingPayloadBytes);
+    if (sanitized == m_maxIncomingPayloadBytes) {
+        return;
+    }
+
+    m_maxIncomingPayloadBytes = sanitized;
+    syncValue(QStringLiteral("history/maxIncomingPayloadBytes"), m_maxIncomingPayloadBytes);
+    emit maxIncomingPayloadBytesChanged();
 }
 
 void PreferencesController::setDeleteHistoryWithSession(bool enabled)

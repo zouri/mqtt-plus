@@ -49,6 +49,7 @@ AppFacade::AppFacade(QObject *parent)
         emit logStreamChanged();
         emit historyPageSizeChanged();
     });
+    connect(&m_preferencesController, &PreferencesController::maxIncomingPayloadBytesChanged, this, &AppFacade::maxIncomingPayloadBytesChanged);
     connect(&m_preferencesController, &PreferencesController::deleteHistoryWithSessionChanged, this, &AppFacade::deleteHistoryWithSessionChanged);
     connect(&m_preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, this, &AppFacade::saveMessagesWhenOutputPausedChanged);
     connect(&m_preferencesController, &PreferencesController::clearMessagesOnExitChanged, this, &AppFacade::clearMessagesOnExitChanged);
