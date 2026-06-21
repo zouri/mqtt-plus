@@ -6,9 +6,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Widgets LinguistTools)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Widgets Test LinguistTools)
 
 include(GNUInstallDirs)
+include(CTest)
 
 set(MQTT_PLUS_LUA_VERSION "5.5.0" CACHE STRING "Lua source release to build")
 set(MQTT_PLUS_LUA_URL "https://www.lua.org/ftp/lua-${MQTT_PLUS_LUA_VERSION}.tar.gz")
@@ -167,6 +168,38 @@ elseif(APPLE)
 elseif(UNIX)
     set(CPACK_GENERATOR "TGZ")
     set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-linux-${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+if(BUILD_TESTING)
+    add_executable(test_sessionconfig
+        tests/test_sessionconfig.cpp
+        src/domain/sessionconfig.cpp
+    )
+    target_include_directories(test_sessionconfig
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_sessionconfig
+        PRIVATE
+            Qt6::Core
+            Qt6::Test
+    )
+    add_test(NAME sessionconfig COMMAND test_sessionconfig)
+
+    add_executable(test_payloadcodec
+        tests/test_payloadcodec.cpp
+        src/services/payload/payloadcodec.cpp
+    )
+    target_include_directories(test_payloadcodec
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_payloadcodec
+        PRIVATE
+            Qt6::Core
+            Qt6::Test
+    )
+    add_test(NAME payloadcodec COMMAND test_payloadcodec)
 endif()
 
 include(CPack)
