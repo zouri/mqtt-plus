@@ -10,7 +10,7 @@ class EventStreamModel : public QAbstractListModel
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    enum Role {
+    enum Role : int {
         IdRole = Qt::UserRole + 1,
         KindRole,
         TimestampRole,
@@ -21,7 +21,7 @@ public:
         TopicRole,
         TestPayloadRole,
         TestFormatRole,
-        TestFormatNameRole
+        TestFormatNameRole,
     };
     Q_ENUM(Role)
 

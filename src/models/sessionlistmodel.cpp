@@ -54,7 +54,7 @@ QVariant SessionListModel::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> SessionListModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         {IdRole, "id"},
         {NameRole, "name"},
         {StateRole, "connectionState"},
@@ -68,6 +68,7 @@ QHash<int, QByteArray> SessionListModel::roleNames() const
         {SummaryRole, "summary"},
         {LastErrorRole, "lastError"},
     };
+    return roles;
 }
 
 QVariantMap SessionListModel::rowAt(int row) const

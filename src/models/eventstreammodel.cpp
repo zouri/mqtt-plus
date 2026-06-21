@@ -25,7 +25,7 @@ QVariant EventStreamModel::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> EventStreamModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         {IdRole, "id"},
         {KindRole, "kind"},
         {TimestampRole, "timestamp"},
@@ -38,6 +38,7 @@ QHash<int, QByteArray> EventStreamModel::roleNames() const
         {TestFormatRole, "testFormat"},
         {TestFormatNameRole, "testFormatName"},
     };
+    return roles;
 }
 
 QVariantMap EventStreamModel::rowAt(int row) const
