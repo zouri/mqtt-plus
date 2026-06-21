@@ -18,13 +18,13 @@ class ScriptLibraryModel : public QAbstractListModel
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    enum Role {
+    enum Role : int {
         IdRole = Qt::UserRole + 1,
         NameRole,
         DescriptionRole,
         CodeRole,
         UpdatedAtRole,
-        FilePathRole
+        FilePathRole,
     };
     Q_ENUM(Role)
 

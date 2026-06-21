@@ -30,7 +30,7 @@ class SubscriptionListModel : public QAbstractListModel
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    enum Role {
+    enum Role : int {
         TopicRole = Qt::UserRole + 1,
         AliasRole,
         DisplayNameRole,
@@ -43,7 +43,7 @@ public:
         ScriptNameRole,
         PausedRole,
         StateRole,
-        LastErrorRole
+        LastErrorRole,
     };
     Q_ENUM(Role)
 

@@ -24,7 +24,7 @@ class SessionListModel : public QAbstractListModel
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    enum Role {
+    enum Role : int {
         IdRole = Qt::UserRole + 1,
         NameRole,
         StateRole,
@@ -36,7 +36,7 @@ public:
         ProtocolVersionRole,
         ProtocolVersionNameRole,
         SummaryRole,
-        LastErrorRole
+        LastErrorRole,
     };
     Q_ENUM(Role)
 

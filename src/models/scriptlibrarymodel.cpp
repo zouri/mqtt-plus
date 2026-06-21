@@ -42,7 +42,7 @@ QVariant ScriptLibraryModel::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> ScriptLibraryModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         {IdRole, "id"},
         {NameRole, "name"},
         {DescriptionRole, "description"},
@@ -50,6 +50,7 @@ QHash<int, QByteArray> ScriptLibraryModel::roleNames() const
         {UpdatedAtRole, "updatedAt"},
         {FilePathRole, "filePath"},
     };
+    return roles;
 }
 
 QVariantMap ScriptLibraryModel::rowAt(int row) const
