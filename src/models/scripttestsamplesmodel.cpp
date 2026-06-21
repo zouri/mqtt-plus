@@ -42,7 +42,7 @@ QVariant ScriptTestSamplesModel::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> ScriptTestSamplesModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         {TopicRole, "topic"},
         {PayloadRole, "payload"},
         {FormatRole, "format"},
@@ -50,6 +50,7 @@ QHash<int, QByteArray> ScriptTestSamplesModel::roleNames() const
         {TimestampRole, "timestamp"},
         {PayloadSizeRole, "payloadSize"},
     };
+    return roles;
 }
 
 QVariantMap ScriptTestSamplesModel::rowAt(int row) const

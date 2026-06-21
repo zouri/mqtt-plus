@@ -120,7 +120,7 @@ QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
 
 QHash<int, QByteArray> SubscriptionListModel::roleNames() const
 {
-    return {
+    static const QHash<int, QByteArray> roles = {
         {TopicRole, "topic"},
         {AliasRole, "alias"},
         {DisplayNameRole, "displayName"},
@@ -135,6 +135,7 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
         {StateRole, "subscriptionState"},
         {LastErrorRole, "lastError"},
     };
+    return roles;
 }
 
 QVariantMap SubscriptionListModel::rowAt(int row) const

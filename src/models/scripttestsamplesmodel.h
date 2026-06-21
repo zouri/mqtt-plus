@@ -18,13 +18,13 @@ class ScriptTestSamplesModel : public QAbstractListModel
     Q_PROPERTY(int count READ count NOTIFY countChanged)
 
 public:
-    enum Role {
+    enum Role : int {
         TopicRole = Qt::UserRole + 1,
         PayloadRole,
         FormatRole,
         FormatNameRole,
         TimestampRole,
-        PayloadSizeRole
+        PayloadSizeRole,
     };
     Q_ENUM(Role)
 
