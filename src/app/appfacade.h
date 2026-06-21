@@ -65,6 +65,9 @@ class AppFacade : public QObject
     Q_PROPERTY(bool saveMessagesWhenOutputPaused READ saveMessagesWhenOutputPaused WRITE setSaveMessagesWhenOutputPaused NOTIFY saveMessagesWhenOutputPausedChanged)
     Q_PROPERTY(QString clearMessagesOnExit READ clearMessagesOnExit WRITE setClearMessagesOnExit NOTIFY clearMessagesOnExitChanged)
     Q_PROPERTY(QString clearLogsOnExit READ clearLogsOnExit WRITE setClearLogsOnExit NOTIFY clearLogsOnExitChanged)
+    Q_PROPERTY(int windowWidth READ windowWidth NOTIFY windowWidthChanged)
+    Q_PROPERTY(int windowHeight READ windowHeight NOTIFY windowHeightChanged)
+    Q_PROPERTY(bool windowMaximized READ windowMaximized WRITE setWindowMaximized NOTIFY windowMaximizedChanged)
 
 public:
     explicit AppFacade(QObject *parent = nullptr);
@@ -95,6 +98,9 @@ public:
     bool saveMessagesWhenOutputPaused() const;
     QString clearMessagesOnExit() const;
     QString clearLogsOnExit() const;
+    int windowWidth() const;
+    int windowHeight() const;
+    bool windowMaximized() const;
 
     void setCurrentSessionIndex(int index);
     void setThemeMode(const QString &mode);
@@ -107,6 +113,7 @@ public:
     void setSaveMessagesWhenOutputPaused(bool enabled);
     void setClearMessagesOnExit(const QString &mode);
     void setClearLogsOnExit(const QString &mode);
+    void setWindowMaximized(bool maximized);
 
     Q_INVOKABLE QVariantMap defaultSessionConfig() const;
     Q_INVOKABLE QVariantMap sessionConfigAt(int index) const;
@@ -157,6 +164,7 @@ public:
         const QString &topic,
         const QString &payload,
         int format = 0) const;
+    Q_INVOKABLE void saveWindowGeometry(int width, int height);
 
 signals:
     void sessionsChanged();
@@ -181,6 +189,9 @@ signals:
     void saveMessagesWhenOutputPausedChanged();
     void clearMessagesOnExitChanged();
     void clearLogsOnExitChanged();
+    void windowWidthChanged();
+    void windowHeightChanged();
+    void windowMaximizedChanged();
 
 private:
     SessionState *currentSessionState();

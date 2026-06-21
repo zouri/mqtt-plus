@@ -54,6 +54,9 @@ AppFacade::AppFacade(QObject *parent)
     connect(&m_preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, this, &AppFacade::saveMessagesWhenOutputPausedChanged);
     connect(&m_preferencesController, &PreferencesController::clearMessagesOnExitChanged, this, &AppFacade::clearMessagesOnExitChanged);
     connect(&m_preferencesController, &PreferencesController::clearLogsOnExitChanged, this, &AppFacade::clearLogsOnExitChanged);
+    connect(&m_preferencesController, &PreferencesController::windowWidthChanged, this, &AppFacade::windowWidthChanged);
+    connect(&m_preferencesController, &PreferencesController::windowHeightChanged, this, &AppFacade::windowHeightChanged);
+    connect(&m_preferencesController, &PreferencesController::windowMaximizedChanged, this, &AppFacade::windowMaximizedChanged);
 
     m_subscriptionFpsRefreshTimer.setInterval(kSubscriptionFpsRefreshIntervalMs);
     connect(

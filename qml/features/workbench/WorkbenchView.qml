@@ -13,7 +13,10 @@ Item {
     readonly property var session: root.appController.currentSession
     readonly property var status: root.appController.sessionStatus
     readonly property int expandedConnectionPaneWidth: 248
-    readonly property int subscriptionPaneWidth: 360
+    readonly property int subscriptionPaneMinWidth: 280
+    readonly property int subscriptionPaneMaxWidth: 520
+    property int subscriptionPaneWidth: 360
+    property real subscriptionPaneDragBaseWidth: subscriptionPaneWidth
     property string pendingSessionEditorMode: ""
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
@@ -171,6 +174,52 @@ Item {
                     ui: root.ui
                     appController: root.appController
                     addSubscriptionDialog: addSubscriptionDialogBridge
+                }
+            }
+        }
+
+        Item {
+            id: subscriptionResizeHandle
+            Layout.preferredWidth: 10
+            Layout.minimumWidth: 10
+            Layout.maximumWidth: 10
+            Layout.fillHeight: true
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 2
+                radius: 1
+                color: resizeMouse.containsMouse || subscriptionResizeDrag.active
+                       ? root.ui.themePalette.selectedBorder
+                       : root.ui.themePalette.separator
+            }
+
+            MouseArea {
+                id: resizeMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.SplitHCursor
+            }
+
+            DragHandler {
+                id: subscriptionResizeDrag
+                target: null
+                yAxis.enabled: false
+
+                onActiveChanged: {
+                    if (active) {
+                        root.subscriptionPaneDragBaseWidth = root.subscriptionPaneWidth
+                    }
+                }
+
+                onTranslationChanged: {
+                    root.subscriptionPaneWidth = Math.max(
+                        root.subscriptionPaneMinWidth,
+                        Math.min(
+                            root.subscriptionPaneMaxWidth,
+                            Math.round(root.subscriptionPaneDragBaseWidth + translation.x)))
                 }
             }
         }

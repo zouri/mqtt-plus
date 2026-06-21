@@ -24,6 +24,7 @@ AppPanel {
     readonly property var sessionStatus: control.appController ? control.appController.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
     readonly property bool hasFilter: control.filterText.trim().length > 0 || control.filterMode !== "all"
+    showRightBorder: false
 
     Layout.fillWidth: true
     Layout.fillHeight: true
