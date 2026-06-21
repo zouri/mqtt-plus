@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 Item {
@@ -16,7 +17,6 @@ Item {
     readonly property int subscriptionPaneMinWidth: 280
     readonly property int subscriptionPaneMaxWidth: 520
     property int subscriptionPaneWidth: 360
-    property real subscriptionPaneDragBaseWidth: subscriptionPaneWidth
     property string pendingSessionEditorMode: ""
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
@@ -150,88 +150,70 @@ Item {
             onExpandRequested: root.connectionPaneCollapsed = false
         }
 
-        Rectangle {
-            Layout.preferredWidth: root.subscriptionPaneWidth
-            Layout.maximumWidth: root.subscriptionPaneWidth
-            Layout.minimumWidth: root.subscriptionPaneWidth
+        SplitView {
+            id: workbenchSplit
+
+            Layout.fillWidth: true
             Layout.fillHeight: true
-            color: root.ui.themePalette.windowBg
+            orientation: Qt.Horizontal
 
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: 0
+            handle: Item {
+                implicitWidth: workbenchSplit.orientation === Qt.Horizontal ? 1 : workbenchSplit.width
+                implicitHeight: workbenchSplit.orientation === Qt.Horizontal ? workbenchSplit.height : 1
 
-                SessionOverviewPanel {
-                    ui: root.ui
-                    session: root.session
-                    status: root.status
-                    appController: root.appController
-                    sessionEditor: sessionEditorBridge
+                Rectangle {
+                    anchors.fill: parent
+                    color: splitHandleHover.hovered || SplitHandle.hovered || SplitHandle.pressed
+                           ? root.ui.themePalette.selectedBorder
+                           : root.ui.panelBorder
                 }
 
-                SubscriptionsPanel {
-                    id: subscriptionsPanel
-                    ui: root.ui
-                    appController: root.appController
-                    addSubscriptionDialog: addSubscriptionDialogBridge
+                HoverHandler {
+                    id: splitHandleHover
+                    margin: 5
+                    cursorShape: Qt.SplitHCursor
                 }
             }
-        }
-
-        Item {
-            id: subscriptionResizeHandle
-            Layout.preferredWidth: 10
-            Layout.minimumWidth: 10
-            Layout.maximumWidth: 10
-            Layout.fillHeight: true
 
             Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 2
-                radius: 1
-                color: resizeMouse.containsMouse || subscriptionResizeDrag.active
-                       ? root.ui.themePalette.selectedBorder
-                       : root.ui.themePalette.separator
-            }
+                SplitView.preferredWidth: root.subscriptionPaneWidth
+                SplitView.minimumWidth: root.subscriptionPaneMinWidth
+                SplitView.maximumWidth: root.subscriptionPaneMaxWidth
+                SplitView.fillHeight: true
+                color: root.ui.themePalette.windowBg
 
-            MouseArea {
-                id: resizeMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.SplitHCursor
-            }
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 0
 
-            DragHandler {
-                id: subscriptionResizeDrag
-                target: null
-                yAxis.enabled: false
+                    SessionOverviewPanel {
+                        ui: root.ui
+                        session: root.session
+                        status: root.status
+                        appController: root.appController
+                        sessionEditor: sessionEditorBridge
+                    }
 
-                onActiveChanged: {
-                    if (active) {
-                        root.subscriptionPaneDragBaseWidth = root.subscriptionPaneWidth
+                    SubscriptionsPanel {
+                        id: subscriptionsPanel
+                        ui: root.ui
+                        appController: root.appController
+                        addSubscriptionDialog: addSubscriptionDialogBridge
                     }
                 }
-
-                onTranslationChanged: {
-                    root.subscriptionPaneWidth = Math.max(
-                        root.subscriptionPaneMinWidth,
-                        Math.min(
-                            root.subscriptionPaneMaxWidth,
-                            Math.round(root.subscriptionPaneDragBaseWidth + translation.x)))
-                }
             }
-        }
 
-        SessionActivityPanel {
-            id: sessionActivityPanel
-            ui: root.ui
-            appController: root.appController
-            session: root.session
-            status: root.status
-            publishStatus: root.appController.publishStatus
-            fontFamily: root.fontFamily
+            SessionActivityPanel {
+                id: sessionActivityPanel
+                ui: root.ui
+                appController: root.appController
+                session: root.session
+                status: root.status
+                publishStatus: root.appController.publishStatus
+                fontFamily: root.fontFamily
+                SplitView.fillWidth: true
+                SplitView.fillHeight: true
+            }
         }
     }
 
