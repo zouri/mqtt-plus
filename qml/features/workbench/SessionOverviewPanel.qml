@@ -10,7 +10,7 @@ AppPanel {
 
     required property var session
     required property var status
-    required property var appController
+    required property var workbench
     required property var sessionEditor
 
     readonly property bool canDisconnect: control.status.state === "connected"
@@ -92,7 +92,7 @@ AppPanel {
                 outlineColor: control.ui.themePalette.innerPanelBorder
                 symbolColor: control.ui.themePalette.infoText
                 accessibleName: qsTr("Edit connection")
-                onClicked: control.sessionEditor.openForEdit(control.appController.currentSessionIndex)
+                onClicked: control.sessionEditor.openForEdit(control.workbench.currentSessionIndex)
             }
 
             AppIconButton {
@@ -109,9 +109,9 @@ AppPanel {
 
                 onClicked: {
                     if (control.canDisconnect) {
-                        control.appController.disconnectCurrentSession()
+                        control.workbench.disconnectCurrentSession()
                     } else {
-                        control.appController.connectCurrentSession()
+                        control.workbench.connectCurrentSession()
                     }
                 }
             }

@@ -8,7 +8,7 @@ import "../../components"
 Item {
     id: root
 
-    required property var appController
+    required property var workbench
     required property var publishStatus
     required property var status
     required property var ui
@@ -78,7 +78,7 @@ Item {
         }
 
         const draft = root.draftFromFields()
-        root.appController.publishCurrentSession(
+        root.workbench.publishCurrentSession(
                     draft.topic,
                     draft.payload,
                     draft.format,
@@ -247,7 +247,7 @@ Item {
                         AppComboBox {
                             ui: root.ui
                             id: publishFormatBox
-                            model: root.appController.payloadFormats
+                            model: root.workbench.payloadFormats
                             currentIndex: 1
                             Layout.fillWidth: true
                         }

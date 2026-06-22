@@ -9,46 +9,6 @@
 
 using namespace AppFacadeUtils;
 
-void AppFacade::setCurrentSessionIndex(int index)
-{
-    m_sessionController.setCurrentSessionIndex(index);
-}
-
-QVariantMap AppFacade::defaultSessionConfig() const
-{
-    return m_sessionController.defaultSessionConfig();
-}
-
-QVariantMap AppFacade::sessionConfigAt(int index) const
-{
-    return m_sessionController.sessionConfigAt(index);
-}
-
-bool AppFacade::updateSessionConfigAt(int index, const QVariantMap &config)
-{
-    return m_sessionController.updateSessionConfigAt(index, config);
-}
-
-void AppFacade::addSessionWithConfig(const QVariantMap &config)
-{
-    m_sessionController.addSessionWithConfig(config);
-}
-
-void AppFacade::duplicateSessionAt(int index)
-{
-    m_sessionController.duplicateSessionAt(index);
-}
-
-void AppFacade::removeSessionAt(int index)
-{
-    m_sessionController.removeSessionAt(index);
-}
-
-void AppFacade::setCurrentOutputPaused(bool paused)
-{
-    m_sessionController.setCurrentOutputPaused(paused);
-}
-
 SessionState *AppFacade::currentSessionState()
 {
     return m_sessionController.currentSession();

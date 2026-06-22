@@ -10,7 +10,7 @@ Rectangle {
     id: control
 
     required property AppUi ui
-    required property var appController
+    required property var workbench
     required property var sessionEditor
     property bool collapsed: false
 
@@ -70,8 +70,8 @@ Rectangle {
             Layout.fillHeight: true
             clip: true
             spacing: 8
-            currentIndex: control.appController.currentSessionIndex
-            model: control.appController.sessions
+            currentIndex: control.workbench.currentSessionIndex
+            model: control.workbench.sessions
             reuseItems: true
 
             ScrollBar.vertical: ScrollBar {
@@ -86,7 +86,7 @@ Rectangle {
                 required property string host
                 required property int port
                 required property string transportLabel
-                readonly property bool selected: index === control.appController.currentSessionIndex
+                readonly property bool selected: index === control.workbench.currentSessionIndex
                 width: ListView.view.width
                 height: 54
                 radius: control.ui.innerRadius
@@ -98,22 +98,22 @@ Rectangle {
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
 
                 function showSessionContextMenu(globalPosition) {
-                    const action = control.appController.showSessionContextMenu(sessionDelegate.index, globalPosition);
+                    const action = control.workbench.showSessionContextMenu(sessionDelegate.index, globalPosition);
                     if (action === "edit") {
                         control.sessionEditor.openForEdit(sessionDelegate.index);
                     } else if (action === "copy") {
-                        control.appController.duplicateSessionAt(sessionDelegate.index);
+                        control.workbench.duplicateSessionAt(sessionDelegate.index);
                     } else if (action === "delete") {
-                        control.appController.removeSessionAt(sessionDelegate.index);
+                        control.workbench.removeSessionAt(sessionDelegate.index);
                     }
                 }
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
-                        control.appController.currentSessionIndex = sessionDelegate.index;
+                        control.workbench.currentSessionIndex = sessionDelegate.index;
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
-                        control.appController.currentSessionIndex = sessionDelegate.index;
+                        control.workbench.currentSessionIndex = sessionDelegate.index;
                         sessionDelegate.showSessionContextMenu(sessionDelegate.mapToGlobal(Qt.point(sessionDelegate.width - 8, Math.round(sessionDelegate.height / 2))));
                         event.accepted = true;
                     }
@@ -172,14 +172,14 @@ Rectangle {
                     onPressed: mouse => {
                         sessionDelegate.forceActiveFocus();
                         if (mouse.button === Qt.RightButton) {
-                            control.appController.currentSessionIndex = sessionDelegate.index;
+                            control.workbench.currentSessionIndex = sessionDelegate.index;
                             sessionDelegate.showSessionContextMenu(sessionDelegate.mapToGlobal(Qt.point(mouse.x, mouse.y)));
                         }
                     }
 
                     onClicked: mouse => {
                         if (mouse.button === Qt.LeftButton) {
-                            control.appController.currentSessionIndex = sessionDelegate.index;
+                            control.workbench.currentSessionIndex = sessionDelegate.index;
                         }
                     }
                 }

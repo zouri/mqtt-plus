@@ -9,7 +9,7 @@ Rectangle {
     id: root
 
     required property AppUi ui
-    required property var appController
+    required property var settings
 
     readonly property var themeValues: ["system", "light", "dark"]
     readonly property var themeLabels: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
@@ -212,8 +212,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 150
                             model: root.themeLabels
-                            currentIndex: root.optionIndex(root.themeValues, root.appController.themeMode)
-                            onActivated: (index) => root.appController.themeMode = root.optionValue(root.themeValues, index)
+                            currentIndex: root.optionIndex(root.themeValues, root.settings.themeMode)
+                            onActivated: (index) => root.settings.themeMode = root.optionValue(root.themeValues, index)
                         }
                     }
 
@@ -227,8 +227,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 170
                             model: root.languageLabels
-                            currentIndex: root.optionIndex(root.languageValues, root.appController.languageMode)
-                            onActivated: (index) => root.appController.languageMode = root.optionValue(root.languageValues, index)
+                            currentIndex: root.optionIndex(root.languageValues, root.settings.languageMode)
+                            onActivated: (index) => root.settings.languageMode = root.optionValue(root.languageValues, index)
                         }
                     }
                 }
@@ -248,8 +248,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 170
                             model: root.messageRetentionLabels
-                            currentIndex: root.optionIndex(root.retentionValues, root.appController.messageRetentionLimit)
-                            onActivated: (index) => root.appController.messageRetentionLimit = root.optionValue(root.retentionValues, index)
+                            currentIndex: root.optionIndex(root.retentionValues, root.settings.messageRetentionLimit)
+                            onActivated: (index) => root.settings.messageRetentionLimit = root.optionValue(root.retentionValues, index)
                         }
                     }
 
@@ -262,8 +262,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 150
                             model: root.logRetentionLabels
-                            currentIndex: root.optionIndex(root.logRetentionValues, root.appController.logRetentionLimit)
-                            onActivated: (index) => root.appController.logRetentionLimit = root.optionValue(root.logRetentionValues, index)
+                            currentIndex: root.optionIndex(root.logRetentionValues, root.settings.logRetentionLimit)
+                            onActivated: (index) => root.settings.logRetentionLimit = root.optionValue(root.logRetentionValues, index)
                         }
                     }
 
@@ -276,8 +276,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 130
                             model: root.pageSizeLabels
-                            currentIndex: root.optionIndex(root.pageSizeValues, root.appController.historyPageSize)
-                            onActivated: (index) => root.appController.historyPageSize = root.optionValue(root.pageSizeValues, index)
+                            currentIndex: root.optionIndex(root.pageSizeValues, root.settings.historyPageSize)
+                            onActivated: (index) => root.settings.historyPageSize = root.optionValue(root.pageSizeValues, index)
                         }
                     }
 
@@ -290,8 +290,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 130
                             model: root.payloadLimitLabels
-                            currentIndex: root.optionIndex(root.payloadLimitValues, root.appController.maxIncomingPayloadBytes)
-                            onActivated: (index) => root.appController.maxIncomingPayloadBytes = root.optionValue(root.payloadLimitValues, index)
+                            currentIndex: root.optionIndex(root.payloadLimitValues, root.settings.maxIncomingPayloadBytes)
+                            onActivated: (index) => root.settings.maxIncomingPayloadBytes = root.optionValue(root.payloadLimitValues, index)
                         }
                     }
 
@@ -304,8 +304,8 @@ Rectangle {
                         AppCheckBox {
                             ui: root.ui
                             text: qsTr("Enabled")
-                            checked: root.appController.deleteHistoryWithSession
-                            onToggled: root.appController.deleteHistoryWithSession = checked
+                            checked: root.settings.deleteHistoryWithSession
+                            onToggled: root.settings.deleteHistoryWithSession = checked
                         }
                     }
                 }
@@ -325,8 +325,8 @@ Rectangle {
                         AppCheckBox {
                             ui: root.ui
                             text: qsTr("Enabled")
-                            checked: root.appController.saveMessagesWhenOutputPaused
-                            onToggled: root.appController.saveMessagesWhenOutputPaused = checked
+                            checked: root.settings.saveMessagesWhenOutputPaused
+                            onToggled: root.settings.saveMessagesWhenOutputPaused = checked
                         }
                     }
                 }
@@ -346,8 +346,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 150
                             model: root.cleanupLabels
-                            currentIndex: root.optionIndex(root.cleanupValues, root.appController.clearMessagesOnExit)
-                            onActivated: (index) => root.appController.clearMessagesOnExit = root.optionValue(root.cleanupValues, index)
+                            currentIndex: root.optionIndex(root.cleanupValues, root.settings.clearMessagesOnExit)
+                            onActivated: (index) => root.settings.clearMessagesOnExit = root.optionValue(root.cleanupValues, index)
                         }
                     }
 
@@ -360,8 +360,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 150
                             model: root.cleanupLabels
-                            currentIndex: root.optionIndex(root.cleanupValues, root.appController.clearLogsOnExit)
-                            onActivated: (index) => root.appController.clearLogsOnExit = root.optionValue(root.cleanupValues, index)
+                            currentIndex: root.optionIndex(root.cleanupValues, root.settings.clearLogsOnExit)
+                            onActivated: (index) => root.settings.clearLogsOnExit = root.optionValue(root.cleanupValues, index)
                         }
                     }
 
@@ -375,14 +375,14 @@ Rectangle {
                             ui: root.ui
                             text: qsTr("Messages")
                             minimumWidth: 96
-                            onClicked: root.appController.clearAllMessages()
+                            onClicked: root.settings.clearAllMessages()
                         }
 
                         AppButton {
                             ui: root.ui
                             text: qsTr("Logs")
                             minimumWidth: 74
-                            onClicked: root.appController.clearAllLogs()
+                            onClicked: root.settings.clearAllLogs()
                         }
 
                         AppButton {
@@ -390,7 +390,7 @@ Rectangle {
                             text: qsTr("All")
                             danger: true
                             minimumWidth: 70
-                            onClicked: root.appController.clearAllHistory()
+                            onClicked: root.settings.clearAllHistory()
                         }
                     }
                 }

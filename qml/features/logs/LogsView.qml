@@ -8,7 +8,7 @@ import "../../components"
 AppPanel {
     id: root
 
-    required property var appController
+    required property var logStream
     property bool loadingOlderLogs: false
     property bool reachedLogStart: false
     property bool shouldFollowOutput: true
@@ -57,7 +57,7 @@ AppPanel {
     }
 
     function renderedLogText() {
-        const model = root.appController.logs
+        const model = root.logStream.logs
         const rowCount = model ? model.count : 0
         let rows = []
         for (let i = 0; i < rowCount; ++i) {
@@ -108,7 +108,7 @@ AppPanel {
         root.loadingOlderLogs = true
         const previousContentHeight = logTextArea.contentHeight
         const previousContentY = logTextArea.contentY
-        const insertedRows = root.appController.loadOlderCurrentSessionLogs()
+        const insertedRows = root.logStream.loadOlderCurrentSessionLogs()
         if (insertedRows === 0) {
             root.reachedLogStart = true
             root.loadingOlderLogs = false
@@ -125,7 +125,7 @@ AppPanel {
     Component.onCompleted: root.resetStreamPosition()
 
     Connections {
-        target: root.appController
+        target: root.logStream
 
         function onLogStreamChanged() {
             root.resetStreamPosition()
@@ -137,7 +137,7 @@ AppPanel {
     }
 
     Connections {
-        target: root.appController.logs
+        target: root.logStream.logs
 
         function onCountChanged() {
             if (!root.loadingOlderLogs) {
@@ -170,7 +170,7 @@ AppPanel {
 
                 AppBadge {
                     ui: root.ui
-                    label: `${root.appController.logs.count}`
+                    label: `${root.logStream.logs.count}`
                     badgeRadius: 11
                     horizontalPadding: 8
                     verticalPadding: 4
@@ -187,8 +187,8 @@ AppPanel {
                     ui: root.ui
                     text: qsTr("Clear Log")
                     minimumWidth: 88
-                    enabled: root.appController.logs.count > 0
-                    onClicked: root.appController.clearCurrentLogs()
+                    enabled: root.logStream.logs.count > 0
+                    onClicked: root.logStream.clearCurrentLogs()
                 }
             }
 

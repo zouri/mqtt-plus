@@ -1,19 +1,34 @@
 #pragma once
 
 #include <QObject>
+#include <QByteArray>
 #include <QSslConfiguration>
 #include <QString>
+#include <functional>
 
 #include "domain/session.h"
-
-class AppFacade;
 
 class MqttController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit MqttController(AppFacade *app, QObject *parent = nullptr);
+    struct Dependencies
+    {
+        std::function<SessionState *()> currentSession;
+        std::function<SessionState *(const QString &)> sessionById;
+        std::function<void(SessionState &, const QString &, const QString &)> appendEvent;
+        std::function<void(SessionState &, bool)> restoreActiveSubscriptions;
+        std::function<void(SessionState &)> resetRuntimeSubscriptions;
+        std::function<void(const QString &, const QString &, const QByteArray &)> appendIncomingMessage;
+        std::function<void()> notifySessionViewsChanged;
+        std::function<void()> notifyCurrentSessionViewsChanged;
+        std::function<void()> notifySessionAndSubscriptionViewsChanged;
+    };
+
+    explicit MqttController(QObject *parent = nullptr);
+
+    void setDependencies(Dependencies dependencies);
 
     void connectCurrentSession();
     void disconnectCurrentSession();
@@ -33,5 +48,5 @@ public:
         qint32 messageId = -1);
 
 private:
-    AppFacade &m_app;
+    Dependencies m_dependencies;
 };

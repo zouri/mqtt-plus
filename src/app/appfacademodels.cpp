@@ -8,39 +8,24 @@
 
 using namespace AppFacadeUtils;
 
-SessionListModel *AppFacade::sessions()
+WorkbenchFacade *AppFacade::workbench()
 {
-    return &m_sessionsModel;
+    return m_workbenchFacade.get();
 }
 
-SubscriptionListModel *AppFacade::subscriptions()
+AppSettingsFacade *AppFacade::settings()
 {
-    return &m_subscriptionsModel;
+    return m_settingsFacade.get();
 }
 
-SubscriptionFilterModel *AppFacade::filteredSubscriptions()
+ScriptLibraryFacade *AppFacade::scriptLibrary()
 {
-    return &m_filteredSubscriptionsModel;
+    return m_scriptLibraryFacade.get();
 }
 
-EventStreamModel *AppFacade::messages()
+LogStreamFacade *AppFacade::logStream()
 {
-    return &m_messagesModel;
-}
-
-EventStreamModel *AppFacade::logs()
-{
-    return &m_logsModel;
-}
-
-ScriptLibraryModel *AppFacade::scripts()
-{
-    return &m_scriptsModel;
-}
-
-ScriptTestSamplesModel *AppFacade::scriptTestSamples()
-{
-    return &m_scriptTestSamplesModel;
+    return m_logStreamFacade.get();
 }
 
 void AppFacade::refreshSessionsModel()
@@ -66,82 +51,6 @@ void AppFacade::refreshSessionsModel()
         rows.append(row);
     }
     m_sessionsModel.setRows(rows);
-}
-
-int AppFacade::currentSessionIndex() const
-{
-    return m_sessionController.currentIndex();
-}
-
-QVariantMap AppFacade::currentSession() const
-{
-    const auto *session = currentSessionState();
-    if (!session) {
-        return {};
-    }
-
-    QVariantMap row;
-    const auto *client = session->client;
-    row.insert(QStringLiteral("id"), session->id);
-    row.insert(QStringLiteral("name"), session->name);
-    row.insert(QStringLiteral("host"), client ? client->hostname() : QString());
-    row.insert(QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort);
-    row.insert(QStringLiteral("transport"), session->transport);
-    row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
-    row.insert(QStringLiteral("protocolVersion"), session->protocolVersion);
-    row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
-    row.insert(QStringLiteral("clientId"), client ? client->clientId() : QString());
-    row.insert(QStringLiteral("username"), client ? client->username() : QString());
-    row.insert(QStringLiteral("cleanSession"), client ? client->cleanSession() : true);
-    row.insert(QStringLiteral("keepAliveSeconds"), client ? client->keepAlive() : SessionConfig::kDefaultKeepAlive);
-    row.insert(QStringLiteral("outputPaused"), session->outputPaused);
-    row.insert(QStringLiteral("subscriptionCount"), session->subscriptions.size());
-    return row;
-}
-
-QVariantMap AppFacade::sessionStatus() const
-{
-    const auto *session = currentSessionState();
-    if (!session) {
-        return {};
-    }
-
-    const auto *client = session->client;
-    const QString state = sessionStateName(*session, client);
-    QString summary;
-    if (state == QStringLiteral("connected")) {
-        summary = tr("%1 • %2:%3 • %4")
-                      .arg(protocolVersionLabel(session->protocolVersion))
-                      .arg(client ? client->hostname() : QString())
-                      .arg(client ? client->port() : SessionConfig::kDefaultPort)
-                      .arg(transportLabel(session->transport));
-        if (session->sessionRestored) {
-            summary.append(tr(" • session restored"));
-        }
-    } else if (state == QStringLiteral("connecting")) {
-        summary = tr("Connecting to %1:%2 over %3")
-                      .arg(client ? client->hostname() : QString())
-                      .arg(client ? client->port() : SessionConfig::kDefaultPort)
-                      .arg(transportLabel(session->transport));
-    } else if (state == QStringLiteral("disconnecting")) {
-        summary = tr("Disconnecting from broker");
-    } else if (!session->lastError.isEmpty()) {
-        summary = session->lastError;
-    } else {
-        summary = tr("Disconnected");
-    }
-
-    QVariantMap row;
-    row.insert(QStringLiteral("state"), state);
-    row.insert(QStringLiteral("connected"), state == QStringLiteral("connected"));
-    row.insert(QStringLiteral("summary"), summary);
-    row.insert(QStringLiteral("lastError"), session->lastError);
-    row.insert(QStringLiteral("hasError"), !session->lastError.isEmpty());
-    row.insert(QStringLiteral("brokerInfo"), session->brokerInfo);
-    row.insert(QStringLiteral("sessionRestored"), session->sessionRestored);
-    row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
-    row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
-    return row;
 }
 
 void AppFacade::refreshSubscriptionsModel()
@@ -173,21 +82,6 @@ void AppFacade::refreshSubscriptionsModel()
         rows.append(row);
     }
     m_subscriptionsModel.setRows(rows);
-}
-
-QVariantMap AppFacade::publishStatus() const
-{
-    const auto *session = currentSessionState();
-    QVariantMap status = session ? session->publishStatus : defaultPublishStatus();
-    status.insert(
-        QStringLiteral("updatedAt"),
-        displayTimestamp(status.value(QStringLiteral("updatedAt")).toString()));
-    return status;
-}
-
-QStringList AppFacade::payloadFormats() const
-{
-    return PayloadCodec::formatNames();
 }
 
 void AppFacade::refreshScriptsModel()
@@ -235,29 +129,4 @@ void AppFacade::refreshScriptTestSamplesModel()
     }
 
     m_scriptTestSamplesModel.setRows(rows);
-}
-
-QString AppFacade::themeMode() const
-{
-    return m_themeController.mode();
-}
-
-QString AppFacade::effectiveTheme() const
-{
-    return m_themeController.effectiveTheme();
-}
-
-QString AppFacade::languageMode() const
-{
-    return m_languageController.mode();
-}
-
-QString AppFacade::effectiveLanguage() const
-{
-    return m_languageController.effectiveLanguage();
-}
-
-QVariantList AppFacade::availableLanguages() const
-{
-    return m_languageController.availableLanguages();
 }

@@ -7,7 +7,7 @@ import "../../components"
 AppPanel {
     id: root
 
-    required property var appController
+    required property var workbench
     required property var session
     required property var status
     required property var publishStatus
@@ -33,13 +33,13 @@ AppPanel {
         EventStreamView {
             id: eventStreamView
             ui: root.ui
-            appController: root.appController
-            streamModel: root.appController.messages
+            workbench: root.workbench
+            streamModel: root.workbench.messages
             loadOlderRows: function () {
-                return root.appController.loadOlderCurrentSessionMessages();
+                return root.workbench.loadOlderCurrentSessionMessages();
             }
             clearRows: function () {
-                root.appController.clearCurrentMessages();
+                root.workbench.clearCurrentMessages();
             }
             session: root.session
             fontFamily: root.fontFamily
@@ -53,7 +53,7 @@ AppPanel {
         PublishComposer {
             id: publishComposer
             ui: root.ui
-            appController: root.appController
+            workbench: root.workbench
             publishStatus: root.publishStatus
             status: root.status
         }

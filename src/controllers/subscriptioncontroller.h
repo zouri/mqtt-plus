@@ -2,18 +2,36 @@
 
 #include "domain/session.h"
 #include "domain/subscription.h"
+#include "models/subscriptionlistmodel.h"
 
 #include <QObject>
 #include <QMqttSubscription>
-
-class AppFacade;
+#include <QVector>
+#include <functional>
 
 class SubscriptionController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit SubscriptionController(AppFacade *app, QObject *parent = nullptr);
+    struct Dependencies
+    {
+        std::function<SessionState *()> currentSession;
+        std::function<SessionState *(const QString &)> sessionById;
+        std::function<void(SessionState &, const QString &, const QString &)> appendEvent;
+        std::function<bool(const QString &)> scriptExists;
+        std::function<bool()> saveSessions;
+        std::function<void()> notifySessionAndSubscriptionViewsChanged;
+        std::function<void()> notifyCurrentSessionAndSubscriptionsChanged;
+        std::function<void()> refreshSubscriptionsModel;
+        std::function<void()> emitSubscriptionsChanged;
+        std::function<void(bool)> setSubscriptionFpsRefreshActive;
+        std::function<void(const QVector<SubscriptionFpsRow> &)> setTopicFpsRows;
+    };
+
+    explicit SubscriptionController(QObject *parent = nullptr);
+
+    void setDependencies(Dependencies dependencies);
 
     bool upsertCurrentSubscription(
         const QString &topic,
@@ -47,5 +65,5 @@ private:
         const QPointer<QMqttSubscription> &subscription,
         QMqttSubscription::SubscriptionState state);
 
-    AppFacade &m_app;
+    Dependencies m_dependencies;
 };

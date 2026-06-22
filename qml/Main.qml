@@ -48,15 +48,15 @@ ApplicationWindow {
             return
         }
 
-        root.appController.saveWindowGeometry(root.width, root.height)
+        root.settings.saveWindowGeometry(root.width, root.height)
     }
 
     function restoreWindowGeometry() {
-        root.width = root.clampWindowWidth(root.appController.windowWidth)
-        root.height = root.clampWindowHeight(root.appController.windowHeight)
+        root.width = root.clampWindowWidth(root.settings.windowWidth)
+        root.height = root.clampWindowHeight(root.settings.windowHeight)
         root.windowGeometryReady = true
 
-        if (root.appController.windowMaximized) {
+        if (root.settings.windowMaximized) {
             Qt.callLater(function() {
                 root.showMaximized()
             })
@@ -71,7 +71,7 @@ ApplicationWindow {
             return
         }
 
-        root.appController.windowMaximized = root.visibility === Window.Maximized
+        root.settings.windowMaximized = root.visibility === Window.Maximized
         if (root.visibility === Window.Windowed) {
             windowGeometrySaveTimer.restart()
         }
@@ -79,7 +79,7 @@ ApplicationWindow {
     onClosing: function() {
         windowGeometrySaveTimer.stop()
         root.persistWindowGeometry()
-        root.appController.windowMaximized = root.visibility === Window.Maximized
+        root.settings.windowMaximized = root.visibility === Window.Maximized
     }
 
     Timer {
@@ -91,7 +91,7 @@ ApplicationWindow {
 
     AppUi {
         id: ui
-        isDarkTheme: root.appController.effectiveTheme === "dark"
+        isDarkTheme: root.settings.effectiveTheme === "dark"
     }
 
     Material.theme: ui.materialTheme
@@ -103,7 +103,10 @@ ApplicationWindow {
         color: ui.themePalette.windowBg
     }
 
-    readonly property var appController: root.app
+    readonly property var workbench: root.app.workbench
+    readonly property var settings: root.app.settings
+    readonly property var scriptLibrary: root.app.scriptLibrary
+    readonly property var logStream: root.app.logStream
     property string currentAppView: "workbench"
 
     ColumnLayout {
@@ -223,26 +226,27 @@ ApplicationWindow {
                 WorkbenchView {
                     id: workbenchPage
                     ui: ui
-                    appController: root.appController
+                    workbench: root.workbench
+                    scriptLibrary: root.scriptLibrary
                     fontFamily: root.font.family
                 }
 
                 LogsView {
                     id: logsPage
                     ui: ui
-                    appController: root.appController
+                    logStream: root.logStream
                 }
 
                 ScriptsView {
                     id: scriptsPage
                     ui: ui
-                    appController: root.appController
+                    scriptLibrary: root.scriptLibrary
                 }
 
                 SettingsView {
                     id: settingsPage
                     ui: ui
-                    appController: root.appController
+                    settings: root.settings
                 }
             }
         }

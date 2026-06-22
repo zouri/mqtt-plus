@@ -9,7 +9,8 @@ Dialog {
     id: root
 
     required property AppUi ui
-    required property var appController
+    required property var workbench
+    required property var scriptLibrary
     property var scriptOptionIds: []
     property var scriptOptionNames: [qsTr("None")]
     property bool editMode: false
@@ -17,7 +18,7 @@ Dialog {
 
     function syncScriptOptions() {
         const selectedScriptId = root.scriptOptionIds[scriptField.currentIndex] || ""
-        const scripts = root.appController.scripts
+        const scripts = root.scriptLibrary.scripts
         const ids = [""]
         const names = [qsTr("None")]
         for (let i = 0; scripts && i < scripts.count; ++i) {
@@ -65,13 +66,13 @@ Dialog {
     function submit() {
         const scriptId = root.scriptOptionIds[scriptField.currentIndex] || ""
         if (root.editMode) {
-            if (appController.updateCurrentSubscription(root.editTopic, topicField.text, aliasField.text, scriptId)) {
+            if (root.workbench.updateCurrentSubscription(root.editTopic, topicField.text, aliasField.text, scriptId)) {
                 close()
             }
             return
         }
 
-        if (appController.upsertCurrentSubscription(
+        if (root.workbench.upsertCurrentSubscription(
                     topicField.text,
                     qosField.currentIndex,
                     formatField.currentIndex,
@@ -103,7 +104,7 @@ Dialog {
     }
 
     Connections {
-        target: root.appController
+        target: root.scriptLibrary
 
         function onScriptLibraryChanged() {
             root.syncScriptOptions()
@@ -152,7 +153,7 @@ Dialog {
                 ui: root.ui
                 id: formatField
                 Layout.fillWidth: true
-                model: root.appController.payloadFormats
+                model: root.workbench.payloadFormats
                 enabled: !root.editMode
             }
         }

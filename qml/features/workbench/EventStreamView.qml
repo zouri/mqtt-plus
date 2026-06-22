@@ -8,7 +8,7 @@ import "../../components"
 Item {
     id: root
 
-    required property var appController
+    required property var workbench
     required property var streamModel
     required property var loadOlderRows
     required property var clearRows
@@ -20,6 +20,7 @@ Item {
     property bool showOutputControls: false
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
+    property bool followScrollPending: false
 
     signal publishDraftRequested(string topic, string payload, int format)
 
@@ -34,24 +35,27 @@ Item {
             eventList.unreadCount = 0
         }
 
-        Qt.callLater(function() {
-            if (eventList) {
-                eventList.scrollToBottom()
-            }
-        })
+        root.requestFollowScroll()
     }
 
     function noteStreamRowAppended(row) {
         const shouldStickToBottom = !eventList || eventList.shouldFollowOutput
 
         if (shouldStickToBottom && eventList) {
-            Qt.callLater(function() {
-                if (eventList) {
-                    eventList.scrollToBottom()
-                }
-            })
+            root.requestFollowScroll()
         } else if (eventList) {
             eventList.unreadCount += 1
+        }
+    }
+
+    function requestFollowScroll() {
+        if (!eventList) {
+            return
+        }
+
+        root.followScrollPending = true
+        if (!followScrollTimer.running) {
+            followScrollTimer.start()
         }
     }
 
@@ -79,6 +83,19 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
+
+        Timer {
+            id: followScrollTimer
+            interval: 16
+            repeat: false
+            onTriggered: {
+                if (!root.followScrollPending || !eventList) {
+                    return
+                }
+                root.followScrollPending = false
+                eventList.scrollToBottom()
+            }
+        }
 
         Rectangle {
             Layout.fillWidth: true
@@ -132,7 +149,7 @@ Item {
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     accessibleName: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
-                    onClicked: root.appController.setCurrentOutputPaused(!root.session.outputPaused)
+                    onClicked: root.workbench.setCurrentOutputPaused(!root.session.outputPaused)
                 }
 
                 AppIconButton {
@@ -330,7 +347,7 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Copy topic")
-                                onClicked: root.appController.copyTextToClipboard(eventDelegate.topic)
+                                onClicked: root.workbench.copyTextToClipboard(eventDelegate.topic)
                             }
 
                             AppIconButton {
@@ -344,7 +361,7 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Copy payload")
-                                onClicked: root.appController.copyTextToClipboard(
+                                onClicked: root.workbench.copyTextToClipboard(
                                                eventDelegate.testPayload.length > 0
                                                ? eventDelegate.testPayload
                                                : eventDelegate.payload)

@@ -171,6 +171,9 @@ elseif(UNIX)
 endif()
 
 if(BUILD_TESTING)
+    set(MQTT_PLUS_TEST_APP_SOURCES ${MQTT_PLUS_APP_SOURCES})
+    list(FILTER MQTT_PLUS_TEST_APP_SOURCES EXCLUDE REGEX "^src/app/main\\.cpp$")
+
     add_executable(test_sessionconfig
         tests/test_sessionconfig.cpp
         src/domain/sessionconfig.cpp
@@ -200,6 +203,42 @@ if(BUILD_TESTING)
             Qt6::Test
     )
     add_test(NAME payloadcodec COMMAND test_payloadcodec)
+
+    add_executable(test_eventstreammodel
+        tests/test_eventstreammodel.cpp
+        src/models/eventstreammodel.cpp
+    )
+    target_include_directories(test_eventstreammodel
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_eventstreammodel
+        PRIVATE
+            Qt6::Core
+            Qt6::Test
+    )
+    add_test(NAME eventstreammodel COMMAND test_eventstreammodel)
+
+    add_executable(test_appfacadefacades
+        tests/test_appfacadefacades.cpp
+        ${MQTT_PLUS_TEST_APP_SOURCES}
+    )
+    target_include_directories(test_appfacadefacades
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_appfacadefacades
+        PRIVATE
+            Qt6::Core
+            Qt6::Gui
+            Qt6::Network
+            Qt6::Mqtt
+            Qt6::Sql
+            Qt6::Widgets
+            Qt6::Test
+            MqttPlus::Lua
+    )
+    add_test(NAME appfacadefacades COMMAND test_appfacadefacades)
 endif()
 
 include(CPack)

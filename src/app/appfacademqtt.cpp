@@ -1,25 +1,5 @@
 #include "app/appfacade.h"
 
-void AppFacade::connectCurrentSession()
-{
-    m_mqttController.connectCurrentSession();
-}
-
-void AppFacade::disconnectCurrentSession()
-{
-    m_mqttController.disconnectCurrentSession();
-}
-
-void AppFacade::publishCurrentSession(
-    const QString &topic,
-    const QString &payload,
-    int format,
-    int qos,
-    bool retain)
-{
-    m_mqttController.publishCurrentSession(topic, payload, format, qos, retain);
-}
-
 void AppFacade::bindSessionSignals(SessionState *session)
 {
     m_mqttController.bindSessionSignals(session);

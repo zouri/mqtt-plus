@@ -5,17 +5,37 @@
 #include <QObject>
 #include <QVariantMap>
 #include <QVector>
-
-class AppFacade;
+#include <functional>
 
 class SessionController : public QObject
 {
     Q_OBJECT
 
 public:
+    struct Dependencies
+    {
+        std::function<void()> reloadCurrentSessionHistory;
+        std::function<bool()> currentSessionHasActiveSubscriptionFps;
+        std::function<void(bool)> setSubscriptionFpsRefreshActive;
+        std::function<void(SessionState &, const QVariantMap &, bool)> configureSession;
+        std::function<void(SessionState &, const QString &, const QString &, qint32)> updatePublishStatus;
+        std::function<bool()> saveSessions;
+        std::function<void(SessionState &, const QString &)> connectSession;
+        std::function<SessionState(const QString &)> createDefaultSession;
+        std::function<bool()> deleteHistoryWithSession;
+        std::function<void(const QString &)> clearSessionHistory;
+        std::function<void(SessionState &)> destroySessionRuntime;
+        std::function<void()> notifySelectedSessionViewsChanged;
+        std::function<void()> notifyCurrentSessionViewsChanged;
+        std::function<void()> notifyCurrentSessionAndSubscriptionsChanged;
+        std::function<void()> notifySessionCollectionViewsChanged;
+        std::function<void()> emitSessionsChanged;
+        std::function<void()> emitMessageStreamChanged;
+    };
+
     explicit SessionController(QObject *parent = nullptr);
 
-    void setFacade(AppFacade *app);
+    void setDependencies(Dependencies dependencies);
 
     QVector<SessionState> &sessions();
     const QVector<SessionState> &sessions() const;
@@ -42,7 +62,7 @@ public:
     void setCurrentOutputPaused(bool paused);
 
 private:
-    AppFacade *m_app = nullptr;
+    Dependencies m_dependencies;
     QVector<SessionState> m_sessions;
     int m_currentIndex = -1;
 };

@@ -69,6 +69,22 @@ void EventStreamModel::appendRow(const QVariantMap &row)
     emit countChanged();
 }
 
+void EventStreamModel::appendRows(const QVariantList &rows)
+{
+    if (rows.isEmpty()) {
+        return;
+    }
+
+    const int firstRow = m_rows.size();
+    const int lastRow = firstRow + rows.size() - 1;
+    beginInsertRows(QModelIndex(), firstRow, lastRow);
+    for (const QVariant &row : rows) {
+        m_rows.append(row);
+    }
+    endInsertRows();
+    emit countChanged();
+}
+
 void EventStreamModel::prependRows(const QVariantList &rows)
 {
     if (rows.isEmpty()) {

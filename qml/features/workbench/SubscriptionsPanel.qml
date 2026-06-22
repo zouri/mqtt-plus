@@ -8,7 +8,7 @@ import "../../components"
 AppPanel {
     id: control
 
-    required property var appController
+    required property var workbench
     required property var addSubscriptionDialog
 
     property string subscriptionActionVisualKey: ""
@@ -19,9 +19,9 @@ AppPanel {
     readonly property var filterModeValues: ["all", "subscribed", "paused"]
     readonly property var filterModeLabels: [qsTr("All", "subscription filter"), qsTr("Active", "subscription filter"), qsTr("Paused", "subscription filter")]
     readonly property int filterModeIndex: Math.max(0, control.filterModeValues.indexOf(control.filterMode))
-    readonly property var subscriptionModel: control.appController ? control.appController.filteredSubscriptions : null
+    readonly property var subscriptionModel: control.workbench ? control.workbench.filteredSubscriptions : null
     readonly property int matchingSubscriptionCount: control.subscriptionModel ? control.subscriptionModel.count : 0
-    readonly property var sessionStatus: control.appController ? control.appController.sessionStatus : ({})
+    readonly property var sessionStatus: control.workbench ? control.workbench.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
     readonly property bool hasFilter: control.filterText.trim().length > 0 || control.filterMode !== "all"
     showRightBorder: false
@@ -194,7 +194,7 @@ AppPanel {
                 function showSubscriptionContextMenu(globalPosition) {
                     control.subscriptionActionVisualKey = subscriptionDelegate.menuVisualKey;
                     subscriptionActionVisualResetTimer.stop();
-                    const action = control.appController.showSubscriptionContextMenu(subscriptionDelegate.topic, globalPosition);
+                    const action = control.workbench.showSubscriptionContextMenu(subscriptionDelegate.topic, globalPosition);
                     if (action === "edit") {
                         control.addSubscriptionDialog.openForEdit(control.subscriptionModel.rowAt(subscriptionDelegate.index));
                     } else if (action === "delete") {
@@ -296,7 +296,7 @@ AppPanel {
                                 onClicked: {
                                     control.subscriptionActionVisualKey = visualKey;
                                     subscriptionActionVisualResetTimer.restart();
-                                    control.appController.setCurrentSubscriptionPaused(subscriptionDelegate.topic, !subscriptionDelegate.paused);
+                                    control.workbench.setCurrentSubscriptionPaused(subscriptionDelegate.topic, !subscriptionDelegate.paused);
                                 }
                             }
 
@@ -413,7 +413,7 @@ AppPanel {
                     minimumWidth: 78
                     danger: true
                     onClicked: {
-                        control.appController.removeCurrentSubscription(control.pendingDeleteTopic);
+                        control.workbench.removeCurrentSubscription(control.pendingDeleteTopic);
                         deleteSubscriptionDialog.close();
                     }
                 }

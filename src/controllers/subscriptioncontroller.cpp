@@ -1,8 +1,8 @@
 #include "subscriptioncontroller.h"
 
-#include "app/appfacade.h"
 #include "app/appfacadeutils.h"
 #include "domain/sessionconfig.h"
+#include "models/subscriptionlistmodel.h"
 #include "services/payload/payloadcodec.h"
 
 #include <QDateTime>
@@ -11,10 +11,14 @@
 
 using namespace AppFacadeUtils;
 
-SubscriptionController::SubscriptionController(AppFacade *app, QObject *parent)
+SubscriptionController::SubscriptionController(QObject *parent)
     : QObject(parent)
-    , m_app(*app)
 {
+}
+
+void SubscriptionController::setDependencies(Dependencies dependencies)
+{
+    m_dependencies = std::move(dependencies);
 }
 
 bool SubscriptionController::upsertCurrentSubscription(
@@ -24,7 +28,7 @@ bool SubscriptionController::upsertCurrentSubscription(
     const QString &scriptId,
     const QString &alias)
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
         return false;
     }
@@ -36,12 +40,17 @@ bool SubscriptionController::upsertCurrentSubscription(
 
     const QMqttTopicFilter topicFilter(filter);
     if (!topicFilter.isValid()) {
-        m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
+        if (m_dependencies.appendEvent) {
+            m_dependencies.appendEvent(
+                *session,
+                QStringLiteral("Subscription"),
+                QStringLiteral("Invalid topic filter: %1").arg(filter));
+        }
         return false;
     }
 
     SubscriptionEntry *entry = subscriptionByTopic(session, filter);
-    const QString sanitizedScriptId = m_app.m_scriptController.scriptById(scriptId) ? scriptId : QString();
+    const QString sanitizedScriptId = m_dependencies.scriptExists && m_dependencies.scriptExists(scriptId) ? scriptId : QString();
     const QString displayAlias = alias.trimmed();
     if (!entry) {
         SubscriptionEntry subscription;
@@ -67,8 +76,10 @@ bool SubscriptionController::upsertCurrentSubscription(
         ensureSubscriptionActive(*session, *entry, true);
     }
 
-    const bool saved = m_app.saveSessions();
-    m_app.notifySessionAndSubscriptionViewsChanged();
+    const bool saved = m_dependencies.saveSessions ? m_dependencies.saveSessions() : false;
+    if (m_dependencies.notifySessionAndSubscriptionViewsChanged) {
+        m_dependencies.notifySessionAndSubscriptionViewsChanged();
+    }
     return saved;
 }
 
@@ -78,7 +89,7 @@ bool SubscriptionController::updateCurrentSubscription(
     const QString &alias,
     const QString &scriptId)
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
         return false;
     }
@@ -91,7 +102,12 @@ bool SubscriptionController::updateCurrentSubscription(
 
     const QMqttTopicFilter topicFilter(filter);
     if (!topicFilter.isValid()) {
-        m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
+        if (m_dependencies.appendEvent) {
+            m_dependencies.appendEvent(
+                *session,
+                QStringLiteral("Subscription"),
+                QStringLiteral("Invalid topic filter: %1").arg(filter));
+        }
         return false;
     }
 
@@ -101,14 +117,16 @@ bool SubscriptionController::updateCurrentSubscription(
     }
 
     if (filter != previousFilter && subscriptionByTopic(session, filter)) {
-        m_app.appendEvent(
-            *session,
-            QStringLiteral("Subscription"),
-            QStringLiteral("%1 already exists").arg(filter));
+        if (m_dependencies.appendEvent) {
+            m_dependencies.appendEvent(
+                *session,
+                QStringLiteral("Subscription"),
+                QStringLiteral("%1 already exists").arg(filter));
+        }
         return false;
     }
 
-    const QString sanitizedScriptId = m_app.m_scriptController.scriptById(scriptId) ? scriptId : QString();
+    const QString sanitizedScriptId = m_dependencies.scriptExists && m_dependencies.scriptExists(scriptId) ? scriptId : QString();
     const QString displayAlias = alias.trimmed();
     const bool topicChanged = entry->topic != filter;
     if (!topicChanged && entry->alias == displayAlias && entry->scriptId == sanitizedScriptId) {
@@ -140,14 +158,16 @@ bool SubscriptionController::updateCurrentSubscription(
         ensureSubscriptionActive(*session, *entry, true);
     }
 
-    const bool saved = m_app.saveSessions();
-    m_app.notifyCurrentSessionAndSubscriptionsChanged();
+    const bool saved = m_dependencies.saveSessions ? m_dependencies.saveSessions() : false;
+    if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
+        m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    }
     return saved;
 }
 
 void SubscriptionController::removeCurrentSubscription(const QString &topic)
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
         return;
     }
@@ -171,16 +191,22 @@ void SubscriptionController::removeCurrentSubscription(const QString &topic)
         client->unsubscribe(QMqttTopicFilter(filter));
     }
 
-    m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Removed %1").arg(filter));
+    if (m_dependencies.appendEvent) {
+        m_dependencies.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Removed %1").arg(filter));
+    }
     session->subscriptionFormats.remove(filter);
     session->subscriptions.erase(it);
-    m_app.saveSessions();
-    m_app.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.saveSessions) {
+        m_dependencies.saveSessions();
+    }
+    if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
+        m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    }
 }
 
 void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, bool paused)
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
         return;
     }
@@ -198,7 +224,12 @@ void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, 
         } else if (auto *client = session->client; client && client->state() == QMqttClient::Connected) {
             client->unsubscribe(QMqttTopicFilter(entry->topic));
         }
-        m_app.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Paused %1").arg(entry->topic));
+        if (m_dependencies.appendEvent) {
+            m_dependencies.appendEvent(
+                *session,
+                QStringLiteral("Subscription"),
+                QStringLiteral("Paused %1").arg(entry->topic));
+        }
     } else {
         entry->lastError.clear();
         if (entry->runtimeSubscription) {
@@ -209,15 +240,21 @@ void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, 
         if (client && client->state() == QMqttClient::Connected) {
             ensureSubscriptionActive(*session, *entry, true);
         } else {
-            m_app.appendEvent(
-                *session,
-                QStringLiteral("Subscription"),
-                QStringLiteral("Queued %1 for reconnect").arg(entry->topic));
+            if (m_dependencies.appendEvent) {
+                m_dependencies.appendEvent(
+                    *session,
+                    QStringLiteral("Subscription"),
+                    QStringLiteral("Queued %1 for reconnect").arg(entry->topic));
+            }
         }
     }
 
-    m_app.saveSessions();
-    m_app.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.saveSessions) {
+        m_dependencies.saveSessions();
+    }
+    if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
+        m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    }
 }
 
 SubscriptionEntry *SubscriptionController::subscriptionByTopic(SessionState *session, const QString &topic)
@@ -304,8 +341,8 @@ void SubscriptionController::ensureSubscriptionActive(SessionState &session, Sub
     if (!filter.isValid()) {
         entry.runtimeState = QStringLiteral("error");
         entry.lastError = tr("Invalid topic filter.");
-        if (emitEvents) {
-            m_app.appendEvent(
+        if (emitEvents && m_dependencies.appendEvent) {
+            m_dependencies.appendEvent(
                 session,
                 QStringLiteral("Subscription"),
                 QStringLiteral("%1 is not a valid topic filter").arg(entry.topic));
@@ -317,8 +354,8 @@ void SubscriptionController::ensureSubscriptionActive(SessionState &session, Sub
     if (!subscription) {
         entry.runtimeState = QStringLiteral("error");
         entry.lastError = tr("Qt MQTT returned no subscription object.");
-        if (emitEvents) {
-            m_app.appendEvent(
+        if (emitEvents && m_dependencies.appendEvent) {
+            m_dependencies.appendEvent(
                 session,
                 QStringLiteral("Subscription"),
                 QStringLiteral("Failed to subscribe to %1").arg(entry.topic));
@@ -332,8 +369,8 @@ void SubscriptionController::ensureSubscriptionActive(SessionState &session, Sub
     entry.lastError = subscription->reason();
     observeSubscription(session, entry, subscription);
 
-    if (emitEvents) {
-        m_app.appendEvent(
+    if (emitEvents && m_dependencies.appendEvent) {
+        m_dependencies.appendEvent(
             session,
             QStringLiteral("Subscription"),
             QStringLiteral("Requested %1 at QoS %2").arg(entry.topic).arg(entry.requestedQos));
@@ -363,7 +400,7 @@ void SubscriptionController::updateSubscriptionState(
     const QPointer<QMqttSubscription> &subscription,
     QMqttSubscription::SubscriptionState state)
 {
-    auto *session = m_app.sessionById(sessionId);
+    auto *session = m_dependencies.sessionById ? m_dependencies.sessionById(sessionId) : nullptr;
     SubscriptionEntry *entry = subscriptionByTopic(session, topic);
     if (!session || !entry || entry->runtimeSubscription != subscription) {
         return;
@@ -382,28 +419,38 @@ void SubscriptionController::updateSubscriptionState(
 
     if (previousState != entry->runtimeState) {
         if (state == QMqttSubscription::Subscribed) {
-            m_app.appendEvent(
-                *session,
-                QStringLiteral("Subscription"),
-                QStringLiteral("Subscribed to %1").arg(entry->topic));
+            if (m_dependencies.appendEvent) {
+                m_dependencies.appendEvent(
+                    *session,
+                    QStringLiteral("Subscription"),
+                    QStringLiteral("Subscribed to %1").arg(entry->topic));
+            }
         } else if (state == QMqttSubscription::Unsubscribed && entry->paused) {
-            m_app.appendEvent(
-                *session,
-                QStringLiteral("Subscription"),
-                QStringLiteral("Paused %1").arg(entry->topic));
+            if (m_dependencies.appendEvent) {
+                m_dependencies.appendEvent(
+                    *session,
+                    QStringLiteral("Subscription"),
+                    QStringLiteral("Paused %1").arg(entry->topic));
+            }
         } else if (state == QMqttSubscription::Error) {
             const QString reason = entry->lastError.isEmpty()
                 ? QStringLiteral("Broker returned a subscription error.")
                 : entry->lastError;
-            m_app.appendEvent(
-                *session,
-                QStringLiteral("Subscription"),
-                QStringLiteral("%1 failed: %2").arg(entry->topic).arg(reason));
+            if (m_dependencies.appendEvent) {
+                m_dependencies.appendEvent(
+                    *session,
+                    QStringLiteral("Subscription"),
+                    QStringLiteral("%1 failed: %2").arg(entry->topic).arg(reason));
+            }
         }
     }
 
-    m_app.refreshSubscriptionsModel();
-    emit m_app.subscriptionsChanged();
+    if (m_dependencies.refreshSubscriptionsModel) {
+        m_dependencies.refreshSubscriptionsModel();
+    }
+    if (m_dependencies.emitSubscriptionsChanged) {
+        m_dependencies.emitSubscriptionsChanged();
+    }
 }
 
 qreal SubscriptionController::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
@@ -413,7 +460,7 @@ qreal SubscriptionController::subscriptionFps(const SubscriptionEntry &entry, qi
 
 bool SubscriptionController::currentSessionHasActiveSubscriptionFps(qint64 nowMs) const
 {
-    const auto *session = m_app.currentSessionState();
+    const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
         return false;
     }
@@ -430,10 +477,14 @@ bool SubscriptionController::currentSessionHasActiveSubscriptionFps(qint64 nowMs
 void SubscriptionController::refreshSubscriptionFps()
 {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    const auto *session = m_app.currentSessionState();
+    const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
-        m_app.m_subscriptionFpsRefreshTimer.stop();
-        m_app.m_subscriptionsModel.setTopicFpsRows({});
+        if (m_dependencies.setSubscriptionFpsRefreshActive) {
+            m_dependencies.setSubscriptionFpsRefreshActive(false);
+        }
+        if (m_dependencies.setTopicFpsRows) {
+            m_dependencies.setTopicFpsRows({});
+        }
         return;
     }
 
@@ -449,8 +500,12 @@ void SubscriptionController::refreshSubscriptionFps()
     }
 
     if (!hasActiveFps) {
-        m_app.m_subscriptionFpsRefreshTimer.stop();
+        if (m_dependencies.setSubscriptionFpsRefreshActive) {
+            m_dependencies.setSubscriptionFpsRefreshActive(false);
+        }
     }
 
-    m_app.m_subscriptionsModel.setTopicFpsRows(rows);
+    if (m_dependencies.setTopicFpsRows) {
+        m_dependencies.setTopicFpsRows(rows);
+    }
 }

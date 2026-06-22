@@ -9,7 +9,7 @@ Item {
     id: control
 
     required property AppUi ui
-    required property var appController
+    required property var scriptLibrary
 
     property string currentScriptId: ""
     property string savedScriptName: ""
@@ -59,7 +59,7 @@ Item {
     }
 
     function ensureSelection() {
-        const scripts = control.appController.scripts
+        const scripts = control.scriptLibrary.scripts
         if (control.currentScriptId.length > 0) {
             if (scripts && scripts.indexOfId(control.currentScriptId) >= 0) {
                 return
@@ -86,7 +86,7 @@ Item {
     }
 
     function saveScript() {
-        const savedId = control.appController.upsertScript(
+        const savedId = control.scriptLibrary.upsertScript(
                     control.currentScriptId,
                     nameField.text,
                     descriptionField.text,
@@ -105,7 +105,7 @@ Item {
     Component.onCompleted: control.ensureSelection()
 
     Connections {
-        target: control.appController
+        target: control.scriptLibrary
 
         function onScriptLibraryChanged() {
             control.ensureSelection()
@@ -136,7 +136,7 @@ Item {
 
                 AppBadge {
                     ui: control.ui
-                    label: `${control.appController.scripts.count}`
+                    label: `${control.scriptLibrary.scripts.count}`
                     badgeRadius: 11
                     horizontalPadding: 8
                     verticalPadding: 4
@@ -176,7 +176,7 @@ Item {
 
             ScriptListPane {
                 ui: control.ui
-                appController: control.appController
+                scriptLibrary: control.scriptLibrary
                 currentScriptId: control.currentScriptId
                 onScriptRequested: (row) => control.loadScript(row)
             }

@@ -10,7 +10,7 @@ Dialog {
     id: root
 
     required property AppUi ui
-    required property var appController
+    required property var workbench
 
     property string mode: "create"
     property int targetIndex: -1
@@ -208,12 +208,12 @@ Dialog {
         targetIndex = -1
         dialogTitle = qsTr("New Connection")
         validationError = ""
-        loadConfig(appController.defaultSessionConfig())
+        loadConfig(workbench.defaultSessionConfig())
         open()
     }
 
     function openForEdit(index) {
-        if (index < 0 || index >= appController.sessions.count) {
+        if (index < 0 || index >= workbench.sessions.count) {
             return
         }
 
@@ -221,7 +221,7 @@ Dialog {
         targetIndex = index
         dialogTitle = qsTr("Edit Connection")
         validationError = ""
-        loadConfig(appController.sessionConfigAt(index))
+        loadConfig(workbench.sessionConfigAt(index))
         open()
     }
 
@@ -233,12 +233,12 @@ Dialog {
 
         const config = collectedConfig()
         if (mode === "create") {
-            appController.addSessionWithConfig(config)
+            workbench.addSessionWithConfig(config)
             close()
             return
         }
 
-        if (targetIndex >= 0 && appController.updateSessionConfigAt(targetIndex, config)) {
+        if (targetIndex >= 0 && workbench.updateSessionConfigAt(targetIndex, config)) {
             close()
         }
     }

@@ -1,22 +1,23 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 Item {
     id: root
 
     required property AppUi ui
-    required property var appController
+    required property var workbench
+    required property var scriptLibrary
     required property string fontFamily
     property bool connectionPaneCollapsed: false
-    readonly property var session: root.appController.currentSession
-    readonly property var status: root.appController.sessionStatus
+    readonly property var session: root.workbench.currentSession
+    readonly property var status: root.workbench.sessionStatus
     readonly property int expandedConnectionPaneWidth: 248
     readonly property int subscriptionPaneMinWidth: 280
     readonly property int subscriptionPaneMaxWidth: 520
     property int subscriptionPaneWidth: 360
+    property real subscriptionPaneDragBaseWidth: subscriptionPaneWidth
     property string pendingSessionEditorMode: ""
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
@@ -120,13 +121,9 @@ Item {
     }
 
     Connections {
-        target: root.appController
+        target: root.workbench
 
         function onMessageStreamChanged() {
-            root.resetStreamPosition();
-        }
-
-        function onLogStreamChanged() {
             root.resetStreamPosition();
         }
 
@@ -141,7 +138,7 @@ Item {
 
         SessionSidebar {
             ui: root.ui
-            appController: root.appController
+            workbench: root.workbench
             sessionEditor: sessionEditorBridge
             collapsed: root.connectionPaneCollapsed
             Layout.preferredWidth: root.connectionPaneCollapsed ? 32 : root.expandedConnectionPaneWidth
@@ -150,70 +147,88 @@ Item {
             onExpandRequested: root.connectionPaneCollapsed = false
         }
 
-        SplitView {
-            id: workbenchSplit
-
-            Layout.fillWidth: true
+        Rectangle {
+            Layout.preferredWidth: root.subscriptionPaneWidth
+            Layout.maximumWidth: root.subscriptionPaneWidth
+            Layout.minimumWidth: root.subscriptionPaneWidth
             Layout.fillHeight: true
-            orientation: Qt.Horizontal
+            color: root.ui.themePalette.windowBg
 
-            handle: Item {
-                implicitWidth: workbenchSplit.orientation === Qt.Horizontal ? 1 : workbenchSplit.width
-                implicitHeight: workbenchSplit.orientation === Qt.Horizontal ? workbenchSplit.height : 1
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
 
-                Rectangle {
-                    anchors.fill: parent
-                    color: splitHandleHover.hovered || SplitHandle.hovered || SplitHandle.pressed
-                           ? root.ui.themePalette.selectedBorder
-                           : root.ui.panelBorder
+                SessionOverviewPanel {
+                    ui: root.ui
+                    session: root.session
+                    status: root.status
+                    workbench: root.workbench
+                    sessionEditor: sessionEditorBridge
                 }
 
-                HoverHandler {
-                    id: splitHandleHover
-                    margin: 5
-                    cursorShape: Qt.SplitHCursor
+                SubscriptionsPanel {
+                    id: subscriptionsPanel
+                    ui: root.ui
+                    workbench: root.workbench
+                    addSubscriptionDialog: addSubscriptionDialogBridge
                 }
             }
+        }
+
+        Item {
+            id: subscriptionResizeHandle
+            Layout.preferredWidth: 10
+            Layout.minimumWidth: 10
+            Layout.maximumWidth: 10
+            Layout.fillHeight: true
 
             Rectangle {
-                SplitView.preferredWidth: root.subscriptionPaneWidth
-                SplitView.minimumWidth: root.subscriptionPaneMinWidth
-                SplitView.maximumWidth: root.subscriptionPaneMaxWidth
-                SplitView.fillHeight: true
-                color: root.ui.themePalette.windowBg
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 2
+                radius: 1
+                color: resizeMouse.containsMouse || subscriptionResizeDrag.active
+                       ? root.ui.themePalette.selectedBorder
+                       : root.ui.themePalette.separator
+            }
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 0
+            MouseArea {
+                id: resizeMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.SplitHCursor
+            }
 
-                    SessionOverviewPanel {
-                        ui: root.ui
-                        session: root.session
-                        status: root.status
-                        appController: root.appController
-                        sessionEditor: sessionEditorBridge
-                    }
+            DragHandler {
+                id: subscriptionResizeDrag
+                target: null
+                yAxis.enabled: false
 
-                    SubscriptionsPanel {
-                        id: subscriptionsPanel
-                        ui: root.ui
-                        appController: root.appController
-                        addSubscriptionDialog: addSubscriptionDialogBridge
+                onActiveChanged: {
+                    if (active) {
+                        root.subscriptionPaneDragBaseWidth = root.subscriptionPaneWidth
                     }
                 }
-            }
 
-            SessionActivityPanel {
-                id: sessionActivityPanel
-                ui: root.ui
-                appController: root.appController
-                session: root.session
-                status: root.status
-                publishStatus: root.appController.publishStatus
-                fontFamily: root.fontFamily
-                SplitView.fillWidth: true
-                SplitView.fillHeight: true
+                onTranslationChanged: {
+                    root.subscriptionPaneWidth = Math.max(
+                        root.subscriptionPaneMinWidth,
+                        Math.min(
+                            root.subscriptionPaneMaxWidth,
+                            Math.round(root.subscriptionPaneDragBaseWidth + translation.x)))
+                }
             }
+        }
+
+        SessionActivityPanel {
+            id: sessionActivityPanel
+            ui: root.ui
+            workbench: root.workbench
+            session: root.session
+            status: root.status
+            publishStatus: root.workbench.publishStatus
+            fontFamily: root.fontFamily
         }
     }
 
@@ -226,7 +241,7 @@ Item {
         sourceComponent: Component {
             SessionEditorDialog {
                 ui: root.ui
-                appController: root.appController
+                workbench: root.workbench
             }
         }
 
@@ -258,7 +273,8 @@ Item {
         sourceComponent: Component {
             AddSubscriptionDialog {
                 ui: root.ui
-                appController: root.appController
+                workbench: root.workbench
+                scriptLibrary: root.scriptLibrary
             }
         }
 
