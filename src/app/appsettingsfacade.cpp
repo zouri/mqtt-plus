@@ -56,11 +56,6 @@ int AppSettingsFacade::historyPageSize() const
     return m_dependencies.preferencesController ? m_dependencies.preferencesController->historyPageSize() : 0;
 }
 
-int AppSettingsFacade::maxIncomingPayloadBytes() const
-{
-    return m_dependencies.preferencesController ? m_dependencies.preferencesController->maxIncomingPayloadBytes() : 0;
-}
-
 bool AppSettingsFacade::deleteHistoryWithSession() const
 {
     return m_dependencies.preferencesController
@@ -166,13 +161,6 @@ void AppSettingsFacade::setHistoryPageSize(int pageSize)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setHistoryPageSize(pageSize);
-    }
-}
-
-void AppSettingsFacade::setMaxIncomingPayloadBytes(int bytes)
-{
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setMaxIncomingPayloadBytes(bytes);
     }
 }
 

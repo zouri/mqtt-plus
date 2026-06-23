@@ -5,112 +5,15 @@
 #include "presentation/eventrenderer.h"
 #include "services/payload/payloadcodec.h"
 
-#include <QCryptographicHash>
 #include <QDateTime>
 
-#include <algorithm>
 #include <utility>
-
 using namespace AppFacadeUtils;
 
 namespace {
 constexpr int kVisibleMessageRowsFlushIntervalMs = 16;
 constexpr int kMessageHistoryFlushIntervalMs = 250;
 constexpr int kMessageHistoryFlushBatchSize = 200;
-constexpr qint64 kPayloadPreviewBytes = 64 * 1024;
-constexpr qint64 kHardPayloadLimitBytes = 16 * 1024 * 1024;
-
-struct PayloadStoragePlan {
-    QByteArray storedBytes;
-    QString preview;
-    QString state = QStringLiteral("full");
-    QString hash;
-    qint64 originalSize = 0;
-    bool allowFullProcessing = true;
-    bool shouldReport = false;
-    QString reportMessage;
-};
-
-QString formatByteCount(qint64 bytes)
-{
-    if (bytes >= 1024 * 1024) {
-        return QStringLiteral("%1 MiB").arg(QString::number(bytes / 1024.0 / 1024.0, 'f', 1));
-    }
-    if (bytes >= 1024) {
-        return QStringLiteral("%1 KiB").arg(QString::number(bytes / 1024.0, 'f', 1));
-    }
-    return QStringLiteral("%1 bytes").arg(bytes);
-}
-
-bool looksBinary(const QByteArray &bytes)
-{
-    if (bytes.isEmpty()) {
-        return false;
-    }
-
-    const qsizetype sampleSize = (std::min)(bytes.size(), qsizetype(4096));
-    qsizetype suspicious = 0;
-    for (qsizetype i = 0; i < sampleSize; ++i) {
-        const uchar ch = static_cast<uchar>(bytes.at(i));
-        if (ch == 0 || (ch < 0x20 && ch != '\n' && ch != '\r' && ch != '\t')) {
-            ++suspicious;
-        }
-    }
-    return suspicious > 0 || suspicious * 100 > sampleSize * 15;
-}
-
-QString payloadTextPreview(const QByteArray &bytes)
-{
-    const QByteArray previewBytes = bytes.left((std::min)(bytes.size(), qsizetype(kPayloadPreviewBytes)));
-    return QString::fromUtf8(previewBytes);
-}
-
-QString payloadHexPreview(const QByteArray &bytes)
-{
-    const QByteArray previewBytes = bytes.left((std::min)(bytes.size(), qsizetype(64)));
-    QString preview = QString::fromLatin1(previewBytes.toHex(' ').toUpper());
-    if (bytes.size() > previewBytes.size()) {
-        preview.append(QStringLiteral(" ..."));
-    }
-    return QStringLiteral("Raw preview (hex): %1").arg(preview);
-}
-
-PayloadStoragePlan makePayloadStoragePlan(const QString &topic, const QByteArray &payloadBytes, int configuredLimit)
-{
-    PayloadStoragePlan plan;
-    plan.originalSize = payloadBytes.size();
-
-    const qint64 maxBytes = configuredLimit > 0 ? configuredLimit : kHardPayloadLimitBytes;
-    const bool binary = looksBinary(payloadBytes);
-    plan.preview = binary ? payloadHexPreview(payloadBytes) : payloadTextPreview(payloadBytes);
-
-    if (plan.originalSize > maxBytes) {
-        plan.state = QStringLiteral("skipped");
-        plan.allowFullProcessing = false;
-        plan.hash = QString::fromLatin1(
-            QCryptographicHash::hash(payloadBytes, QCryptographicHash::Sha256).toHex());
-        plan.shouldReport = true;
-        plan.reportMessage = QStringLiteral(
-            "Payload skipped on %1: %2 exceeds the configured limit of %3. SHA-256: %4")
-            .arg(topic, formatByteCount(plan.originalSize), formatByteCount(maxBytes), plan.hash);
-        return plan;
-    }
-
-    plan.storedBytes = payloadBytes;
-    if (binary) {
-        plan.state = QStringLiteral("raw_only");
-        plan.shouldReport = true;
-        plan.reportMessage = QStringLiteral("Payload stored as raw bytes on %1: %2.")
-            .arg(topic, formatByteCount(plan.originalSize));
-    } else if (plan.originalSize > kPayloadPreviewBytes) {
-        plan.state = QStringLiteral("truncated");
-        plan.shouldReport = true;
-        plan.reportMessage = QStringLiteral("Payload truncated for display on %1: showing %2 of %3.")
-            .arg(topic, formatByteCount(kPayloadPreviewBytes), formatByteCount(plan.originalSize));
-    }
-
-    return plan;
-}
 }
 
 EventController::EventController(QObject *parent)
@@ -437,33 +340,17 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
     const SubscriptionEntry *displaySubscription = m_dependencies.bestSubscriptionForTopic
         ? m_dependencies.bestSubscriptionForTopic(*session, topic)
         : nullptr;
-    const PayloadStoragePlan payloadPlan = makePayloadStoragePlan(
-        topic,
-        payloadBytes,
-        m_dependencies.maxIncomingPayloadBytes ? m_dependencies.maxIncomingPayloadBytes() : 0);
-    if (payloadPlan.shouldReport) {
-        appendEvent(*session, QStringLiteral("Payload"), payloadPlan.reportMessage);
-    }
-
     QString scriptDisplayName;
     QString decodedPayload;
+    const LuaScriptResult scriptResult = parseIncomingPayload(
+        *session,
+        displaySubscription,
+        topic,
+        payloadBytes,
+        timestamp,
+        scriptDisplayName,
+        decodedPayload);
     const bool hasScript = displaySubscription && !displaySubscription->scriptId.isEmpty();
-    LuaScriptResult scriptResult;
-    if (payloadPlan.allowFullProcessing) {
-        scriptResult = parseIncomingPayload(
-            *session,
-            displaySubscription,
-            topic,
-            payloadBytes,
-            timestamp,
-            scriptDisplayName,
-            decodedPayload);
-    } else if (hasScript) {
-        scriptResult.error = QStringLiteral("Lua script skipped because payload exceeds the configured size limit.");
-        scriptDisplayName = m_dependencies.scriptName
-            ? m_dependencies.scriptName(displaySubscription->scriptId)
-            : QString();
-    }
     const QString scriptId = hasScript ? displaySubscription->scriptId : QString();
     const QString parsedFormat = hasScript && scriptResult.success
         ? QStringLiteral("Lua: %1").arg(scriptDisplayName)
@@ -476,16 +363,12 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         sessionId,
         timestamp,
         topic,
-        payloadPlan.storedBytes,
+        payloadBytes,
         hasScript && scriptResult.success ? scriptResult.output : QString(),
         parsedFormat,
         parseError,
         scriptId,
-        scriptDisplayName,
-        payloadPlan.preview,
-        payloadPlan.state,
-        payloadPlan.originalSize,
-        payloadPlan.hash);
+        scriptDisplayName);
     if (historyId <= 0) {
         reportMessageStorageError(
             *session,
@@ -519,13 +402,8 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
     historyRow.insert(QStringLiteral("timestamp"), timestamp);
     historyRow.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
     historyRow.insert(QStringLiteral("topic"), topic);
-    historyRow.insert(QStringLiteral("payload"), payloadPlan.preview);
-    historyRow.insert(QStringLiteral("payload_b64"), QString());
-    historyRow.insert(QStringLiteral("payload_bytes"), payloadPlan.storedBytes);
-    historyRow.insert(QStringLiteral("payload_size"), payloadPlan.originalSize);
-    historyRow.insert(QStringLiteral("payload_state"), payloadPlan.state);
-    historyRow.insert(QStringLiteral("payload_preview"), payloadPlan.preview);
-    historyRow.insert(QStringLiteral("payload_hash"), payloadPlan.hash);
+    historyRow.insert(QStringLiteral("payload"), QString::fromUtf8(payloadBytes));
+    historyRow.insert(QStringLiteral("payload_b64"), QString::fromLatin1(payloadBytes.toBase64()));
     historyRow.insert(QStringLiteral("parsed_payload"), hasScript && scriptResult.success ? scriptResult.output : QString());
     historyRow.insert(QStringLiteral("parsed_format"), parsedFormat);
     historyRow.insert(QStringLiteral("parse_error"), parseError);

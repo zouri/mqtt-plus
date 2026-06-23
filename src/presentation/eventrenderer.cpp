@@ -15,22 +15,6 @@ bool isStartupDividerTitle(const QString &title)
 {
     return title == startupDividerLabel() || title == QStringLiteral("Current launch");
 }
-
-QString payloadStatusText(const QString &state, qint64 size, const QString &hash)
-{
-    if (state == QStringLiteral("skipped")) {
-        return hash.isEmpty()
-            ? QStringLiteral("Payload skipped: %1 bytes were not stored.").arg(size)
-            : QStringLiteral("Payload skipped: %1 bytes were not stored. SHA-256: %2").arg(size).arg(hash);
-    }
-    if (state == QStringLiteral("truncated")) {
-        return QStringLiteral("Payload truncated for display: original size %1 bytes.").arg(size);
-    }
-    if (state == QStringLiteral("raw_only")) {
-        return QStringLiteral("Payload stored as raw bytes: %1 bytes.").arg(size);
-    }
-    return QString();
-}
 }
 
 namespace EventRenderer {
@@ -146,44 +130,15 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
         return rendered;
     }
 
-    QByteArray payloadBytes = row.value(QStringLiteral("payload_bytes")).toByteArray();
-    if (payloadBytes.isEmpty() && !row.value(QStringLiteral("payload_b64")).toString().isEmpty()) {
-        payloadBytes = QByteArray::fromBase64(row.value(QStringLiteral("payload_b64")).toString().toLatin1());
-    }
-
-    qint64 payloadSize = row.value(QStringLiteral("payload_size")).toLongLong();
-    if (payloadSize <= 0) {
-        payloadSize = payloadBytes.size();
-    }
-
-    QString payloadState = row.value(QStringLiteral("payload_state"), QStringLiteral("full")).toString();
-    if (payloadState.isEmpty()) {
-        payloadState = QStringLiteral("full");
-    }
-    QString payloadPreview = row.value(QStringLiteral("payload_preview")).toString();
-    if (payloadPreview.isEmpty()) {
-        payloadPreview = row.value(QStringLiteral("payload")).toString();
-    }
+    QByteArray payloadBytes =
+        QByteArray::fromBase64(row.value(QStringLiteral("payload_b64")).toString().toLatin1());
 
     const PayloadFormat format = PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
     QString parseError;
-    QString renderedPayload;
-    if (payloadState == QStringLiteral("full") && (!payloadBytes.isEmpty() || payloadPreview.isEmpty())) {
-        renderedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, parseError);
-        if (!parseError.isEmpty()) {
-            renderedPayload = QStringLiteral("%1\n%2").arg(renderedPayload, payloadPreview);
-        }
-    } else {
-        renderedPayload = payloadPreview;
-        const QString statusText = payloadStatusText(
-            payloadState,
-            payloadSize,
-            row.value(QStringLiteral("payload_hash")).toString());
-        if (!statusText.isEmpty()) {
-            renderedPayload = renderedPayload.isEmpty()
-                ? statusText
-                : QStringLiteral("%1\n%2").arg(renderedPayload, statusText);
-        }
+    QString renderedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, parseError);
+    if (!parseError.isEmpty()) {
+        renderedPayload = QStringLiteral("%1\nRaw(Base64): %2")
+                              .arg(renderedPayload, QString::fromLatin1(payloadBytes.toBase64()));
     }
 
     const QString scriptError = row.value(QStringLiteral("parse_error")).toString();
@@ -202,19 +157,9 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
         QStringLiteral("payloadFormat"),
         !scriptError.isEmpty()
             ? QStringLiteral("Lua Error")
-            : (hasScriptResult ? parsedFormat : (payloadState == QStringLiteral("skipped")
-                    ? QStringLiteral("Skipped")
-                    : (payloadState == QStringLiteral("truncated")
-                        ? QStringLiteral("Truncated")
-                        : (payloadState == QStringLiteral("raw_only")
-                            ? QStringLiteral("Raw bytes")
-                            : PayloadCodec::formatName(format))))));
-    rendered.insert(QStringLiteral("payloadSize"), payloadSize);
-    rendered.insert(
-        QStringLiteral("testPayload"),
-        payloadState == QStringLiteral("full")
-            ? PayloadCodec::decodeForDisplay(format, payloadBytes, parseError)
-            : payloadPreview);
+            : (hasScriptResult ? parsedFormat : PayloadCodec::formatName(format)));
+    rendered.insert(QStringLiteral("payloadSize"), payloadBytes.size());
+    rendered.insert(QStringLiteral("testPayload"), PayloadCodec::decodeForDisplay(format, payloadBytes, parseError));
     rendered.insert(QStringLiteral("testFormat"), static_cast<int>(format));
     rendered.insert(QStringLiteral("testFormatName"), PayloadCodec::formatName(format));
     return rendered;

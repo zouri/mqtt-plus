@@ -123,9 +123,6 @@ AppFacade::AppFacade(QObject *parent)
         .logRetentionLimit = [this]() {
             return m_preferencesController.logRetentionLimit();
         },
-        .maxIncomingPayloadBytes = [this]() {
-            return m_preferencesController.maxIncomingPayloadBytes();
-        },
         .saveMessagesWhenOutputPaused = [this]() {
             return m_preferencesController.saveMessagesWhenOutputPaused();
         },
@@ -323,7 +320,6 @@ AppFacade::AppFacade(QObject *parent)
     connect(this, &AppFacade::messageRetentionLimitChanged, m_settingsFacade.get(), &AppSettingsFacade::messageRetentionLimitChanged);
     connect(this, &AppFacade::logRetentionLimitChanged, m_settingsFacade.get(), &AppSettingsFacade::logRetentionLimitChanged);
     connect(this, &AppFacade::historyPageSizeChanged, m_settingsFacade.get(), &AppSettingsFacade::historyPageSizeChanged);
-    connect(this, &AppFacade::maxIncomingPayloadBytesChanged, m_settingsFacade.get(), &AppSettingsFacade::maxIncomingPayloadBytesChanged);
     connect(this, &AppFacade::deleteHistoryWithSessionChanged, m_settingsFacade.get(), &AppSettingsFacade::deleteHistoryWithSessionChanged);
     connect(this, &AppFacade::saveMessagesWhenOutputPausedChanged, m_settingsFacade.get(), &AppSettingsFacade::saveMessagesWhenOutputPausedChanged);
     connect(this, &AppFacade::clearMessagesOnExitChanged, m_settingsFacade.get(), &AppSettingsFacade::clearMessagesOnExitChanged);
@@ -351,7 +347,6 @@ AppFacade::AppFacade(QObject *parent)
         emit logStreamChanged();
         emit historyPageSizeChanged();
     });
-    connect(&m_preferencesController, &PreferencesController::maxIncomingPayloadBytesChanged, this, &AppFacade::maxIncomingPayloadBytesChanged);
     connect(&m_preferencesController, &PreferencesController::deleteHistoryWithSessionChanged, this, &AppFacade::deleteHistoryWithSessionChanged);
     connect(&m_preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, this, &AppFacade::saveMessagesWhenOutputPausedChanged);
     connect(&m_preferencesController, &PreferencesController::clearMessagesOnExitChanged, this, &AppFacade::clearMessagesOnExitChanged);

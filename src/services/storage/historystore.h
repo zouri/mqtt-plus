@@ -25,11 +25,7 @@ public:
         const QString &parsedFormat = QString(),
         const QString &parseError = QString(),
         const QString &scriptId = QString(),
-        const QString &scriptName = QString(),
-        const QString &payloadPreview = QString(),
-        const QString &payloadState = QString(),
-        qint64 payloadSize = -1,
-        const QString &payloadHash = QString());
+        const QString &scriptName = QString());
     QStringList flushPendingMessages();
     int pendingMessageCount() const;
     qint64 appendEvent(
@@ -60,10 +56,6 @@ private:
         QString parseError;
         QString scriptId;
         QString scriptName;
-        QString payloadPreview;
-        QString payloadState;
-        qint64 payloadSize = 0;
-        QString payloadHash;
     };
 
     bool initialize();

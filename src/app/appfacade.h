@@ -72,7 +72,6 @@ signals:
     void messageRetentionLimitChanged();
     void logRetentionLimitChanged();
     void historyPageSizeChanged();
-    void maxIncomingPayloadBytesChanged();
     void deleteHistoryWithSessionChanged();
     void saveMessagesWhenOutputPausedChanged();
     void clearMessagesOnExitChanged();

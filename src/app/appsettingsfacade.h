@@ -23,7 +23,6 @@ class AppSettingsFacade : public QObject
     Q_PROPERTY(int messageRetentionLimit READ messageRetentionLimit WRITE setMessageRetentionLimit NOTIFY messageRetentionLimitChanged)
     Q_PROPERTY(int logRetentionLimit READ logRetentionLimit WRITE setLogRetentionLimit NOTIFY logRetentionLimitChanged)
     Q_PROPERTY(int historyPageSize READ historyPageSize WRITE setHistoryPageSize NOTIFY historyPageSizeChanged)
-    Q_PROPERTY(int maxIncomingPayloadBytes READ maxIncomingPayloadBytes WRITE setMaxIncomingPayloadBytes NOTIFY maxIncomingPayloadBytesChanged)
     Q_PROPERTY(bool deleteHistoryWithSession READ deleteHistoryWithSession WRITE setDeleteHistoryWithSession NOTIFY deleteHistoryWithSessionChanged)
     Q_PROPERTY(bool saveMessagesWhenOutputPaused READ saveMessagesWhenOutputPaused WRITE setSaveMessagesWhenOutputPaused NOTIFY saveMessagesWhenOutputPausedChanged)
     Q_PROPERTY(QString clearMessagesOnExit READ clearMessagesOnExit WRITE setClearMessagesOnExit NOTIFY clearMessagesOnExitChanged)
@@ -60,7 +59,6 @@ public:
     int messageRetentionLimit() const;
     int logRetentionLimit() const;
     int historyPageSize() const;
-    int maxIncomingPayloadBytes() const;
     bool deleteHistoryWithSession() const;
     bool saveMessagesWhenOutputPaused() const;
     QString clearMessagesOnExit() const;
@@ -74,7 +72,6 @@ public:
     void setMessageRetentionLimit(int limit);
     void setLogRetentionLimit(int limit);
     void setHistoryPageSize(int pageSize);
-    void setMaxIncomingPayloadBytes(int bytes);
     void setDeleteHistoryWithSession(bool enabled);
     void setSaveMessagesWhenOutputPaused(bool enabled);
     void setClearMessagesOnExit(const QString &mode);
@@ -94,7 +91,6 @@ signals:
     void messageRetentionLimitChanged();
     void logRetentionLimitChanged();
     void historyPageSizeChanged();
-    void maxIncomingPayloadBytesChanged();
     void deleteHistoryWithSessionChanged();
     void saveMessagesWhenOutputPausedChanged();
     void clearMessagesOnExitChanged();

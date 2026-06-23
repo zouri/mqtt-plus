@@ -25,7 +25,6 @@ public:
         std::function<int()> historyPageSize;
         std::function<int()> messageRetentionLimit;
         std::function<int()> logRetentionLimit;
-        std::function<int()> maxIncomingPayloadBytes;
         std::function<bool()> saveMessagesWhenOutputPaused;
         std::function<const ScriptEntry *(const QString &)> scriptById;
         std::function<QString(const QString &)> scriptName;
