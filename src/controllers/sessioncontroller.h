@@ -25,12 +25,12 @@ public:
         std::function<bool()> deleteHistoryWithSession;
         std::function<void(const QString &)> clearSessionHistory;
         std::function<void(SessionState &)> destroySessionRuntime;
-        std::function<void()> notifySelectedSessionViewsChanged;
-        std::function<void()> notifyCurrentSessionViewsChanged;
-        std::function<void()> notifyCurrentSessionAndSubscriptionsChanged;
-        std::function<void()> notifySessionCollectionViewsChanged;
-        std::function<void()> emitSessionsChanged;
-        std::function<void()> emitMessageStreamChanged;
+        std::function<void()> publishSelectedSessionViewsChanged;
+        std::function<void()> publishCurrentSessionViewsChanged;
+        std::function<void()> publishCurrentSessionAndSubscriptionsChanged;
+        std::function<void()> publishSessionCollectionViewsChanged;
+        std::function<void()> publishSessionsChanged;
+        std::function<void()> publishMessageStreamChanged;
     };
 
     explicit SessionController(QObject *parent = nullptr);

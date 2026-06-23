@@ -77,8 +77,8 @@ bool SubscriptionController::upsertCurrentSubscription(
     }
 
     const bool saved = m_dependencies.saveSessions ? m_dependencies.saveSessions() : false;
-    if (m_dependencies.notifySessionAndSubscriptionViewsChanged) {
-        m_dependencies.notifySessionAndSubscriptionViewsChanged();
+    if (m_dependencies.publishSessionAndSubscriptionViewsChanged) {
+        m_dependencies.publishSessionAndSubscriptionViewsChanged();
     }
     return saved;
 }
@@ -159,8 +159,8 @@ bool SubscriptionController::updateCurrentSubscription(
     }
 
     const bool saved = m_dependencies.saveSessions ? m_dependencies.saveSessions() : false;
-    if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
-        m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.publishCurrentSessionAndSubscriptionsChanged) {
+        m_dependencies.publishCurrentSessionAndSubscriptionsChanged();
     }
     return saved;
 }
@@ -199,8 +199,8 @@ void SubscriptionController::removeCurrentSubscription(const QString &topic)
     if (m_dependencies.saveSessions) {
         m_dependencies.saveSessions();
     }
-    if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
-        m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.publishCurrentSessionAndSubscriptionsChanged) {
+        m_dependencies.publishCurrentSessionAndSubscriptionsChanged();
     }
 }
 
@@ -252,8 +252,8 @@ void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, 
     if (m_dependencies.saveSessions) {
         m_dependencies.saveSessions();
     }
-    if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
-        m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.publishCurrentSessionAndSubscriptionsChanged) {
+        m_dependencies.publishCurrentSessionAndSubscriptionsChanged();
     }
 }
 
@@ -445,11 +445,11 @@ void SubscriptionController::updateSubscriptionState(
         }
     }
 
-    if (m_dependencies.refreshSubscriptionsModel) {
-        m_dependencies.refreshSubscriptionsModel();
+    if (m_dependencies.syncSubscriptionsModel) {
+        m_dependencies.syncSubscriptionsModel();
     }
-    if (m_dependencies.emitSubscriptionsChanged) {
-        m_dependencies.emitSubscriptionsChanged();
+    if (m_dependencies.publishSubscriptionsChanged) {
+        m_dependencies.publishSubscriptionsChanged();
     }
 }
 

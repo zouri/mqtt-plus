@@ -10,7 +10,7 @@ Dialog {
 
     required property AppUi ui
     required property var workbench
-    required property var scriptLibrary
+    required property var scripts
     property var scriptOptionIds: []
     property var scriptOptionNames: [qsTr("None")]
     property bool editMode: false
@@ -18,7 +18,7 @@ Dialog {
 
     function syncScriptOptions() {
         const selectedScriptId = root.scriptOptionIds[scriptField.currentIndex] || ""
-        const scripts = root.scriptLibrary.scripts
+        const scripts = root.scripts.scripts
         const ids = [""]
         const names = [qsTr("None")]
         for (let i = 0; scripts && i < scripts.count; ++i) {
@@ -104,9 +104,9 @@ Dialog {
     }
 
     Connections {
-        target: root.scriptLibrary
+        target: root.scripts
 
-        function onScriptLibraryChanged() {
+        function onScriptsChanged() {
             root.syncScriptOptions()
         }
     }

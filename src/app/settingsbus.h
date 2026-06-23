@@ -12,7 +12,7 @@ class PreferencesController;
 class SessionController;
 class ThemeController;
 
-class AppSettingsFacade : public QObject
+class SettingsBus : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString themeMode READ themeMode WRITE setThemeMode NOTIFY themeModeChanged)
@@ -43,13 +43,13 @@ public:
         EventStreamModel *logsModel = nullptr;
         std::function<void()> flushPendingMessageHistory;
         std::function<void()> reloadCurrentSessionHistory;
-        std::function<void()> refreshScriptTestSamplesModel;
-        std::function<void()> emitMessageStreamChanged;
-        std::function<void()> emitLogStreamChanged;
-        std::function<void()> emitScriptTestSamplesChanged;
+        std::function<void()> syncScriptTestSamplesModel;
+        std::function<void()> publishMessageStreamChanged;
+        std::function<void()> publishLogsChanged;
+        std::function<void()> publishScriptTestSamplesChanged;
     };
 
-    explicit AppSettingsFacade(Dependencies dependencies, QObject *parent = nullptr);
+    explicit SettingsBus(Dependencies dependencies, QObject *parent = nullptr);
 
     QString themeMode() const;
     QString effectiveTheme() const;

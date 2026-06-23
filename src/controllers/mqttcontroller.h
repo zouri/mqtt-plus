@@ -21,9 +21,9 @@ public:
         std::function<void(SessionState &, bool)> restoreActiveSubscriptions;
         std::function<void(SessionState &)> resetRuntimeSubscriptions;
         std::function<void(const QString &, const QString &, const QByteArray &)> appendIncomingMessage;
-        std::function<void()> notifySessionViewsChanged;
-        std::function<void()> notifyCurrentSessionViewsChanged;
-        std::function<void()> notifySessionAndSubscriptionViewsChanged;
+        std::function<void()> publishSessionViewsChanged;
+        std::function<void()> publishCurrentSessionViewsChanged;
+        std::function<void()> publishSessionAndSubscriptionViewsChanged;
     };
 
     explicit MqttController(QObject *parent = nullptr);

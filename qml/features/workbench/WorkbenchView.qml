@@ -8,7 +8,7 @@ Item {
 
     required property AppUi ui
     required property var workbench
-    required property var scriptLibrary
+    required property var scripts
     required property string fontFamily
     property bool connectionPaneCollapsed: false
     readonly property var session: root.workbench.currentSession
@@ -274,7 +274,7 @@ Item {
             AddSubscriptionDialog {
                 ui: root.ui
                 workbench: root.workbench
-                scriptLibrary: root.scriptLibrary
+                scripts: root.scripts
             }
         }
 

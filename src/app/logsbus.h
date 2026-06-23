@@ -6,7 +6,7 @@
 class EventController;
 class EventStreamModel;
 
-class LogStreamFacade : public QObject
+class LogsBus : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(EventStreamModel* logs READ logs CONSTANT)
@@ -18,7 +18,7 @@ public:
         EventController *eventController = nullptr;
     };
 
-    explicit LogStreamFacade(Dependencies dependencies, QObject *parent = nullptr);
+    explicit LogsBus(Dependencies dependencies, QObject *parent = nullptr);
 
     EventStreamModel *logs();
 
@@ -26,8 +26,8 @@ public:
     Q_INVOKABLE void clearCurrentLogs();
 
 signals:
-    void logStreamChanged();
-    void logStreamRowAppended(const QVariantMap &row);
+    void logsChanged();
+    void logsRowAppended(const QVariantMap &row);
 
 private:
     Dependencies m_dependencies;

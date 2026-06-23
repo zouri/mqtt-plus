@@ -1,37 +1,38 @@
-#include "app/appfacade.h"
+#include "app/modelcoordinator.h"
 
 #include "app/appfacadeutils.h"
+#include "controllers/scriptcontroller.h"
+#include "controllers/sessioncontroller.h"
+#include "controllers/subscriptioncontroller.h"
+#include "domain/session.h"
 #include "domain/sessionconfig.h"
+#include "models/eventstreammodel.h"
+#include "models/scriptlibrarymodel.h"
+#include "models/scripttestsamplesmodel.h"
+#include "models/sessionlistmodel.h"
+#include "models/subscriptionlistmodel.h"
+#include "services/payload/payloadcodec.h"
 #include "services/storage/scriptstore.h"
 
 #include <QDateTime>
 
+#include <utility>
+
 using namespace AppFacadeUtils;
 
-WorkbenchFacade *AppFacade::workbench()
+ModelCoordinator::ModelCoordinator(Dependencies dependencies)
+    : m_dependencies(std::move(dependencies))
 {
-    return m_workbenchFacade.get();
 }
 
-AppSettingsFacade *AppFacade::settings()
+void ModelCoordinator::refreshSessionsModel()
 {
-    return m_settingsFacade.get();
-}
+    if (!m_dependencies.sessionController || !m_dependencies.sessionsModel) {
+        return;
+    }
 
-ScriptLibraryFacade *AppFacade::scriptLibrary()
-{
-    return m_scriptLibraryFacade.get();
-}
-
-LogStreamFacade *AppFacade::logStream()
-{
-    return m_logStreamFacade.get();
-}
-
-void AppFacade::refreshSessionsModel()
-{
     QVector<SessionListRow> rows;
-    const auto &sessions = m_sessionController.sessions();
+    const auto &sessions = m_dependencies.sessionController->sessions();
     rows.reserve(sessions.size());
     for (const auto &session : sessions) {
         const auto *client = session.client;
@@ -50,14 +51,18 @@ void AppFacade::refreshSessionsModel()
         row.lastError = session.lastError;
         rows.append(row);
     }
-    m_sessionsModel.setRows(rows);
+    m_dependencies.sessionsModel->setRows(rows);
 }
 
-void AppFacade::refreshSubscriptionsModel()
+void ModelCoordinator::refreshSubscriptionsModel()
 {
-    const auto *session = currentSessionState();
+    if (!m_dependencies.subscriptionsModel) {
+        return;
+    }
+
+    const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
-        m_subscriptionsModel.setRows({});
+        m_dependencies.subscriptionsModel->setRows({});
         return;
     }
 
@@ -71,23 +76,31 @@ void AppFacade::refreshSubscriptionsModel()
         row.displayName = subscription.alias.isEmpty() ? subscription.topic : subscription.alias;
         row.requestedQos = subscription.requestedQos;
         row.grantedQos = subscription.grantedQos;
-        row.topicFps = subscriptionFps(subscription, nowMs);
+        row.topicFps = m_dependencies.subscriptionController
+            ? m_dependencies.subscriptionController->subscriptionFps(subscription, nowMs)
+            : 0.0;
         row.format = subscription.format;
         row.formatName = PayloadCodec::formatName(PayloadCodec::formatFromInt(subscription.format));
         row.scriptId = subscription.scriptId;
-        row.scriptName = scriptName(subscription.scriptId);
+        row.scriptName = m_dependencies.scriptController
+            ? m_dependencies.scriptController->scriptName(subscription.scriptId)
+            : QString();
         row.paused = subscription.paused;
         row.state = subscriptionDisplayState(*session, subscription, session->client);
         row.lastError = subscription.lastError;
         rows.append(row);
     }
-    m_subscriptionsModel.setRows(rows);
+    m_dependencies.subscriptionsModel->setRows(rows);
 }
 
-void AppFacade::refreshScriptsModel()
+void ModelCoordinator::refreshScriptsModel()
 {
+    if (!m_dependencies.scriptController || !m_dependencies.scriptsModel) {
+        return;
+    }
+
     QVector<ScriptLibraryRow> rows;
-    const auto &scripts = m_scriptController.scripts();
+    const auto &scripts = m_dependencies.scriptController->scripts();
     rows.reserve(scripts.size());
     for (const auto &script : scripts) {
         ScriptLibraryRow row;
@@ -99,14 +112,18 @@ void AppFacade::refreshScriptsModel()
         row.filePath = ScriptStore::scriptFilePath(script.fileName);
         rows.append(row);
     }
-    m_scriptsModel.setRows(rows);
+    m_dependencies.scriptsModel->setRows(rows);
 }
 
-void AppFacade::refreshScriptTestSamplesModel()
+void ModelCoordinator::refreshScriptTestSamplesModel()
 {
-    const auto *session = currentSessionState();
+    if (!m_dependencies.scriptTestSamplesModel) {
+        return;
+    }
+
+    const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
-        m_scriptTestSamplesModel.setRows({});
+        m_dependencies.scriptTestSamplesModel->setRows({});
         return;
     }
 
@@ -128,5 +145,32 @@ void AppFacade::refreshScriptTestSamplesModel()
         rows.append(sample);
     }
 
-    m_scriptTestSamplesModel.setRows(rows);
+    m_dependencies.scriptTestSamplesModel->setRows(rows);
+}
+
+void ModelCoordinator::syncSelectedSessionModels()
+{
+    refreshSubscriptionsModel();
+    syncCurrentSessionEventModels();
+    refreshScriptTestSamplesModel();
+}
+
+void ModelCoordinator::syncSessionCollectionModels()
+{
+    refreshSessionsModel();
+    refreshSubscriptionsModel();
+    syncCurrentSessionEventModels();
+    refreshScriptsModel();
+    refreshScriptTestSamplesModel();
+}
+
+void ModelCoordinator::syncCurrentSessionEventModels()
+{
+    const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
+    if (m_dependencies.messagesModel) {
+        m_dependencies.messagesModel->setRows(session ? session->messageRows : QVariantList {});
+    }
+    if (m_dependencies.logsModel) {
+        m_dependencies.logsModel->setRows(session ? session->logRows : QVariantList {});
+    }
 }

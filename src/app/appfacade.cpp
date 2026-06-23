@@ -1,10 +1,13 @@
 #include "app/appfacade.h"
 
-#include "app/appsettingsfacade.h"
+#include "app/appeventbus.h"
+#include "app/settingsbus.h"
 #include "app/appfacadeutils.h"
-#include "app/logstreamfacade.h"
-#include "app/scriptlibraryfacade.h"
-#include "app/workbenchfacade.h"
+#include "app/logsbus.h"
+#include "app/modelcoordinator.h"
+#include "app/scriptsbus.h"
+#include "app/sessionlifecycleservice.h"
+#include "app/workbenchbus.h"
 
 #include <QDateTime>
 
@@ -30,8 +33,54 @@ AppFacade::AppFacade(QObject *parent)
     , m_logsModel(this)
     , m_scriptsModel(this)
     , m_scriptTestSamplesModel(this)
-    , m_workbenchFacade(std::make_unique<WorkbenchFacade>(
-          WorkbenchFacade::Dependencies {
+    , m_modelCoordinator(std::make_unique<ModelCoordinator>(
+          ModelCoordinator::Dependencies {
+              .sessionController = &m_sessionController,
+              .subscriptionController = &m_subscriptionController,
+              .scriptController = &m_scriptController,
+              .sessionsModel = &m_sessionsModel,
+              .subscriptionsModel = &m_subscriptionsModel,
+              .messagesModel = &m_messagesModel,
+              .logsModel = &m_logsModel,
+              .scriptsModel = &m_scriptsModel,
+              .scriptTestSamplesModel = &m_scriptTestSamplesModel,
+              .currentSession = [this]() {
+                  return currentSessionState();
+              },
+          }))
+    , m_sessionLifecycleService(std::make_unique<SessionLifecycleService>(
+          SessionLifecycleService::Dependencies {
+              .settings = &m_settings,
+              .runtimeParent = this,
+              .sessionController = &m_sessionController,
+              .scriptExists = [this](const QString &scriptId) {
+                  return m_scriptController.scriptById(scriptId) != nullptr;
+              },
+              .sessionById = [this](const QString &sessionId) {
+                  return sessionById(sessionId);
+              },
+              .bindSessionSignals = [this](SessionState *session) {
+                  bindSessionSignals(session);
+              },
+              .appendEvent = [this](SessionState &session, const QString &channel, const QString &message) {
+                  appendEvent(session, channel, message);
+              },
+              .reloadCurrentSessionHistory = [this]() {
+                  reloadCurrentSessionHistory();
+              },
+              .publishSessionViewsChanged = [this]() {
+                  publishSessionViewsChanged();
+              },
+              .publishSessionCollectionViewsChanged = [this]() {
+                  publishSessionCollectionViewsChanged();
+              },
+              .reportStorageError = [this](const QString &message) {
+                  reportStorageError(message);
+              },
+          },
+          this))
+    , m_workbenchBus(std::make_unique<WorkbenchBus>(
+          WorkbenchBus::Dependencies {
               .sessionsModel = &m_sessionsModel,
               .filteredSubscriptionsModel = &m_filteredSubscriptionsModel,
               .messagesModel = &m_messagesModel,
@@ -47,8 +96,8 @@ AppFacade::AppFacade(QObject *parent)
               },
           },
           this))
-    , m_settingsFacade(std::make_unique<AppSettingsFacade>(
-          AppSettingsFacade::Dependencies {
+    , m_settingsBus(std::make_unique<SettingsBus>(
+          SettingsBus::Dependencies {
               .themeController = &m_themeController,
               .languageController = &m_languageController,
               .preferencesController = &m_preferencesController,
@@ -62,45 +111,45 @@ AppFacade::AppFacade(QObject *parent)
               .reloadCurrentSessionHistory = [this]() {
                   reloadCurrentSessionHistory();
               },
-              .refreshScriptTestSamplesModel = [this]() {
-                  refreshScriptTestSamplesModel();
+              .syncScriptTestSamplesModel = [this]() {
+                  m_modelCoordinator->refreshScriptTestSamplesModel();
               },
-              .emitMessageStreamChanged = [this]() {
-                  emit messageStreamChanged();
+              .publishMessageStreamChanged = [this]() {
+                  publishMessageStreamChanged();
               },
-              .emitLogStreamChanged = [this]() {
-                  emit logStreamChanged();
+              .publishLogsChanged = [this]() {
+                  publishLogsChanged();
               },
-              .emitScriptTestSamplesChanged = [this]() {
-                  emit scriptTestSamplesChanged();
+              .publishScriptTestSamplesChanged = [this]() {
+                  publishScriptTestSamplesChanged();
               },
           },
           this))
-    , m_scriptLibraryFacade(std::make_unique<ScriptLibraryFacade>(
-          ScriptLibraryFacade::Dependencies {
+    , m_scriptsBus(std::make_unique<ScriptsBus>(
+          ScriptsBus::Dependencies {
               .scriptsModel = &m_scriptsModel,
               .scriptTestSamplesModel = &m_scriptTestSamplesModel,
               .scriptController = &m_scriptController,
               .sessionController = &m_sessionController,
-              .refreshScriptsModel = [this]() {
-                  refreshScriptsModel();
+              .syncScriptsModel = [this]() {
+                  m_modelCoordinator->refreshScriptsModel();
               },
               .saveSessions = [this]() {
                   return saveSessions();
               },
-              .notifyCurrentSessionAndSubscriptionsChanged = [this]() {
-                  notifyCurrentSessionAndSubscriptionsChanged();
+              .publishCurrentSessionAndSubscriptionsChanged = [this]() {
+                  publishCurrentSessionAndSubscriptionsChanged();
               },
-              .notifySessionAndSubscriptionViewsChanged = [this]() {
-                  notifySessionAndSubscriptionViewsChanged();
+              .publishSessionAndSubscriptionViewsChanged = [this]() {
+                  publishSessionAndSubscriptionViewsChanged();
               },
-              .emitScriptLibraryChanged = [this]() {
-                  emit scriptLibraryChanged();
+              .publishScriptsChanged = [this]() {
+                  publishScriptsChanged();
               },
           },
           this))
-    , m_logStreamFacade(std::make_unique<LogStreamFacade>(
-          LogStreamFacade::Dependencies {
+    , m_logsBus(std::make_unique<LogsBus>(
+          LogsBus::Dependencies {
               .logsModel = &m_logsModel,
               .eventController = &m_eventController,
           },
@@ -135,11 +184,11 @@ AppFacade::AppFacade(QObject *parent)
         .bestSubscriptionForTopic = [this](const SessionState &session, const QString &topic) {
             return m_subscriptionController.bestSubscriptionForTopic(session, topic);
         },
-        .refreshScriptTestSamplesModel = [this]() {
-            refreshScriptTestSamplesModel();
+        .syncScriptTestSamplesModel = [this]() {
+            m_modelCoordinator->refreshScriptTestSamplesModel();
         },
-        .refreshSubscriptionsModel = [this]() {
-            refreshSubscriptionsModel();
+        .syncSubscriptionsModel = [this]() {
+            m_modelCoordinator->refreshSubscriptionsModel();
         },
         .subscriptionFpsRefreshActive = [this]() {
             return m_subscriptionFpsRefreshTimer.isActive();
@@ -147,23 +196,23 @@ AppFacade::AppFacade(QObject *parent)
         .startSubscriptionFpsRefresh = [this]() {
             m_subscriptionFpsRefreshTimer.start();
         },
-        .emitMessageStreamChanged = [this]() {
-            emit messageStreamChanged();
+        .publishMessageStreamChanged = [this]() {
+            publishMessageStreamChanged();
         },
-        .emitLogStreamChanged = [this]() {
-            emit logStreamChanged();
+        .publishLogsChanged = [this]() {
+            publishLogsChanged();
         },
-        .emitMessageStreamRowAppended = [this](const QVariantMap &row) {
-            emit messageStreamRowAppended(row);
+        .publishMessageStreamRowAppended = [this](const QVariantMap &row) {
+            publishMessageStreamRowAppended(row);
         },
-        .emitLogStreamRowAppended = [this](const QVariantMap &row) {
-            emit logStreamRowAppended(row);
+        .publishLogsRowAppended = [this](const QVariantMap &row) {
+            publishLogsRowAppended(row);
         },
-        .emitScriptTestSamplesChanged = [this]() {
-            emit scriptTestSamplesChanged();
+        .publishScriptTestSamplesChanged = [this]() {
+            publishScriptTestSamplesChanged();
         },
-        .emitSubscriptionsChanged = [this]() {
-            emit subscriptionsChanged();
+        .publishSubscriptionsChanged = [this]() {
+            publishSubscriptionsChanged();
         },
         .historyStore = &m_historyStore,
         .messagesModel = &m_messagesModel,
@@ -212,23 +261,23 @@ AppFacade::AppFacade(QObject *parent)
         .destroySessionRuntime = [this](SessionState &session) {
             destroySessionRuntime(session);
         },
-        .notifySelectedSessionViewsChanged = [this]() {
-            notifySelectedSessionViewsChanged();
+        .publishSelectedSessionViewsChanged = [this]() {
+            publishSelectedSessionViewsChanged();
         },
-        .notifyCurrentSessionViewsChanged = [this]() {
-            notifyCurrentSessionViewsChanged();
+        .publishCurrentSessionViewsChanged = [this]() {
+            publishCurrentSessionViewsChanged();
         },
-        .notifyCurrentSessionAndSubscriptionsChanged = [this]() {
-            notifyCurrentSessionAndSubscriptionsChanged();
+        .publishCurrentSessionAndSubscriptionsChanged = [this]() {
+            publishCurrentSessionAndSubscriptionsChanged();
         },
-        .notifySessionCollectionViewsChanged = [this]() {
-            notifySessionCollectionViewsChanged();
+        .publishSessionCollectionViewsChanged = [this]() {
+            publishSessionCollectionViewsChanged();
         },
-        .emitSessionsChanged = [this]() {
-            emit sessionsChanged();
+        .publishSessionsChanged = [this]() {
+            publishSessionsChanged();
         },
-        .emitMessageStreamChanged = [this]() {
-            emit messageStreamChanged();
+        .publishMessageStreamChanged = [this]() {
+            publishMessageStreamChanged();
         },
     });
     m_subscriptionController.setDependencies(SubscriptionController::Dependencies {
@@ -247,17 +296,17 @@ AppFacade::AppFacade(QObject *parent)
         .saveSessions = [this]() {
             return saveSessions();
         },
-        .notifySessionAndSubscriptionViewsChanged = [this]() {
-            notifySessionAndSubscriptionViewsChanged();
+        .publishSessionAndSubscriptionViewsChanged = [this]() {
+            publishSessionAndSubscriptionViewsChanged();
         },
-        .notifyCurrentSessionAndSubscriptionsChanged = [this]() {
-            notifyCurrentSessionAndSubscriptionsChanged();
+        .publishCurrentSessionAndSubscriptionsChanged = [this]() {
+            publishCurrentSessionAndSubscriptionsChanged();
         },
-        .refreshSubscriptionsModel = [this]() {
-            refreshSubscriptionsModel();
+        .syncSubscriptionsModel = [this]() {
+            m_modelCoordinator->refreshSubscriptionsModel();
         },
-        .emitSubscriptionsChanged = [this]() {
-            emit subscriptionsChanged();
+        .publishSubscriptionsChanged = [this]() {
+            publishSubscriptionsChanged();
         },
         .setSubscriptionFpsRefreshActive = [this](bool active) {
             if (active) {
@@ -292,68 +341,92 @@ AppFacade::AppFacade(QObject *parent)
                                      const QByteArray &payloadBytes) {
             m_eventController.appendIncomingMessage(sessionId, topic, payloadBytes);
         },
-        .notifySessionViewsChanged = [this]() {
-            notifySessionViewsChanged();
+        .publishSessionViewsChanged = [this]() {
+            publishSessionViewsChanged();
         },
-        .notifyCurrentSessionViewsChanged = [this]() {
-            notifyCurrentSessionViewsChanged();
+        .publishCurrentSessionViewsChanged = [this]() {
+            publishCurrentSessionViewsChanged();
         },
-        .notifySessionAndSubscriptionViewsChanged = [this]() {
-            notifySessionAndSubscriptionViewsChanged();
+        .publishSessionAndSubscriptionViewsChanged = [this]() {
+            publishSessionAndSubscriptionViewsChanged();
         },
     });
     m_filteredSubscriptionsModel.setSourceModel(&m_subscriptionsModel);
-    connect(this, &AppFacade::sessionsChanged, m_workbenchFacade.get(), &WorkbenchFacade::sessionsChanged);
-    connect(this, &AppFacade::currentSessionIndexChanged, m_workbenchFacade.get(), &WorkbenchFacade::currentSessionIndexChanged);
-    connect(this, &AppFacade::currentSessionChanged, m_workbenchFacade.get(), &WorkbenchFacade::currentSessionChanged);
-    connect(this, &AppFacade::subscriptionsChanged, m_workbenchFacade.get(), &WorkbenchFacade::subscriptionsChanged);
-    connect(this, &AppFacade::messageStreamChanged, m_workbenchFacade.get(), &WorkbenchFacade::messageStreamChanged);
-    connect(this, &AppFacade::messageStreamRowAppended, m_workbenchFacade.get(), &WorkbenchFacade::messageStreamRowAppended);
-    connect(this, &AppFacade::scriptLibraryChanged, m_scriptLibraryFacade.get(), &ScriptLibraryFacade::scriptLibraryChanged);
-    connect(this, &AppFacade::scriptTestSamplesChanged, m_scriptLibraryFacade.get(), &ScriptLibraryFacade::scriptTestSamplesChanged);
-    connect(this, &AppFacade::logStreamChanged, m_logStreamFacade.get(), &LogStreamFacade::logStreamChanged);
-    connect(this, &AppFacade::logStreamRowAppended, m_logStreamFacade.get(), &LogStreamFacade::logStreamRowAppended);
-    connect(this, &AppFacade::themeModeChanged, m_settingsFacade.get(), &AppSettingsFacade::themeModeChanged);
-    connect(this, &AppFacade::effectiveThemeChanged, m_settingsFacade.get(), &AppSettingsFacade::effectiveThemeChanged);
-    connect(this, &AppFacade::languageModeChanged, m_settingsFacade.get(), &AppSettingsFacade::languageModeChanged);
-    connect(this, &AppFacade::languageChanged, m_settingsFacade.get(), &AppSettingsFacade::languageChanged);
-    connect(this, &AppFacade::messageRetentionLimitChanged, m_settingsFacade.get(), &AppSettingsFacade::messageRetentionLimitChanged);
-    connect(this, &AppFacade::logRetentionLimitChanged, m_settingsFacade.get(), &AppSettingsFacade::logRetentionLimitChanged);
-    connect(this, &AppFacade::historyPageSizeChanged, m_settingsFacade.get(), &AppSettingsFacade::historyPageSizeChanged);
-    connect(this, &AppFacade::deleteHistoryWithSessionChanged, m_settingsFacade.get(), &AppSettingsFacade::deleteHistoryWithSessionChanged);
-    connect(this, &AppFacade::saveMessagesWhenOutputPausedChanged, m_settingsFacade.get(), &AppSettingsFacade::saveMessagesWhenOutputPausedChanged);
-    connect(this, &AppFacade::clearMessagesOnExitChanged, m_settingsFacade.get(), &AppSettingsFacade::clearMessagesOnExitChanged);
-    connect(this, &AppFacade::clearLogsOnExitChanged, m_settingsFacade.get(), &AppSettingsFacade::clearLogsOnExitChanged);
-    connect(this, &AppFacade::windowWidthChanged, m_settingsFacade.get(), &AppSettingsFacade::windowWidthChanged);
-    connect(this, &AppFacade::windowHeightChanged, m_settingsFacade.get(), &AppSettingsFacade::windowHeightChanged);
-    connect(this, &AppFacade::windowMaximizedChanged, m_settingsFacade.get(), &AppSettingsFacade::windowMaximizedChanged);
+    connect(this, &AppFacade::sessionsChanged, m_workbenchBus.get(), &WorkbenchBus::sessionsChanged);
+    connect(this, &AppFacade::currentSessionIndexChanged, m_workbenchBus.get(), &WorkbenchBus::currentSessionIndexChanged);
+    connect(this, &AppFacade::currentSessionChanged, m_workbenchBus.get(), &WorkbenchBus::currentSessionChanged);
+    connect(this, &AppFacade::subscriptionsChanged, m_workbenchBus.get(), &WorkbenchBus::subscriptionsChanged);
+    connect(this, &AppFacade::messageStreamChanged, m_workbenchBus.get(), &WorkbenchBus::messageStreamChanged);
+    connect(this, &AppFacade::messageStreamRowAppended, m_workbenchBus.get(), &WorkbenchBus::messageStreamRowAppended);
+    connect(this, &AppFacade::scriptsChanged, m_scriptsBus.get(), &ScriptsBus::scriptsChanged);
+    connect(this, &AppFacade::scriptTestSamplesChanged, m_scriptsBus.get(), &ScriptsBus::scriptTestSamplesChanged);
+    connect(this, &AppFacade::logsChanged, m_logsBus.get(), &LogsBus::logsChanged);
+    connect(this, &AppFacade::logsRowAppended, m_logsBus.get(), &LogsBus::logsRowAppended);
+    connect(this, &AppFacade::themeModeChanged, m_settingsBus.get(), &SettingsBus::themeModeChanged);
+    connect(this, &AppFacade::effectiveThemeChanged, m_settingsBus.get(), &SettingsBus::effectiveThemeChanged);
+    connect(this, &AppFacade::languageModeChanged, m_settingsBus.get(), &SettingsBus::languageModeChanged);
+    connect(this, &AppFacade::languageChanged, m_settingsBus.get(), &SettingsBus::languageChanged);
+    connect(this, &AppFacade::messageRetentionLimitChanged, m_settingsBus.get(), &SettingsBus::messageRetentionLimitChanged);
+    connect(this, &AppFacade::logRetentionLimitChanged, m_settingsBus.get(), &SettingsBus::logRetentionLimitChanged);
+    connect(this, &AppFacade::historyPageSizeChanged, m_settingsBus.get(), &SettingsBus::historyPageSizeChanged);
+    connect(this, &AppFacade::deleteHistoryWithSessionChanged, m_settingsBus.get(), &SettingsBus::deleteHistoryWithSessionChanged);
+    connect(this, &AppFacade::saveMessagesWhenOutputPausedChanged, m_settingsBus.get(), &SettingsBus::saveMessagesWhenOutputPausedChanged);
+    connect(this, &AppFacade::clearMessagesOnExitChanged, m_settingsBus.get(), &SettingsBus::clearMessagesOnExitChanged);
+    connect(this, &AppFacade::clearLogsOnExitChanged, m_settingsBus.get(), &SettingsBus::clearLogsOnExitChanged);
+    connect(this, &AppFacade::windowWidthChanged, m_settingsBus.get(), &SettingsBus::windowWidthChanged);
+    connect(this, &AppFacade::windowHeightChanged, m_settingsBus.get(), &SettingsBus::windowHeightChanged);
+    connect(this, &AppFacade::windowMaximizedChanged, m_settingsBus.get(), &SettingsBus::windowMaximizedChanged);
     connect(&m_scriptController, &ScriptController::storageError, this, &AppFacade::reportStorageError);
-    connect(&m_themeController, &ThemeController::modeChanged, this, &AppFacade::themeModeChanged);
-    connect(&m_themeController, &ThemeController::effectiveThemeChanged, this, &AppFacade::effectiveThemeChanged);
-    connect(&m_languageController, &LanguageController::modeChanged, this, &AppFacade::languageModeChanged);
-    connect(&m_languageController, &LanguageController::languageChanged, this, [this]() {
-        refreshSessionsModel();
-        refreshSubscriptionsModel();
-        emit currentSessionChanged();
-        emit sessionsChanged();
-        emit subscriptionsChanged();
-        emit languageChanged();
+    connect(&m_themeController, &ThemeController::modeChanged, this, [this]() {
+        publishThemeModeChanged();
     });
-    connect(&m_preferencesController, &PreferencesController::messageRetentionLimitChanged, this, &AppFacade::messageRetentionLimitChanged);
-    connect(&m_preferencesController, &PreferencesController::logRetentionLimitChanged, this, &AppFacade::logRetentionLimitChanged);
+    connect(&m_themeController, &ThemeController::effectiveThemeChanged, this, [this]() {
+        publishEffectiveThemeChanged();
+    });
+    connect(&m_languageController, &LanguageController::modeChanged, this, [this]() {
+        publishLanguageModeChanged();
+    });
+    connect(&m_languageController, &LanguageController::languageChanged, this, [this]() {
+        m_modelCoordinator->refreshSessionsModel();
+        m_modelCoordinator->refreshSubscriptionsModel();
+        publishCurrentSessionChanged();
+        publishSessionsChanged();
+        publishSubscriptionsChanged();
+        publishLanguageChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::messageRetentionLimitChanged, this, [this]() {
+        publishMessageRetentionLimitChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::logRetentionLimitChanged, this, [this]() {
+        publishLogRetentionLimitChanged();
+    });
     connect(&m_preferencesController, &PreferencesController::historyPageSizeChanged, this, [this]() {
         reloadCurrentSessionHistory();
-        emit messageStreamChanged();
-        emit logStreamChanged();
-        emit historyPageSizeChanged();
+        publishMessageStreamChanged();
+        publishLogsChanged();
+        publishHistoryPageSizeChanged();
     });
-    connect(&m_preferencesController, &PreferencesController::deleteHistoryWithSessionChanged, this, &AppFacade::deleteHistoryWithSessionChanged);
-    connect(&m_preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, this, &AppFacade::saveMessagesWhenOutputPausedChanged);
-    connect(&m_preferencesController, &PreferencesController::clearMessagesOnExitChanged, this, &AppFacade::clearMessagesOnExitChanged);
-    connect(&m_preferencesController, &PreferencesController::clearLogsOnExitChanged, this, &AppFacade::clearLogsOnExitChanged);
-    connect(&m_preferencesController, &PreferencesController::windowWidthChanged, this, &AppFacade::windowWidthChanged);
-    connect(&m_preferencesController, &PreferencesController::windowHeightChanged, this, &AppFacade::windowHeightChanged);
-    connect(&m_preferencesController, &PreferencesController::windowMaximizedChanged, this, &AppFacade::windowMaximizedChanged);
+    connect(&m_preferencesController, &PreferencesController::deleteHistoryWithSessionChanged, this, [this]() {
+        publishDeleteHistoryWithSessionChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, this, [this]() {
+        publishSaveMessagesWhenOutputPausedChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::clearMessagesOnExitChanged, this, [this]() {
+        publishClearMessagesOnExitChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::clearLogsOnExitChanged, this, [this]() {
+        publishClearLogsOnExitChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::windowWidthChanged, this, [this]() {
+        publishWindowWidthChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::windowHeightChanged, this, [this]() {
+        publishWindowHeightChanged();
+    });
+    connect(&m_preferencesController, &PreferencesController::windowMaximizedChanged, this, [this]() {
+        publishWindowMaximizedChanged();
+    });
 
     m_subscriptionFpsRefreshTimer.setInterval(kSubscriptionFpsRefreshIntervalMs);
     connect(
@@ -368,6 +441,332 @@ AppFacade::AppFacade(QObject *parent)
 AppFacade::~AppFacade()
 {
     applyExitCleanup();
+}
+
+WorkbenchBus *AppFacade::workbench()
+{
+    return m_workbenchBus.get();
+}
+
+SettingsBus *AppFacade::settings()
+{
+    return m_settingsBus.get();
+}
+
+ScriptsBus *AppFacade::scripts()
+{
+    return m_scriptsBus.get();
+}
+
+LogsBus *AppFacade::logs()
+{
+    return m_logsBus.get();
+}
+
+void AppFacade::setEventBus(AppEventBus *eventBus)
+{
+    m_eventBus = eventBus;
+}
+
+SessionState *AppFacade::currentSessionState()
+{
+    return m_sessionController.currentSession();
+}
+
+const SessionState *AppFacade::currentSessionState() const
+{
+    return m_sessionController.currentSession();
+}
+
+SessionState *AppFacade::sessionById(const QString &sessionId)
+{
+    return m_sessionController.sessionById(sessionId);
+}
+
+const SessionState *AppFacade::sessionById(const QString &sessionId) const
+{
+    return m_sessionController.sessionById(sessionId);
+}
+
+void AppFacade::bindSessionSignals(SessionState *session)
+{
+    m_mqttController.bindSessionSignals(session);
+}
+
+void AppFacade::configureSession(SessionState &session, const QVariantMap &config, bool keepNameFallback)
+{
+    m_sessionLifecycleService->configureSession(session, config, keepNameFallback);
+}
+
+void AppFacade::initializeSessionRuntime(SessionState *session)
+{
+    m_sessionLifecycleService->initializeSessionRuntime(session);
+}
+
+void AppFacade::destroySessionRuntime(SessionState &session)
+{
+    m_sessionLifecycleService->destroySessionRuntime(session);
+}
+
+void AppFacade::connectSession(SessionState &session, const QString &eventPrefix)
+{
+    m_mqttController.connectSession(session, eventPrefix);
+}
+
+QSslConfiguration AppFacade::sslConfigurationForSession(const SessionState &session, QString &errorMessage) const
+{
+    return m_mqttController.sslConfigurationForSession(session, errorMessage);
+}
+
+void AppFacade::updatePublishStatus(
+    SessionState &session,
+    const QString &state,
+    const QString &reason,
+    qint32 messageId)
+{
+    m_mqttController.updatePublishStatus(session, state, reason, messageId);
+}
+
+void AppFacade::appendEvent(SessionState &session, const QString &channel, const QString &message)
+{
+    m_eventController.appendEvent(session, channel, message);
+}
+
+void AppFacade::refreshSubscriptionFps()
+{
+    m_subscriptionController.refreshSubscriptionFps();
+}
+
+void AppFacade::reloadCurrentSessionHistory()
+{
+    m_eventController.reloadCurrentSessionHistory();
+}
+
+void AppFacade::loadScripts()
+{
+    m_scriptController.loadScripts();
+    m_modelCoordinator->refreshScriptsModel();
+}
+
+void AppFacade::loadSessions()
+{
+    m_sessionLifecycleService->loadSessions();
+}
+
+bool AppFacade::saveSessions()
+{
+    return m_sessionLifecycleService->saveSessions();
+}
+
+SessionState AppFacade::createDefaultSession(const QString &name)
+{
+    return m_sessionLifecycleService->createDefaultSession(name);
+}
+
+void AppFacade::reportStorageError(const QString &message)
+{
+    if (message.isEmpty()) {
+        return;
+    }
+
+    if (auto *session = currentSessionState()) {
+        session->lastError = message;
+        appendEvent(*session, QStringLiteral("Storage"), message);
+    }
+
+    publishSessionViewsChanged();
+}
+
+void AppFacade::publishSessionsChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishSessionsChanged();
+    }
+    emit sessionsChanged();
+}
+
+void AppFacade::publishCurrentSessionIndexChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishCurrentSessionIndexChanged();
+    }
+    emit currentSessionIndexChanged();
+}
+
+void AppFacade::publishCurrentSessionChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishCurrentSessionChanged();
+    }
+    emit currentSessionChanged();
+}
+
+void AppFacade::publishSubscriptionsChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishSubscriptionsChanged();
+    }
+    emit subscriptionsChanged();
+}
+
+void AppFacade::publishMessageStreamChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishMessageStreamChanged();
+    }
+    emit messageStreamChanged();
+}
+
+void AppFacade::publishLogsChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishLogsChanged();
+    }
+    emit logsChanged();
+}
+
+void AppFacade::publishMessageStreamRowAppended(const QVariantMap &row)
+{
+    if (m_eventBus) {
+        m_eventBus->publishMessageStreamRowAppended(row);
+    }
+    emit messageStreamRowAppended(row);
+}
+
+void AppFacade::publishLogsRowAppended(const QVariantMap &row)
+{
+    if (m_eventBus) {
+        m_eventBus->publishLogsRowAppended(row);
+    }
+    emit logsRowAppended(row);
+}
+
+void AppFacade::publishScriptsChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishScriptsChanged();
+    }
+    emit scriptsChanged();
+}
+
+void AppFacade::publishScriptTestSamplesChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishScriptTestSamplesChanged();
+    }
+    emit scriptTestSamplesChanged();
+}
+
+void AppFacade::publishThemeModeChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishThemeModeChanged();
+    }
+    emit themeModeChanged();
+}
+
+void AppFacade::publishEffectiveThemeChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishEffectiveThemeChanged();
+    }
+    emit effectiveThemeChanged();
+}
+
+void AppFacade::publishLanguageModeChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishLanguageModeChanged();
+    }
+    emit languageModeChanged();
+}
+
+void AppFacade::publishLanguageChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishLanguageChanged();
+    }
+    emit languageChanged();
+}
+
+void AppFacade::publishMessageRetentionLimitChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishMessageRetentionLimitChanged();
+    }
+    emit messageRetentionLimitChanged();
+}
+
+void AppFacade::publishLogRetentionLimitChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishLogRetentionLimitChanged();
+    }
+    emit logRetentionLimitChanged();
+}
+
+void AppFacade::publishHistoryPageSizeChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishHistoryPageSizeChanged();
+    }
+    emit historyPageSizeChanged();
+}
+
+void AppFacade::publishDeleteHistoryWithSessionChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishDeleteHistoryWithSessionChanged();
+    }
+    emit deleteHistoryWithSessionChanged();
+}
+
+void AppFacade::publishSaveMessagesWhenOutputPausedChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishSaveMessagesWhenOutputPausedChanged();
+    }
+    emit saveMessagesWhenOutputPausedChanged();
+}
+
+void AppFacade::publishClearMessagesOnExitChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishClearMessagesOnExitChanged();
+    }
+    emit clearMessagesOnExitChanged();
+}
+
+void AppFacade::publishClearLogsOnExitChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishClearLogsOnExitChanged();
+    }
+    emit clearLogsOnExitChanged();
+}
+
+void AppFacade::publishWindowWidthChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishWindowWidthChanged();
+    }
+    emit windowWidthChanged();
+}
+
+void AppFacade::publishWindowHeightChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishWindowHeightChanged();
+    }
+    emit windowHeightChanged();
+}
+
+void AppFacade::publishWindowMaximizedChanged()
+{
+    if (m_eventBus) {
+        m_eventBus->publishWindowMaximizedChanged();
+    }
+    emit windowMaximizedChanged();
 }
 
 void AppFacade::applyExitCleanup()
@@ -397,64 +796,56 @@ void AppFacade::applyExitCleanup()
     clearLogs(m_preferencesController.clearLogsOnExit());
 }
 
-void AppFacade::notifyCurrentSessionViewsChanged()
+void AppFacade::publishCurrentSessionViewsChanged()
 {
-    refreshSessionsModel();
-    emit currentSessionChanged();
+    m_modelCoordinator->refreshSessionsModel();
+    publishCurrentSessionChanged();
 }
 
-void AppFacade::notifyCurrentSessionAndSubscriptionsChanged()
+void AppFacade::publishCurrentSessionAndSubscriptionsChanged()
 {
-    refreshSessionsModel();
-    refreshSubscriptionsModel();
-    emit currentSessionChanged();
-    emit subscriptionsChanged();
+    m_modelCoordinator->refreshSessionsModel();
+    m_modelCoordinator->refreshSubscriptionsModel();
+    publishCurrentSessionChanged();
+    publishSubscriptionsChanged();
 }
 
-void AppFacade::notifySessionViewsChanged()
+void AppFacade::publishSessionViewsChanged()
 {
-    refreshSessionsModel();
-    emit sessionsChanged();
-    emit currentSessionChanged();
+    m_modelCoordinator->refreshSessionsModel();
+    publishSessionsChanged();
+    publishCurrentSessionChanged();
 }
 
-void AppFacade::notifySessionAndSubscriptionViewsChanged()
+void AppFacade::publishSessionAndSubscriptionViewsChanged()
 {
-    refreshSessionsModel();
-    refreshSubscriptionsModel();
-    emit sessionsChanged();
-    emit currentSessionChanged();
-    emit subscriptionsChanged();
+    m_modelCoordinator->refreshSessionsModel();
+    m_modelCoordinator->refreshSubscriptionsModel();
+    publishSessionsChanged();
+    publishCurrentSessionChanged();
+    publishSubscriptionsChanged();
 }
 
-void AppFacade::notifySelectedSessionViewsChanged()
+void AppFacade::publishSelectedSessionViewsChanged()
 {
-    refreshSubscriptionsModel();
-    m_messagesModel.setRows(currentSessionState() ? currentSessionState()->messageRows : QVariantList {});
-    m_logsModel.setRows(currentSessionState() ? currentSessionState()->logRows : QVariantList {});
-    refreshScriptTestSamplesModel();
-    emit currentSessionIndexChanged();
-    emit currentSessionChanged();
-    emit subscriptionsChanged();
-    emit messageStreamChanged();
-    emit logStreamChanged();
-    emit scriptLibraryChanged();
-    emit scriptTestSamplesChanged();
+    m_modelCoordinator->syncSelectedSessionModels();
+    publishCurrentSessionIndexChanged();
+    publishCurrentSessionChanged();
+    publishSubscriptionsChanged();
+    publishMessageStreamChanged();
+    publishLogsChanged();
+    publishScriptsChanged();
+    publishScriptTestSamplesChanged();
 }
 
-void AppFacade::notifySessionCollectionViewsChanged()
+void AppFacade::publishSessionCollectionViewsChanged()
 {
-    refreshSessionsModel();
-    refreshSubscriptionsModel();
-    m_messagesModel.setRows(currentSessionState() ? currentSessionState()->messageRows : QVariantList {});
-    m_logsModel.setRows(currentSessionState() ? currentSessionState()->logRows : QVariantList {});
-    refreshScriptsModel();
-    refreshScriptTestSamplesModel();
-    emit sessionsChanged();
-    emit currentSessionIndexChanged();
-    emit currentSessionChanged();
-    emit subscriptionsChanged();
-    emit messageStreamChanged();
-    emit logStreamChanged();
-    emit scriptLibraryChanged();
+    m_modelCoordinator->syncSessionCollectionModels();
+    publishSessionsChanged();
+    publishCurrentSessionIndexChanged();
+    publishCurrentSessionChanged();
+    publishSubscriptionsChanged();
+    publishMessageStreamChanged();
+    publishLogsChanged();
+    publishScriptsChanged();
 }

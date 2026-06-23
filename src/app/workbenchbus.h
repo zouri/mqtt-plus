@@ -16,7 +16,7 @@ struct SubscriptionEntry;
 class SubscriptionController;
 class SubscriptionFilterModel;
 
-class WorkbenchFacade : public QObject
+class WorkbenchBus : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(SessionListModel* sessions READ sessions CONSTANT)
@@ -42,7 +42,7 @@ public:
         std::function<const SubscriptionEntry *(const SessionState *, const QString &)> subscriptionByTopic;
     };
 
-    explicit WorkbenchFacade(Dependencies dependencies, QObject *parent = nullptr);
+    explicit WorkbenchBus(Dependencies dependencies, QObject *parent = nullptr);
 
     SessionListModel *sessions();
     SubscriptionFilterModel *filteredSubscriptions();

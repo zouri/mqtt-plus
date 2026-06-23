@@ -56,14 +56,14 @@ void EventController::clearCurrentMessages()
         m_pendingVisibleMessageSessionId.clear();
     }
     m_dependencies.messagesModel->clear();
-    if (m_dependencies.refreshScriptTestSamplesModel) {
-        m_dependencies.refreshScriptTestSamplesModel();
+    if (m_dependencies.syncScriptTestSamplesModel) {
+        m_dependencies.syncScriptTestSamplesModel();
     }
-    if (m_dependencies.emitMessageStreamChanged) {
-        m_dependencies.emitMessageStreamChanged();
+    if (m_dependencies.publishMessageStreamChanged) {
+        m_dependencies.publishMessageStreamChanged();
     }
-    if (m_dependencies.emitScriptTestSamplesChanged) {
-        m_dependencies.emitScriptTestSamplesChanged();
+    if (m_dependencies.publishScriptTestSamplesChanged) {
+        m_dependencies.publishScriptTestSamplesChanged();
     }
 }
 
@@ -79,8 +79,8 @@ void EventController::clearCurrentLogs()
     session->oldestLoadedLogId = 0;
     session->loadedAllLogHistory = true;
     m_dependencies.logsModel->clear();
-    if (m_dependencies.emitLogStreamChanged) {
-        m_dependencies.emitLogStreamChanged();
+    if (m_dependencies.publishLogsChanged) {
+        m_dependencies.publishLogsChanged();
     }
 }
 
@@ -123,11 +123,11 @@ int EventController::loadOlderCurrentSessionMessages()
     session->messageRows = merged;
     session->oldestLoadedMessageId = EventRenderer::firstHistoryId(session->messageRows);
     m_dependencies.messagesModel->prependRows(rows);
-    if (m_dependencies.refreshScriptTestSamplesModel) {
-        m_dependencies.refreshScriptTestSamplesModel();
+    if (m_dependencies.syncScriptTestSamplesModel) {
+        m_dependencies.syncScriptTestSamplesModel();
     }
-    if (m_dependencies.emitScriptTestSamplesChanged) {
-        m_dependencies.emitScriptTestSamplesChanged();
+    if (m_dependencies.publishScriptTestSamplesChanged) {
+        m_dependencies.publishScriptTestSamplesChanged();
     }
     return rows.size();
 }
@@ -215,14 +215,14 @@ void EventController::flushPendingVisibleMessageRows()
         m_dependencies.messagesModel->trimToLimit(kMaxVisibleEventRows);
     }
 
-    if (m_dependencies.emitMessageStreamRowAppended) {
-        m_dependencies.emitMessageStreamRowAppended(lastRow);
+    if (m_dependencies.publishMessageStreamRowAppended) {
+        m_dependencies.publishMessageStreamRowAppended(lastRow);
     }
-    if (m_dependencies.refreshScriptTestSamplesModel) {
-        m_dependencies.refreshScriptTestSamplesModel();
+    if (m_dependencies.syncScriptTestSamplesModel) {
+        m_dependencies.syncScriptTestSamplesModel();
     }
-    if (m_dependencies.emitScriptTestSamplesChanged) {
-        m_dependencies.emitScriptTestSamplesChanged();
+    if (m_dependencies.publishScriptTestSamplesChanged) {
+        m_dependencies.publishScriptTestSamplesChanged();
     }
 }
 
@@ -237,8 +237,8 @@ void EventController::appendRenderedLogRow(SessionState &session, const QVariant
     trimVisibleLogRows(session);
     m_dependencies.logsModel->appendRow(row);
     m_dependencies.logsModel->trimToLimit(kMaxVisibleEventRows);
-    if (m_dependencies.emitLogStreamRowAppended) {
-        m_dependencies.emitLogStreamRowAppended(row);
+    if (m_dependencies.publishLogsRowAppended) {
+        m_dependencies.publishLogsRowAppended(row);
     }
 }
 
@@ -324,11 +324,11 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         const bool fpsRefreshActive = m_dependencies.subscriptionFpsRefreshActive
             && m_dependencies.subscriptionFpsRefreshActive();
         if (refreshCurrentSubscriptionFps && !fpsRefreshActive) {
-            if (m_dependencies.refreshSubscriptionsModel) {
-                m_dependencies.refreshSubscriptionsModel();
+            if (m_dependencies.syncSubscriptionsModel) {
+                m_dependencies.syncSubscriptionsModel();
             }
-            if (m_dependencies.emitSubscriptionsChanged) {
-                m_dependencies.emitSubscriptionsChanged();
+            if (m_dependencies.publishSubscriptionsChanged) {
+                m_dependencies.publishSubscriptionsChanged();
             }
             if (m_dependencies.startSubscriptionFpsRefresh) {
                 m_dependencies.startSubscriptionFpsRefresh();
@@ -381,11 +381,11 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
     const bool fpsRefreshActive = m_dependencies.subscriptionFpsRefreshActive
         && m_dependencies.subscriptionFpsRefreshActive();
     if (refreshCurrentSubscriptionFps && !fpsRefreshActive) {
-        if (m_dependencies.refreshSubscriptionsModel) {
-            m_dependencies.refreshSubscriptionsModel();
+        if (m_dependencies.syncSubscriptionsModel) {
+            m_dependencies.syncSubscriptionsModel();
         }
-        if (m_dependencies.emitSubscriptionsChanged) {
-            m_dependencies.emitSubscriptionsChanged();
+        if (m_dependencies.publishSubscriptionsChanged) {
+            m_dependencies.publishSubscriptionsChanged();
         }
         if (m_dependencies.startSubscriptionFpsRefresh) {
             m_dependencies.startSubscriptionFpsRefresh();
@@ -466,11 +466,11 @@ void EventController::reloadCurrentSessionHistory()
     session->loadedAllLogHistory = logRows.size() < pageSize;
     m_dependencies.logsModel->setRows(session->logRows);
 
-    if (m_dependencies.refreshScriptTestSamplesModel) {
-        m_dependencies.refreshScriptTestSamplesModel();
+    if (m_dependencies.syncScriptTestSamplesModel) {
+        m_dependencies.syncScriptTestSamplesModel();
     }
-    if (m_dependencies.emitScriptTestSamplesChanged) {
-        m_dependencies.emitScriptTestSamplesChanged();
+    if (m_dependencies.publishScriptTestSamplesChanged) {
+        m_dependencies.publishScriptTestSamplesChanged();
     }
 }
 

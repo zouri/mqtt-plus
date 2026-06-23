@@ -1,35 +1,27 @@
-#include "app/appfacade.h"
+#include "app/sessionlifecycleservice.h"
 
 #include "app/appfacadeutils.h"
+#include "controllers/sessioncontroller.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/sessionsettingsstore.h"
 
 #include <QMqttConnectionProperties>
 #include <QUuid>
 
+#include <utility>
+
 using namespace AppFacadeUtils;
 
-SessionState *AppFacade::currentSessionState()
+SessionLifecycleService::SessionLifecycleService(Dependencies dependencies, QObject *parent)
+    : QObject(parent)
+    , m_dependencies(std::move(dependencies))
 {
-    return m_sessionController.currentSession();
 }
 
-const SessionState *AppFacade::currentSessionState() const
-{
-    return m_sessionController.currentSession();
-}
-
-SessionState *AppFacade::sessionById(const QString &sessionId)
-{
-    return m_sessionController.sessionById(sessionId);
-}
-
-const SessionState *AppFacade::sessionById(const QString &sessionId) const
-{
-    return m_sessionController.sessionById(sessionId);
-}
-
-void AppFacade::configureSession(SessionState &session, const QVariantMap &config, bool keepNameFallback)
+void SessionLifecycleService::configureSession(
+    SessionState &session,
+    const QVariantMap &config,
+    bool keepNameFallback)
 {
     auto *client = session.client;
     if (!client) {
@@ -90,6 +82,7 @@ void AppFacade::configureSession(SessionState &session, const QVariantMap &confi
     if (session.connectTimeoutTimer) {
         session.connectTimeoutTimer->setInterval(session.connectTimeoutSeconds * 1000);
     }
+
     QMqttConnectionProperties connectionProperties;
     connectionProperties.setSessionExpiryInterval(session.sessionExpiryInterval);
     if (session.receiveMaximum > 0) {
@@ -110,35 +103,42 @@ void AppFacade::configureSession(SessionState &session, const QVariantMap &confi
     client->setConnectionProperties(connectionProperties);
 }
 
-void AppFacade::initializeSessionRuntime(SessionState *session)
+void SessionLifecycleService::initializeSessionRuntime(SessionState *session)
 {
     if (!session) {
         return;
     }
 
     if (!session->client) {
-        session->client = new QMqttClient(this);
+        session->client = new QMqttClient(m_dependencies.runtimeParent ? m_dependencies.runtimeParent : this);
         session->client->setAutoKeepAlive(true);
     }
     if (!session->connectTimeoutTimer) {
-        session->connectTimeoutTimer = new QTimer(this);
+        session->connectTimeoutTimer = new QTimer(m_dependencies.runtimeParent ? m_dependencies.runtimeParent : this);
         session->connectTimeoutTimer->setSingleShot(true);
         connect(session->connectTimeoutTimer, &QTimer::timeout, this, [this, sessionId = session->id]() {
-            auto *boundSession = sessionById(sessionId);
+            auto *boundSession = m_dependencies.sessionById ? m_dependencies.sessionById(sessionId) : nullptr;
             auto *client = boundSession ? boundSession->client : nullptr;
             if (!boundSession || !client || client->state() != QMqttClient::Connecting) {
                 return;
             }
 
             boundSession->lastError = tr("Connection timed out.");
-            appendEvent(*boundSession, QStringLiteral("Error"), QStringLiteral("Connection timed out."));
+            if (m_dependencies.appendEvent) {
+                m_dependencies.appendEvent(
+                    *boundSession,
+                    QStringLiteral("Error"),
+                    QStringLiteral("Connection timed out."));
+            }
             client->disconnectFromHost();
-            notifySessionViewsChanged();
+            if (m_dependencies.publishSessionViewsChanged) {
+                m_dependencies.publishSessionViewsChanged();
+            }
         });
     }
 }
 
-void AppFacade::destroySessionRuntime(SessionState &session)
+void SessionLifecycleService::destroySessionRuntime(SessionState &session)
 {
     if (session.connectTimeoutTimer) {
         session.connectTimeoutTimer->stop();
@@ -152,59 +152,67 @@ void AppFacade::destroySessionRuntime(SessionState &session)
     }
 }
 
-void AppFacade::loadSessions()
+void SessionLifecycleService::loadSessions()
 {
-    const int count = m_settings.beginReadArray(QStringLiteral("sessions"));
+    auto *settings = m_dependencies.settings;
+    auto *sessionController = m_dependencies.sessionController;
+    if (!settings || !sessionController) {
+        return;
+    }
+
+    const int count = settings->beginReadArray(QStringLiteral("sessions"));
     for (int i = 0; i < count; ++i) {
         SessionSettingsStore::LoadedSession loaded = SessionSettingsStore::readSession(
-            m_settings,
+            *settings,
             i,
-            [this](const QString &scriptId) { return m_scriptController.scriptById(scriptId) != nullptr; });
+            [this](const QString &scriptId) {
+                return m_dependencies.scriptExists ? m_dependencies.scriptExists(scriptId) : false;
+            });
         SessionState session = loaded.session;
 
         initializeSessionRuntime(&session);
         configureSession(session, loaded.config, false);
         session.publishStatus = defaultPublishStatus();
-        bindSessionSignals(&session);
-        m_sessionController.appendSession(session);
+        if (m_dependencies.bindSessionSignals) {
+            m_dependencies.bindSessionSignals(&session);
+        }
+        sessionController->appendSession(session);
     }
-    m_settings.endArray();
+    settings->endArray();
 
-    if (m_sessionController.sessions().isEmpty()) {
-        m_sessionController.appendSession(createDefaultSession(tr("Session 1")));
+    if (sessionController->sessions().isEmpty()) {
+        sessionController->appendSession(createDefaultSession(tr("Session 1")));
         saveSessions();
     }
 
-    m_sessionController.setCurrentIndex(0);
-    reloadCurrentSessionHistory();
-    notifySessionCollectionViewsChanged();
+    sessionController->setCurrentIndex(0);
+    if (m_dependencies.reloadCurrentSessionHistory) {
+        m_dependencies.reloadCurrentSessionHistory();
+    }
+    if (m_dependencies.publishSessionCollectionViewsChanged) {
+        m_dependencies.publishSessionCollectionViewsChanged();
+    }
 }
 
-bool AppFacade::saveSessions()
+bool SessionLifecycleService::saveSessions()
 {
+    auto *settings = m_dependencies.settings;
+    auto *sessionController = m_dependencies.sessionController;
+    if (!settings || !sessionController) {
+        return false;
+    }
+
     QString errorMessage;
-    if (SessionSettingsStore::writeSessions(m_settings, m_sessionController.sessions(), errorMessage)) {
+    if (SessionSettingsStore::writeSessions(*settings, sessionController->sessions(), errorMessage)) {
         return true;
     }
-    reportStorageError(errorMessage.isEmpty() ? QStringLiteral("Cannot save sessions.") : errorMessage);
+    if (m_dependencies.reportStorageError) {
+        m_dependencies.reportStorageError(errorMessage.isEmpty() ? QStringLiteral("Cannot save sessions.") : errorMessage);
+    }
     return false;
 }
 
-void AppFacade::reportStorageError(const QString &message)
-{
-    if (message.isEmpty()) {
-        return;
-    }
-
-    if (auto *session = currentSessionState()) {
-        session->lastError = message;
-        appendEvent(*session, QStringLiteral("Storage"), message);
-    }
-
-    notifySessionViewsChanged();
-}
-
-SessionState AppFacade::createDefaultSession(const QString &name)
+SessionState SessionLifecycleService::createDefaultSession(const QString &name)
 {
     SessionState session;
     session.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -216,6 +224,8 @@ SessionState AppFacade::createDefaultSession(const QString &name)
     QVariantMap config = SessionConfig::defaultConfig(1);
     config.insert(QStringLiteral("name"), name);
     configureSession(session, config, false);
-    bindSessionSignals(&session);
+    if (m_dependencies.bindSessionSignals) {
+        m_dependencies.bindSessionSignals(&session);
+    }
     return session;
 }

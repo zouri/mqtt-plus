@@ -67,8 +67,8 @@ void MqttController::connectCurrentSession()
                 QStringLiteral("Connection"),
                 QStringLiteral("Broker host cannot be empty."));
         }
-        if (m_dependencies.notifySessionViewsChanged) {
-            m_dependencies.notifySessionViewsChanged();
+        if (m_dependencies.publishSessionViewsChanged) {
+            m_dependencies.publishSessionViewsChanged();
         }
         return;
     }
@@ -81,8 +81,8 @@ void MqttController::connectCurrentSession()
                 QStringLiteral("Connection"),
                 QStringLiteral("Client ID cannot be empty."));
         }
-        if (m_dependencies.notifySessionViewsChanged) {
-            m_dependencies.notifySessionViewsChanged();
+        if (m_dependencies.publishSessionViewsChanged) {
+            m_dependencies.publishSessionViewsChanged();
         }
         return;
     }
@@ -93,8 +93,8 @@ void MqttController::connectCurrentSession()
     updatePublishStatus(*session, QStringLiteral("idle"));
     connectSession(*session, QStringLiteral("Connecting to"));
 
-    if (m_dependencies.notifySessionViewsChanged) {
-        m_dependencies.notifySessionViewsChanged();
+    if (m_dependencies.publishSessionViewsChanged) {
+        m_dependencies.publishSessionViewsChanged();
     }
 }
 
@@ -111,8 +111,8 @@ void MqttController::disconnectCurrentSession()
         session->connectTimeoutTimer->stop();
     }
     client->disconnectFromHost();
-    if (m_dependencies.notifySessionViewsChanged) {
-        m_dependencies.notifySessionViewsChanged();
+    if (m_dependencies.publishSessionViewsChanged) {
+        m_dependencies.publishSessionViewsChanged();
     }
 }
 
@@ -201,8 +201,8 @@ void MqttController::publishCurrentSession(
         }
     }
 
-    if (m_dependencies.notifyCurrentSessionViewsChanged) {
-        m_dependencies.notifyCurrentSessionViewsChanged();
+    if (m_dependencies.publishCurrentSessionViewsChanged) {
+        m_dependencies.publishCurrentSessionViewsChanged();
     }
 }
 
@@ -237,8 +237,8 @@ void MqttController::bindSessionSignals(SessionState *session)
             }
         }
 
-        if (m_dependencies.notifySessionAndSubscriptionViewsChanged) {
-            m_dependencies.notifySessionAndSubscriptionViewsChanged();
+        if (m_dependencies.publishSessionAndSubscriptionViewsChanged) {
+            m_dependencies.publishSessionAndSubscriptionViewsChanged();
         }
     });
 
@@ -259,14 +259,14 @@ void MqttController::bindSessionSignals(SessionState *session)
             }
         }
 
-        if (m_dependencies.notifySessionAndSubscriptionViewsChanged) {
-            m_dependencies.notifySessionAndSubscriptionViewsChanged();
+        if (m_dependencies.publishSessionAndSubscriptionViewsChanged) {
+            m_dependencies.publishSessionAndSubscriptionViewsChanged();
         }
     });
 
     connect(client, &QMqttClient::stateChanged, this, [this]() {
-        if (m_dependencies.notifySessionAndSubscriptionViewsChanged) {
-            m_dependencies.notifySessionAndSubscriptionViewsChanged();
+        if (m_dependencies.publishSessionAndSubscriptionViewsChanged) {
+            m_dependencies.publishSessionAndSubscriptionViewsChanged();
         }
     });
 
@@ -295,8 +295,8 @@ void MqttController::bindSessionSignals(SessionState *session)
                 }
             }
 
-            if (m_dependencies.notifySessionViewsChanged) {
-                m_dependencies.notifySessionViewsChanged();
+            if (m_dependencies.publishSessionViewsChanged) {
+                m_dependencies.publishSessionViewsChanged();
             }
         });
 
@@ -310,8 +310,8 @@ void MqttController::bindSessionSignals(SessionState *session)
                     QStringLiteral("Broker session restored"));
             }
         }
-        if (m_dependencies.notifySessionViewsChanged) {
-            m_dependencies.notifySessionViewsChanged();
+        if (m_dependencies.publishSessionViewsChanged) {
+            m_dependencies.publishSessionViewsChanged();
         }
     });
 
@@ -331,8 +331,8 @@ void MqttController::bindSessionSignals(SessionState *session)
                 updatePublishStatus(*boundSession, QStringLiteral("sent"), QString(), messageId);
             }
         }
-        if (m_dependencies.notifyCurrentSessionViewsChanged) {
-            m_dependencies.notifyCurrentSessionViewsChanged();
+        if (m_dependencies.publishCurrentSessionViewsChanged) {
+            m_dependencies.publishCurrentSessionViewsChanged();
         }
     });
 
@@ -355,8 +355,8 @@ void MqttController::bindSessionSignals(SessionState *session)
                 }
                 updatePublishStatus(*boundSession, messageStatusName(status), reason, messageId);
             }
-            if (m_dependencies.notifyCurrentSessionViewsChanged) {
-                m_dependencies.notifyCurrentSessionViewsChanged();
+            if (m_dependencies.publishCurrentSessionViewsChanged) {
+                m_dependencies.publishCurrentSessionViewsChanged();
             }
         });
 
@@ -367,8 +367,8 @@ void MqttController::bindSessionSignals(SessionState *session)
                     .arg(protocolVersionLabel(boundSession->protocolVersion))
                     .arg(transportLabel(boundSession->transport));
         }
-        if (m_dependencies.notifySessionViewsChanged) {
-            m_dependencies.notifySessionViewsChanged();
+        if (m_dependencies.publishSessionViewsChanged) {
+            m_dependencies.publishSessionViewsChanged();
         }
     });
 }

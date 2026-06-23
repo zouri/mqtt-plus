@@ -219,15 +219,15 @@ if(BUILD_TESTING)
     )
     add_test(NAME eventstreammodel COMMAND test_eventstreammodel)
 
-    add_executable(test_appfacadefacades
-        tests/test_appfacadefacades.cpp
+    add_executable(test_appbus
+        tests/test_appbus.cpp
         ${MQTT_PLUS_TEST_APP_SOURCES}
     )
-    target_include_directories(test_appfacadefacades
+    target_include_directories(test_appbus
         PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/src"
     )
-    target_link_libraries(test_appfacadefacades
+    target_link_libraries(test_appbus
         PRIVATE
             Qt6::Core
             Qt6::Gui
@@ -238,7 +238,7 @@ if(BUILD_TESTING)
             Qt6::Test
             MqttPlus::Lua
     )
-    add_test(NAME appfacadefacades COMMAND test_appfacadefacades)
+    add_test(NAME appbus COMMAND test_appbus)
 endif()
 
 include(CPack)

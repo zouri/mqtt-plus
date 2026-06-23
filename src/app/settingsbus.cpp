@@ -1,4 +1,4 @@
-#include "app/appsettingsfacade.h"
+#include "app/settingsbus.h"
 
 #include "controllers/eventcontroller.h"
 #include "controllers/languagecontroller.h"
@@ -10,104 +10,104 @@
 
 #include <utility>
 
-AppSettingsFacade::AppSettingsFacade(Dependencies dependencies, QObject *parent)
+SettingsBus::SettingsBus(Dependencies dependencies, QObject *parent)
     : QObject(parent)
     , m_dependencies(std::move(dependencies))
 {
 }
 
-QString AppSettingsFacade::themeMode() const
+QString SettingsBus::themeMode() const
 {
     return m_dependencies.themeController ? m_dependencies.themeController->mode() : QString();
 }
 
-QString AppSettingsFacade::effectiveTheme() const
+QString SettingsBus::effectiveTheme() const
 {
     return m_dependencies.themeController ? m_dependencies.themeController->effectiveTheme() : QString();
 }
 
-QString AppSettingsFacade::languageMode() const
+QString SettingsBus::languageMode() const
 {
     return m_dependencies.languageController ? m_dependencies.languageController->mode() : QString();
 }
 
-QString AppSettingsFacade::effectiveLanguage() const
+QString SettingsBus::effectiveLanguage() const
 {
     return m_dependencies.languageController ? m_dependencies.languageController->effectiveLanguage() : QString();
 }
 
-QVariantList AppSettingsFacade::availableLanguages() const
+QVariantList SettingsBus::availableLanguages() const
 {
     return m_dependencies.languageController ? m_dependencies.languageController->availableLanguages() : QVariantList {};
 }
 
-int AppSettingsFacade::messageRetentionLimit() const
+int SettingsBus::messageRetentionLimit() const
 {
     return m_dependencies.preferencesController ? m_dependencies.preferencesController->messageRetentionLimit() : 0;
 }
 
-int AppSettingsFacade::logRetentionLimit() const
+int SettingsBus::logRetentionLimit() const
 {
     return m_dependencies.preferencesController ? m_dependencies.preferencesController->logRetentionLimit() : 0;
 }
 
-int AppSettingsFacade::historyPageSize() const
+int SettingsBus::historyPageSize() const
 {
     return m_dependencies.preferencesController ? m_dependencies.preferencesController->historyPageSize() : 0;
 }
 
-bool AppSettingsFacade::deleteHistoryWithSession() const
+bool SettingsBus::deleteHistoryWithSession() const
 {
     return m_dependencies.preferencesController
         && m_dependencies.preferencesController->deleteHistoryWithSession();
 }
 
-bool AppSettingsFacade::saveMessagesWhenOutputPaused() const
+bool SettingsBus::saveMessagesWhenOutputPaused() const
 {
     return m_dependencies.preferencesController
         && m_dependencies.preferencesController->saveMessagesWhenOutputPaused();
 }
 
-QString AppSettingsFacade::clearMessagesOnExit() const
+QString SettingsBus::clearMessagesOnExit() const
 {
     return m_dependencies.preferencesController ? m_dependencies.preferencesController->clearMessagesOnExit() : QString();
 }
 
-QString AppSettingsFacade::clearLogsOnExit() const
+QString SettingsBus::clearLogsOnExit() const
 {
     return m_dependencies.preferencesController ? m_dependencies.preferencesController->clearLogsOnExit() : QString();
 }
 
-int AppSettingsFacade::windowWidth() const
+int SettingsBus::windowWidth() const
 {
     return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowWidth() : 0;
 }
 
-int AppSettingsFacade::windowHeight() const
+int SettingsBus::windowHeight() const
 {
     return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowHeight() : 0;
 }
 
-bool AppSettingsFacade::windowMaximized() const
+bool SettingsBus::windowMaximized() const
 {
     return m_dependencies.preferencesController && m_dependencies.preferencesController->windowMaximized();
 }
 
-void AppSettingsFacade::setThemeMode(const QString &mode)
+void SettingsBus::setThemeMode(const QString &mode)
 {
     if (m_dependencies.themeController) {
         m_dependencies.themeController->setMode(mode);
     }
 }
 
-void AppSettingsFacade::setLanguageMode(const QString &mode)
+void SettingsBus::setLanguageMode(const QString &mode)
 {
     if (m_dependencies.languageController) {
         m_dependencies.languageController->setMode(mode);
     }
 }
 
-void AppSettingsFacade::setMessageRetentionLimit(int limit)
+void SettingsBus::setMessageRetentionLimit(int limit)
 {
     const int previousLimit = messageRetentionLimit();
     if (m_dependencies.preferencesController) {
@@ -126,16 +126,16 @@ void AppSettingsFacade::setMessageRetentionLimit(int limit)
         if (m_dependencies.reloadCurrentSessionHistory) {
             m_dependencies.reloadCurrentSessionHistory();
         }
-        if (m_dependencies.emitMessageStreamChanged) {
-            m_dependencies.emitMessageStreamChanged();
+        if (m_dependencies.publishMessageStreamChanged) {
+            m_dependencies.publishMessageStreamChanged();
         }
-        if (m_dependencies.emitScriptTestSamplesChanged) {
-            m_dependencies.emitScriptTestSamplesChanged();
+        if (m_dependencies.publishScriptTestSamplesChanged) {
+            m_dependencies.publishScriptTestSamplesChanged();
         }
     }
 }
 
-void AppSettingsFacade::setLogRetentionLimit(int limit)
+void SettingsBus::setLogRetentionLimit(int limit)
 {
     const int previousLimit = logRetentionLimit();
     if (m_dependencies.preferencesController) {
@@ -151,62 +151,62 @@ void AppSettingsFacade::setLogRetentionLimit(int limit)
         if (m_dependencies.reloadCurrentSessionHistory) {
             m_dependencies.reloadCurrentSessionHistory();
         }
-        if (m_dependencies.emitLogStreamChanged) {
-            m_dependencies.emitLogStreamChanged();
+        if (m_dependencies.publishLogsChanged) {
+            m_dependencies.publishLogsChanged();
         }
     }
 }
 
-void AppSettingsFacade::setHistoryPageSize(int pageSize)
+void SettingsBus::setHistoryPageSize(int pageSize)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setHistoryPageSize(pageSize);
     }
 }
 
-void AppSettingsFacade::setDeleteHistoryWithSession(bool enabled)
+void SettingsBus::setDeleteHistoryWithSession(bool enabled)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setDeleteHistoryWithSession(enabled);
     }
 }
 
-void AppSettingsFacade::setSaveMessagesWhenOutputPaused(bool enabled)
+void SettingsBus::setSaveMessagesWhenOutputPaused(bool enabled)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setSaveMessagesWhenOutputPaused(enabled);
     }
 }
 
-void AppSettingsFacade::setClearMessagesOnExit(const QString &mode)
+void SettingsBus::setClearMessagesOnExit(const QString &mode)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setClearMessagesOnExit(mode);
     }
 }
 
-void AppSettingsFacade::setClearLogsOnExit(const QString &mode)
+void SettingsBus::setClearLogsOnExit(const QString &mode)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setClearLogsOnExit(mode);
     }
 }
 
-void AppSettingsFacade::setWindowMaximized(bool maximized)
+void SettingsBus::setWindowMaximized(bool maximized)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setWindowMaximized(maximized);
     }
 }
 
-void AppSettingsFacade::saveWindowGeometry(int width, int height)
+void SettingsBus::saveWindowGeometry(int width, int height)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setWindowGeometry(width, height);
     }
 }
 
-void AppSettingsFacade::clearAllMessages()
+void SettingsBus::clearAllMessages()
 {
     if (!m_dependencies.historyStore || !m_dependencies.sessionController || !m_dependencies.messagesModel) {
         return;
@@ -218,18 +218,18 @@ void AppSettingsFacade::clearAllMessages()
         session.loadedAllMessageHistory = true;
     }
     m_dependencies.messagesModel->clear();
-    if (m_dependencies.refreshScriptTestSamplesModel) {
-        m_dependencies.refreshScriptTestSamplesModel();
+    if (m_dependencies.syncScriptTestSamplesModel) {
+        m_dependencies.syncScriptTestSamplesModel();
     }
-    if (m_dependencies.emitMessageStreamChanged) {
-        m_dependencies.emitMessageStreamChanged();
+    if (m_dependencies.publishMessageStreamChanged) {
+        m_dependencies.publishMessageStreamChanged();
     }
-    if (m_dependencies.emitScriptTestSamplesChanged) {
-        m_dependencies.emitScriptTestSamplesChanged();
+    if (m_dependencies.publishScriptTestSamplesChanged) {
+        m_dependencies.publishScriptTestSamplesChanged();
     }
 }
 
-void AppSettingsFacade::clearAllLogs()
+void SettingsBus::clearAllLogs()
 {
     if (!m_dependencies.historyStore || !m_dependencies.sessionController || !m_dependencies.logsModel) {
         return;
@@ -241,12 +241,12 @@ void AppSettingsFacade::clearAllLogs()
         session.loadedAllLogHistory = true;
     }
     m_dependencies.logsModel->clear();
-    if (m_dependencies.emitLogStreamChanged) {
-        m_dependencies.emitLogStreamChanged();
+    if (m_dependencies.publishLogsChanged) {
+        m_dependencies.publishLogsChanged();
     }
 }
 
-void AppSettingsFacade::clearAllHistory()
+void SettingsBus::clearAllHistory()
 {
     if (!m_dependencies.historyStore || !m_dependencies.sessionController
         || !m_dependencies.messagesModel || !m_dependencies.logsModel) {
@@ -264,16 +264,16 @@ void AppSettingsFacade::clearAllHistory()
     }
     m_dependencies.messagesModel->clear();
     m_dependencies.logsModel->clear();
-    if (m_dependencies.refreshScriptTestSamplesModel) {
-        m_dependencies.refreshScriptTestSamplesModel();
+    if (m_dependencies.syncScriptTestSamplesModel) {
+        m_dependencies.syncScriptTestSamplesModel();
     }
-    if (m_dependencies.emitMessageStreamChanged) {
-        m_dependencies.emitMessageStreamChanged();
+    if (m_dependencies.publishMessageStreamChanged) {
+        m_dependencies.publishMessageStreamChanged();
     }
-    if (m_dependencies.emitLogStreamChanged) {
-        m_dependencies.emitLogStreamChanged();
+    if (m_dependencies.publishLogsChanged) {
+        m_dependencies.publishLogsChanged();
     }
-    if (m_dependencies.emitScriptTestSamplesChanged) {
-        m_dependencies.emitScriptTestSamplesChanged();
+    if (m_dependencies.publishScriptTestSamplesChanged) {
+        m_dependencies.publishScriptTestSamplesChanged();
     }
 }

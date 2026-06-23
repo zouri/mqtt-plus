@@ -1,27 +1,27 @@
-#include "app/scriptlibraryfacade.h"
+#include "app/scriptsbus.h"
 
 #include "controllers/scriptcontroller.h"
 #include "controllers/sessioncontroller.h"
 
 #include <utility>
 
-ScriptLibraryFacade::ScriptLibraryFacade(Dependencies dependencies, QObject *parent)
+ScriptsBus::ScriptsBus(Dependencies dependencies, QObject *parent)
     : QObject(parent)
     , m_dependencies(std::move(dependencies))
 {
 }
 
-ScriptLibraryModel *ScriptLibraryFacade::scripts()
+ScriptLibraryModel *ScriptsBus::scripts()
 {
     return m_dependencies.scriptsModel;
 }
 
-ScriptTestSamplesModel *ScriptLibraryFacade::scriptTestSamples()
+ScriptTestSamplesModel *ScriptsBus::scriptTestSamples()
 {
     return m_dependencies.scriptTestSamplesModel;
 }
 
-QString ScriptLibraryFacade::upsertScript(
+QString ScriptsBus::upsertScript(
     const QString &id,
     const QString &name,
     const QString &description,
@@ -34,19 +34,19 @@ QString ScriptLibraryFacade::upsertScript(
     if (savedId.isEmpty()) {
         return QString();
     }
-    if (m_dependencies.refreshScriptsModel) {
-        m_dependencies.refreshScriptsModel();
+    if (m_dependencies.syncScriptsModel) {
+        m_dependencies.syncScriptsModel();
     }
-    if (m_dependencies.emitScriptLibraryChanged) {
-        m_dependencies.emitScriptLibraryChanged();
+    if (m_dependencies.publishScriptsChanged) {
+        m_dependencies.publishScriptsChanged();
     }
-    if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
-        m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.publishCurrentSessionAndSubscriptionsChanged) {
+        m_dependencies.publishCurrentSessionAndSubscriptionsChanged();
     }
     return savedId;
 }
 
-bool ScriptLibraryFacade::deleteScript(const QString &id)
+bool ScriptsBus::deleteScript(const QString &id)
 {
     const QString scriptId = id.trimmed();
     if (scriptId.isEmpty()) {
@@ -87,19 +87,19 @@ bool ScriptLibraryFacade::deleteScript(const QString &id)
             }
         }
     }
-    if (m_dependencies.refreshScriptsModel) {
-        m_dependencies.refreshScriptsModel();
+    if (m_dependencies.syncScriptsModel) {
+        m_dependencies.syncScriptsModel();
     }
-    if (m_dependencies.emitScriptLibraryChanged) {
-        m_dependencies.emitScriptLibraryChanged();
+    if (m_dependencies.publishScriptsChanged) {
+        m_dependencies.publishScriptsChanged();
     }
-    if (m_dependencies.notifySessionAndSubscriptionViewsChanged) {
-        m_dependencies.notifySessionAndSubscriptionViewsChanged();
+    if (m_dependencies.publishSessionAndSubscriptionViewsChanged) {
+        m_dependencies.publishSessionAndSubscriptionViewsChanged();
     }
     return sessionsSaved;
 }
 
-QVariantMap ScriptLibraryFacade::testScript(
+QVariantMap ScriptsBus::testScript(
     const QString &code,
     const QString &topic,
     const QString &payload,

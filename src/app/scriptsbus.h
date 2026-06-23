@@ -10,7 +10,7 @@ class ScriptLibraryModel;
 class ScriptTestSamplesModel;
 class SessionController;
 
-class ScriptLibraryFacade : public QObject
+class ScriptsBus : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(ScriptLibraryModel* scripts READ scripts CONSTANT)
@@ -23,14 +23,14 @@ public:
         ScriptTestSamplesModel *scriptTestSamplesModel = nullptr;
         ScriptController *scriptController = nullptr;
         SessionController *sessionController = nullptr;
-        std::function<void()> refreshScriptsModel;
+        std::function<void()> syncScriptsModel;
         std::function<bool()> saveSessions;
-        std::function<void()> notifyCurrentSessionAndSubscriptionsChanged;
-        std::function<void()> notifySessionAndSubscriptionViewsChanged;
-        std::function<void()> emitScriptLibraryChanged;
+        std::function<void()> publishCurrentSessionAndSubscriptionsChanged;
+        std::function<void()> publishSessionAndSubscriptionViewsChanged;
+        std::function<void()> publishScriptsChanged;
     };
 
-    explicit ScriptLibraryFacade(Dependencies dependencies, QObject *parent = nullptr);
+    explicit ScriptsBus(Dependencies dependencies, QObject *parent = nullptr);
 
     ScriptLibraryModel *scripts();
     ScriptTestSamplesModel *scriptTestSamples();
@@ -48,7 +48,7 @@ public:
         int format = 0) const;
 
 signals:
-    void scriptLibraryChanged();
+    void scriptsChanged();
     void scriptTestSamplesChanged();
 
 private:

@@ -1,4 +1,4 @@
-#include "app/workbenchfacade.h"
+#include "app/workbenchbus.h"
 
 #include "app/appfacadeutils.h"
 #include "controllers/eventcontroller.h"
@@ -34,28 +34,28 @@ QPoint menuPosition(const QPointF &globalPosition)
 }
 } // namespace
 
-WorkbenchFacade::WorkbenchFacade(Dependencies dependencies, QObject *parent)
+WorkbenchBus::WorkbenchBus(Dependencies dependencies, QObject *parent)
     : QObject(parent)
     , m_dependencies(std::move(dependencies))
 {
 }
 
-SessionListModel *WorkbenchFacade::sessions()
+SessionListModel *WorkbenchBus::sessions()
 {
     return m_dependencies.sessionsModel;
 }
 
-SubscriptionFilterModel *WorkbenchFacade::filteredSubscriptions()
+SubscriptionFilterModel *WorkbenchBus::filteredSubscriptions()
 {
     return m_dependencies.filteredSubscriptionsModel;
 }
 
-int WorkbenchFacade::currentSessionIndex() const
+int WorkbenchBus::currentSessionIndex() const
 {
     return m_dependencies.sessionController ? m_dependencies.sessionController->currentIndex() : -1;
 }
 
-QVariantMap WorkbenchFacade::currentSession() const
+QVariantMap WorkbenchBus::currentSession() const
 {
     const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
@@ -81,7 +81,7 @@ QVariantMap WorkbenchFacade::currentSession() const
     return row;
 }
 
-QVariantMap WorkbenchFacade::sessionStatus() const
+QVariantMap WorkbenchBus::sessionStatus() const
 {
     const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
@@ -126,7 +126,7 @@ QVariantMap WorkbenchFacade::sessionStatus() const
     return row;
 }
 
-QVariantMap WorkbenchFacade::publishStatus() const
+QVariantMap WorkbenchBus::publishStatus() const
 {
     const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     QVariantMap status = session ? session->publishStatus : defaultPublishStatus();
@@ -136,61 +136,61 @@ QVariantMap WorkbenchFacade::publishStatus() const
     return status;
 }
 
-QStringList WorkbenchFacade::payloadFormats() const
+QStringList WorkbenchBus::payloadFormats() const
 {
     return PayloadCodec::formatNames();
 }
 
-EventStreamModel *WorkbenchFacade::messages()
+EventStreamModel *WorkbenchBus::messages()
 {
     return m_dependencies.messagesModel;
 }
 
-void WorkbenchFacade::setCurrentSessionIndex(int index)
+void WorkbenchBus::setCurrentSessionIndex(int index)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->setCurrentSessionIndex(index);
     }
 }
 
-QVariantMap WorkbenchFacade::defaultSessionConfig() const
+QVariantMap WorkbenchBus::defaultSessionConfig() const
 {
     return m_dependencies.sessionController ? m_dependencies.sessionController->defaultSessionConfig() : QVariantMap {};
 }
 
-QVariantMap WorkbenchFacade::sessionConfigAt(int index) const
+QVariantMap WorkbenchBus::sessionConfigAt(int index) const
 {
     return m_dependencies.sessionController ? m_dependencies.sessionController->sessionConfigAt(index) : QVariantMap {};
 }
 
-bool WorkbenchFacade::updateSessionConfigAt(int index, const QVariantMap &config)
+bool WorkbenchBus::updateSessionConfigAt(int index, const QVariantMap &config)
 {
     return m_dependencies.sessionController
         && m_dependencies.sessionController->updateSessionConfigAt(index, config);
 }
 
-void WorkbenchFacade::addSessionWithConfig(const QVariantMap &config)
+void WorkbenchBus::addSessionWithConfig(const QVariantMap &config)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->addSessionWithConfig(config);
     }
 }
 
-void WorkbenchFacade::duplicateSessionAt(int index)
+void WorkbenchBus::duplicateSessionAt(int index)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->duplicateSessionAt(index);
     }
 }
 
-void WorkbenchFacade::removeSessionAt(int index)
+void WorkbenchBus::removeSessionAt(int index)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->removeSessionAt(index);
     }
 }
 
-QString WorkbenchFacade::showSessionContextMenu(int index, const QPointF &globalPosition)
+QString WorkbenchBus::showSessionContextMenu(int index, const QPointF &globalPosition)
 {
     if (!m_dependencies.sessionController || !m_dependencies.sessionController->isValidIndex(index)) {
         return {};
@@ -217,7 +217,7 @@ QString WorkbenchFacade::showSessionContextMenu(int index, const QPointF &global
     return {};
 }
 
-QString WorkbenchFacade::showSubscriptionContextMenu(const QString &topic, const QPointF &globalPosition)
+QString WorkbenchBus::showSubscriptionContextMenu(const QString &topic, const QPointF &globalPosition)
 {
     const SessionState *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
@@ -244,28 +244,28 @@ QString WorkbenchFacade::showSubscriptionContextMenu(const QString &topic, const
     return {};
 }
 
-void WorkbenchFacade::connectCurrentSession()
+void WorkbenchBus::connectCurrentSession()
 {
     if (m_dependencies.mqttController) {
         m_dependencies.mqttController->connectCurrentSession();
     }
 }
 
-void WorkbenchFacade::disconnectCurrentSession()
+void WorkbenchBus::disconnectCurrentSession()
 {
     if (m_dependencies.mqttController) {
         m_dependencies.mqttController->disconnectCurrentSession();
     }
 }
 
-void WorkbenchFacade::setCurrentOutputPaused(bool paused)
+void WorkbenchBus::setCurrentOutputPaused(bool paused)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->setCurrentOutputPaused(paused);
     }
 }
 
-bool WorkbenchFacade::upsertCurrentSubscription(
+bool WorkbenchBus::upsertCurrentSubscription(
     const QString &topic,
     int qos,
     int format,
@@ -276,7 +276,7 @@ bool WorkbenchFacade::upsertCurrentSubscription(
         && m_dependencies.subscriptionController->upsertCurrentSubscription(topic, qos, format, scriptId, alias);
 }
 
-bool WorkbenchFacade::updateCurrentSubscription(
+bool WorkbenchBus::updateCurrentSubscription(
     const QString &topic,
     const QString &newTopic,
     const QString &alias,
@@ -286,21 +286,21 @@ bool WorkbenchFacade::updateCurrentSubscription(
         && m_dependencies.subscriptionController->updateCurrentSubscription(topic, newTopic, alias, scriptId);
 }
 
-void WorkbenchFacade::removeCurrentSubscription(const QString &topic)
+void WorkbenchBus::removeCurrentSubscription(const QString &topic)
 {
     if (m_dependencies.subscriptionController) {
         m_dependencies.subscriptionController->removeCurrentSubscription(topic);
     }
 }
 
-void WorkbenchFacade::setCurrentSubscriptionPaused(const QString &topic, bool paused)
+void WorkbenchBus::setCurrentSubscriptionPaused(const QString &topic, bool paused)
 {
     if (m_dependencies.subscriptionController) {
         m_dependencies.subscriptionController->setCurrentSubscriptionPaused(topic, paused);
     }
 }
 
-void WorkbenchFacade::publishCurrentSession(
+void WorkbenchBus::publishCurrentSession(
     const QString &topic,
     const QString &payload,
     int format,
@@ -312,21 +312,21 @@ void WorkbenchFacade::publishCurrentSession(
     }
 }
 
-void WorkbenchFacade::copyTextToClipboard(const QString &text) const
+void WorkbenchBus::copyTextToClipboard(const QString &text) const
 {
     if (auto *clipboard = QGuiApplication::clipboard()) {
         clipboard->setText(text);
     }
 }
 
-void WorkbenchFacade::clearCurrentMessages()
+void WorkbenchBus::clearCurrentMessages()
 {
     if (m_dependencies.eventController) {
         m_dependencies.eventController->clearCurrentMessages();
     }
 }
 
-int WorkbenchFacade::loadOlderCurrentSessionMessages()
+int WorkbenchBus::loadOlderCurrentSessionMessages()
 {
     return m_dependencies.eventController
         ? m_dependencies.eventController->loadOlderCurrentSessionMessages()

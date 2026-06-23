@@ -8,7 +8,7 @@ import "../../components"
 Rectangle {
     id: root
 
-    required property var scriptLibrary
+    required property var scripts
     required property string currentScriptId
     required property AppUi ui
 
@@ -33,7 +33,7 @@ Rectangle {
 
     function recomputeVisibleCount() {
         let visibleRows = 0
-        const model = root.scriptLibrary ? root.scriptLibrary.scripts : null
+        const model = root.scripts ? root.scripts.scripts : null
         const rowCount = model ? model.count : 0
         for (let i = 0; i < rowCount; ++i) {
             const row = model.rowAt(i)
@@ -48,7 +48,7 @@ Rectangle {
     Component.onCompleted: root.recomputeVisibleCount()
 
     Connections {
-        target: root.scriptLibrary ? root.scriptLibrary.scripts : null
+        target: root.scripts ? root.scripts.scripts : null
 
         function onCountChanged() {
             root.recomputeVisibleCount()
@@ -77,7 +77,7 @@ Rectangle {
             Layout.fillHeight: true
             clip: true
             spacing: 0
-            model: root.scriptLibrary.scripts
+            model: root.scripts.scripts
             reuseItems: true
 
             ScrollBar.vertical: ScrollBar {
@@ -152,7 +152,7 @@ Rectangle {
                     if (event.key === Qt.Key_Return
                             || event.key === Qt.Key_Enter
                             || event.key === Qt.Key_Space) {
-                        root.scriptRequested(root.scriptLibrary.scripts.rowAt(scriptDelegate.index))
+                        root.scriptRequested(root.scripts.scripts.rowAt(scriptDelegate.index))
                         event.accepted = true
                     }
                 }
@@ -165,7 +165,7 @@ Rectangle {
 
                     onClicked: {
                         scriptDelegate.forceActiveFocus()
-                        root.scriptRequested(root.scriptLibrary.scripts.rowAt(scriptDelegate.index))
+                        root.scriptRequested(root.scripts.scripts.rowAt(scriptDelegate.index))
                     }
                 }
             }

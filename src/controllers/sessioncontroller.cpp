@@ -104,8 +104,8 @@ void SessionController::setCurrentSessionIndex(int index)
         m_dependencies.setSubscriptionFpsRefreshActive(
             m_dependencies.currentSessionHasActiveSubscriptionFps());
     }
-    if (m_dependencies.notifySelectedSessionViewsChanged) {
-        m_dependencies.notifySelectedSessionViewsChanged();
+    if (m_dependencies.publishSelectedSessionViewsChanged) {
+        m_dependencies.publishSelectedSessionViewsChanged();
     }
 }
 
@@ -153,12 +153,12 @@ bool SessionController::updateSessionConfigAt(int index, const QVariantMap &conf
         m_dependencies.connectSession(*session, tr("Connecting to"));
     }
 
-    if (m_dependencies.emitSessionsChanged) {
-        m_dependencies.emitSessionsChanged();
+    if (m_dependencies.publishSessionsChanged) {
+        m_dependencies.publishSessionsChanged();
     }
     if (index == m_currentIndex) {
-        if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
-            m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+        if (m_dependencies.publishCurrentSessionAndSubscriptionsChanged) {
+            m_dependencies.publishCurrentSessionAndSubscriptionsChanged();
         }
     }
     return saved;
@@ -181,8 +181,8 @@ void SessionController::addSessionWithConfig(const QVariantMap &config)
     m_currentIndex = m_sessions.size() - 1;
     m_dependencies.reloadCurrentSessionHistory();
     m_dependencies.saveSessions();
-    if (m_dependencies.notifySessionCollectionViewsChanged) {
-        m_dependencies.notifySessionCollectionViewsChanged();
+    if (m_dependencies.publishSessionCollectionViewsChanged) {
+        m_dependencies.publishSessionCollectionViewsChanged();
     }
 }
 
@@ -214,8 +214,8 @@ void SessionController::duplicateSessionAt(int index)
     m_currentIndex = m_sessions.size() - 1;
     m_dependencies.reloadCurrentSessionHistory();
     m_dependencies.saveSessions();
-    if (m_dependencies.notifySessionCollectionViewsChanged) {
-        m_dependencies.notifySessionCollectionViewsChanged();
+    if (m_dependencies.publishSessionCollectionViewsChanged) {
+        m_dependencies.publishSessionCollectionViewsChanged();
     }
 }
 
@@ -246,8 +246,8 @@ void SessionController::removeSessionAt(int index)
 
     m_dependencies.reloadCurrentSessionHistory();
     m_dependencies.saveSessions();
-    if (m_dependencies.notifySessionCollectionViewsChanged) {
-        m_dependencies.notifySessionCollectionViewsChanged();
+    if (m_dependencies.publishSessionCollectionViewsChanged) {
+        m_dependencies.publishSessionCollectionViewsChanged();
     }
 }
 
@@ -268,11 +268,11 @@ void SessionController::setCurrentOutputPaused(bool paused)
         if (m_dependencies.reloadCurrentSessionHistory) {
             m_dependencies.reloadCurrentSessionHistory();
         }
-        if (m_dependencies.emitMessageStreamChanged) {
-            m_dependencies.emitMessageStreamChanged();
+        if (m_dependencies.publishMessageStreamChanged) {
+            m_dependencies.publishMessageStreamChanged();
         }
     }
-    if (m_dependencies.notifyCurrentSessionViewsChanged) {
-        m_dependencies.notifyCurrentSessionViewsChanged();
+    if (m_dependencies.publishCurrentSessionViewsChanged) {
+        m_dependencies.publishCurrentSessionViewsChanged();
     }
 }

@@ -21,10 +21,10 @@ public:
         std::function<void(SessionState &, const QString &, const QString &)> appendEvent;
         std::function<bool(const QString &)> scriptExists;
         std::function<bool()> saveSessions;
-        std::function<void()> notifySessionAndSubscriptionViewsChanged;
-        std::function<void()> notifyCurrentSessionAndSubscriptionsChanged;
-        std::function<void()> refreshSubscriptionsModel;
-        std::function<void()> emitSubscriptionsChanged;
+        std::function<void()> publishSessionAndSubscriptionViewsChanged;
+        std::function<void()> publishCurrentSessionAndSubscriptionsChanged;
+        std::function<void()> syncSubscriptionsModel;
+        std::function<void()> publishSubscriptionsChanged;
         std::function<void(bool)> setSubscriptionFpsRefreshActive;
         std::function<void(const QVector<SubscriptionFpsRow> &)> setTopicFpsRows;
     };
