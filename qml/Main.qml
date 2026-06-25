@@ -14,10 +14,10 @@ ApplicationWindow {
     required property var app
 
     readonly property string appTitle: qsTr("MQTT Plus")
-    readonly property int defaultWindowWidth: 1480
-    readonly property int defaultWindowHeight: 820
-    readonly property int minimumWindowWidth: 1100
-    readonly property int minimumWindowHeight: 700
+    readonly property int defaultWindowWidth: 1280
+    readonly property int defaultWindowHeight: 800
+    readonly property int minimumWindowWidth: 1024
+    readonly property int minimumWindowHeight: 640
     property bool windowGeometryReady: false
 
     width: root.defaultWindowWidth
@@ -118,7 +118,7 @@ ApplicationWindow {
             spacing: 0
 
             Rectangle {
-                Layout.preferredWidth: 56
+                Layout.preferredWidth: 48
                 Layout.fillHeight: true
                 color: appUi.themePalette.sidebarBg
 
@@ -132,11 +132,11 @@ ApplicationWindow {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
-                    anchors.topMargin: 16
-                    anchors.bottomMargin: 16
-                    spacing: 10
+                    anchors.leftMargin: 4
+                    anchors.rightMargin: 4
+                    anchors.topMargin: 10
+                    anchors.bottomMargin: 10
+                    spacing: 8
 
                     AppIconButton {
                         ui: appUi

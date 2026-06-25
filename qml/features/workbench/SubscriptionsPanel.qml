@@ -283,12 +283,12 @@ AppPanel {
                                 id: subscriptionPauseButton
                                 ui: control.ui
                                 iconSource: control.ui.materialIcon(subscriptionDelegate.paused ? "play" : "pause")
-                                implicitWidth: 28
-                                implicitHeight: 28
-                                iconSize: 13
-                                cornerRadius: 14
-                                restBg: control.ui.themePalette.itemBg
-                                outlineColor: control.ui.themePalette.innerPanelBorder
+                                implicitWidth: 24
+                                implicitHeight: 24
+                                iconSize: 12
+                                cornerRadius: 6
+                                restBg: "transparent"
+                                outlineColor: "transparent"
 
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::pause`
@@ -305,12 +305,12 @@ AppPanel {
                                 id: subscriptionMenuButton
                                 ui: control.ui
                                 iconSource: control.ui.materialIcon("more-horiz")
-                                implicitWidth: 28
-                                implicitHeight: 28
-                                iconSize: 16
-                                cornerRadius: 14
-                                restBg: control.ui.themePalette.itemBg
-                                outlineColor: control.ui.themePalette.innerPanelBorder
+                                implicitWidth: 24
+                                implicitHeight: 24
+                                iconSize: 14
+                                cornerRadius: 6
+                                restBg: "transparent"
+                                outlineColor: "transparent"
 
                                 forceActive: control.subscriptionActionVisualKey === subscriptionDelegate.menuVisualKey
                                 accessibleName: qsTr("More actions")

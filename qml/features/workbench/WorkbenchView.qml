@@ -16,10 +16,10 @@ Item {
     property bool connectionPaneCollapsed: false
     readonly property var session: root.sessions.currentSession
     readonly property var status: root.connection.sessionStatus
-    readonly property int expandedConnectionPaneWidth: 248
-    readonly property int subscriptionPaneMinWidth: 280
-    readonly property int subscriptionPaneMaxWidth: 520
-    property int subscriptionPaneWidth: 360
+    readonly property int expandedConnectionPaneWidth: 200
+    readonly property int subscriptionPaneMinWidth: 260
+    readonly property int subscriptionPaneMaxWidth: 380
+    property int subscriptionPaneWidth: 300
     property real subscriptionPaneDragBaseWidth: subscriptionPaneWidth
     property string pendingSessionEditorMode: ""
     property int pendingSessionEditorIndex: -1
@@ -191,9 +191,7 @@ Item {
                 anchors.bottom: parent.bottom
                 width: 2
                 radius: 1
-                color: resizeMouse.containsMouse || subscriptionResizeDrag.active
-                       ? root.ui.themePalette.selectedBorder
-                       : root.ui.themePalette.separator
+                color: resizeMouse.containsMouse || subscriptionResizeDrag.active ? root.ui.themePalette.selectedBorder : root.ui.themePalette.separator
             }
 
             MouseArea {
@@ -210,16 +208,12 @@ Item {
 
                 onActiveChanged: {
                     if (active) {
-                        root.subscriptionPaneDragBaseWidth = root.subscriptionPaneWidth
+                        root.subscriptionPaneDragBaseWidth = root.subscriptionPaneWidth;
                     }
                 }
 
                 onTranslationChanged: {
-                    root.subscriptionPaneWidth = Math.max(
-                        root.subscriptionPaneMinWidth,
-                        Math.min(
-                            root.subscriptionPaneMaxWidth,
-                            Math.round(root.subscriptionPaneDragBaseWidth + translation.x)))
+                    root.subscriptionPaneWidth = Math.max(root.subscriptionPaneMinWidth, Math.min(root.subscriptionPaneMaxWidth, Math.round(root.subscriptionPaneDragBaseWidth + translation.x)));
                 }
             }
         }
