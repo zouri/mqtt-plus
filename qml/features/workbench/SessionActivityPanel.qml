@@ -7,10 +7,10 @@ import "../../components"
 AppPanel {
     id: root
 
-    required property var workbench
+    required property var messages
+    required property var connection
+    required property var subscriptions
     required property var session
-    required property var status
-    required property var publishStatus
     required property string fontFamily
 
     showTopBorder: false
@@ -33,14 +33,8 @@ AppPanel {
         EventStreamView {
             id: eventStreamView
             ui: root.ui
-            workbench: root.workbench
-            streamModel: root.workbench.messages
-            loadOlderRows: function () {
-                return root.workbench.loadOlderCurrentSessionMessages();
-            }
-            clearRows: function () {
-                root.workbench.clearCurrentMessages();
-            }
+            messages: root.messages
+            connection: root.connection
             session: root.session
             fontFamily: root.fontFamily
             title: qsTr("Messages")
@@ -53,9 +47,8 @@ AppPanel {
         PublishComposer {
             id: publishComposer
             ui: root.ui
-            workbench: root.workbench
-            publishStatus: root.publishStatus
-            status: root.status
+            connection: root.connection
+            subscriptions: root.subscriptions
         }
     }
 }

@@ -1,15 +1,22 @@
 #include "app/applicationkernel.h"
 
-#include "app/appfacade.h"
-
 ApplicationKernel::ApplicationKernel()
-    : m_context()
-    , m_bus(m_context.facade())
+    : m_runtime()
+    , m_appBus(&m_runtime)
 {
-    m_context.facade()->setEventBus(&m_bus);
 }
 
-AppEventBus *ApplicationKernel::bus()
+AppBus *ApplicationKernel::appBus()
 {
-    return &m_bus;
+    return &m_appBus;
+}
+
+UiEventHub *ApplicationKernel::events()
+{
+    return m_runtime.uiEvents();
+}
+
+AppRuntime *ApplicationKernel::runtime()
+{
+    return &m_runtime;
 }

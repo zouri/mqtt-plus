@@ -1,6 +1,6 @@
 #include "app/sessionlifecycleservice.h"
 
-#include "app/appfacadeutils.h"
+#include "app/appruntimeutils.h"
 #include "controllers/sessioncontroller.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/sessionsettingsstore.h"
@@ -10,7 +10,7 @@
 
 #include <utility>
 
-using namespace AppFacadeUtils;
+using namespace AppRuntimeUtils;
 
 SessionLifecycleService::SessionLifecycleService(Dependencies dependencies, QObject *parent)
     : QObject(parent)

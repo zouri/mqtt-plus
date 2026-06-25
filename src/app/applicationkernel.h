@@ -1,16 +1,19 @@
 #pragma once
 
-#include "app/appcontext.h"
-#include "app/appeventbus.h"
+#include "app/appbus.h"
+#include "app/appruntime.h"
+#include "app/uieventhub.h"
 
 class ApplicationKernel
 {
 public:
     ApplicationKernel();
 
-    AppEventBus *bus();
+    AppBus *appBus();
+    UiEventHub *events();
+    AppRuntime *runtime();
 
 private:
-    AppContext m_context;
-    AppEventBus m_bus;
+    AppRuntime m_runtime;
+    AppBus m_appBus;
 };

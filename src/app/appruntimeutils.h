@@ -12,7 +12,7 @@
 #include <QVariantMap>
 #include <QVector>
 
-namespace AppFacadeUtils {
+namespace AppRuntimeUtils {
 
 constexpr int kMaxVisibleEventRows = 1200;
 constexpr qint64 kSubscriptionFpsWindowMs = 1000;
@@ -40,4 +40,4 @@ QVariantMap defaultPublishStatus();
 void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs);
 int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs);
 
-} // namespace AppFacadeUtils
+} // namespace AppRuntimeUtils

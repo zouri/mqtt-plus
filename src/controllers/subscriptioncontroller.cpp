@@ -1,6 +1,6 @@
 #include "subscriptioncontroller.h"
 
-#include "app/appfacadeutils.h"
+#include "app/appruntimeutils.h"
 #include "domain/sessionconfig.h"
 #include "models/subscriptionlistmodel.h"
 #include "services/payload/payloadcodec.h"
@@ -9,7 +9,7 @@
 
 #include <algorithm>
 
-using namespace AppFacadeUtils;
+using namespace AppRuntimeUtils;
 
 SubscriptionController::SubscriptionController(QObject *parent)
     : QObject(parent)

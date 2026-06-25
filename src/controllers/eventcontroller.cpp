@@ -1,6 +1,6 @@
 #include "eventcontroller.h"
 
-#include "app/appfacadeutils.h"
+#include "app/appruntimeutils.h"
 #include "domain/script.h"
 #include "presentation/eventrenderer.h"
 #include "services/payload/payloadcodec.h"
@@ -8,7 +8,7 @@
 #include <QDateTime>
 
 #include <utility>
-using namespace AppFacadeUtils;
+using namespace AppRuntimeUtils;
 
 namespace {
 constexpr int kVisibleMessageRowsFlushIntervalMs = 16;

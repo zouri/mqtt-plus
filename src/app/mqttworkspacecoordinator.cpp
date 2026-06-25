@@ -1,6 +1,6 @@
-#include "app/workbenchbus.h"
+#include "app/mqttworkspacecoordinator.h"
 
-#include "app/appfacadeutils.h"
+#include "app/appruntimeutils.h"
 #include "controllers/eventcontroller.h"
 #include "controllers/mqttcontroller.h"
 #include "controllers/sessioncontroller.h"
@@ -22,7 +22,7 @@
 
 #include <utility>
 
-using namespace AppFacadeUtils;
+using namespace AppRuntimeUtils;
 
 namespace {
 QPoint menuPosition(const QPointF &globalPosition)
@@ -34,28 +34,28 @@ QPoint menuPosition(const QPointF &globalPosition)
 }
 } // namespace
 
-WorkbenchBus::WorkbenchBus(Dependencies dependencies, QObject *parent)
+MqttWorkspaceCoordinator::MqttWorkspaceCoordinator(Dependencies dependencies, QObject *parent)
     : QObject(parent)
     , m_dependencies(std::move(dependencies))
 {
 }
 
-SessionListModel *WorkbenchBus::sessions()
+SessionListModel *MqttWorkspaceCoordinator::sessions()
 {
     return m_dependencies.sessionsModel;
 }
 
-SubscriptionFilterModel *WorkbenchBus::filteredSubscriptions()
+SubscriptionFilterModel *MqttWorkspaceCoordinator::filteredSubscriptions()
 {
     return m_dependencies.filteredSubscriptionsModel;
 }
 
-int WorkbenchBus::currentSessionIndex() const
+int MqttWorkspaceCoordinator::currentSessionIndex() const
 {
     return m_dependencies.sessionController ? m_dependencies.sessionController->currentIndex() : -1;
 }
 
-QVariantMap WorkbenchBus::currentSession() const
+QVariantMap MqttWorkspaceCoordinator::currentSession() const
 {
     const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
@@ -81,7 +81,7 @@ QVariantMap WorkbenchBus::currentSession() const
     return row;
 }
 
-QVariantMap WorkbenchBus::sessionStatus() const
+QVariantMap MqttWorkspaceCoordinator::sessionStatus() const
 {
     const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
@@ -126,7 +126,7 @@ QVariantMap WorkbenchBus::sessionStatus() const
     return row;
 }
 
-QVariantMap WorkbenchBus::publishStatus() const
+QVariantMap MqttWorkspaceCoordinator::publishStatus() const
 {
     const auto *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     QVariantMap status = session ? session->publishStatus : defaultPublishStatus();
@@ -136,61 +136,61 @@ QVariantMap WorkbenchBus::publishStatus() const
     return status;
 }
 
-QStringList WorkbenchBus::payloadFormats() const
+QStringList MqttWorkspaceCoordinator::payloadFormats() const
 {
     return PayloadCodec::formatNames();
 }
 
-EventStreamModel *WorkbenchBus::messages()
+EventStreamModel *MqttWorkspaceCoordinator::messages()
 {
     return m_dependencies.messagesModel;
 }
 
-void WorkbenchBus::setCurrentSessionIndex(int index)
+void MqttWorkspaceCoordinator::setCurrentSessionIndex(int index)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->setCurrentSessionIndex(index);
     }
 }
 
-QVariantMap WorkbenchBus::defaultSessionConfig() const
+QVariantMap MqttWorkspaceCoordinator::defaultSessionConfig() const
 {
     return m_dependencies.sessionController ? m_dependencies.sessionController->defaultSessionConfig() : QVariantMap {};
 }
 
-QVariantMap WorkbenchBus::sessionConfigAt(int index) const
+QVariantMap MqttWorkspaceCoordinator::sessionConfigAt(int index) const
 {
     return m_dependencies.sessionController ? m_dependencies.sessionController->sessionConfigAt(index) : QVariantMap {};
 }
 
-bool WorkbenchBus::updateSessionConfigAt(int index, const QVariantMap &config)
+bool MqttWorkspaceCoordinator::updateSessionConfigAt(int index, const QVariantMap &config)
 {
     return m_dependencies.sessionController
         && m_dependencies.sessionController->updateSessionConfigAt(index, config);
 }
 
-void WorkbenchBus::addSessionWithConfig(const QVariantMap &config)
+void MqttWorkspaceCoordinator::addSessionWithConfig(const QVariantMap &config)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->addSessionWithConfig(config);
     }
 }
 
-void WorkbenchBus::duplicateSessionAt(int index)
+void MqttWorkspaceCoordinator::duplicateSessionAt(int index)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->duplicateSessionAt(index);
     }
 }
 
-void WorkbenchBus::removeSessionAt(int index)
+void MqttWorkspaceCoordinator::removeSessionAt(int index)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->removeSessionAt(index);
     }
 }
 
-QString WorkbenchBus::showSessionContextMenu(int index, const QPointF &globalPosition)
+QString MqttWorkspaceCoordinator::showSessionContextMenu(int index, const QPointF &globalPosition)
 {
     if (!m_dependencies.sessionController || !m_dependencies.sessionController->isValidIndex(index)) {
         return {};
@@ -217,7 +217,7 @@ QString WorkbenchBus::showSessionContextMenu(int index, const QPointF &globalPos
     return {};
 }
 
-QString WorkbenchBus::showSubscriptionContextMenu(const QString &topic, const QPointF &globalPosition)
+QString MqttWorkspaceCoordinator::showSubscriptionContextMenu(const QString &topic, const QPointF &globalPosition)
 {
     const SessionState *session = m_dependencies.currentSession ? m_dependencies.currentSession() : nullptr;
     if (!session) {
@@ -244,28 +244,28 @@ QString WorkbenchBus::showSubscriptionContextMenu(const QString &topic, const QP
     return {};
 }
 
-void WorkbenchBus::connectCurrentSession()
+void MqttWorkspaceCoordinator::connectCurrentSession()
 {
     if (m_dependencies.mqttController) {
         m_dependencies.mqttController->connectCurrentSession();
     }
 }
 
-void WorkbenchBus::disconnectCurrentSession()
+void MqttWorkspaceCoordinator::disconnectCurrentSession()
 {
     if (m_dependencies.mqttController) {
         m_dependencies.mqttController->disconnectCurrentSession();
     }
 }
 
-void WorkbenchBus::setCurrentOutputPaused(bool paused)
+void MqttWorkspaceCoordinator::setCurrentOutputPaused(bool paused)
 {
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->setCurrentOutputPaused(paused);
     }
 }
 
-bool WorkbenchBus::upsertCurrentSubscription(
+bool MqttWorkspaceCoordinator::upsertCurrentSubscription(
     const QString &topic,
     int qos,
     int format,
@@ -276,7 +276,7 @@ bool WorkbenchBus::upsertCurrentSubscription(
         && m_dependencies.subscriptionController->upsertCurrentSubscription(topic, qos, format, scriptId, alias);
 }
 
-bool WorkbenchBus::updateCurrentSubscription(
+bool MqttWorkspaceCoordinator::updateCurrentSubscription(
     const QString &topic,
     const QString &newTopic,
     const QString &alias,
@@ -286,21 +286,21 @@ bool WorkbenchBus::updateCurrentSubscription(
         && m_dependencies.subscriptionController->updateCurrentSubscription(topic, newTopic, alias, scriptId);
 }
 
-void WorkbenchBus::removeCurrentSubscription(const QString &topic)
+void MqttWorkspaceCoordinator::removeCurrentSubscription(const QString &topic)
 {
     if (m_dependencies.subscriptionController) {
         m_dependencies.subscriptionController->removeCurrentSubscription(topic);
     }
 }
 
-void WorkbenchBus::setCurrentSubscriptionPaused(const QString &topic, bool paused)
+void MqttWorkspaceCoordinator::setCurrentSubscriptionPaused(const QString &topic, bool paused)
 {
     if (m_dependencies.subscriptionController) {
         m_dependencies.subscriptionController->setCurrentSubscriptionPaused(topic, paused);
     }
 }
 
-void WorkbenchBus::publishCurrentSession(
+void MqttWorkspaceCoordinator::publishCurrentSession(
     const QString &topic,
     const QString &payload,
     int format,
@@ -312,21 +312,21 @@ void WorkbenchBus::publishCurrentSession(
     }
 }
 
-void WorkbenchBus::copyTextToClipboard(const QString &text) const
+void MqttWorkspaceCoordinator::copyTextToClipboard(const QString &text) const
 {
     if (auto *clipboard = QGuiApplication::clipboard()) {
         clipboard->setText(text);
     }
 }
 
-void WorkbenchBus::clearCurrentMessages()
+void MqttWorkspaceCoordinator::clearCurrentMessages()
 {
     if (m_dependencies.eventController) {
         m_dependencies.eventController->clearCurrentMessages();
     }
 }
 
-int WorkbenchBus::loadOlderCurrentSessionMessages()
+int MqttWorkspaceCoordinator::loadOlderCurrentSessionMessages()
 {
     return m_dependencies.eventController
         ? m_dependencies.eventController->loadOlderCurrentSessionMessages()

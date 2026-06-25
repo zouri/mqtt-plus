@@ -3,28 +3,12 @@
 #include <QObject>
 #include <QVariantMap>
 
-#include "app/settingsbus.h"
-#include "app/logsbus.h"
-#include "app/scriptsbus.h"
-#include "app/workbenchbus.h"
-
-class AppFacade;
-
-class AppEventBus : public QObject
+class UiEventHub : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(WorkbenchBus* workbench READ workbench CONSTANT)
-    Q_PROPERTY(SettingsBus* settings READ settings CONSTANT)
-    Q_PROPERTY(ScriptsBus* scripts READ scripts CONSTANT)
-    Q_PROPERTY(LogsBus* logs READ logs CONSTANT)
 
 public:
-    explicit AppEventBus(AppFacade *facade, QObject *parent = nullptr);
-
-    WorkbenchBus *workbench();
-    SettingsBus *settings();
-    ScriptsBus *scripts();
-    LogsBus *logs();
+    explicit UiEventHub(QObject *parent = nullptr);
 
     void publishSessionsChanged();
     void publishCurrentSessionIndexChanged();
@@ -78,7 +62,4 @@ signals:
     void windowWidthChanged();
     void windowHeightChanged();
     void windowMaximizedChanged();
-
-private:
-    AppFacade *m_facade = nullptr;
 };

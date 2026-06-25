@@ -1,6 +1,6 @@
 #include "mqttcontroller.h"
 
-#include "app/appfacadeutils.h"
+#include "app/appruntimeutils.h"
 #include "domain/sessionconfig.h"
 #include "services/payload/payloadcodec.h"
 
@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <utility>
 
-using namespace AppFacadeUtils;
+using namespace AppRuntimeUtils;
 
 namespace {
 QString clientErrorLogName(QMqttClient::ClientError error)

@@ -16,9 +16,9 @@ int main(int argc, char *argv[])
     ApplicationKernel kernel;
 
     QQmlApplicationEngine engine;
-    QObject::connect(kernel.bus(), &AppEventBus::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
+    QObject::connect(kernel.events(), &UiEventHub::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
     engine.setInitialProperties({
-        {QStringLiteral("appBus"), QVariant::fromValue(kernel.bus())},
+        {QStringLiteral("app"), QVariant::fromValue(kernel.appBus())},
     });
 
     QObject::connect(

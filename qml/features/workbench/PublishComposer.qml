@@ -8,11 +8,12 @@ import "../../components"
 Item {
     id: root
 
-    required property var workbench
-    required property var publishStatus
-    required property var status
+    required property var connection
+    required property var subscriptions
     required property var ui
 
+    readonly property var publishStatus: root.connection.publishStatus
+    readonly property var status: root.connection.sessionStatus
     property bool expanded: true
     property int composerHeight: 220
     readonly property int collapsedHeight: 50
@@ -78,7 +79,7 @@ Item {
         }
 
         const draft = root.draftFromFields()
-        root.workbench.publishCurrentSession(
+        root.connection.publishCurrentSession(
                     draft.topic,
                     draft.payload,
                     draft.format,
@@ -247,7 +248,7 @@ Item {
                         AppComboBox {
                             ui: root.ui
                             id: publishFormatBox
-                            model: root.workbench.payloadFormats
+                            model: root.subscriptions.payloadFormats
                             currentIndex: 1
                             Layout.fillWidth: true
                         }

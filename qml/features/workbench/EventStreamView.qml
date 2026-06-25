@@ -8,10 +8,8 @@ import "../../components"
 Item {
     id: root
 
-    required property var workbench
-    required property var streamModel
-    required property var loadOlderRows
-    required property var clearRows
+    required property var messages
+    required property var connection
     required property var session
     required property var ui
     required property string fontFamily
@@ -67,7 +65,7 @@ Item {
         root.loadingOlderEvents = true
         const previousContentHeight = eventList.contentHeight
         const previousContentY = eventList.contentY
-        const insertedRows = root.loadOlderRows()
+        const insertedRows = root.messages.loadOlderCurrentSessionMessages()
         if (insertedRows === 0) {
             root.reachedHistoryStart = true
             root.loadingOlderEvents = false
@@ -149,7 +147,7 @@ Item {
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     accessibleName: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
-                    onClicked: root.workbench.setCurrentOutputPaused(!root.session.outputPaused)
+                    onClicked: root.connection.setCurrentOutputPaused(!root.session.outputPaused)
                 }
 
                 AppIconButton {
@@ -162,7 +160,7 @@ Item {
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     accessibleName: qsTr("Clear history")
-                    onClicked: root.clearRows()
+                    onClicked: root.messages.clearCurrentMessages()
                 }
             }
         }
@@ -188,7 +186,7 @@ Item {
                 anchors.rightMargin: 12
                 clip: true
                 spacing: 4
-                model: root.streamModel
+                model: root.messages.messages
                 reuseItems: true
                 property bool shouldFollowOutput: true
                 property bool programmaticScroll: false
@@ -347,7 +345,7 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Copy topic")
-                                onClicked: root.workbench.copyTextToClipboard(eventDelegate.topic)
+                                onClicked: root.messages.copyTextToClipboard(eventDelegate.topic)
                             }
 
                             AppIconButton {
@@ -361,7 +359,7 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Copy payload")
-                                onClicked: root.workbench.copyTextToClipboard(
+                                onClicked: root.messages.copyTextToClipboard(
                                                eventDelegate.testPayload.length > 0
                                                ? eventDelegate.testPayload
                                                : eventDelegate.payload)

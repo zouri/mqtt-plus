@@ -11,7 +11,7 @@ import "features/workbench"
 
 ApplicationWindow {
     id: root
-    required property var appBus
+    required property var app
 
     readonly property string appTitle: qsTr("MQTT Plus")
     readonly property int defaultWindowWidth: 1480
@@ -103,10 +103,13 @@ ApplicationWindow {
         color: ui.themePalette.windowBg
     }
 
-    readonly property var workbench: root.appBus.workbench
-    readonly property var settings: root.appBus.settings
-    readonly property var scripts: root.appBus.scripts
-    readonly property var logs: root.appBus.logs
+    readonly property var sessions: root.app.sessions
+    readonly property var subscriptions: root.app.subscriptions
+    readonly property var connection: root.app.connection
+    readonly property var messages: root.app.messages
+    readonly property var settings: root.app.settings
+    readonly property var scripts: root.app.scripts
+    readonly property var logs: root.app.logs
     property string currentAppView: "workbench"
 
     ColumnLayout {
@@ -226,7 +229,10 @@ ApplicationWindow {
                 WorkbenchView {
                     id: workbenchPage
                     ui: ui
-                    workbench: root.workbench
+                    sessions: root.sessions
+                    subscriptions: root.subscriptions
+                    connection: root.connection
+                    messages: root.messages
                     scripts: root.scripts
                     fontFamily: root.font.family
                 }

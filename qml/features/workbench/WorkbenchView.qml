@@ -7,12 +7,15 @@ Item {
     id: root
 
     required property AppUi ui
-    required property var workbench
+    required property var sessions
+    required property var subscriptions
+    required property var connection
+    required property var messages
     required property var scripts
     required property string fontFamily
     property bool connectionPaneCollapsed: false
-    readonly property var session: root.workbench.currentSession
-    readonly property var status: root.workbench.sessionStatus
+    readonly property var session: root.sessions.currentSession
+    readonly property var status: root.connection.sessionStatus
     readonly property int expandedConnectionPaneWidth: 248
     readonly property int subscriptionPaneMinWidth: 280
     readonly property int subscriptionPaneMaxWidth: 520
@@ -121,7 +124,7 @@ Item {
     }
 
     Connections {
-        target: root.workbench
+        target: root.messages
 
         function onMessageStreamChanged() {
             root.resetStreamPosition();
@@ -138,7 +141,7 @@ Item {
 
         SessionSidebar {
             ui: root.ui
-            workbench: root.workbench
+            sessions: root.sessions
             sessionEditor: sessionEditorBridge
             collapsed: root.connectionPaneCollapsed
             Layout.preferredWidth: root.connectionPaneCollapsed ? 32 : root.expandedConnectionPaneWidth
@@ -160,16 +163,16 @@ Item {
 
                 SessionOverviewPanel {
                     ui: root.ui
-                    session: root.session
-                    status: root.status
-                    workbench: root.workbench
+                    sessions: root.sessions
+                    connection: root.connection
                     sessionEditor: sessionEditorBridge
                 }
 
                 SubscriptionsPanel {
                     id: subscriptionsPanel
                     ui: root.ui
-                    workbench: root.workbench
+                    subscriptions: root.subscriptions
+                    connection: root.connection
                     addSubscriptionDialog: addSubscriptionDialogBridge
                 }
             }
@@ -224,10 +227,10 @@ Item {
         SessionActivityPanel {
             id: sessionActivityPanel
             ui: root.ui
-            workbench: root.workbench
+            messages: root.messages
+            connection: root.connection
+            subscriptions: root.subscriptions
             session: root.session
-            status: root.status
-            publishStatus: root.workbench.publishStatus
             fontFamily: root.fontFamily
         }
     }
@@ -241,7 +244,7 @@ Item {
         sourceComponent: Component {
             SessionEditorDialog {
                 ui: root.ui
-                workbench: root.workbench
+                sessions: root.sessions
             }
         }
 
@@ -273,7 +276,7 @@ Item {
         sourceComponent: Component {
             AddSubscriptionDialog {
                 ui: root.ui
-                workbench: root.workbench
+                subscriptions: root.subscriptions
                 scripts: root.scripts
             }
         }

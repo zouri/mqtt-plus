@@ -9,7 +9,7 @@ Dialog {
     id: root
 
     required property AppUi ui
-    required property var workbench
+    required property var subscriptions
     required property var scripts
     property var scriptOptionIds: []
     property var scriptOptionNames: [qsTr("None")]
@@ -66,13 +66,13 @@ Dialog {
     function submit() {
         const scriptId = root.scriptOptionIds[scriptField.currentIndex] || ""
         if (root.editMode) {
-            if (root.workbench.updateCurrentSubscription(root.editTopic, topicField.text, aliasField.text, scriptId)) {
+            if (root.subscriptions.updateCurrentSubscription(root.editTopic, topicField.text, aliasField.text, scriptId)) {
                 close()
             }
             return
         }
 
-        if (root.workbench.upsertCurrentSubscription(
+        if (root.subscriptions.upsertCurrentSubscription(
                     topicField.text,
                     qosField.currentIndex,
                     formatField.currentIndex,
@@ -153,7 +153,7 @@ Dialog {
                 ui: root.ui
                 id: formatField
                 Layout.fillWidth: true
-                model: root.workbench.payloadFormats
+                model: root.subscriptions.payloadFormats
                 enabled: !root.editMode
             }
         }

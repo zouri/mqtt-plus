@@ -56,114 +56,117 @@
     </message>
 </context>
 <context>
-    <name>AppFacade</name>
+    <name>MqttWorkspaceCoordinator</name>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="108"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="95"/>
         <source>%1 • %2:%3 • %4</source>
         <translation>%1 • %2:%3 • %4</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="114"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="101"/>
         <source> • session restored</source>
         <translation> • 会话已恢复</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="117"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="104"/>
         <source>Connecting to %1:%2 over %3</source>
         <translation>正在通过 %3 连接到 %1:%2</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="122"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="109"/>
         <source>Disconnecting from broker</source>
         <translation>正在断开代理连接</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademodels.cpp" line="126"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="113"/>
         <source>Disconnected</source>
         <translation>离线</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadesessions.cpp" line="173"/>
-        <source>Connection timed out.</source>
-        <translation>连接超时。</translation>
-    </message>
-    <message>
-        <location filename="../src/app/appfacadesessions.cpp" line="214"/>
-        <source>Session 1</source>
-        <translation>会话 1</translation>
-    </message>
-    <message>
-        <location filename="../src/app/appfacademenus.cpp" line="27"/>
-        <location filename="../src/app/appfacademenus.cpp" line="55"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="200"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="234"/>
         <source>Edit</source>
         <translation>编辑</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademenus.cpp" line="28"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="201"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacademenus.cpp" line="29"/>
-        <location filename="../src/app/appfacademenus.cpp" line="56"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="202"/>
+        <location filename="../src/app/mqttworkspacecoordinator.cpp" line="235"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
 </context>
 <context>
-    <name>AppFacadeUtils</name>
+    <name>SessionLifecycleService</name>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="90"/>
+        <location filename="../src/app/sessionlifecycleservice.cpp" line="126"/>
+        <source>Connection timed out.</source>
+        <translation>连接超时。</translation>
+    </message>
+    <message>
+        <location filename="../src/app/sessionlifecycleservice.cpp" line="184"/>
+        <source>Session 1</source>
+        <translation>会话 1</translation>
+    </message>
+</context>
+<context>
+    <name>AppRuntimeUtils</name>
+    <message>
+        <location filename="../src/app/appruntimeutils.cpp" line="107"/>
         <source>No error</source>
         <translation>无错误</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="92"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="109"/>
         <source>Protocol version rejected by broker</source>
         <translation>代理拒绝了协议版本</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="94"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="111"/>
         <source>Client ID rejected</source>
         <translation>客户端 ID 被拒绝</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="96"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="113"/>
         <source>Broker unavailable</source>
         <translation>代理不可用</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="98"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="115"/>
         <source>Username or password rejected</source>
         <translation>用户名或密码被拒绝</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="100"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="117"/>
         <source>Not authorized</source>
         <translation>未授权</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="102"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="119"/>
         <source>Invalid transport</source>
         <translation>传输方式无效</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="104"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="121"/>
         <source>Protocol violation</source>
         <translation>协议违规</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="106"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="123"/>
         <source>Unknown MQTT error</source>
         <translation>未知 MQTT 错误</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="108"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="125"/>
         <source>MQTT 5 broker reported an error</source>
         <translation>MQTT 5 代理报告了错误</translation>
     </message>
     <message>
-        <location filename="../src/app/appfacadeutils.cpp" line="110"/>
+        <location filename="../src/app/appruntimeutils.cpp" line="127"/>
         <source>MQTT error</source>
         <translation>MQTT 错误</translation>
     </message>

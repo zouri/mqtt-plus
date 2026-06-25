@@ -1,13 +1,13 @@
 #include "scriptcontroller.h"
 
-#include "app/appfacadeutils.h"
+#include "app/appruntimeutils.h"
 #include "services/payload/payloadcodec.h"
 #include "services/scripting/luarunner.h"
 #include "services/storage/scriptstore.h"
 
 #include <QUuid>
 
-using namespace AppFacadeUtils;
+using namespace AppRuntimeUtils;
 
 ScriptController::ScriptController(QObject *parent)
     : QObject(parent)

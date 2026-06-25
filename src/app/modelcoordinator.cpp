@@ -1,6 +1,6 @@
 #include "app/modelcoordinator.h"
 
-#include "app/appfacadeutils.h"
+#include "app/appruntimeutils.h"
 #include "controllers/scriptcontroller.h"
 #include "controllers/sessioncontroller.h"
 #include "controllers/subscriptioncontroller.h"
@@ -18,7 +18,7 @@
 
 #include <utility>
 
-using namespace AppFacadeUtils;
+using namespace AppRuntimeUtils;
 
 ModelCoordinator::ModelCoordinator(Dependencies dependencies)
     : m_dependencies(std::move(dependencies))
