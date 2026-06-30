@@ -1,49 +1,49 @@
-#include "app/appfacade.h"
+#include "app/applicationcore.h"
 
-#include "app/appfacadeutils.h"
+#include "app/applicationcoreutils.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/scriptstore.h"
 
 #include <QDateTime>
 
-using namespace AppFacadeUtils;
+using namespace ApplicationCoreUtils;
 
-SessionListModel *AppFacade::sessions()
+SessionListModel *ApplicationCore::sessions()
 {
     return &m_sessionsModel;
 }
 
-SubscriptionListModel *AppFacade::subscriptions()
+SubscriptionListModel *ApplicationCore::subscriptions()
 {
     return &m_subscriptionsModel;
 }
 
-SubscriptionFilterModel *AppFacade::filteredSubscriptions()
+SubscriptionFilterModel *ApplicationCore::filteredSubscriptions()
 {
     return &m_filteredSubscriptionsModel;
 }
 
-EventStreamModel *AppFacade::messages()
+EventStreamModel *ApplicationCore::messages()
 {
     return &m_messagesModel;
 }
 
-EventStreamModel *AppFacade::logs()
+EventStreamModel *ApplicationCore::logs()
 {
     return &m_logsModel;
 }
 
-ScriptLibraryModel *AppFacade::scripts()
+ScriptLibraryModel *ApplicationCore::scripts()
 {
     return &m_scriptsModel;
 }
 
-ScriptTestSamplesModel *AppFacade::scriptTestSamples()
+ScriptTestSamplesModel *ApplicationCore::scriptTestSamples()
 {
     return &m_scriptTestSamplesModel;
 }
 
-void AppFacade::refreshSessionsModel()
+void ApplicationCore::refreshSessionsModel()
 {
     QVector<SessionListRow> rows;
     const auto &sessions = m_sessionController.sessions();
@@ -68,12 +68,12 @@ void AppFacade::refreshSessionsModel()
     m_sessionsModel.setRows(rows);
 }
 
-int AppFacade::currentSessionIndex() const
+int ApplicationCore::currentSessionIndex() const
 {
     return m_sessionController.currentIndex();
 }
 
-QVariantMap AppFacade::currentSession() const
+QVariantMap ApplicationCore::currentSession() const
 {
     const auto *session = currentSessionState();
     if (!session) {
@@ -99,7 +99,7 @@ QVariantMap AppFacade::currentSession() const
     return row;
 }
 
-QVariantMap AppFacade::sessionStatus() const
+QVariantMap ApplicationCore::sessionStatus() const
 {
     const auto *session = currentSessionState();
     if (!session) {
@@ -144,7 +144,7 @@ QVariantMap AppFacade::sessionStatus() const
     return row;
 }
 
-void AppFacade::refreshSubscriptionsModel()
+void ApplicationCore::refreshSubscriptionsModel()
 {
     const auto *session = currentSessionState();
     if (!session) {
@@ -175,7 +175,7 @@ void AppFacade::refreshSubscriptionsModel()
     m_subscriptionsModel.setRows(rows);
 }
 
-QVariantMap AppFacade::publishStatus() const
+QVariantMap ApplicationCore::publishStatus() const
 {
     const auto *session = currentSessionState();
     QVariantMap status = session ? session->publishStatus : defaultPublishStatus();
@@ -185,12 +185,12 @@ QVariantMap AppFacade::publishStatus() const
     return status;
 }
 
-QStringList AppFacade::payloadFormats() const
+QStringList ApplicationCore::payloadFormats() const
 {
     return PayloadCodec::formatNames();
 }
 
-void AppFacade::refreshScriptsModel()
+void ApplicationCore::refreshScriptsModel()
 {
     QVector<ScriptLibraryRow> rows;
     const auto &scripts = m_scriptController.scripts();
@@ -208,7 +208,7 @@ void AppFacade::refreshScriptsModel()
     m_scriptsModel.setRows(rows);
 }
 
-void AppFacade::refreshScriptTestSamplesModel()
+void ApplicationCore::refreshScriptTestSamplesModel()
 {
     const auto *session = currentSessionState();
     if (!session) {
@@ -237,27 +237,27 @@ void AppFacade::refreshScriptTestSamplesModel()
     m_scriptTestSamplesModel.setRows(rows);
 }
 
-QString AppFacade::themeMode() const
+QString ApplicationCore::themeMode() const
 {
     return m_themeController.mode();
 }
 
-QString AppFacade::effectiveTheme() const
+QString ApplicationCore::effectiveTheme() const
 {
     return m_themeController.effectiveTheme();
 }
 
-QString AppFacade::languageMode() const
+QString ApplicationCore::languageMode() const
 {
     return m_languageController.mode();
 }
 
-QString AppFacade::effectiveLanguage() const
+QString ApplicationCore::effectiveLanguage() const
 {
     return m_languageController.effectiveLanguage();
 }
 
-QVariantList AppFacade::availableLanguages() const
+QVariantList ApplicationCore::availableLanguages() const
 {
     return m_languageController.availableLanguages();
 }

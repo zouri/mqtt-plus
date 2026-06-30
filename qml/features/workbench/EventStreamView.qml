@@ -8,7 +8,7 @@ import "../../components"
 Item {
     id: root
 
-    required property var appController
+    required property var viewModel
     required property var streamModel
     required property var loadOlderRows
     required property var clearRows
@@ -132,7 +132,7 @@ Item {
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     accessibleName: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
-                    onClicked: root.appController.setCurrentOutputPaused(!root.session.outputPaused)
+                    onClicked: root.viewModel.setCurrentOutputPaused(!root.session.outputPaused)
                 }
 
                 AppIconButton {
@@ -330,7 +330,7 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Copy topic")
-                                onClicked: root.appController.copyTextToClipboard(eventDelegate.topic)
+                                onClicked: root.viewModel.copyTextToClipboard(eventDelegate.topic)
                             }
 
                             AppIconButton {
@@ -344,7 +344,7 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Copy payload")
-                                onClicked: root.appController.copyTextToClipboard(
+                                onClicked: root.viewModel.copyTextToClipboard(
                                                eventDelegate.testPayload.length > 0
                                                ? eventDelegate.testPayload
                                                : eventDelegate.payload)

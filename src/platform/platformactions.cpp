@@ -1,11 +1,13 @@
-#include "app/appfacade.h"
+#include "platform/platformactions.h"
 
 #include <QAction>
+#include <QClipboard>
+#include <QCoreApplication>
 #include <QCursor>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QMenu>
 #include <QPoint>
-#include <QPointF>
 
 namespace {
 QPoint menuPosition(const QPointF &globalPosition)
@@ -17,19 +19,15 @@ QPoint menuPosition(const QPointF &globalPosition)
 }
 } // namespace
 
-QString AppFacade::showSessionContextMenu(int index, const QPointF &globalPosition)
+QString PlatformActions::showSessionContextMenu(bool canDelete, const QPointF &globalPosition) const
 {
-    if (!m_sessionController.isValidIndex(index)) {
-        return {};
-    }
-
     QMenu menu;
-    QAction *editAction = menu.addAction(tr("Edit"));
-    QAction *copyAction = menu.addAction(tr("Copy"));
-    QAction *deleteAction = menu.addAction(tr("Delete"));
+    QAction *editAction = menu.addAction(QCoreApplication::translate("PlatformActions", "Edit"));
+    QAction *copyAction = menu.addAction(QCoreApplication::translate("PlatformActions", "Copy"));
+    QAction *deleteAction = menu.addAction(QCoreApplication::translate("PlatformActions", "Delete"));
     editAction->setIcon(QIcon(QStringLiteral(":/qt/qml/MqttPlusApp/resources/edit.svg")));
     deleteAction->setIcon(QIcon(QStringLiteral(":/qt/qml/MqttPlusApp/resources/delete.svg")));
-    deleteAction->setEnabled(m_sessionController.sessions().size() > 1);
+    deleteAction->setEnabled(canDelete);
 
     QAction *selectedAction = menu.exec(menuPosition(globalPosition));
     if (selectedAction == editAction) {
@@ -44,16 +42,11 @@ QString AppFacade::showSessionContextMenu(int index, const QPointF &globalPositi
     return {};
 }
 
-QString AppFacade::showSubscriptionContextMenu(const QString &topic, const QPointF &globalPosition)
+QString PlatformActions::showSubscriptionContextMenu(const QPointF &globalPosition) const
 {
-    const SessionState *session = currentSessionState();
-    if (!session || !subscriptionByTopic(session, topic.trimmed())) {
-        return {};
-    }
-
     QMenu menu;
-    QAction *editAction = menu.addAction(tr("Edit"));
-    QAction *deleteAction = menu.addAction(tr("Delete"));
+    QAction *editAction = menu.addAction(QCoreApplication::translate("PlatformActions", "Edit"));
+    QAction *deleteAction = menu.addAction(QCoreApplication::translate("PlatformActions", "Delete"));
 
     QAction *selectedAction = menu.exec(menuPosition(globalPosition));
     if (selectedAction == editAction) {
@@ -63,4 +56,11 @@ QString AppFacade::showSubscriptionContextMenu(const QString &topic, const QPoin
         return QStringLiteral("delete");
     }
     return {};
+}
+
+void PlatformActions::copyTextToClipboard(const QString &text) const
+{
+    if (auto *clipboard = QGuiApplication::clipboard()) {
+        clipboard->setText(text);
+    }
 }

@@ -1,4 +1,4 @@
-#include "app/appfacadeutils.h"
+#include "app/applicationcoreutils.h"
 
 #include <QAbstractSocket>
 #include <QCoreApplication>
@@ -8,7 +8,7 @@
 
 #include <algorithm>
 
-namespace AppFacadeUtils {
+namespace ApplicationCoreUtils {
 
 QString timestampNow()
 {
@@ -104,27 +104,27 @@ QString clientErrorName(QMqttClient::ClientError error)
 {
     switch (error) {
     case QMqttClient::NoError:
-        return QCoreApplication::translate("AppFacadeUtils", "No error");
+        return QCoreApplication::translate("ApplicationCoreUtils", "No error");
     case QMqttClient::InvalidProtocolVersion:
-        return QCoreApplication::translate("AppFacadeUtils", "Protocol version rejected by broker");
+        return QCoreApplication::translate("ApplicationCoreUtils", "Protocol version rejected by broker");
     case QMqttClient::IdRejected:
-        return QCoreApplication::translate("AppFacadeUtils", "Client ID rejected");
+        return QCoreApplication::translate("ApplicationCoreUtils", "Client ID rejected");
     case QMqttClient::ServerUnavailable:
-        return QCoreApplication::translate("AppFacadeUtils", "Broker unavailable");
+        return QCoreApplication::translate("ApplicationCoreUtils", "Broker unavailable");
     case QMqttClient::BadUsernameOrPassword:
-        return QCoreApplication::translate("AppFacadeUtils", "Username or password rejected");
+        return QCoreApplication::translate("ApplicationCoreUtils", "Username or password rejected");
     case QMqttClient::NotAuthorized:
-        return QCoreApplication::translate("AppFacadeUtils", "Not authorized");
+        return QCoreApplication::translate("ApplicationCoreUtils", "Not authorized");
     case QMqttClient::TransportInvalid:
-        return QCoreApplication::translate("AppFacadeUtils", "Invalid transport");
+        return QCoreApplication::translate("ApplicationCoreUtils", "Invalid transport");
     case QMqttClient::ProtocolViolation:
-        return QCoreApplication::translate("AppFacadeUtils", "Protocol violation");
+        return QCoreApplication::translate("ApplicationCoreUtils", "Protocol violation");
     case QMqttClient::UnknownError:
-        return QCoreApplication::translate("AppFacadeUtils", "Unknown MQTT error");
+        return QCoreApplication::translate("ApplicationCoreUtils", "Unknown MQTT error");
     case QMqttClient::Mqtt5SpecificError:
-        return QCoreApplication::translate("AppFacadeUtils", "MQTT 5 broker reported an error");
+        return QCoreApplication::translate("ApplicationCoreUtils", "MQTT 5 broker reported an error");
     }
-    return QCoreApplication::translate("AppFacadeUtils", "MQTT error");
+    return QCoreApplication::translate("ApplicationCoreUtils", "MQTT error");
 }
 
 QString messageStatusName(QMqtt::MessageStatus status)
@@ -241,4 +241,4 @@ int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs)
         [cutoffMs](qint64 timestampMs) { return timestampMs >= cutoffMs; }));
 }
 
-} // namespace AppFacadeUtils
+} // namespace ApplicationCoreUtils

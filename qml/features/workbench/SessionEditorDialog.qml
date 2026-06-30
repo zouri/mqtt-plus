@@ -10,12 +10,9 @@ Dialog {
     id: root
 
     required property AppUi ui
-    required property var appController
+    required property var viewModel
 
-    property string mode: "create"
-    property int targetIndex: -1
-    property string dialogTitle: qsTr("Connection")
-    property string validationError: ""
+    readonly property var editor: root.viewModel.sessionEditor
 
     component FormLabel : Label {
         Layout.preferredWidth: 148
@@ -84,161 +81,26 @@ Dialog {
         return decodeURIComponent(String(url).replace("file://", ""))
     }
 
-    function optionalNumberText(field) {
-        return field.text.trim()
-    }
-
     function generateClientId() {
         return `mqtt-plus-${Math.floor(100000 + Math.random() * 900000)}`
     }
 
-    function syncTransportPort() {
-        const tlsSelected = transportField.currentIndex === 1
-        if (tlsSelected && portField.text.trim() === "1883") {
-            portField.text = "8883"
-        } else if (!tlsSelected && portField.text.trim() === "8883") {
-            portField.text = "1883"
-        }
-    }
-
-    function loadConfig(config) {
-        sessionNameField.text = config.name !== undefined ? config.name : ""
-        hostField.text = config.host !== undefined ? config.host : "broker.emqx.io"
-        portField.text = `${config.port !== undefined ? config.port : 1883}`
-        transportField.currentIndex = config.transport === "tls" ? 1 : 0
-        protocolField.currentIndex = config.protocolVersion === 4 ? 1 : 0
-        sslSecureField.checked = config.sslSecure !== undefined ? config.sslSecure : true
-        alpnField.text = config.alpn !== undefined ? config.alpn : ""
-        caSignedRadio.checked = config.certificateType !== "self"
-        selfSignedRadio.checked = config.certificateType === "self"
-        caFileField.text = config.caFile !== undefined ? config.caFile : ""
-        clientCertificateField.text = config.clientCertificateFile !== undefined ? config.clientCertificateFile : ""
-        clientKeyField.text = config.clientKeyFile !== undefined ? config.clientKeyFile : ""
-        clientIdField.text = config.clientId !== undefined ? config.clientId : ""
-        usernameField.text = config.username !== undefined ? config.username : ""
-        passwordField.text = config.password !== undefined ? config.password : ""
-        connectTimeoutField.text = `${config.connectTimeoutSeconds !== undefined ? config.connectTimeoutSeconds : 10}`
-        keepAliveField.text = `${config.keepAliveSeconds !== undefined ? config.keepAliveSeconds : 30}`
-        cleanSessionField.checked = config.cleanSession !== undefined ? config.cleanSession : true
-        sessionExpiryField.text = `${config.sessionExpiryInterval !== undefined ? config.sessionExpiryInterval : 0}`
-        receiveMaximumField.text = config.receiveMaximum !== undefined ? config.receiveMaximum : ""
-        maximumPacketSizeField.text = config.maximumPacketSize !== undefined ? config.maximumPacketSize : ""
-        topicAliasMaximumField.text = config.topicAliasMaximum !== undefined ? config.topicAliasMaximum : ""
-        requestResponseInformationField.checked = config.requestResponseInformation !== undefined
-                ? config.requestResponseInformation : false
-        requestProblemInformationField.checked = config.requestProblemInformation !== undefined
-                ? config.requestProblemInformation : false
-        authenticationMethodField.text = config.authenticationMethod !== undefined ? config.authenticationMethod : ""
-        authenticationDataField.text = config.authenticationData !== undefined ? config.authenticationData : ""
-    }
-
-    function collectedConfig() {
-        return {
-            "name": sessionNameField.text,
-            "host": hostField.text,
-            "port": Number(portField.text.trim()),
-            "transport": transportField.currentIndex === 1 ? "tls" : "tcp",
-            "protocolVersion": protocolField.currentIndex === 1 ? 4 : 5,
-            "sslSecure": sslSecureField.checked,
-            "alpn": alpnField.text,
-            "certificateType": selfSignedRadio.checked ? "self" : "ca",
-            "caFile": caFileField.text,
-            "clientCertificateFile": clientCertificateField.text,
-            "clientKeyFile": clientKeyField.text,
-            "clientId": clientIdField.text,
-            "username": usernameField.text,
-            "password": passwordField.text,
-            "connectTimeoutSeconds": Number(connectTimeoutField.text.trim()),
-            "keepAliveSeconds": Number(keepAliveField.text.trim()),
-            "cleanSession": cleanSessionField.checked,
-            "sessionExpiryInterval": optionalNumberText(sessionExpiryField),
-            "receiveMaximum": optionalNumberText(receiveMaximumField),
-            "maximumPacketSize": optionalNumberText(maximumPacketSizeField),
-            "topicAliasMaximum": optionalNumberText(topicAliasMaximumField),
-            "requestResponseInformation": requestResponseInformationField.checked,
-            "requestProblemInformation": requestProblemInformationField.checked,
-            "authenticationMethod": authenticationMethodField.text,
-            "authenticationData": authenticationDataField.text
-        }
-    }
-
-    function validateInteger(text, label, minimum, maximum, required) {
-        const trimmed = text.trim()
-        if (trimmed.length === 0) {
-            return required ? qsTr("%1 is required.").arg(label) : ""
-        }
-        if (!/^\d+$/.test(trimmed)) {
-            return qsTr("%1 must be an integer.").arg(label)
-        }
-        const value = Number(trimmed)
-        if (value < minimum || value > maximum) {
-            return qsTr("%1 must be between %2 and %3.").arg(label).arg(minimum).arg(maximum)
-        }
-        return ""
-    }
-
-    function validationErrorMessage() {
-        if (sessionNameField.text.trim().length === 0) {
-            return qsTr("Name is required.")
-        }
-        if (hostField.text.trim().length === 0) {
-            return qsTr("Server address is required.")
-        }
-
-        const checks = [
-            validateInteger(portField.text, qsTr("Port"), 1, 65535, true),
-            validateInteger(connectTimeoutField.text, qsTr("Connection timeout"), 1, 300, true),
-            validateInteger(keepAliveField.text, qsTr("Keep Alive"), 5, 1200, true),
-            validateInteger(sessionExpiryField.text, qsTr("Session expiry interval"), 0, 4294967295, false),
-            validateInteger(receiveMaximumField.text, qsTr("Receive maximum"), 1, 65535, false),
-            validateInteger(maximumPacketSizeField.text, qsTr("Maximum packet size"), 1, 4294967295, false),
-            validateInteger(topicAliasMaximumField.text, qsTr("Topic alias maximum"), 1, 65535, false)
-        ]
-
-        for (const message of checks) {
-            if (message.length > 0) {
-                return message
-            }
-        }
-        return ""
-    }
-
     function openForCreate() {
-        mode = "create"
-        targetIndex = -1
-        dialogTitle = qsTr("New Connection")
-        validationError = ""
-        loadConfig(appController.defaultSessionConfig())
+        root.viewModel.openSessionEditorForCreate()
         open()
     }
 
     function openForEdit(index) {
-        if (index < 0 || index >= appController.sessions.count) {
+        if (index < 0 || index >= viewModel.sessions.count) {
             return
         }
 
-        mode = "edit"
-        targetIndex = index
-        dialogTitle = qsTr("Edit Connection")
-        validationError = ""
-        loadConfig(appController.sessionConfigAt(index))
+        root.viewModel.openSessionEditorForEdit(index)
         open()
     }
 
     function submit() {
-        validationError = validationErrorMessage()
-        if (validationError.length > 0) {
-            return
-        }
-
-        const config = collectedConfig()
-        if (mode === "create") {
-            appController.addSessionWithConfig(config)
-            close()
-            return
-        }
-
-        if (targetIndex >= 0 && appController.updateSessionConfigAt(targetIndex, config)) {
+        if (root.viewModel.submitSessionEditor()) {
             close()
         }
     }
@@ -291,7 +153,7 @@ Dialog {
 
             Label {
                 Layout.fillWidth: true
-                text: root.dialogTitle
+                text: root.editor.title
                 color: root.ui.textStrong
                 font.pixelSize: 18
                 font.bold: true
@@ -334,7 +196,8 @@ Dialog {
                         id: sessionNameField
                         ui: root.ui
                         Layout.fillWidth: true
-                        onTextChanged: root.validationError = ""
+                        text: root.editor.name
+                        onTextEdited: root.editor.name = text
                     }
 
                     FormLabel { text: qsTr("* Server address") }
@@ -347,15 +210,17 @@ Dialog {
                             ui: root.ui
                             Layout.preferredWidth: 132
                             model: ["mqtt://", "mqtts://"]
-                            onCurrentIndexChanged: root.syncTransportPort()
+                            currentIndex: root.editor.transport === "tls" ? 1 : 0
+                            onActivated: root.editor.transport = currentIndex === 1 ? "tls" : "tcp"
                         }
 
                         AppTextField {
                             id: hostField
                             ui: root.ui
                             Layout.fillWidth: true
+                            text: root.editor.host
                             placeholderText: qsTr("broker.emqx.io")
-                            onTextChanged: root.validationError = ""
+                            onTextEdited: root.editor.host = text
                         }
                     }
 
@@ -366,7 +231,8 @@ Dialog {
                         Layout.fillWidth: true
                         inputMethodHints: Qt.ImhDigitsOnly
                         validator: IntValidator { bottom: 1; top: 65535 }
-                        onTextChanged: root.validationError = ""
+                        text: root.editor.portText
+                        onTextEdited: root.editor.portText = text
                     }
 
                     FormLabel { text: qsTr("Client ID") }
@@ -378,13 +244,15 @@ Dialog {
                             id: clientIdField
                             ui: root.ui
                             Layout.fillWidth: true
+                            text: root.editor.clientId
+                            onTextEdited: root.editor.clientId = text
                         }
 
                         AppButton {
                             ui: root.ui
                             text: qsTr("Generate")
                             minimumWidth: 92
-                            onClicked: clientIdField.text = root.generateClientId()
+                            onClicked: root.editor.clientId = root.generateClientId()
                         }
                     }
 
@@ -393,6 +261,8 @@ Dialog {
                         id: usernameField
                         ui: root.ui
                         Layout.fillWidth: true
+                        text: root.editor.username
+                        onTextEdited: root.editor.username = text
                     }
 
                     FormLabel { text: qsTr("Password") }
@@ -401,6 +271,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         echoMode: TextInput.Password
+                        text: root.editor.password
+                        onTextEdited: root.editor.password = text
                     }
                 }
 
@@ -412,6 +284,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         text: qsTr("Verify server certificate")
+                        checked: root.editor.sslSecure
+                        onToggled: root.editor.sslSecure = checked
                     }
 
                     FormLabel { text: qsTr("ALPN") }
@@ -420,6 +294,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         placeholderText: qsTr("Optional, comma separated")
+                        text: root.editor.alpn
+                        onTextEdited: root.editor.alpn = text
                     }
 
                     FormLabel { text: qsTr("Certificate type") }
@@ -431,9 +307,14 @@ Dialog {
                             id: caSignedRadio
                             ButtonGroup.group: certificateTypeGroup
                             text: qsTr("CA signed server certificate")
-                            checked: true
+                            checked: root.editor.certificateType !== "self"
                             font.pixelSize: root.ui.compactFontSize
                             palette.windowText: root.ui.textStrong
+                            onToggled: {
+                                if (checked) {
+                                    root.editor.certificateType = "ca"
+                                }
+                            }
 
                             HoverHandler {
                                 cursorShape: caSignedRadio.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -444,8 +325,14 @@ Dialog {
                             id: selfSignedRadio
                             ButtonGroup.group: certificateTypeGroup
                             text: qsTr("CA or self signed certificates")
+                            checked: root.editor.certificateType === "self"
                             font.pixelSize: root.ui.compactFontSize
                             palette.windowText: root.ui.textStrong
+                            onToggled: {
+                                if (checked) {
+                                    root.editor.certificateType = "self"
+                                }
+                            }
 
                             HoverHandler {
                                 cursorShape: selfSignedRadio.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -461,6 +348,8 @@ Dialog {
                         id: caFileField
                         visible: selfSignedRadio.checked
                         dialogTitle: qsTr("Select CA file")
+                        text: root.editor.caFile
+                        onTextChanged: root.editor.caFile = text
                     }
 
                     FormLabel {
@@ -471,6 +360,8 @@ Dialog {
                         id: clientCertificateField
                         visible: selfSignedRadio.checked
                         dialogTitle: qsTr("Select client certificate")
+                        text: root.editor.clientCertificateFile
+                        onTextChanged: root.editor.clientCertificateFile = text
                     }
 
                     FormLabel {
@@ -481,6 +372,8 @@ Dialog {
                         id: clientKeyField
                         visible: selfSignedRadio.checked
                         dialogTitle: qsTr("Select client key file")
+                        text: root.editor.clientKeyFile
+                        onTextChanged: root.editor.clientKeyFile = text
                     }
                 }
 
@@ -492,6 +385,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         model: ["5.0", "3.1.1"]
+                        currentIndex: root.editor.protocolVersion === 4 ? 1 : 0
+                        onActivated: root.editor.protocolVersion = currentIndex === 1 ? 4 : 5
                     }
 
                     FormLabel { text: qsTr("Connection timeout") }
@@ -502,7 +397,8 @@ Dialog {
                         inputMethodHints: Qt.ImhDigitsOnly
                         validator: IntValidator { bottom: 1; top: 300 }
                         placeholderText: qsTr("Seconds")
-                        onTextChanged: root.validationError = ""
+                        text: root.editor.connectTimeoutText
+                        onTextEdited: root.editor.connectTimeoutText = text
                     }
 
                     FormLabel { text: qsTr("Keep Alive") }
@@ -513,7 +409,8 @@ Dialog {
                         inputMethodHints: Qt.ImhDigitsOnly
                         validator: IntValidator { bottom: 5; top: 1200 }
                         placeholderText: qsTr("Seconds")
-                        onTextChanged: root.validationError = ""
+                        text: root.editor.keepAliveText
+                        onTextEdited: root.editor.keepAliveText = text
                     }
 
                     FormLabel { text: qsTr("Clean Start") }
@@ -522,6 +419,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         text: qsTr("Start with a clean broker session")
+                        checked: root.editor.cleanSession
+                        onToggled: root.editor.cleanSession = checked
                     }
 
                     FormLabel { text: qsTr("Session expiry interval") }
@@ -531,7 +430,8 @@ Dialog {
                         Layout.fillWidth: true
                         inputMethodHints: Qt.ImhDigitsOnly
                         placeholderText: qsTr("Seconds")
-                        onTextChanged: root.validationError = ""
+                        text: root.editor.sessionExpiryText
+                        onTextEdited: root.editor.sessionExpiryText = text
                     }
 
                     FormLabel { text: qsTr("Receive maximum") }
@@ -541,7 +441,8 @@ Dialog {
                         Layout.fillWidth: true
                         inputMethodHints: Qt.ImhDigitsOnly
                         placeholderText: qsTr("Optional")
-                        onTextChanged: root.validationError = ""
+                        text: root.editor.receiveMaximumText
+                        onTextEdited: root.editor.receiveMaximumText = text
                     }
 
                     FormLabel { text: qsTr("Maximum packet size") }
@@ -551,7 +452,8 @@ Dialog {
                         Layout.fillWidth: true
                         inputMethodHints: Qt.ImhDigitsOnly
                         placeholderText: qsTr("Optional")
-                        onTextChanged: root.validationError = ""
+                        text: root.editor.maximumPacketSizeText
+                        onTextEdited: root.editor.maximumPacketSizeText = text
                     }
 
                     FormLabel { text: qsTr("Topic alias maximum") }
@@ -561,7 +463,8 @@ Dialog {
                         Layout.fillWidth: true
                         inputMethodHints: Qt.ImhDigitsOnly
                         placeholderText: qsTr("Optional")
-                        onTextChanged: root.validationError = ""
+                        text: root.editor.topicAliasMaximumText
+                        onTextEdited: root.editor.topicAliasMaximumText = text
                     }
 
                     FormLabel { text: qsTr("Request response information") }
@@ -570,6 +473,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         text: qsTr("Ask broker for response information")
+                        checked: root.editor.requestResponseInformation
+                        onToggled: root.editor.requestResponseInformation = checked
                     }
 
                     FormLabel { text: qsTr("Request problem information") }
@@ -578,6 +483,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         text: qsTr("Ask broker for problem details")
+                        checked: root.editor.requestProblemInformation
+                        onToggled: root.editor.requestProblemInformation = checked
                     }
 
                     FormLabel { text: qsTr("Auth method") }
@@ -586,6 +493,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         placeholderText: qsTr("MQTT 5 enhanced auth method")
+                        text: root.editor.authenticationMethod
+                        onTextEdited: root.editor.authenticationMethod = text
                     }
 
                     FormLabel { text: qsTr("Auth data") }
@@ -594,6 +503,8 @@ Dialog {
                         ui: root.ui
                         Layout.fillWidth: true
                         placeholderText: qsTr("MQTT 5 enhanced auth data")
+                        text: root.editor.authenticationData
+                        onTextEdited: root.editor.authenticationData = text
                     }
                 }
             }
@@ -605,15 +516,15 @@ Dialog {
 
             Label {
                 Layout.fillWidth: true
-                visible: root.validationError.length > 0
-                text: root.validationError
+                visible: root.editor.validationError.length > 0
+                text: root.editor.validationError
                 color: root.ui.themePalette.errorText
                 font.pixelSize: 11
                 wrapMode: Text.Wrap
             }
 
             Item {
-                visible: root.validationError.length === 0
+                visible: root.editor.validationError.length === 0
                 Layout.fillWidth: true
             }
 
@@ -626,7 +537,7 @@ Dialog {
             AppButton {
                 ui: root.ui
                 primary: true
-                text: root.mode === "create" ? qsTr("Create") : qsTr("Save")
+                text: root.editor.editMode ? qsTr("Save") : qsTr("Create")
                 onClicked: root.submit()
             }
         }

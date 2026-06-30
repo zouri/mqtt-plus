@@ -1,5 +1,6 @@
 #pragma once
 
+#include "controllers/applicationcontext.h"
 #include "domain/session.h"
 #include "domain/subscription.h"
 #include "services/scripting/luarunner.h"
@@ -8,14 +9,12 @@
 #include <QTimer>
 #include <QVariantMap>
 
-class AppFacade;
-
 class EventController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit EventController(AppFacade *app, QObject *parent = nullptr);
+    explicit EventController(EventControllerContext *app, QObject *parent = nullptr);
 
     void clearCurrentMessages();
     void clearCurrentLogs();
@@ -42,7 +41,7 @@ private:
     void reportMessageStorageError(SessionState &session, const QString &message);
     void scheduleMessageHistoryFlush();
 
-    AppFacade &m_app;
+    EventControllerContext &m_app;
     QTimer m_messageHistoryFlushTimer;
     QString m_lastMessageStorageError;
 };

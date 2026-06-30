@@ -1,9 +1,9 @@
 #include "eventrenderer.h"
 
-#include "app/appfacadeutils.h"
+#include "app/applicationcoreutils.h"
 #include "services/payload/payloadcodec.h"
 
-using namespace AppFacadeUtils;
+using namespace ApplicationCoreUtils;
 
 namespace {
 QString startupDividerLabel()

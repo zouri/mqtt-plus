@@ -4,7 +4,8 @@
 #include <QQuickStyle>
 #include <QVariant>
 
-#include "app/appfacade.h"
+#include "app/applicationcore.h"
+#include "viewmodels/applicationviewmodel.h"
 
 int main(int argc, char *argv[])
 {
@@ -13,12 +14,13 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app-icon.png")));
 
-    AppFacade facade;
+    ApplicationCore core;
+    ApplicationViewModel appViewModel(&core);
 
     QQmlApplicationEngine engine;
-    QObject::connect(&facade, &AppFacade::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
+    QObject::connect(appViewModel.settings(), &SettingsViewModel::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
     engine.setInitialProperties({
-        {QStringLiteral("app"), QVariant::fromValue(&facade)},
+        {QStringLiteral("app"), QVariant::fromValue(&appViewModel)},
     });
 
     QObject::connect(

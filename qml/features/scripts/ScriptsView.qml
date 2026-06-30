@@ -9,106 +9,26 @@ Item {
     id: control
 
     required property AppUi ui
-    required property var appController
+    required property var viewModel
 
-    property string currentScriptId: ""
-    property string savedScriptName: ""
-    property string savedScriptDescription: ""
-    property string savedScriptCode: ""
-    property string validationStatus: qsTr("Unsaved")
-    property bool validationOk: false
-
-    readonly property bool hasUnsavedChanges: nameField.text !== control.savedScriptName
-                                               || descriptionField.text !== control.savedScriptDescription
-                                               || codeField.text !== control.savedScriptCode
-    readonly property bool canSave: control.hasUnsavedChanges || control.currentScriptId.length === 0
+    readonly property var editor: control.viewModel.editor
 
     Layout.fillWidth: true
     Layout.fillHeight: true
 
-    function defaultCode() {
-        return "function parse(ctx)\n"
-                + "    return ctx.decoded\n"
-                + "end\n"
-    }
-
-    function loadScript(row) {
-        control.currentScriptId = row.id || ""
-        nameField.text = row.name || ""
-        descriptionField.text = row.description || ""
-        codeField.text = row.code || control.defaultCode()
-        control.savedScriptName = nameField.text
-        control.savedScriptDescription = descriptionField.text
-        control.savedScriptCode = codeField.text
-        control.validationStatus = control.currentScriptId.length > 0 ? qsTr("Saved") : qsTr("Unsaved")
-        control.validationOk = false
-    }
-
     function newScript() {
-        control.currentScriptId = ""
-        nameField.text = qsTr("New Lua Script")
-        descriptionField.text = qsTr("Decode MQTT payloads with Lua.")
-        codeField.text = control.defaultCode()
-        control.savedScriptName = nameField.text
-        control.savedScriptDescription = descriptionField.text
-        control.savedScriptCode = codeField.text
-        control.validationStatus = qsTr("Unsaved")
-        control.validationOk = false
+        control.editor.newScript()
         nameField.forceActiveFocus()
         nameField.selectAll()
     }
 
-    function ensureSelection() {
-        const scripts = control.appController.scripts
-        if (control.currentScriptId.length > 0) {
-            if (scripts && scripts.indexOfId(control.currentScriptId) >= 0) {
-                return
-            }
-        }
-
-        if (scripts && scripts.count > 0 && control.currentScriptId.length > 0) {
-            control.loadScript(scripts.rowAt(0))
-        } else if (scripts && scripts.count > 0 && nameField.text.length === 0) {
-            control.loadScript(scripts.rowAt(0))
-        } else if ((!scripts || scripts.count === 0) && nameField.text.length === 0) {
-            control.newScript()
-        }
-    }
-
-    function validateStructure() {
-        const code = codeField.text
-        const hasParseFunction = code.indexOf("function parse") >= 0
-        const hasEnd = code.trim().endsWith("end") || code.indexOf("\nend") >= 0
-        control.validationOk = hasParseFunction && hasEnd
-        control.validationStatus = control.validationOk
-                ? qsTr("Structure valid")
-                : qsTr("Structure invalid: define function parse(ctx) ... end")
-    }
-
-    function saveScript() {
-        const savedId = control.appController.upsertScript(
-                    control.currentScriptId,
-                    nameField.text,
-                    descriptionField.text,
-                    codeField.text)
-        if (savedId.length === 0) {
-            return
-        }
-        control.currentScriptId = savedId
-        control.savedScriptName = nameField.text
-        control.savedScriptDescription = descriptionField.text
-        control.savedScriptCode = codeField.text
-        control.validationStatus = qsTr("Saved")
-        control.validationOk = true
-    }
-
-    Component.onCompleted: control.ensureSelection()
+    Component.onCompleted: control.viewModel.ensureEditorSelection()
 
     Connections {
-        target: control.appController
+        target: control.viewModel
 
         function onScriptLibraryChanged() {
-            control.ensureSelection()
+            control.viewModel.ensureEditorSelection()
         }
     }
 
@@ -136,7 +56,7 @@ Item {
 
                 AppBadge {
                     ui: control.ui
-                    label: `${control.appController.scripts.count}`
+                    label: `${control.viewModel.scripts.count}`
                     badgeRadius: 11
                     horizontalPadding: 8
                     verticalPadding: 4
@@ -176,9 +96,9 @@ Item {
 
             ScriptListPane {
                 ui: control.ui
-                appController: control.appController
-                currentScriptId: control.currentScriptId
-                onScriptRequested: (row) => control.loadScript(row)
+                viewModel: control.viewModel
+                currentScriptId: control.editor.currentScriptId
+                onScriptRequested: (index) => control.viewModel.selectScriptAt(index)
             }
 
             Rectangle {
@@ -213,7 +133,9 @@ Item {
                             id: nameField
                             ui: control.ui
                             Layout.fillWidth: true
+                            text: control.editor.name
                             placeholderText: qsTr("Script name")
+                            onTextEdited: control.editor.name = text
                         }
                     }
 
@@ -231,7 +153,9 @@ Item {
                             id: descriptionField
                             ui: control.ui
                             Layout.fillWidth: true
+                            text: control.editor.description
                             placeholderText: qsTr("Device protocol or payload structure")
+                            onTextEdited: control.editor.description = text
                         }
                     }
                 }
@@ -253,12 +177,18 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumHeight: 360
+                        text: control.editor.code
                         font.family: "Menlo"
                         clip: true
                         showLineNumbers: false
                         showFocusBorder: false
                         wrapMode: TextEdit.NoWrap
                         placeholderText: qsTr("function parse(ctx)")
+                        onTextChanged: {
+                            if (text !== control.editor.code) {
+                                control.editor.code = text
+                            }
+                        }
                     }
                 }
             }
@@ -287,10 +217,10 @@ Item {
 
                 Label {
                     Layout.fillWidth: true
-                    text: control.hasUnsavedChanges ? qsTr("Unsaved") : control.validationStatus
-                    color: control.hasUnsavedChanges
+                    text: control.editor.hasUnsavedChanges ? qsTr("Unsaved") : control.editor.validationStatus
+                    color: control.editor.hasUnsavedChanges
                            ? control.ui.textMuted
-                           : (control.validationOk
+                           : (control.editor.validationOk
                               ? control.ui.stateColor("completed")
                               : control.ui.textMuted)
                     font.pixelSize: 13
@@ -301,16 +231,16 @@ Item {
                     ui: control.ui
                     text: qsTr("Validate structure")
                     minimumWidth: 98
-                    onClicked: control.validateStructure()
+                    onClicked: control.editor.validateStructure()
                 }
 
                 AppButton {
                     ui: control.ui
                     text: qsTr("Save Script")
                     primary: true
-                    enabled: control.canSave
+                    enabled: control.editor.canSave
                     minimumWidth: 92
-                    onClicked: control.saveScript()
+                    onClicked: control.viewModel.saveEditor()
                 }
             }
         }

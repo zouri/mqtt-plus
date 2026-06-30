@@ -8,14 +8,14 @@ import "../../components"
 Rectangle {
     id: root
 
-    required property var appController
+    required property var viewModel
     required property string currentScriptId
     required property AppUi ui
 
     property string filterText: ""
     property int matchingScriptCount: 0
 
-    signal scriptRequested(var row)
+    signal scriptRequested(int index)
 
     Layout.preferredWidth: 280
     Layout.minimumWidth: 280
@@ -32,23 +32,14 @@ Rectangle {
     }
 
     function recomputeVisibleCount() {
-        let visibleRows = 0
-        const model = root.appController ? root.appController.scripts : null
-        const rowCount = model ? model.count : 0
-        for (let i = 0; i < rowCount; ++i) {
-            const row = model.rowAt(i)
-            if (root.rowMatches(row.name || "", row.description || "", row.code || "")) {
-                visibleRows += 1
-            }
-        }
-        root.matchingScriptCount = visibleRows
+        root.matchingScriptCount = root.viewModel ? root.viewModel.visibleScriptCount(root.filterText) : 0
     }
 
     onFilterTextChanged: root.recomputeVisibleCount()
     Component.onCompleted: root.recomputeVisibleCount()
 
     Connections {
-        target: root.appController ? root.appController.scripts : null
+        target: root.viewModel ? root.viewModel.scripts : null
 
         function onCountChanged() {
             root.recomputeVisibleCount()
@@ -77,7 +68,7 @@ Rectangle {
             Layout.fillHeight: true
             clip: true
             spacing: 0
-            model: root.appController.scripts
+            model: root.viewModel.scripts
             reuseItems: true
 
             ScrollBar.vertical: ScrollBar {
@@ -152,7 +143,7 @@ Rectangle {
                     if (event.key === Qt.Key_Return
                             || event.key === Qt.Key_Enter
                             || event.key === Qt.Key_Space) {
-                        root.scriptRequested(root.appController.scripts.rowAt(scriptDelegate.index))
+                        root.scriptRequested(scriptDelegate.index)
                         event.accepted = true
                     }
                 }
@@ -165,7 +156,7 @@ Rectangle {
 
                     onClicked: {
                         scriptDelegate.forceActiveFocus()
-                        root.scriptRequested(root.appController.scripts.rowAt(scriptDelegate.index))
+                        root.scriptRequested(scriptDelegate.index)
                     }
                 }
             }

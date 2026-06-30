@@ -1,19 +1,19 @@
 #pragma once
 
+#include "controllers/applicationcontext.h"
+
 #include <QObject>
 #include <QSslConfiguration>
 #include <QString>
 
 #include "domain/session.h"
 
-class AppFacade;
-
 class MqttController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit MqttController(AppFacade *app, QObject *parent = nullptr);
+    explicit MqttController(MqttControllerContext *app, QObject *parent = nullptr);
 
     void connectCurrentSession();
     void disconnectCurrentSession();
@@ -33,5 +33,5 @@ public:
         qint32 messageId = -1);
 
 private:
-    AppFacade &m_app;
+    MqttControllerContext &m_app;
 };

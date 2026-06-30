@@ -62,6 +62,8 @@ file(
     "src/*.h"
 )
 list(SORT MQTT_PLUS_APP_SOURCES)
+set(MQTT_PLUS_APP_LIBRARY_SOURCES ${MQTT_PLUS_APP_SOURCES})
+list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES "src/app/main.cpp")
 
 qt_add_executable(mqtt_plus_app
     ${MQTT_PLUS_APP_SOURCES}
@@ -171,6 +173,32 @@ elseif(UNIX)
 endif()
 
 if(BUILD_TESTING)
+    function(add_mqtt_plus_qt_test target)
+        add_executable(${target}
+            ${ARGN}
+        )
+        target_include_directories(${target}
+            PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        )
+        target_link_libraries(${target}
+            PRIVATE
+                Qt6::Core
+                Qt6::Gui
+                Qt6::Network
+                Qt6::Mqtt
+                Qt6::Qml
+                Qt6::Quick
+                Qt6::QuickControls2
+                Qt6::Sql
+                Qt6::Svg
+                Qt6::Test
+                Qt6::Widgets
+                MqttPlus::Lua
+        )
+        add_test(NAME ${target} COMMAND ${target})
+    endfunction()
+
     add_executable(test_sessionconfig
         tests/test_sessionconfig.cpp
         src/domain/sessionconfig.cpp
@@ -200,6 +228,55 @@ if(BUILD_TESTING)
             Qt6::Test
     )
     add_test(NAME payloadcodec COMMAND test_payloadcodec)
+
+    add_mqtt_plus_qt_test(test_sessioneditorviewmodel
+        tests/test_sessioneditorviewmodel.cpp
+        src/domain/sessionconfig.cpp
+        src/viewmodels/sessioneditorviewmodel.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_subscriptioneditorviewmodel
+        tests/test_subscriptioneditorviewmodel.cpp
+        src/viewmodels/subscriptioneditorviewmodel.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_scripteditorviewmodel
+        tests/test_scripteditorviewmodel.cpp
+        src/viewmodels/scripteditorviewmodel.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_scriptsviewmodel
+        tests/test_scriptsviewmodel.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
+    add_mqtt_plus_qt_test(test_settingsviewmodel
+        tests/test_settingsviewmodel.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
+    add_mqtt_plus_qt_test(test_logsviewmodel
+        tests/test_logsviewmodel.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
+    add_mqtt_plus_qt_test(test_workbenchviewmodel
+        tests/test_workbenchviewmodel.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
+    add_mqtt_plus_qt_test(test_applicationviewmodel_shape
+        tests/test_applicationviewmodel_shape.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
+    add_mqtt_plus_qt_test(test_architecture_boundaries
+        tests/test_architecture_boundaries.cpp
+    )
+    target_compile_definitions(test_architecture_boundaries
+        PRIVATE
+            MQTT_PLUS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
 endif()
 
 include(CPack)

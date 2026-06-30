@@ -1,6 +1,6 @@
-#include "app/appfacade.h"
+#include "app/applicationcore.h"
 
-bool AppFacade::upsertCurrentSubscription(
+bool ApplicationCore::upsertCurrentSubscription(
     const QString &topic,
     int qos,
     int format,
@@ -10,7 +10,7 @@ bool AppFacade::upsertCurrentSubscription(
     return m_subscriptionController.upsertCurrentSubscription(topic, qos, format, scriptId, alias);
 }
 
-bool AppFacade::updateCurrentSubscription(
+bool ApplicationCore::updateCurrentSubscription(
     const QString &topic,
     const QString &newTopic,
     const QString &alias,
@@ -19,52 +19,52 @@ bool AppFacade::updateCurrentSubscription(
     return m_subscriptionController.updateCurrentSubscription(topic, newTopic, alias, scriptId);
 }
 
-void AppFacade::removeCurrentSubscription(const QString &topic)
+void ApplicationCore::removeCurrentSubscription(const QString &topic)
 {
     m_subscriptionController.removeCurrentSubscription(topic);
 }
 
-void AppFacade::setCurrentSubscriptionPaused(const QString &topic, bool paused)
+void ApplicationCore::setCurrentSubscriptionPaused(const QString &topic, bool paused)
 {
     m_subscriptionController.setCurrentSubscriptionPaused(topic, paused);
 }
 
-SubscriptionEntry *AppFacade::subscriptionByTopic(SessionState *session, const QString &topic)
+SubscriptionEntry *ApplicationCore::subscriptionByTopic(SessionState *session, const QString &topic)
 {
     return m_subscriptionController.subscriptionByTopic(session, topic);
 }
 
-const SubscriptionEntry *AppFacade::subscriptionByTopic(const SessionState *session, const QString &topic) const
+const SubscriptionEntry *ApplicationCore::subscriptionByTopic(const SessionState *session, const QString &topic) const
 {
     return m_subscriptionController.subscriptionByTopic(session, topic);
 }
 
-const SubscriptionEntry *AppFacade::bestSubscriptionForTopic(const SessionState &session, const QString &topic) const
+const SubscriptionEntry *ApplicationCore::bestSubscriptionForTopic(const SessionState &session, const QString &topic) const
 {
     return m_subscriptionController.bestSubscriptionForTopic(session, topic);
 }
 
-void AppFacade::restoreActiveSubscriptions(SessionState &session, bool emitEvents)
+void ApplicationCore::restoreActiveSubscriptions(SessionState &session, bool emitEvents)
 {
     m_subscriptionController.restoreActiveSubscriptions(session, emitEvents);
 }
 
-void AppFacade::ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents)
+void ApplicationCore::ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents)
 {
     m_subscriptionController.ensureSubscriptionActive(session, entry, emitEvents);
 }
 
-qreal AppFacade::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
+qreal ApplicationCore::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
 {
     return m_subscriptionController.subscriptionFps(entry, nowMs);
 }
 
-bool AppFacade::currentSessionHasActiveSubscriptionFps(qint64 nowMs) const
+bool ApplicationCore::currentSessionHasActiveSubscriptionFps(qint64 nowMs) const
 {
     return m_subscriptionController.currentSessionHasActiveSubscriptionFps(nowMs);
 }
 
-void AppFacade::refreshSubscriptionFps()
+void ApplicationCore::refreshSubscriptionFps()
 {
     m_subscriptionController.refreshSubscriptionFps();
 }

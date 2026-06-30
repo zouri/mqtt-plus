@@ -9,37 +9,17 @@ Rectangle {
     id: root
 
     required property AppUi ui
-    required property var appController
+    required property var viewModel
 
-    readonly property var themeValues: ["system", "light", "dark"]
     readonly property var themeLabels: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
-    readonly property var languageValues: ["system", "en", "zh_CN"]
     readonly property var languageLabels: [qsTr("System"), qsTr("English"), qsTr("Simplified Chinese")]
-    readonly property var retentionValues: [1000, 5000, 10000, 0]
     readonly property var messageRetentionLabels: [qsTr("1,000 messages"), qsTr("5,000 messages"), qsTr("10,000 messages"), qsTr("Unlimited")]
     readonly property var logRetentionLabels: [qsTr("500 logs"), qsTr("2,000 logs"), qsTr("5,000 logs"), qsTr("Unlimited")]
-    readonly property var logRetentionValues: [500, 2000, 5000, 0]
-    readonly property var pageSizeValues: [200, 500, 1000]
     readonly property var pageSizeLabels: [qsTr("200 rows"), qsTr("500 rows"), qsTr("1,000 rows")]
-    readonly property var payloadLimitValues: [262144, 1048576, 5242880, 16777216]
     readonly property var payloadLimitLabels: [qsTr("256 KiB"), qsTr("1 MiB"), qsTr("5 MiB"), qsTr("16 MiB")]
-    readonly property var cleanupValues: ["never", "current", "all"]
     readonly property var cleanupLabels: [qsTr("Do not clear"), qsTr("Current session"), qsTr("All sessions")]
 
     color: root.ui.themePalette.windowBg
-
-    function optionIndex(values, value) {
-        for (let i = 0; i < values.length; ++i) {
-            if (values[i] === value) {
-                return i
-            }
-        }
-        return 0
-    }
-
-    function optionValue(values, index) {
-        return values[Math.max(0, Math.min(index, values.length - 1))]
-    }
 
     component SettingsSection: Rectangle {
         id: section
@@ -212,8 +192,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 150
                             model: root.themeLabels
-                            currentIndex: root.optionIndex(root.themeValues, root.appController.themeMode)
-                            onActivated: (index) => root.appController.themeMode = root.optionValue(root.themeValues, index)
+                            currentIndex: root.viewModel.themeModeIndex
+                            onActivated: (index) => root.viewModel.setThemeModeIndex(index)
                         }
                     }
 
@@ -227,8 +207,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 170
                             model: root.languageLabels
-                            currentIndex: root.optionIndex(root.languageValues, root.appController.languageMode)
-                            onActivated: (index) => root.appController.languageMode = root.optionValue(root.languageValues, index)
+                            currentIndex: root.viewModel.languageModeIndex
+                            onActivated: (index) => root.viewModel.setLanguageModeIndex(index)
                         }
                     }
                 }
@@ -248,8 +228,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 170
                             model: root.messageRetentionLabels
-                            currentIndex: root.optionIndex(root.retentionValues, root.appController.messageRetentionLimit)
-                            onActivated: (index) => root.appController.messageRetentionLimit = root.optionValue(root.retentionValues, index)
+                            currentIndex: root.viewModel.messageRetentionLimitIndex
+                            onActivated: (index) => root.viewModel.setMessageRetentionLimitIndex(index)
                         }
                     }
 
@@ -262,8 +242,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 150
                             model: root.logRetentionLabels
-                            currentIndex: root.optionIndex(root.logRetentionValues, root.appController.logRetentionLimit)
-                            onActivated: (index) => root.appController.logRetentionLimit = root.optionValue(root.logRetentionValues, index)
+                            currentIndex: root.viewModel.logRetentionLimitIndex
+                            onActivated: (index) => root.viewModel.setLogRetentionLimitIndex(index)
                         }
                     }
 
@@ -276,8 +256,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 130
                             model: root.pageSizeLabels
-                            currentIndex: root.optionIndex(root.pageSizeValues, root.appController.historyPageSize)
-                            onActivated: (index) => root.appController.historyPageSize = root.optionValue(root.pageSizeValues, index)
+                            currentIndex: root.viewModel.historyPageSizeIndex
+                            onActivated: (index) => root.viewModel.setHistoryPageSizeIndex(index)
                         }
                     }
 
@@ -290,8 +270,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 130
                             model: root.payloadLimitLabels
-                            currentIndex: root.optionIndex(root.payloadLimitValues, root.appController.maxIncomingPayloadBytes)
-                            onActivated: (index) => root.appController.maxIncomingPayloadBytes = root.optionValue(root.payloadLimitValues, index)
+                            currentIndex: root.viewModel.maxIncomingPayloadBytesIndex
+                            onActivated: (index) => root.viewModel.setMaxIncomingPayloadBytesIndex(index)
                         }
                     }
 
@@ -304,8 +284,8 @@ Rectangle {
                         AppCheckBox {
                             ui: root.ui
                             text: qsTr("Enabled")
-                            checked: root.appController.deleteHistoryWithSession
-                            onToggled: root.appController.deleteHistoryWithSession = checked
+                            checked: root.viewModel.deleteHistoryWithSession
+                            onToggled: root.viewModel.deleteHistoryWithSession = checked
                         }
                     }
                 }
@@ -325,8 +305,8 @@ Rectangle {
                         AppCheckBox {
                             ui: root.ui
                             text: qsTr("Enabled")
-                            checked: root.appController.saveMessagesWhenOutputPaused
-                            onToggled: root.appController.saveMessagesWhenOutputPaused = checked
+                            checked: root.viewModel.saveMessagesWhenOutputPaused
+                            onToggled: root.viewModel.saveMessagesWhenOutputPaused = checked
                         }
                     }
                 }
@@ -346,8 +326,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 150
                             model: root.cleanupLabels
-                            currentIndex: root.optionIndex(root.cleanupValues, root.appController.clearMessagesOnExit)
-                            onActivated: (index) => root.appController.clearMessagesOnExit = root.optionValue(root.cleanupValues, index)
+                            currentIndex: root.viewModel.clearMessagesOnExitIndex
+                            onActivated: (index) => root.viewModel.setClearMessagesOnExitIndex(index)
                         }
                     }
 
@@ -360,8 +340,8 @@ Rectangle {
                             ui: root.ui
                             Layout.preferredWidth: 150
                             model: root.cleanupLabels
-                            currentIndex: root.optionIndex(root.cleanupValues, root.appController.clearLogsOnExit)
-                            onActivated: (index) => root.appController.clearLogsOnExit = root.optionValue(root.cleanupValues, index)
+                            currentIndex: root.viewModel.clearLogsOnExitIndex
+                            onActivated: (index) => root.viewModel.setClearLogsOnExitIndex(index)
                         }
                     }
 
@@ -375,14 +355,14 @@ Rectangle {
                             ui: root.ui
                             text: qsTr("Messages")
                             minimumWidth: 96
-                            onClicked: root.appController.clearAllMessages()
+                            onClicked: root.viewModel.clearAllMessages()
                         }
 
                         AppButton {
                             ui: root.ui
                             text: qsTr("Logs")
                             minimumWidth: 74
-                            onClicked: root.appController.clearAllLogs()
+                            onClicked: root.viewModel.clearAllLogs()
                         }
 
                         AppButton {
@@ -390,7 +370,7 @@ Rectangle {
                             text: qsTr("All")
                             danger: true
                             minimumWidth: 70
-                            onClicked: root.appController.clearAllHistory()
+                            onClicked: root.viewModel.clearAllHistory()
                         }
                     }
                 }
