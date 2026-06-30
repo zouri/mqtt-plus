@@ -8,11 +8,11 @@ Item {
     id: root
 
     required property AppUi ui
-    required property var appController
+    required property var viewModel
     required property string fontFamily
     property bool connectionPaneCollapsed: false
-    readonly property var session: root.appController.currentSession
-    readonly property var status: root.appController.sessionStatus
+    readonly property var session: root.viewModel.currentSession
+    readonly property var status: root.viewModel.sessionStatus
     readonly property int expandedConnectionPaneWidth: 248
     readonly property int subscriptionPaneMinWidth: 280
     readonly property int subscriptionPaneMaxWidth: 520
@@ -120,7 +120,7 @@ Item {
     }
 
     Connections {
-        target: root.appController
+        target: root.viewModel
 
         function onMessageStreamChanged() {
             root.resetStreamPosition();
@@ -141,7 +141,7 @@ Item {
 
         SessionSidebar {
             ui: root.ui
-            appController: root.appController
+            viewModel: root.viewModel
             sessionEditor: sessionEditorBridge
             collapsed: root.connectionPaneCollapsed
             Layout.preferredWidth: root.connectionPaneCollapsed ? 32 : root.expandedConnectionPaneWidth
@@ -190,14 +190,14 @@ Item {
                         ui: root.ui
                         session: root.session
                         status: root.status
-                        appController: root.appController
+                        viewModel: root.viewModel
                         sessionEditor: sessionEditorBridge
                     }
 
                     SubscriptionsPanel {
                         id: subscriptionsPanel
                         ui: root.ui
-                        appController: root.appController
+                        viewModel: root.viewModel
                         addSubscriptionDialog: addSubscriptionDialogBridge
                     }
                 }
@@ -206,10 +206,10 @@ Item {
             SessionActivityPanel {
                 id: sessionActivityPanel
                 ui: root.ui
-                appController: root.appController
+                viewModel: root.viewModel
                 session: root.session
                 status: root.status
-                publishStatus: root.appController.publishStatus
+                publishStatus: root.viewModel.publishStatus
                 fontFamily: root.fontFamily
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
@@ -226,7 +226,7 @@ Item {
         sourceComponent: Component {
             SessionEditorDialog {
                 ui: root.ui
-                appController: root.appController
+                viewModel: root.viewModel
             }
         }
 
@@ -258,7 +258,7 @@ Item {
         sourceComponent: Component {
             AddSubscriptionDialog {
                 ui: root.ui
-                appController: root.appController
+                viewModel: root.viewModel
             }
         }
 

@@ -48,15 +48,15 @@ ApplicationWindow {
             return
         }
 
-        root.appController.saveWindowGeometry(root.width, root.height)
+        root.settingsViewModel.saveWindowGeometry(root.width, root.height)
     }
 
     function restoreWindowGeometry() {
-        root.width = root.clampWindowWidth(root.appController.windowWidth)
-        root.height = root.clampWindowHeight(root.appController.windowHeight)
+        root.width = root.clampWindowWidth(root.settingsViewModel.windowWidth)
+        root.height = root.clampWindowHeight(root.settingsViewModel.windowHeight)
         root.windowGeometryReady = true
 
-        if (root.appController.windowMaximized) {
+        if (root.settingsViewModel.windowMaximized) {
             Qt.callLater(function() {
                 root.showMaximized()
             })
@@ -71,7 +71,7 @@ ApplicationWindow {
             return
         }
 
-        root.appController.windowMaximized = root.visibility === Window.Maximized
+        root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized
         if (root.visibility === Window.Windowed) {
             windowGeometrySaveTimer.restart()
         }
@@ -79,7 +79,7 @@ ApplicationWindow {
     onClosing: function() {
         windowGeometrySaveTimer.stop()
         root.persistWindowGeometry()
-        root.appController.windowMaximized = root.visibility === Window.Maximized
+        root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized
     }
 
     Timer {
@@ -91,7 +91,7 @@ ApplicationWindow {
 
     AppUi {
         id: ui
-        isDarkTheme: root.appController.effectiveTheme === "dark"
+        isDarkTheme: root.settingsViewModel.effectiveTheme === "dark"
     }
 
     Material.theme: ui.materialTheme
@@ -103,8 +103,9 @@ ApplicationWindow {
         color: ui.themePalette.windowBg
     }
 
-    readonly property var appController: root.app
-    property string currentAppView: "workbench"
+    readonly property var navigationViewModel: root.app.navigation
+    readonly property var settingsViewModel: root.app.settings
+    readonly property string currentAppView: root.navigationViewModel.currentView
 
     ColumnLayout {
         anchors.fill: parent
@@ -150,7 +151,7 @@ ApplicationWindow {
                         forceActive: root.currentAppView === "workbench"
                         accessibleName: qsTr("Workbench")
                         toolTipText: qsTr("Workbench")
-                        onClicked: root.currentAppView = "workbench"
+                        onClicked: root.navigationViewModel.currentView = "workbench"
                     }
 
                     AppIconButton {
@@ -167,7 +168,7 @@ ApplicationWindow {
                         forceActive: root.currentAppView === "logs"
                         accessibleName: qsTr("Logs")
                         toolTipText: qsTr("Logs")
-                        onClicked: root.currentAppView = "logs"
+                        onClicked: root.navigationViewModel.currentView = "logs"
                     }
 
                     AppIconButton {
@@ -184,7 +185,7 @@ ApplicationWindow {
                         forceActive: root.currentAppView === "scripts"
                         accessibleName: qsTr("Lua scripts")
                         toolTipText: qsTr("Lua scripts")
-                        onClicked: root.currentAppView = "scripts"
+                        onClicked: root.navigationViewModel.currentView = "scripts"
                     }
 
                     Item {
@@ -205,7 +206,7 @@ ApplicationWindow {
                         forceActive: root.currentAppView === "settings"
                         accessibleName: qsTr("Settings")
                         toolTipText: qsTr("Settings")
-                        onClicked: root.currentAppView = "settings"
+                        onClicked: root.navigationViewModel.currentView = "settings"
                     }
 
                 }
@@ -223,26 +224,26 @@ ApplicationWindow {
                 WorkbenchView {
                     id: workbenchPage
                     ui: ui
-                    appController: root.appController
+                    viewModel: root.app.workbench
                     fontFamily: root.font.family
                 }
 
                 LogsView {
                     id: logsPage
                     ui: ui
-                    appController: root.appController
+                    viewModel: root.app.logs
                 }
 
                 ScriptsView {
                     id: scriptsPage
                     ui: ui
-                    appController: root.appController
+                    viewModel: root.app.scripts
                 }
 
                 SettingsView {
                     id: settingsPage
                     ui: ui
-                    appController: root.appController
+                    viewModel: root.app.settings
                 }
             }
         }

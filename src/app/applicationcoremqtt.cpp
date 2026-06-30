@@ -1,16 +1,16 @@
-#include "app/appfacade.h"
+#include "app/applicationcore.h"
 
-void AppFacade::connectCurrentSession()
+void ApplicationCore::connectCurrentSession()
 {
     m_mqttController.connectCurrentSession();
 }
 
-void AppFacade::disconnectCurrentSession()
+void ApplicationCore::disconnectCurrentSession()
 {
     m_mqttController.disconnectCurrentSession();
 }
 
-void AppFacade::publishCurrentSession(
+void ApplicationCore::publishCurrentSession(
     const QString &topic,
     const QString &payload,
     int format,
@@ -20,22 +20,22 @@ void AppFacade::publishCurrentSession(
     m_mqttController.publishCurrentSession(topic, payload, format, qos, retain);
 }
 
-void AppFacade::bindSessionSignals(SessionState *session)
+void ApplicationCore::bindSessionSignals(SessionState *session)
 {
     m_mqttController.bindSessionSignals(session);
 }
 
-void AppFacade::connectSession(SessionState &session, const QString &eventPrefix)
+void ApplicationCore::connectSession(SessionState &session, const QString &eventPrefix)
 {
     m_mqttController.connectSession(session, eventPrefix);
 }
 
-QSslConfiguration AppFacade::sslConfigurationForSession(const SessionState &session, QString &errorMessage) const
+QSslConfiguration ApplicationCore::sslConfigurationForSession(const SessionState &session, QString &errorMessage) const
 {
     return m_mqttController.sslConfigurationForSession(session, errorMessage);
 }
 
-void AppFacade::updatePublishStatus(
+void ApplicationCore::updatePublishStatus(
     SessionState &session,
     const QString &state,
     const QString &reason,

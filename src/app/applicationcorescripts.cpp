@@ -1,6 +1,6 @@
-#include "app/appfacade.h"
+#include "app/applicationcore.h"
 
-QString AppFacade::upsertScript(
+QString ApplicationCore::upsertScript(
     const QString &id,
     const QString &name,
     const QString &description,
@@ -16,7 +16,7 @@ QString AppFacade::upsertScript(
     return savedId;
 }
 
-bool AppFacade::deleteScript(const QString &id)
+bool ApplicationCore::deleteScript(const QString &id)
 {
     const QString scriptId = id.trimmed();
     if (scriptId.isEmpty()) {
@@ -60,17 +60,17 @@ bool AppFacade::deleteScript(const QString &id)
     return sessionsSaved;
 }
 
-QVariantMap AppFacade::testScript(const QString &code, const QString &topic, const QString &payload, int format) const
+QVariantMap ApplicationCore::testScript(const QString &code, const QString &topic, const QString &payload, int format) const
 {
     return m_scriptController.testScript(code, topic, payload, format);
 }
 
-QString AppFacade::scriptName(const QString &id) const
+QString ApplicationCore::scriptName(const QString &id) const
 {
     return m_scriptController.scriptName(id);
 }
 
-void AppFacade::loadScripts()
+void ApplicationCore::loadScripts()
 {
     m_scriptController.loadScripts();
     refreshScriptsModel();

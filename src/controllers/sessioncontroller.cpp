@@ -1,8 +1,10 @@
 #include "sessioncontroller.h"
 
-#include "app/appfacade.h"
+#include "controllers/applicationcontext.h"
+#include "controllers/subscriptioncontroller.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/sessionsettingsstore.h"
+#include "services/storage/historystore.h"
 
 #include <QDateTime>
 
@@ -11,7 +13,7 @@ SessionController::SessionController(QObject *parent)
 {
 }
 
-void SessionController::setFacade(AppFacade *app)
+void SessionController::setCore(SessionControllerContext *app)
 {
     m_app = app;
 }
@@ -101,10 +103,10 @@ void SessionController::setCurrentSessionIndex(int index)
 
     m_currentIndex = index;
     m_app->reloadCurrentSessionHistory();
-    if (m_app->m_subscriptionController.currentSessionHasActiveSubscriptionFps(QDateTime::currentMSecsSinceEpoch())) {
-        m_app->m_subscriptionFpsRefreshTimer.start();
+    if (m_app->subscriptionController().currentSessionHasActiveSubscriptionFps(QDateTime::currentMSecsSinceEpoch())) {
+        m_app->subscriptionFpsRefreshTimer().start();
     } else {
-        m_app->m_subscriptionFpsRefreshTimer.stop();
+        m_app->subscriptionFpsRefreshTimer().stop();
     }
     m_app->notifySelectedSessionViewsChanged();
 }
@@ -152,7 +154,7 @@ bool SessionController::updateSessionConfigAt(int index, const QVariantMap &conf
         m_app->connectSession(*session, tr("Connecting to"));
     }
 
-    emit m_app->sessionsChanged();
+    m_app->emitSessionsChanged();
     if (index == m_currentIndex) {
         m_app->notifyCurrentSessionAndSubscriptionsChanged();
     }
@@ -215,7 +217,7 @@ void SessionController::removeSessionAt(int index)
 
     SessionState removed = takeSessionAt(index);
     if (m_app->deleteHistoryWithSession()) {
-        m_app->m_historyStore.clearSessionHistory(removed.id);
+        m_app->historyStore().clearSessionHistory(removed.id);
     }
     m_app->destroySessionRuntime(removed);
 
@@ -248,7 +250,7 @@ void SessionController::setCurrentOutputPaused(bool paused)
     m_app->saveSessions();
     if (!paused) {
         m_app->reloadCurrentSessionHistory();
-        emit m_app->messageStreamChanged();
+        m_app->emitMessageStreamChanged();
     }
     m_app->notifyCurrentSessionViewsChanged();
 }

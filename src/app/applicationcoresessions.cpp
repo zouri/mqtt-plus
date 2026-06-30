@@ -1,75 +1,75 @@
-#include "app/appfacade.h"
+#include "app/applicationcore.h"
 
-#include "app/appfacadeutils.h"
+#include "app/applicationcoreutils.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/sessionsettingsstore.h"
 
 #include <QMqttConnectionProperties>
 #include <QUuid>
 
-using namespace AppFacadeUtils;
+using namespace ApplicationCoreUtils;
 
-void AppFacade::setCurrentSessionIndex(int index)
+void ApplicationCore::setCurrentSessionIndex(int index)
 {
     m_sessionController.setCurrentSessionIndex(index);
 }
 
-QVariantMap AppFacade::defaultSessionConfig() const
+QVariantMap ApplicationCore::defaultSessionConfig() const
 {
     return m_sessionController.defaultSessionConfig();
 }
 
-QVariantMap AppFacade::sessionConfigAt(int index) const
+QVariantMap ApplicationCore::sessionConfigAt(int index) const
 {
     return m_sessionController.sessionConfigAt(index);
 }
 
-bool AppFacade::updateSessionConfigAt(int index, const QVariantMap &config)
+bool ApplicationCore::updateSessionConfigAt(int index, const QVariantMap &config)
 {
     return m_sessionController.updateSessionConfigAt(index, config);
 }
 
-void AppFacade::addSessionWithConfig(const QVariantMap &config)
+void ApplicationCore::addSessionWithConfig(const QVariantMap &config)
 {
     m_sessionController.addSessionWithConfig(config);
 }
 
-void AppFacade::duplicateSessionAt(int index)
+void ApplicationCore::duplicateSessionAt(int index)
 {
     m_sessionController.duplicateSessionAt(index);
 }
 
-void AppFacade::removeSessionAt(int index)
+void ApplicationCore::removeSessionAt(int index)
 {
     m_sessionController.removeSessionAt(index);
 }
 
-void AppFacade::setCurrentOutputPaused(bool paused)
+void ApplicationCore::setCurrentOutputPaused(bool paused)
 {
     m_sessionController.setCurrentOutputPaused(paused);
 }
 
-SessionState *AppFacade::currentSessionState()
+SessionState *ApplicationCore::currentSessionState()
 {
     return m_sessionController.currentSession();
 }
 
-const SessionState *AppFacade::currentSessionState() const
+const SessionState *ApplicationCore::currentSessionState() const
 {
     return m_sessionController.currentSession();
 }
 
-SessionState *AppFacade::sessionById(const QString &sessionId)
+SessionState *ApplicationCore::sessionById(const QString &sessionId)
 {
     return m_sessionController.sessionById(sessionId);
 }
 
-const SessionState *AppFacade::sessionById(const QString &sessionId) const
+const SessionState *ApplicationCore::sessionById(const QString &sessionId) const
 {
     return m_sessionController.sessionById(sessionId);
 }
 
-void AppFacade::configureSession(SessionState &session, const QVariantMap &config, bool keepNameFallback)
+void ApplicationCore::configureSession(SessionState &session, const QVariantMap &config, bool keepNameFallback)
 {
     auto *client = session.client;
     if (!client) {
@@ -150,7 +150,7 @@ void AppFacade::configureSession(SessionState &session, const QVariantMap &confi
     client->setConnectionProperties(connectionProperties);
 }
 
-void AppFacade::initializeSessionRuntime(SessionState *session)
+void ApplicationCore::initializeSessionRuntime(SessionState *session)
 {
     if (!session) {
         return;
@@ -178,7 +178,7 @@ void AppFacade::initializeSessionRuntime(SessionState *session)
     }
 }
 
-void AppFacade::destroySessionRuntime(SessionState &session)
+void ApplicationCore::destroySessionRuntime(SessionState &session)
 {
     if (session.connectTimeoutTimer) {
         session.connectTimeoutTimer->stop();
@@ -192,7 +192,7 @@ void AppFacade::destroySessionRuntime(SessionState &session)
     }
 }
 
-void AppFacade::loadSessions()
+void ApplicationCore::loadSessions()
 {
     const int count = m_settings.beginReadArray(QStringLiteral("sessions"));
     for (int i = 0; i < count; ++i) {
@@ -220,7 +220,7 @@ void AppFacade::loadSessions()
     notifySessionCollectionViewsChanged();
 }
 
-bool AppFacade::saveSessions()
+bool ApplicationCore::saveSessions()
 {
     QString errorMessage;
     if (SessionSettingsStore::writeSessions(m_settings, m_sessionController.sessions(), errorMessage)) {
@@ -230,7 +230,7 @@ bool AppFacade::saveSessions()
     return false;
 }
 
-void AppFacade::reportStorageError(const QString &message)
+void ApplicationCore::reportStorageError(const QString &message)
 {
     if (message.isEmpty()) {
         return;
@@ -244,7 +244,7 @@ void AppFacade::reportStorageError(const QString &message)
     notifySessionViewsChanged();
 }
 
-SessionState AppFacade::createDefaultSession(const QString &name)
+SessionState ApplicationCore::createDefaultSession(const QString &name)
 {
     SessionState session;
     session.id = QUuid::createUuid().toString(QUuid::WithoutBraces);

@@ -1,11 +1,11 @@
 #include "themecontroller.h"
 
-#include "app/appfacadeutils.h"
+#include "app/applicationcoreutils.h"
 
 #include <QGuiApplication>
 #include <QStyleHints>
 
-using namespace AppFacadeUtils;
+using namespace ApplicationCoreUtils;
 
 ThemeController::ThemeController(QSettings *settings, QObject *parent)
     : QObject(parent)

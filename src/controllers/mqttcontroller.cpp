@@ -1,7 +1,9 @@
 #include "mqttcontroller.h"
 
-#include "app/appfacade.h"
-#include "app/appfacadeutils.h"
+#include "controllers/applicationcontext.h"
+#include "controllers/eventcontroller.h"
+#include "controllers/subscriptioncontroller.h"
+#include "app/applicationcoreutils.h"
 #include "domain/sessionconfig.h"
 #include "services/payload/payloadcodec.h"
 
@@ -10,7 +12,7 @@
 
 #include <algorithm>
 
-using namespace AppFacadeUtils;
+using namespace ApplicationCoreUtils;
 
 namespace {
 QString clientErrorLogName(QMqttClient::ClientError error)
@@ -41,7 +43,7 @@ QString clientErrorLogName(QMqttClient::ClientError error)
 }
 }
 
-MqttController::MqttController(AppFacade *app, QObject *parent)
+MqttController::MqttController(MqttControllerContext *app, QObject *parent)
     : QObject(parent)
     , m_app(*app)
 {
@@ -185,7 +187,7 @@ void MqttController::bindSessionSignals(SessionState *session)
                     .arg(transportLabel(boundSession->transport))
                     .arg(boundClient ? boundClient->clientId() : QString());
             m_app.appendEvent(*boundSession, QStringLiteral("Connection"), QStringLiteral("Connected to broker"));
-            m_app.m_subscriptionController.restoreActiveSubscriptions(*boundSession, false);
+            m_app.subscriptionController().restoreActiveSubscriptions(*boundSession, false);
         }
 
         m_app.notifySessionAndSubscriptionViewsChanged();
@@ -200,7 +202,7 @@ void MqttController::bindSessionSignals(SessionState *session)
                 ? QStringLiteral("Disconnected")
                 : QStringLiteral("Connection closed by broker");
             boundSession->disconnectRequested = false;
-            m_app.m_subscriptionController.resetRuntimeSubscriptions(*boundSession);
+            m_app.subscriptionController().resetRuntimeSubscriptions(*boundSession);
             m_app.appendEvent(*boundSession, QStringLiteral("Connection"), message);
         }
 
@@ -250,7 +252,7 @@ void MqttController::bindSessionSignals(SessionState *session)
         &QMqttClient::messageReceived,
         this,
         [this, sessionId = session->id](const QByteArray &message, const QMqttTopicName &topic) {
-            m_app.m_eventController.appendIncomingMessage(sessionId, topic.name(), message);
+            m_app.eventController().appendIncomingMessage(sessionId, topic.name(), message);
         });
 
     connect(client, &QMqttClient::messageSent, this, [this, sessionId = session->id](qint32 messageId) {

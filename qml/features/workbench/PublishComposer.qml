@@ -8,7 +8,7 @@ import "../../components"
 Item {
     id: root
 
-    required property var appController
+    required property var viewModel
     required property var publishStatus
     required property var status
     required property var ui
@@ -18,9 +18,6 @@ Item {
     readonly property int collapsedHeight: 50
     readonly property int minComposerHeight: 180
     readonly property int maxComposerHeight: 420
-    readonly property bool isConnected: root.status.state === "connected"
-    readonly property bool hasTopic: publishTopicField.text.trim().length > 0
-    readonly property bool canPublish: root.isConnected && root.hasTopic
     readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle"
                                               ? (root.publishStatus.reason && root.publishStatus.reason.length > 0
                                                  ? root.publishStatus.reason
@@ -53,37 +50,9 @@ Item {
     }
 
     function setDraft(topic, payload, format) {
-        publishTopicField.text = topic || ""
-        publishPayloadArea.text = payload || ""
-        if (format >= 0 && format < publishFormatBox.count) {
-            publishFormatBox.currentIndex = format
-        }
+        root.viewModel.setPublishDraft(topic || "", payload || "", format)
         root.expanded = true
         publishPayloadArea.forceActiveFocus()
-    }
-
-    function draftFromFields() {
-        return {
-            "topic": publishTopicField.text.trim(),
-            "payload": publishPayloadArea.text,
-            "format": publishFormatBox.currentIndex,
-            "qos": publishQosBox.currentIndex,
-            "retain": retainCheck.checked
-        }
-    }
-
-    function publishCurrentDraft() {
-        if (!root.canPublish) {
-            return
-        }
-
-        const draft = root.draftFromFields()
-        root.appController.publishCurrentSession(
-                    draft.topic,
-                    draft.payload,
-                    draft.format,
-                    draft.qos,
-                    draft.retain)
     }
 
     ColumnLayout {
@@ -210,7 +179,9 @@ Item {
                             ui: root.ui
                             id: publishTopicField
                             Layout.fillWidth: true
+                            text: root.viewModel.publishTopic
                             placeholderText: qsTr("home/living-room/light/set")
+                            onTextEdited: root.viewModel.publishTopic = text
                         }
                     }
 
@@ -229,7 +200,9 @@ Item {
                             ui: root.ui
                             id: publishQosBox
                             model: [qsTr("QoS 0"), qsTr("QoS 1")]
+                            currentIndex: root.viewModel.publishQos
                             Layout.fillWidth: true
+                            onActivated: root.viewModel.publishQos = currentIndex
                         }
                     }
 
@@ -247,9 +220,10 @@ Item {
                         AppComboBox {
                             ui: root.ui
                             id: publishFormatBox
-                            model: root.appController.payloadFormats
-                            currentIndex: 1
+                            model: root.viewModel.payloadFormats
+                            currentIndex: root.viewModel.publishFormat
                             Layout.fillWidth: true
+                            onActivated: root.viewModel.publishFormat = currentIndex
                         }
                     }
 
@@ -268,6 +242,8 @@ Item {
                             ui: root.ui
                             id: retainCheck
                             text: qsTr("Retain")
+                            checked: root.viewModel.publishRetain
+                            onToggled: root.viewModel.publishRetain = checked
                         }
                     }
                 }
@@ -284,7 +260,13 @@ Item {
                         placeholderText: publishFormatBox.currentText === "JSON"
                                          ? "{\"value\": 23.7}"
                                          : qsTr("Payload")
+                        text: root.viewModel.publishPayload
                         wrapMode: TextEdit.Wrap
+                        onTextChanged: {
+                            if (root.viewModel.publishPayload !== text) {
+                                root.viewModel.publishPayload = text
+                            }
+                        }
                     }
 
                     AppIconButton {
@@ -299,9 +281,9 @@ Item {
                         iconSource: root.ui.materialIcon("send")
                         iconSize: 17
                         primary: true
-                        enabled: root.canPublish
+                        enabled: root.viewModel.canPublish
                         accessibleName: qsTr("Publish message")
-                        onClicked: root.publishCurrentDraft()
+                        onClicked: root.viewModel.publishDraft()
                     }
                 }
             }
