@@ -1,17 +1,19 @@
 #include "subscriptioncontroller.h"
 
-#include "app/appfacade.h"
-#include "app/appfacadeutils.h"
+#include "controllers/applicationcontext.h"
+#include "controllers/scriptcontroller.h"
+#include "app/applicationcoreutils.h"
 #include "domain/sessionconfig.h"
+#include "models/subscriptionlistmodel.h"
 #include "services/payload/payloadcodec.h"
 
 #include <QDateTime>
 
 #include <algorithm>
 
-using namespace AppFacadeUtils;
+using namespace ApplicationCoreUtils;
 
-SubscriptionController::SubscriptionController(AppFacade *app, QObject *parent)
+SubscriptionController::SubscriptionController(SubscriptionControllerContext *app, QObject *parent)
     : QObject(parent)
     , m_app(*app)
 {
@@ -41,7 +43,7 @@ bool SubscriptionController::upsertCurrentSubscription(
     }
 
     SubscriptionEntry *entry = subscriptionByTopic(session, filter);
-    const QString sanitizedScriptId = m_app.m_scriptController.scriptById(scriptId) ? scriptId : QString();
+    const QString sanitizedScriptId = m_app.scriptController().scriptById(scriptId) ? scriptId : QString();
     const QString displayAlias = alias.trimmed();
     if (!entry) {
         SubscriptionEntry subscription;
@@ -108,7 +110,7 @@ bool SubscriptionController::updateCurrentSubscription(
         return false;
     }
 
-    const QString sanitizedScriptId = m_app.m_scriptController.scriptById(scriptId) ? scriptId : QString();
+    const QString sanitizedScriptId = m_app.scriptController().scriptById(scriptId) ? scriptId : QString();
     const QString displayAlias = alias.trimmed();
     const bool topicChanged = entry->topic != filter;
     if (!topicChanged && entry->alias == displayAlias && entry->scriptId == sanitizedScriptId) {
@@ -403,7 +405,7 @@ void SubscriptionController::updateSubscriptionState(
     }
 
     m_app.refreshSubscriptionsModel();
-    emit m_app.subscriptionsChanged();
+    m_app.emitSubscriptionsChanged();
 }
 
 qreal SubscriptionController::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
@@ -432,8 +434,8 @@ void SubscriptionController::refreshSubscriptionFps()
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     const auto *session = m_app.currentSessionState();
     if (!session) {
-        m_app.m_subscriptionFpsRefreshTimer.stop();
-        m_app.m_subscriptionsModel.setTopicFpsRows({});
+        m_app.subscriptionFpsRefreshTimer().stop();
+        m_app.subscriptionsModel().setTopicFpsRows({});
         return;
     }
 
@@ -449,8 +451,8 @@ void SubscriptionController::refreshSubscriptionFps()
     }
 
     if (!hasActiveFps) {
-        m_app.m_subscriptionFpsRefreshTimer.stop();
+        m_app.subscriptionFpsRefreshTimer().stop();
     }
 
-    m_app.m_subscriptionsModel.setTopicFpsRows(rows);
+    m_app.subscriptionsModel().setTopicFpsRows(rows);
 }

@@ -1,61 +1,61 @@
-#include "app/appfacade.h"
+#include "app/applicationcore.h"
 
-int AppFacade::messageRetentionLimit() const
+int ApplicationCore::messageRetentionLimit() const
 {
     return m_preferencesController.messageRetentionLimit();
 }
 
-int AppFacade::logRetentionLimit() const
+int ApplicationCore::logRetentionLimit() const
 {
     return m_preferencesController.logRetentionLimit();
 }
 
-int AppFacade::historyPageSize() const
+int ApplicationCore::historyPageSize() const
 {
     return m_preferencesController.historyPageSize();
 }
 
-int AppFacade::maxIncomingPayloadBytes() const
+int ApplicationCore::maxIncomingPayloadBytes() const
 {
     return m_preferencesController.maxIncomingPayloadBytes();
 }
 
-bool AppFacade::deleteHistoryWithSession() const
+bool ApplicationCore::deleteHistoryWithSession() const
 {
     return m_preferencesController.deleteHistoryWithSession();
 }
 
-bool AppFacade::saveMessagesWhenOutputPaused() const
+bool ApplicationCore::saveMessagesWhenOutputPaused() const
 {
     return m_preferencesController.saveMessagesWhenOutputPaused();
 }
 
-QString AppFacade::clearMessagesOnExit() const
+QString ApplicationCore::clearMessagesOnExit() const
 {
     return m_preferencesController.clearMessagesOnExit();
 }
 
-QString AppFacade::clearLogsOnExit() const
+QString ApplicationCore::clearLogsOnExit() const
 {
     return m_preferencesController.clearLogsOnExit();
 }
 
-int AppFacade::windowWidth() const
+int ApplicationCore::windowWidth() const
 {
     return m_preferencesController.windowWidth();
 }
 
-int AppFacade::windowHeight() const
+int ApplicationCore::windowHeight() const
 {
     return m_preferencesController.windowHeight();
 }
 
-bool AppFacade::windowMaximized() const
+bool ApplicationCore::windowMaximized() const
 {
     return m_preferencesController.windowMaximized();
 }
 
-void AppFacade::setMessageRetentionLimit(int limit)
+void ApplicationCore::setMessageRetentionLimit(int limit)
 {
     const int previousLimit = messageRetentionLimit();
     m_preferencesController.setMessageRetentionLimit(limit);
@@ -73,7 +73,7 @@ void AppFacade::setMessageRetentionLimit(int limit)
     }
 }
 
-void AppFacade::setLogRetentionLimit(int limit)
+void ApplicationCore::setLogRetentionLimit(int limit)
 {
     const int previousLimit = logRetentionLimit();
     m_preferencesController.setLogRetentionLimit(limit);
@@ -89,42 +89,42 @@ void AppFacade::setLogRetentionLimit(int limit)
     }
 }
 
-void AppFacade::setHistoryPageSize(int pageSize)
+void ApplicationCore::setHistoryPageSize(int pageSize)
 {
     m_preferencesController.setHistoryPageSize(pageSize);
 }
 
-void AppFacade::setMaxIncomingPayloadBytes(int bytes)
+void ApplicationCore::setMaxIncomingPayloadBytes(int bytes)
 {
     m_preferencesController.setMaxIncomingPayloadBytes(bytes);
 }
 
-void AppFacade::setDeleteHistoryWithSession(bool enabled)
+void ApplicationCore::setDeleteHistoryWithSession(bool enabled)
 {
     m_preferencesController.setDeleteHistoryWithSession(enabled);
 }
 
-void AppFacade::setSaveMessagesWhenOutputPaused(bool enabled)
+void ApplicationCore::setSaveMessagesWhenOutputPaused(bool enabled)
 {
     m_preferencesController.setSaveMessagesWhenOutputPaused(enabled);
 }
 
-void AppFacade::setClearMessagesOnExit(const QString &mode)
+void ApplicationCore::setClearMessagesOnExit(const QString &mode)
 {
     m_preferencesController.setClearMessagesOnExit(mode);
 }
 
-void AppFacade::setClearLogsOnExit(const QString &mode)
+void ApplicationCore::setClearLogsOnExit(const QString &mode)
 {
     m_preferencesController.setClearLogsOnExit(mode);
 }
 
-void AppFacade::setWindowMaximized(bool maximized)
+void ApplicationCore::setWindowMaximized(bool maximized)
 {
     m_preferencesController.setWindowMaximized(maximized);
 }
 
-void AppFacade::saveWindowGeometry(int width, int height)
+void ApplicationCore::saveWindowGeometry(int width, int height)
 {
     m_preferencesController.setWindowGeometry(width, height);
 }

@@ -1,12 +1,11 @@
 #pragma once
 
+#include "controllers/applicationcontext.h"
 #include "domain/session.h"
 
 #include <QObject>
 #include <QVariantMap>
 #include <QVector>
-
-class AppFacade;
 
 class SessionController : public QObject
 {
@@ -15,7 +14,7 @@ class SessionController : public QObject
 public:
     explicit SessionController(QObject *parent = nullptr);
 
-    void setFacade(AppFacade *app);
+    void setCore(SessionControllerContext *app);
 
     QVector<SessionState> &sessions();
     const QVector<SessionState> &sessions() const;
@@ -42,7 +41,7 @@ public:
     void setCurrentOutputPaused(bool paused);
 
 private:
-    AppFacade *m_app = nullptr;
+    SessionControllerContext *m_app = nullptr;
     QVector<SessionState> m_sessions;
     int m_currentIndex = -1;
 };

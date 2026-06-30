@@ -9,74 +9,23 @@ Dialog {
     id: root
 
     required property AppUi ui
-    required property var appController
-    property var scriptOptionIds: []
-    property var scriptOptionNames: [qsTr("None")]
-    property bool editMode: false
-    property string editTopic: ""
-
-    function syncScriptOptions() {
-        const selectedScriptId = root.scriptOptionIds[scriptField.currentIndex] || ""
-        const scripts = root.appController.scripts
-        const ids = [""]
-        const names = [qsTr("None")]
-        for (let i = 0; scripts && i < scripts.count; ++i) {
-            const row = scripts.rowAt(i)
-            ids.push(row.id)
-            names.push(row.name)
-        }
-        root.scriptOptionIds = ids
-        root.scriptOptionNames = names
-        scriptField.model = root.scriptOptionNames
-        selectScript(selectedScriptId)
-    }
-
-    function selectScript(scriptId) {
-        const index = root.scriptOptionIds.indexOf(scriptId || "")
-        scriptField.currentIndex = index >= 0 ? index : 0
-    }
+    required property var viewModel
+    readonly property var editor: root.viewModel.subscriptionEditor
 
     function openForCreate() {
-        root.editMode = false
-        root.editTopic = ""
-        syncScriptOptions()
-        topicField.text = ""
-        aliasField.text = ""
-        qosField.currentIndex = 0
-        formatField.currentIndex = 0
-        selectScript("")
+        root.editor.openForCreate()
         open()
         topicField.forceActiveFocus()
     }
 
     function openForEdit(subscription) {
-        root.editMode = true
-        root.editTopic = subscription.topic || ""
-        syncScriptOptions()
-        topicField.text = root.editTopic
-        aliasField.text = subscription.alias || ""
-        qosField.currentIndex = Math.max(0, Math.min(qosField.count - 1, Number(subscription.requestedQos || 0)))
-        formatField.currentIndex = Math.max(0, Math.min(formatField.count - 1, Number(subscription.format || 0)))
-        selectScript(subscription.scriptId || "")
+        root.editor.openForEdit(subscription)
         open()
         aliasField.forceActiveFocus()
     }
 
     function submit() {
-        const scriptId = root.scriptOptionIds[scriptField.currentIndex] || ""
-        if (root.editMode) {
-            if (appController.updateCurrentSubscription(root.editTopic, topicField.text, aliasField.text, scriptId)) {
-                close()
-            }
-            return
-        }
-
-        if (appController.upsertCurrentSubscription(
-                    topicField.text,
-                    qosField.currentIndex,
-                    formatField.currentIndex,
-                    scriptId,
-                    aliasField.text)) {
+        if (root.viewModel.submitSubscriptionEditor()) {
             close()
         }
     }
@@ -102,21 +51,13 @@ Dialog {
         border.color: root.ui.themePalette.dialogBorder
     }
 
-    Connections {
-        target: root.appController
-
-        function onScriptLibraryChanged() {
-            root.syncScriptOptions()
-        }
-    }
-
     contentItem: ColumnLayout {
         anchors.fill: parent
         anchors.margins: 20
         spacing: 16
 
         Label {
-            text: root.editMode ? qsTr("Edit Subscription") : qsTr("Add Subscription")
+            text: root.editor.editMode ? qsTr("Edit Subscription") : qsTr("Add Subscription")
             color: root.ui.textStrong
             font.pixelSize: 18
             font.bold: true
@@ -126,14 +67,18 @@ Dialog {
             ui: root.ui
             id: topicField
             Layout.fillWidth: true
+            text: root.editor.topic
             placeholderText: qsTr("sensor/+/temperature")
+            onTextEdited: root.editor.topic = text
         }
 
         AppTextField {
             ui: root.ui
             id: aliasField
             Layout.fillWidth: true
+            text: root.editor.alias
             placeholderText: qsTr("Alias (optional)")
+            onTextEdited: root.editor.alias = text
         }
 
         RowLayout {
@@ -145,15 +90,19 @@ Dialog {
                 id: qosField
                 Layout.fillWidth: true
                 model: [qsTr("QoS 0"), qsTr("QoS 1")]
-                enabled: !root.editMode
+                currentIndex: root.editor.qos
+                enabled: !root.editor.editMode
+                onActivated: root.editor.qos = currentIndex
             }
 
             AppComboBox {
                 ui: root.ui
                 id: formatField
                 Layout.fillWidth: true
-                model: root.appController.payloadFormats
-                enabled: !root.editMode
+                model: root.viewModel.payloadFormats
+                currentIndex: root.editor.format
+                enabled: !root.editor.editMode
+                onActivated: root.editor.format = currentIndex
             }
         }
 
@@ -161,7 +110,9 @@ Dialog {
             ui: root.ui
             id: scriptField
             Layout.fillWidth: true
-            model: root.scriptOptionNames
+            model: root.editor.scriptOptionNames
+            currentIndex: root.editor.scriptIndex
+            onActivated: root.editor.scriptIndex = currentIndex
         }
 
         RowLayout {
@@ -183,12 +134,13 @@ Dialog {
 
             AppIconButton {
                 ui: root.ui
-                iconSource: root.ui.materialIcon(root.editMode ? "check" : "plus")
+                iconSource: root.ui.materialIcon(root.editor.editMode ? "check" : "plus")
                 iconSize: 15
                 implicitWidth: 36
                 implicitHeight: 36
                 primary: true
-                accessibleName: root.editMode ? qsTr("Save subscription") : qsTr("Add subscription")
+                enabled: root.editor.canSubmit
+                accessibleName: root.editor.editMode ? qsTr("Save subscription") : qsTr("Add subscription")
                 onClicked: root.submit()
             }
         }

@@ -1,19 +1,18 @@
 #pragma once
 
+#include "controllers/applicationcontext.h"
 #include "domain/session.h"
 #include "domain/subscription.h"
 
 #include <QObject>
 #include <QMqttSubscription>
 
-class AppFacade;
-
 class SubscriptionController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit SubscriptionController(AppFacade *app, QObject *parent = nullptr);
+    explicit SubscriptionController(SubscriptionControllerContext *app, QObject *parent = nullptr);
 
     bool upsertCurrentSubscription(
         const QString &topic,
@@ -47,5 +46,5 @@ private:
         const QPointer<QMqttSubscription> &subscription,
         QMqttSubscription::SubscriptionState state);
 
-    AppFacade &m_app;
+    SubscriptionControllerContext &m_app;
 };

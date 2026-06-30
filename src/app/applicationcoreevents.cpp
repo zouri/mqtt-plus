@@ -1,16 +1,16 @@
-#include "app/appfacade.h"
+#include "app/applicationcore.h"
 
-void AppFacade::clearCurrentMessages()
+void ApplicationCore::clearCurrentMessages()
 {
     m_eventController.clearCurrentMessages();
 }
 
-void AppFacade::clearCurrentLogs()
+void ApplicationCore::clearCurrentLogs()
 {
     m_eventController.clearCurrentLogs();
 }
 
-void AppFacade::clearAllMessages()
+void ApplicationCore::clearAllMessages()
 {
     m_historyStore.clearAllMessages();
     for (auto &session : m_sessionController.sessions()) {
@@ -24,7 +24,7 @@ void AppFacade::clearAllMessages()
     emit scriptTestSamplesChanged();
 }
 
-void AppFacade::clearAllLogs()
+void ApplicationCore::clearAllLogs()
 {
     m_historyStore.clearAllLogs();
     for (auto &session : m_sessionController.sessions()) {
@@ -36,7 +36,7 @@ void AppFacade::clearAllLogs()
     emit logStreamChanged();
 }
 
-void AppFacade::clearAllHistory()
+void ApplicationCore::clearAllHistory()
 {
     m_historyStore.clearAllMessages();
     m_historyStore.clearAllLogs();
@@ -56,32 +56,32 @@ void AppFacade::clearAllHistory()
     emit scriptTestSamplesChanged();
 }
 
-int AppFacade::loadOlderCurrentSessionMessages()
+int ApplicationCore::loadOlderCurrentSessionMessages()
 {
     return m_eventController.loadOlderCurrentSessionMessages();
 }
 
-int AppFacade::loadOlderCurrentSessionLogs()
+int ApplicationCore::loadOlderCurrentSessionLogs()
 {
     return m_eventController.loadOlderCurrentSessionLogs();
 }
 
-void AppFacade::appendRenderedMessageRow(SessionState &session, const QVariantMap &row)
+void ApplicationCore::appendRenderedMessageRow(SessionState &session, const QVariantMap &row)
 {
     m_eventController.appendRenderedMessageRow(session, row);
 }
 
-void AppFacade::appendRenderedLogRow(SessionState &session, const QVariantMap &row)
+void ApplicationCore::appendRenderedLogRow(SessionState &session, const QVariantMap &row)
 {
     m_eventController.appendRenderedLogRow(session, row);
 }
 
-void AppFacade::appendEvent(SessionState &session, const QString &channel, const QString &message)
+void ApplicationCore::appendEvent(SessionState &session, const QString &channel, const QString &message)
 {
     m_eventController.appendEvent(session, channel, message);
 }
 
-LuaScriptResult AppFacade::parseIncomingPayload(
+LuaScriptResult ApplicationCore::parseIncomingPayload(
     const SessionState &session,
     const SubscriptionEntry *subscription,
     const QString &topic,
@@ -100,22 +100,22 @@ LuaScriptResult AppFacade::parseIncomingPayload(
         decodedPayloadOut);
 }
 
-void AppFacade::appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes)
+void ApplicationCore::appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes)
 {
     m_eventController.appendIncomingMessage(sessionId, topic, payloadBytes);
 }
 
-void AppFacade::trimVisibleMessageRows(SessionState &session)
+void ApplicationCore::trimVisibleMessageRows(SessionState &session)
 {
     m_eventController.trimVisibleMessageRows(session);
 }
 
-void AppFacade::trimVisibleLogRows(SessionState &session)
+void ApplicationCore::trimVisibleLogRows(SessionState &session)
 {
     m_eventController.trimVisibleLogRows(session);
 }
 
-void AppFacade::reloadCurrentSessionHistory()
+void ApplicationCore::reloadCurrentSessionHistory()
 {
     m_eventController.reloadCurrentSessionHistory();
 }

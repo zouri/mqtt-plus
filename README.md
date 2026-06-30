@@ -39,13 +39,13 @@
 ```text
 .
 ├── src/                    # C++ 应用逻辑
-│   ├── main.cpp            # Qt/QML 启动入口
-│   ├── app/                # QML 门面和应用级协调逻辑
+│   ├── app/                # ApplicationCore：应用级协调、运行时状态和持久化编排
 │   ├── controllers/        # 会话、MQTT、订阅、事件、脚本等控制器
 │   ├── domain/             # 会话、订阅和脚本领域数据结构
 │   ├── models/             # 暴露给 QML 的列表模型
 │   ├── presentation/       # 事件流行渲染
-│   └── services/           # SQLite、载荷编解码、Lua 脚本等服务
+│   ├── services/           # SQLite、载荷编解码、Lua 脚本等服务
+│   └── viewmodels/         # QML 绑定的 MVVM ViewModel 层
 ├── qml/                    # Qt Quick 界面
 │   ├── Main.qml            # 主窗口
 │   ├── features/           # 工作区、历史、脚本、设置等功能视图与组件
@@ -58,6 +58,15 @@
 ```
 
 `build/` 和 `dist/` 是生成目录，不需要手动编辑或提交其中产物。
+
+## 架构
+
+应用采用 MVVM 分层：
+
+- `ApplicationCore` 是非 QML 核心，负责组合 Controller、Service、Model，并维护会话运行时状态。
+- `src/viewmodels/` 暴露 QML 所需的页面级状态和命令，包括 `ApplicationViewModel`、`WorkbenchViewModel`、`LogsViewModel`、`ScriptsViewModel` 和 `SettingsViewModel`。
+- QML 只接收 `ApplicationViewModel`，再通过 `app.navigation`、`app.workbench`、`app.logs`、`app.scripts`、`app.settings` 访问功能视图模型。
+- `src/models/` 中的 `QAbstractListModel` 仍作为 ViewModel 的列表输出，避免把列表角色和刷新逻辑散落到 QML。
 
 ## 环境要求
 
