@@ -1,10 +1,20 @@
 #pragma once
 
+#include "domain/session.h"
 #include "viewmodels/settingsoptionsviewmodel.h"
 
+#include <QObject>
 #include <QString>
+#include <QVector>
 
-class SettingsCorePort;
+#include <functional>
+
+class EventController;
+class EventStreamModel;
+class HistoryStore;
+class LanguageController;
+class PreferencesController;
+class ThemeController;
 
 class SettingsViewModel : public SettingsOptionsViewModel
 {
@@ -25,7 +35,40 @@ class SettingsViewModel : public SettingsOptionsViewModel
     Q_PROPERTY(int clearLogsOnExitIndex READ clearLogsOnExitIndex NOTIFY clearLogsOnExitChanged)
 
 public:
-    explicit SettingsViewModel(SettingsCorePort *core = nullptr, QObject *parent = nullptr);
+    struct Dependencies {
+        ThemeController *themeController = nullptr;
+        LanguageController *languageController = nullptr;
+        PreferencesController *preferencesController = nullptr;
+        EventController *eventController = nullptr;
+        HistoryStore *historyStore = nullptr;
+        QVector<SessionState> *sessions = nullptr;
+        EventStreamModel *messages = nullptr;
+        EventStreamModel *logs = nullptr;
+
+        std::function<void(QObject *, std::function<void()>)> bindThemeModeChanged;
+        std::function<void(QObject *, std::function<void()>)> bindEffectiveThemeChanged;
+        std::function<void(QObject *, std::function<void()>)> bindLanguageModeChanged;
+        std::function<void(QObject *, std::function<void()>)> bindLanguageChanged;
+        std::function<void(QObject *, std::function<void()>)> bindMessageRetentionLimitChanged;
+        std::function<void(QObject *, std::function<void()>)> bindLogRetentionLimitChanged;
+        std::function<void(QObject *, std::function<void()>)> bindHistoryPageSizeChanged;
+        std::function<void(QObject *, std::function<void()>)> bindMaxIncomingPayloadBytesChanged;
+        std::function<void(QObject *, std::function<void()>)> bindDeleteHistoryWithSessionChanged;
+        std::function<void(QObject *, std::function<void()>)> bindSaveMessagesWhenOutputPausedChanged;
+        std::function<void(QObject *, std::function<void()>)> bindClearMessagesOnExitChanged;
+        std::function<void(QObject *, std::function<void()>)> bindClearLogsOnExitChanged;
+        std::function<void(QObject *, std::function<void()>)> bindWindowWidthChanged;
+        std::function<void(QObject *, std::function<void()>)> bindWindowHeightChanged;
+        std::function<void(QObject *, std::function<void()>)> bindWindowMaximizedChanged;
+
+        std::function<void()> reloadCurrentSessionHistory;
+        std::function<void()> refreshScriptTestSamplesModel;
+        std::function<void()> emitMessageStreamChanged;
+        std::function<void()> emitLogStreamChanged;
+    };
+
+    explicit SettingsViewModel(QObject *parent = nullptr);
+    explicit SettingsViewModel(const Dependencies &dependencies, QObject *parent = nullptr);
 
     QString themeMode() const;
     QString effectiveTheme() const;
@@ -94,5 +137,5 @@ private:
     void setClearMessagesOnExit(const QString &mode);
     void setClearLogsOnExit(const QString &mode);
 
-    SettingsCorePort *m_core = nullptr;
+    Dependencies m_dependencies;
 };

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "controllers/eventcontrollercontext.h"
 #include "domain/session.h"
 #include "domain/subscription.h"
 #include "services/scripting/luarunner.h"
@@ -9,12 +8,45 @@
 #include <QTimer>
 #include <QVariantMap>
 
+#include <functional>
+
+class EventStreamModel;
+class HistoryStore;
+class PreferencesController;
+class ScriptController;
+class ScriptTestSamplesModel;
+class SubscriptionController;
+
 class EventController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit EventController(EventControllerContext *app, QObject *parent = nullptr);
+    struct Dependencies
+    {
+        HistoryStore *historyStore = nullptr;
+        EventStreamModel *messagesModel = nullptr;
+        EventStreamModel *logsModel = nullptr;
+        ScriptTestSamplesModel *scriptTestSamplesModel = nullptr;
+        ScriptController *scriptController = nullptr;
+        SubscriptionController *subscriptionController = nullptr;
+        QTimer *subscriptionFpsRefreshTimer = nullptr;
+        QString *launchTimestamp = nullptr;
+        PreferencesController *preferencesController = nullptr;
+        std::function<SessionState *()> currentSessionState;
+        std::function<SessionState *(const QString &)> sessionById;
+        std::function<void()> refreshSubscriptionsModel;
+        std::function<void()> refreshScriptTestSamplesModel;
+        std::function<void()> emitSubscriptionsChanged;
+        std::function<void()> emitMessageStreamChanged;
+        std::function<void()> emitLogStreamChanged;
+        std::function<void(const QVariantMap &)> emitMessageStreamRowAppended;
+        std::function<void(const QVariantMap &)> emitLogStreamRowAppended;
+    };
+
+    explicit EventController(QObject *parent = nullptr);
+
+    void setDependencies(const Dependencies &dependencies);
 
     void clearCurrentMessages();
     void clearCurrentLogs();
@@ -41,7 +73,7 @@ private:
     void reportMessageStorageError(SessionState &session, const QString &message);
     void scheduleMessageHistoryFlush();
 
-    EventControllerContext &m_app;
+    Dependencies m_dependencies;
     QTimer m_messageHistoryFlushTimer;
     QString m_lastMessageStorageError;
 };

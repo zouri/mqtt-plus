@@ -1,18 +1,41 @@
 #pragma once
 
-#include "controllers/subscriptioncontrollercontext.h"
 #include "domain/session.h"
 #include "domain/subscription.h"
 
 #include <QObject>
 #include <QMqttSubscription>
 
+#include <functional>
+
+class EventController;
+class QTimer;
+class ScriptController;
+class SubscriptionListModel;
+
 class SubscriptionController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit SubscriptionController(SubscriptionControllerContext *app, QObject *parent = nullptr);
+    struct Dependencies
+    {
+        SubscriptionListModel *subscriptionsModel = nullptr;
+        ScriptController *scriptController = nullptr;
+        EventController *eventController = nullptr;
+        QTimer *subscriptionFpsRefreshTimer = nullptr;
+        std::function<SessionState *()> currentSessionState;
+        std::function<SessionState *(const QString &)> sessionById;
+        std::function<bool()> saveSessions;
+        std::function<void()> refreshSubscriptionsModel;
+        std::function<void()> notifyCurrentSessionAndSubscriptionsChanged;
+        std::function<void()> notifySessionAndSubscriptionViewsChanged;
+        std::function<void()> emitSubscriptionsChanged;
+    };
+
+    explicit SubscriptionController(QObject *parent = nullptr);
+
+    void setDependencies(const Dependencies &dependencies);
 
     bool upsertCurrentSubscription(
         const QString &topic,
@@ -46,5 +69,5 @@ private:
         const QPointer<QMqttSubscription> &subscription,
         QMqttSubscription::SubscriptionState state);
 
-    SubscriptionControllerContext &m_app;
+    Dependencies m_dependencies;
 };

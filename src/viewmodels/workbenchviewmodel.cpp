@@ -1,47 +1,148 @@
 #include "viewmodels/workbenchviewmodel.h"
 
-#include "viewmodels/workbenchcoreport.h"
+#include "controllers/eventcontroller.h"
+#include "controllers/mqttcontroller.h"
+#include "controllers/sessioncontroller.h"
+#include "controllers/subscriptioncontroller.h"
+#include "domain/sessionconfig.h"
+#include "services/apputils.h"
+#include "services/payload/payloadcodec.h"
 
-WorkbenchViewModel::WorkbenchViewModel(WorkbenchCorePort *core, QObject *parent)
-    : QObject(parent)
-    , m_core(core)
+#include <QCoreApplication>
+
+using namespace AppUtils;
+
+WorkbenchViewModel::WorkbenchViewModel(QObject *parent)
+    : WorkbenchViewModel(Dependencies {}, parent)
 {
-    if (!m_core) {
-        return;
-    }
+}
 
-    WorkbenchCoreSignalHandlers handlers;
-    handlers.currentSessionIndexChanged = [this]() {
-        emit currentSessionIndexChanged();
-    };
-    handlers.currentSessionChanged = [this]() {
-        emit currentSessionChanged();
-        emit canPublishChanged();
-    };
-    handlers.messageStreamChanged = [this]() {
-        emit messageStreamChanged();
-    };
-    handlers.messageStreamRowAppended = [this]() {
-        emit messageStreamRowAppended();
-    };
-    handlers.scriptLibraryChanged = [this]() {
-        refreshSubscriptionEditorScriptOptions();
-    };
-    m_core->bindWorkbenchSignals(this, handlers);
+WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject *parent)
+    : QObject(parent)
+    , m_dependencies(dependencies)
+{
+    if (m_dependencies.bindCurrentSessionIndexChanged) {
+        m_dependencies.bindCurrentSessionIndexChanged(this, [this]() {
+            emit currentSessionIndexChanged();
+        });
+    }
+    if (m_dependencies.bindCurrentSessionChanged) {
+        m_dependencies.bindCurrentSessionChanged(this, [this]() {
+            emit currentSessionChanged();
+            emit canPublishChanged();
+        });
+    }
+    if (m_dependencies.bindMessageStreamChanged) {
+        m_dependencies.bindMessageStreamChanged(this, [this]() {
+            emit messageStreamChanged();
+        });
+    }
+    if (m_dependencies.bindMessageStreamRowAppended) {
+        m_dependencies.bindMessageStreamRowAppended(this, [this](const QVariantMap &) {
+            emit messageStreamRowAppended();
+        });
+    }
+    if (m_dependencies.bindScriptLibraryChanged) {
+        m_dependencies.bindScriptLibraryChanged(this, [this]() {
+            refreshSubscriptionEditorScriptOptions();
+        });
+    }
     syncSubscriptionFilterModel();
     refreshSubscriptionEditorScriptOptions();
 }
 
-SessionListModel *WorkbenchViewModel::sessions() const { return m_core ? m_core->sessions() : nullptr; }
-SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return m_core ? m_core->filteredSubscriptions() : nullptr; }
-EventStreamModel *WorkbenchViewModel::messages() const { return m_core ? m_core->messages() : nullptr; }
+SessionListModel *WorkbenchViewModel::sessions() const { return m_dependencies.sessions; }
+SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return m_dependencies.filteredSubscriptions; }
+EventStreamModel *WorkbenchViewModel::messages() const { return m_dependencies.messages; }
 SessionEditorViewModel *WorkbenchViewModel::sessionEditor() { return &m_sessionEditor; }
 SubscriptionEditorViewModel *WorkbenchViewModel::subscriptionEditor() { return &m_subscriptionEditor; }
-int WorkbenchViewModel::currentSessionIndex() const { return m_core ? m_core->currentSessionIndex() : -1; }
-QVariantMap WorkbenchViewModel::currentSession() const { return m_core ? m_core->currentSession() : QVariantMap {}; }
-QVariantMap WorkbenchViewModel::sessionStatus() const { return m_core ? m_core->sessionStatus() : QVariantMap {}; }
-QVariantMap WorkbenchViewModel::publishStatus() const { return m_core ? m_core->publishStatus() : QVariantMap {}; }
-QStringList WorkbenchViewModel::payloadFormats() const { return m_core ? m_core->payloadFormats() : QStringList {}; }
+int WorkbenchViewModel::currentSessionIndex() const
+{
+    return m_dependencies.sessionController ? m_dependencies.sessionController->currentIndex() : -1;
+}
+
+QVariantMap WorkbenchViewModel::currentSession() const
+{
+    const auto *session = m_dependencies.sessionController ? m_dependencies.sessionController->currentSession() : nullptr;
+    if (!session) {
+        return {};
+    }
+
+    QVariantMap row;
+    const auto *client = session->client;
+    row.insert(QStringLiteral("id"), session->id);
+    row.insert(QStringLiteral("name"), session->name);
+    row.insert(QStringLiteral("host"), client ? client->hostname() : QString());
+    row.insert(QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort);
+    row.insert(QStringLiteral("transport"), session->transport);
+    row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
+    row.insert(QStringLiteral("protocolVersion"), session->protocolVersion);
+    row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
+    row.insert(QStringLiteral("clientId"), client ? client->clientId() : QString());
+    row.insert(QStringLiteral("username"), client ? client->username() : QString());
+    row.insert(QStringLiteral("cleanSession"), client ? client->cleanSession() : true);
+    row.insert(QStringLiteral("keepAliveSeconds"), client ? client->keepAlive() : SessionConfig::kDefaultKeepAlive);
+    row.insert(QStringLiteral("outputPaused"), session->outputPaused);
+    row.insert(QStringLiteral("subscriptionCount"), session->subscriptions.size());
+    return row;
+}
+
+QVariantMap WorkbenchViewModel::sessionStatus() const
+{
+    const auto *session = m_dependencies.sessionController ? m_dependencies.sessionController->currentSession() : nullptr;
+    if (!session) {
+        return {};
+    }
+
+    const auto *client = session->client;
+    const QString state = sessionStateName(*session, client);
+    QString summary;
+    if (state == QStringLiteral("connected")) {
+        summary = QCoreApplication::translate("WorkbenchViewModel", "%1 • %2:%3 • %4")
+                      .arg(protocolVersionLabel(session->protocolVersion))
+                      .arg(client ? client->hostname() : QString())
+                      .arg(client ? client->port() : SessionConfig::kDefaultPort)
+                      .arg(transportLabel(session->transport));
+        if (session->sessionRestored) {
+            summary.append(QCoreApplication::translate("WorkbenchViewModel", " • session restored"));
+        }
+    } else if (state == QStringLiteral("connecting")) {
+        summary = QCoreApplication::translate("WorkbenchViewModel", "Connecting to %1:%2 over %3")
+                      .arg(client ? client->hostname() : QString())
+                      .arg(client ? client->port() : SessionConfig::kDefaultPort)
+                      .arg(transportLabel(session->transport));
+    } else if (state == QStringLiteral("disconnecting")) {
+        summary = QCoreApplication::translate("WorkbenchViewModel", "Disconnecting from broker");
+    } else if (!session->lastError.isEmpty()) {
+        summary = session->lastError;
+    } else {
+        summary = QCoreApplication::translate("WorkbenchViewModel", "Disconnected");
+    }
+
+    QVariantMap row;
+    row.insert(QStringLiteral("state"), state);
+    row.insert(QStringLiteral("connected"), state == QStringLiteral("connected"));
+    row.insert(QStringLiteral("summary"), summary);
+    row.insert(QStringLiteral("lastError"), session->lastError);
+    row.insert(QStringLiteral("hasError"), !session->lastError.isEmpty());
+    row.insert(QStringLiteral("brokerInfo"), session->brokerInfo);
+    row.insert(QStringLiteral("sessionRestored"), session->sessionRestored);
+    row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
+    row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
+    return row;
+}
+
+QVariantMap WorkbenchViewModel::publishStatus() const
+{
+    const auto *session = m_dependencies.sessionController ? m_dependencies.sessionController->currentSession() : nullptr;
+    QVariantMap status = session ? session->publishStatus : defaultPublishStatus();
+    status.insert(
+        QStringLiteral("updatedAt"),
+        displayTimestamp(status.value(QStringLiteral("updatedAt")).toString()));
+    return status;
+}
+
+QStringList WorkbenchViewModel::payloadFormats() const { return PayloadCodec::formatNames(); }
 QString WorkbenchViewModel::publishTopic() const { return m_publishTopic; }
 QString WorkbenchViewModel::publishPayload() const { return m_publishPayload; }
 int WorkbenchViewModel::publishFormat() const { return m_publishFormat; }
@@ -49,8 +150,7 @@ int WorkbenchViewModel::publishQos() const { return m_publishQos; }
 bool WorkbenchViewModel::publishRetain() const { return m_publishRetain; }
 bool WorkbenchViewModel::canPublish() const
 {
-    return m_core
-        && m_core->sessionStatus().value(QStringLiteral("state")).toString() == QStringLiteral("connected")
+    return sessionStatus().value(QStringLiteral("state")).toString() == QStringLiteral("connected")
         && !m_publishTopic.trimmed().isEmpty();
 }
 QString WorkbenchViewModel::subscriptionFilterText() const { return m_subscriptionFilterText; }
@@ -65,8 +165,8 @@ QString WorkbenchViewModel::pendingSubscriptionDeleteDisplayName() const { retur
 
 void WorkbenchViewModel::setCurrentSessionIndex(int index)
 {
-    if (m_core) {
-        m_core->setCurrentSessionIndex(index);
+    if (m_dependencies.sessionController) {
+        m_dependencies.sessionController->setCurrentSessionIndex(index);
     }
 }
 
@@ -164,15 +264,18 @@ void WorkbenchViewModel::setSubscriptionFilterModeIndex(int index)
 
 void WorkbenchViewModel::openSessionEditorForCreate()
 {
-    m_sessionEditor.openForCreate(m_core ? m_core->defaultSessionConfig() : SessionEditorViewModel::defaultConfig(1));
+    m_sessionEditor.openForCreate(
+        m_dependencies.sessionController
+            ? m_dependencies.sessionController->defaultSessionConfig()
+            : SessionEditorViewModel::defaultConfig(1));
 }
 
 void WorkbenchViewModel::openSessionEditorForEdit(int index)
 {
-    if (!m_core || index < 0 || index >= m_core->sessions()->count()) {
+    if (!m_dependencies.sessionController || !sessions() || index < 0 || index >= sessions()->count()) {
         return;
     }
-    m_sessionEditor.openForEdit(index, m_core->sessionConfigAt(index));
+    m_sessionEditor.openForEdit(index, m_dependencies.sessionController->sessionConfigAt(index));
 }
 
 bool WorkbenchViewModel::submitSessionEditor()
@@ -180,43 +283,56 @@ bool WorkbenchViewModel::submitSessionEditor()
     if (!m_sessionEditor.validate()) {
         return false;
     }
-    if (!m_core) {
+    if (!m_dependencies.sessionController) {
         return false;
     }
 
     const QVariantMap config = m_sessionEditor.collectedConfig();
     if (!m_sessionEditor.editMode()) {
-        m_core->addSessionWithConfig(config);
+        m_dependencies.sessionController->addSessionWithConfig(config);
         return true;
     }
 
     const int index = m_sessionEditor.targetIndex();
-    return index >= 0 && m_core->updateSessionConfigAt(index, config);
+    return index >= 0 && m_dependencies.sessionController->updateSessionConfigAt(index, config);
 }
 
 void WorkbenchViewModel::handleSessionContextMenu(int index, const QPointF &globalPosition)
 {
-    if (!m_core) {
+    if (!m_dependencies.sessionController || !sessions() || index < 0 || index >= sessions()->count()) {
         return;
     }
 
-    const QString action = m_core->showSessionContextMenu(index, globalPosition);
+    const QString action = m_platformActions.showSessionContextMenu(sessions()->count() > 1, globalPosition);
     if (action == QStringLiteral("edit")) {
         emit sessionEditRequested(index);
     } else if (action == QStringLiteral("copy")) {
-        m_core->duplicateSessionAt(index);
+        m_dependencies.sessionController->duplicateSessionAt(index);
     } else if (action == QStringLiteral("delete")) {
-        m_core->removeSessionAt(index);
+        m_dependencies.sessionController->removeSessionAt(index);
     }
 }
 
 void WorkbenchViewModel::handleSubscriptionContextMenu(int filteredIndex, const QString &topic, const QPointF &globalPosition)
 {
-    if (!m_core) {
+    const QString normalizedTopic = topic.trimmed();
+    if (!filteredSubscriptions() || normalizedTopic.isEmpty()) {
         return;
     }
 
-    const QString action = m_core->showSubscriptionContextMenu(topic, globalPosition);
+    bool hasTopic = false;
+    for (int row = 0; row < filteredSubscriptions()->count(); ++row) {
+        const QVariantMap subscription = filteredSubscriptions()->rowAt(row);
+        if (subscription.value(QStringLiteral("topic")).toString() == normalizedTopic) {
+            hasTopic = true;
+            break;
+        }
+    }
+    if (!hasTopic) {
+        return;
+    }
+
+    const QString action = m_platformActions.showSubscriptionContextMenu(globalPosition);
     if (action == QStringLiteral("edit")) {
         emit subscriptionEditRequested(filteredIndex);
     } else if (action == QStringLiteral("delete")) {
@@ -229,25 +345,25 @@ void WorkbenchViewModel::handleSubscriptionContextMenu(int filteredIndex, const 
 
 void WorkbenchViewModel::toggleCurrentSessionConnection()
 {
-    if (!m_core) {
+    if (!m_dependencies.mqttController) {
         return;
     }
 
-    const QString state = m_core->sessionStatus().value(QStringLiteral("state")).toString();
+    const QString state = sessionStatus().value(QStringLiteral("state")).toString();
     if (state == QStringLiteral("connected")
         || state == QStringLiteral("connecting")
         || state == QStringLiteral("disconnecting")) {
-        m_core->disconnectCurrentSession();
+        m_dependencies.mqttController->disconnectCurrentSession();
         return;
     }
 
-    m_core->connectCurrentSession();
+    m_dependencies.mqttController->connectCurrentSession();
 }
 
 void WorkbenchViewModel::toggleCurrentOutputPaused(bool currentlyPaused)
 {
-    if (m_core) {
-        m_core->setCurrentOutputPaused(!currentlyPaused);
+    if (m_dependencies.sessionController) {
+        m_dependencies.sessionController->setCurrentOutputPaused(!currentlyPaused);
     }
 }
 
@@ -270,7 +386,7 @@ void WorkbenchViewModel::openSubscriptionEditorForCreate()
 
 bool WorkbenchViewModel::openSubscriptionEditorForEdit(int filteredIndex)
 {
-    if (!m_core || !filteredSubscriptions() || filteredIndex < 0 || filteredIndex >= filteredSubscriptions()->count()) {
+    if (!filteredSubscriptions() || filteredIndex < 0 || filteredIndex >= filteredSubscriptions()->count()) {
         return false;
     }
 
@@ -281,20 +397,20 @@ bool WorkbenchViewModel::openSubscriptionEditorForEdit(int filteredIndex)
 
 bool WorkbenchViewModel::submitSubscriptionEditor()
 {
-    if (!m_core || !m_subscriptionEditor.canSubmit()) {
+    if (!m_dependencies.subscriptionController || !m_subscriptionEditor.canSubmit()) {
         return false;
     }
 
     const QVariantMap submission = m_subscriptionEditor.submission();
     if (submission.value(QStringLiteral("editMode")).toBool()) {
-        return m_core->updateCurrentSubscription(
+        return m_dependencies.subscriptionController->updateCurrentSubscription(
             submission.value(QStringLiteral("editTopic")).toString(),
             submission.value(QStringLiteral("topic")).toString(),
             submission.value(QStringLiteral("alias")).toString(),
             submission.value(QStringLiteral("scriptId")).toString());
     }
 
-    return m_core->upsertCurrentSubscription(
+    return m_dependencies.subscriptionController->upsertCurrentSubscription(
         submission.value(QStringLiteral("topic")).toString(),
         submission.value(QStringLiteral("qos")).toInt(),
         submission.value(QStringLiteral("format")).toInt(),
@@ -303,8 +419,8 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
 }
 void WorkbenchViewModel::toggleCurrentSubscriptionPaused(const QString &topic, bool currentlyPaused)
 {
-    if (m_core) {
-        m_core->setCurrentSubscriptionPaused(topic, !currentlyPaused);
+    if (m_dependencies.subscriptionController) {
+        m_dependencies.subscriptionController->setCurrentSubscriptionPaused(topic, !currentlyPaused);
     }
 }
 
@@ -329,12 +445,12 @@ void WorkbenchViewModel::cancelPendingSubscriptionDelete()
 bool WorkbenchViewModel::confirmPendingSubscriptionDelete()
 {
     const QString topic = m_pendingSubscriptionDeleteTopic;
-    if (topic.isEmpty() || !m_core) {
+    if (topic.isEmpty() || !m_dependencies.subscriptionController) {
         clearPendingSubscriptionDelete();
         return false;
     }
 
-    m_core->removeCurrentSubscription(topic);
+    m_dependencies.subscriptionController->removeCurrentSubscription(topic);
     clearPendingSubscriptionDelete();
     return true;
 }
@@ -354,7 +470,11 @@ bool WorkbenchViewModel::publishDraft()
         return false;
     }
 
-    m_core->publishCurrentSession(
+    if (!m_dependencies.mqttController) {
+        return false;
+    }
+
+    m_dependencies.mqttController->publishCurrentSession(
         m_publishTopic.trimmed(),
         m_publishPayload,
         m_publishFormat,
@@ -365,28 +485,24 @@ bool WorkbenchViewModel::publishDraft()
 
 void WorkbenchViewModel::copyMessageTopic(const QString &topic) const
 {
-    if (m_core) {
-        m_core->copyTextToClipboard(topic);
-    }
+    m_platformActions.copyTextToClipboard(topic);
 }
 
 void WorkbenchViewModel::copyMessagePayload(const QString &payload, const QString &testPayload) const
 {
-    if (m_core) {
-        m_core->copyTextToClipboard(testPayload.isEmpty() ? payload : testPayload);
-    }
+    m_platformActions.copyTextToClipboard(testPayload.isEmpty() ? payload : testPayload);
 }
 
 void WorkbenchViewModel::clearMessages()
 {
-    if (m_core) {
-        m_core->clearCurrentMessages();
+    if (m_dependencies.eventController) {
+        m_dependencies.eventController->clearCurrentMessages();
     }
 }
 
 int WorkbenchViewModel::loadOlderMessages()
 {
-    return m_core ? m_core->loadOlderCurrentSessionMessages() : 0;
+    return m_dependencies.eventController ? m_dependencies.eventController->loadOlderCurrentSessionMessages() : 0;
 }
 
 QString WorkbenchViewModel::normalizedSubscriptionFilterMode(const QString &filterMode)
@@ -410,7 +526,7 @@ int WorkbenchViewModel::subscriptionFilterModeIndexForMode(const QString &filter
 
 ScriptLibraryModel *WorkbenchViewModel::scriptLibrary() const
 {
-    return m_core ? m_core->scripts() : nullptr;
+    return m_dependencies.scripts;
 }
 
 void WorkbenchViewModel::syncSubscriptionFilterModel()

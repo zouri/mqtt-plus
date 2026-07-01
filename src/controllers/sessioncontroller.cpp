@@ -1,6 +1,6 @@
 #include "sessioncontroller.h"
 
-#include "controllers/sessioncontrollercontext.h"
+#include "controllers/mqttcontroller.h"
 #include "controllers/subscriptioncontroller.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/sessionsettingsstore.h"
@@ -13,9 +13,9 @@ SessionController::SessionController(QObject *parent)
 {
 }
 
-void SessionController::setCore(SessionControllerContext *app)
+void SessionController::setDependencies(const Dependencies &dependencies)
 {
-    m_app = app;
+    m_dependencies = dependencies;
 }
 
 QVector<SessionState> &SessionController::sessions()
@@ -97,18 +97,22 @@ bool SessionController::isValidIndex(int index) const
 
 void SessionController::setCurrentSessionIndex(int index)
 {
-    if (!m_app || !isValidIndex(index) || index == m_currentIndex) {
+    if (!m_dependencies.subscriptionController || !m_dependencies.subscriptionFpsRefreshTimer || !isValidIndex(index) || index == m_currentIndex) {
         return;
     }
 
     m_currentIndex = index;
-    m_app->reloadCurrentSessionHistory();
-    if (m_app->subscriptionController().currentSessionHasActiveSubscriptionFps(QDateTime::currentMSecsSinceEpoch())) {
-        m_app->subscriptionFpsRefreshTimer().start();
-    } else {
-        m_app->subscriptionFpsRefreshTimer().stop();
+    if (m_dependencies.reloadCurrentSessionHistory) {
+        m_dependencies.reloadCurrentSessionHistory();
     }
-    m_app->notifySelectedSessionViewsChanged();
+    if (m_dependencies.subscriptionController->currentSessionHasActiveSubscriptionFps(QDateTime::currentMSecsSinceEpoch())) {
+        m_dependencies.subscriptionFpsRefreshTimer->start();
+    } else {
+        m_dependencies.subscriptionFpsRefreshTimer->stop();
+    }
+    if (m_dependencies.notifySelectedSessionViewsChanged) {
+        m_dependencies.notifySelectedSessionViewsChanged();
+    }
 }
 
 QVariantMap SessionController::defaultSessionConfig() const
@@ -128,7 +132,7 @@ QVariantMap SessionController::sessionConfigAt(int index) const
 
 bool SessionController::updateSessionConfigAt(int index, const QVariantMap &config)
 {
-    if (!m_app || index < 0 || index >= m_sessions.size()) {
+    if (!m_dependencies.configureSession || !m_dependencies.mqttController || !m_dependencies.saveSessions || index < 0 || index >= m_sessions.size()) {
         return false;
     }
 
@@ -143,27 +147,31 @@ bool SessionController::updateSessionConfigAt(int index, const QVariantMap &conf
         client->disconnectFromHost();
     }
 
-    m_app->configureSession(*session, config, true);
+    m_dependencies.configureSession(*session, config, true);
     session->lastError.clear();
     session->sessionRestored = false;
-    m_app->updatePublishStatus(*session, QStringLiteral("idle"));
-    const bool saved = m_app->saveSessions();
+    m_dependencies.mqttController->updatePublishStatus(*session, QStringLiteral("idle"));
+    const bool saved = m_dependencies.saveSessions();
 
     if (reconnect) {
         session->disconnectRequested = false;
-        m_app->connectSession(*session, tr("Connecting to"));
+        m_dependencies.mqttController->connectSession(*session, tr("Connecting to"));
     }
 
-    m_app->emitSessionsChanged();
+    if (m_dependencies.emitSessionsChanged) {
+        m_dependencies.emitSessionsChanged();
+    }
     if (index == m_currentIndex) {
-        m_app->notifyCurrentSessionAndSubscriptionsChanged();
+        if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
+            m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+        }
     }
     return saved;
 }
 
 void SessionController::addSessionWithConfig(const QVariantMap &config)
 {
-    if (!m_app) {
+    if (!m_dependencies.createDefaultSession || !m_dependencies.configureSession || !m_dependencies.saveSessions) {
         return;
     }
 
@@ -171,26 +179,30 @@ void SessionController::addSessionWithConfig(const QVariantMap &config)
         ? tr("Session %1").arg(m_sessions.size() + 1)
         : config.value(QStringLiteral("name")).toString().trimmed();
 
-    SessionState session = m_app->createDefaultSession(fallbackName);
-    m_app->configureSession(session, config, false);
+    SessionState session = m_dependencies.createDefaultSession(fallbackName);
+    m_dependencies.configureSession(session, config, false);
     m_sessions.append(session);
     m_currentIndex = m_sessions.size() - 1;
-    m_app->reloadCurrentSessionHistory();
-    m_app->saveSessions();
-    m_app->notifySessionCollectionViewsChanged();
+    if (m_dependencies.reloadCurrentSessionHistory) {
+        m_dependencies.reloadCurrentSessionHistory();
+    }
+    m_dependencies.saveSessions();
+    if (m_dependencies.notifySessionCollectionViewsChanged) {
+        m_dependencies.notifySessionCollectionViewsChanged();
+    }
 }
 
 void SessionController::duplicateSessionAt(int index)
 {
-    if (!m_app || index < 0 || index >= m_sessions.size()) {
+    if (!m_dependencies.createDefaultSession || !m_dependencies.configureSession || !m_dependencies.saveSessions || index < 0 || index >= m_sessions.size()) {
         return;
     }
 
     const auto &source = m_sessions.at(index);
     const QVariantMap config = SessionSettingsStore::duplicateConfigFromState(source);
 
-    SessionState session = m_app->createDefaultSession(tr("%1 Copy").arg(source.name));
-    m_app->configureSession(session, config, false);
+    SessionState session = m_dependencies.createDefaultSession(tr("%1 Copy").arg(source.name));
+    m_dependencies.configureSession(session, config, false);
     session.outputPaused = source.outputPaused;
     session.subscriptionFormats = source.subscriptionFormats;
     session.subscriptions = source.subscriptions;
@@ -204,22 +216,26 @@ void SessionController::duplicateSessionAt(int index)
 
     m_sessions.append(session);
     m_currentIndex = m_sessions.size() - 1;
-    m_app->reloadCurrentSessionHistory();
-    m_app->saveSessions();
-    m_app->notifySessionCollectionViewsChanged();
+    if (m_dependencies.reloadCurrentSessionHistory) {
+        m_dependencies.reloadCurrentSessionHistory();
+    }
+    m_dependencies.saveSessions();
+    if (m_dependencies.notifySessionCollectionViewsChanged) {
+        m_dependencies.notifySessionCollectionViewsChanged();
+    }
 }
 
 void SessionController::removeSessionAt(int index)
 {
-    if (!m_app || m_sessions.size() <= 1 || index < 0 || index >= m_sessions.size()) {
+    if (!m_dependencies.historyStore || !m_dependencies.destroySessionRuntime || !m_dependencies.saveSessions || m_sessions.size() <= 1 || index < 0 || index >= m_sessions.size()) {
         return;
     }
 
     SessionState removed = takeSessionAt(index);
-    if (m_app->deleteHistoryWithSession()) {
-        m_app->historyStore().clearSessionHistory(removed.id);
+    if (m_dependencies.deleteHistoryWithSession && m_dependencies.deleteHistoryWithSession()) {
+        m_dependencies.historyStore->clearSessionHistory(removed.id);
     }
-    m_app->destroySessionRuntime(removed);
+    m_dependencies.destroySessionRuntime(removed);
 
     int indexAfterRemoval = m_currentIndex;
     if (indexAfterRemoval >= m_sessions.size()) {
@@ -230,14 +246,18 @@ void SessionController::removeSessionAt(int index)
     }
     m_currentIndex = indexAfterRemoval;
 
-    m_app->reloadCurrentSessionHistory();
-    m_app->saveSessions();
-    m_app->notifySessionCollectionViewsChanged();
+    if (m_dependencies.reloadCurrentSessionHistory) {
+        m_dependencies.reloadCurrentSessionHistory();
+    }
+    m_dependencies.saveSessions();
+    if (m_dependencies.notifySessionCollectionViewsChanged) {
+        m_dependencies.notifySessionCollectionViewsChanged();
+    }
 }
 
 void SessionController::setCurrentOutputPaused(bool paused)
 {
-    if (!m_app) {
+    if (!m_dependencies.saveSessions) {
         return;
     }
 
@@ -247,10 +267,16 @@ void SessionController::setCurrentOutputPaused(bool paused)
     }
 
     session->outputPaused = paused;
-    m_app->saveSessions();
+    m_dependencies.saveSessions();
     if (!paused) {
-        m_app->reloadCurrentSessionHistory();
-        m_app->emitMessageStreamChanged();
+        if (m_dependencies.reloadCurrentSessionHistory) {
+            m_dependencies.reloadCurrentSessionHistory();
+        }
+        if (m_dependencies.emitMessageStreamChanged) {
+            m_dependencies.emitMessageStreamChanged();
+        }
     }
-    m_app->notifyCurrentSessionViewsChanged();
+    if (m_dependencies.notifyCurrentSessionViewsChanged) {
+        m_dependencies.notifyCurrentSessionViewsChanged();
+    }
 }

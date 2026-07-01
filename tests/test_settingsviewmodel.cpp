@@ -1,70 +1,85 @@
+#include "controllers/languagecontroller.h"
+#include "controllers/preferencescontroller.h"
+#include "controllers/themecontroller.h"
+#include "models/eventstreammodel.h"
 #include "viewmodels/settingsoptionsviewmodel.h"
-#include "viewmodels/settingscoreport.h"
 #include "viewmodels/settingsviewmodel.h"
 
 #include <QtTest/QtTest>
 
-class FakeSettingsCore final : public SettingsCorePort
+#include <utility>
+
+class FakeSettingsDeps
 {
 public:
-    void bindSettingsSignals(QObject *, const SettingsCoreSignalHandlers &newHandlers) override
+    FakeSettingsDeps()
+        : settings(QStringLiteral("mqtt-plus-test"), QStringLiteral("settings-viewmodel-test"))
+        , themeController(&settings)
+        , languageController(&settings)
+        , preferencesController(&settings)
     {
-        handlers = newHandlers;
+        settings.clear();
     }
 
-    QString themeMode() const override { return themeModeValue; }
-    QString effectiveTheme() const override { return effectiveThemeValue; }
-    QString languageMode() const override { return languageModeValue; }
-    int messageRetentionLimit() const override { return messageRetentionLimitValue; }
-    int logRetentionLimit() const override { return logRetentionLimitValue; }
-    int historyPageSize() const override { return historyPageSizeValue; }
-    int maxIncomingPayloadBytes() const override { return maxIncomingPayloadBytesValue; }
-    bool deleteHistoryWithSession() const override { return deleteHistoryWithSessionValue; }
-    bool saveMessagesWhenOutputPaused() const override { return saveMessagesWhenOutputPausedValue; }
-    QString clearMessagesOnExit() const override { return clearMessagesOnExitValue; }
-    QString clearLogsOnExit() const override { return clearLogsOnExitValue; }
-    int windowWidth() const override { return windowWidthValue; }
-    int windowHeight() const override { return windowHeightValue; }
-    bool windowMaximized() const override { return windowMaximizedValue; }
-
-    void setThemeMode(const QString &mode) override { themeModeValue = mode; }
-    void setLanguageMode(const QString &mode) override { languageModeValue = mode; }
-    void setMessageRetentionLimit(int limit) override { messageRetentionLimitValue = limit; }
-    void setLogRetentionLimit(int limit) override { logRetentionLimitValue = limit; }
-    void setHistoryPageSize(int pageSize) override { historyPageSizeValue = pageSize; }
-    void setMaxIncomingPayloadBytes(int bytes) override { maxIncomingPayloadBytesValue = bytes; }
-    void setDeleteHistoryWithSession(bool enabled) override { deleteHistoryWithSessionValue = enabled; }
-    void setSaveMessagesWhenOutputPaused(bool enabled) override { saveMessagesWhenOutputPausedValue = enabled; }
-    void setClearMessagesOnExit(const QString &mode) override { clearMessagesOnExitValue = mode; }
-    void setClearLogsOnExit(const QString &mode) override { clearLogsOnExitValue = mode; }
-    void setWindowMaximized(bool maximized) override { windowMaximizedValue = maximized; }
-    void saveWindowGeometry(int width, int height) override
+    SettingsViewModel::Dependencies dependencies()
     {
-        windowWidthValue = width;
-        windowHeightValue = height;
+        return {
+            &themeController,
+            &languageController,
+            &preferencesController,
+            nullptr,
+            nullptr,
+            &sessions,
+            &messages,
+            &logs,
+            [this](QObject *, std::function<void()> handler) { themeModeChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { effectiveThemeChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { languageModeChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { languageChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { messageRetentionLimitChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { logRetentionLimitChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { historyPageSizeChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { maxIncomingPayloadBytesChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { deleteHistoryWithSessionChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { saveMessagesWhenOutputPausedChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { clearMessagesOnExitChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { clearLogsOnExitChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { windowWidthChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { windowHeightChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { windowMaximizedChanged = std::move(handler); },
+            [this]() { ++reloadHistoryCalls; },
+            [this]() { ++refreshScriptSamplesCalls; },
+            [this]() { ++messageStreamChangedCalls; },
+            [this]() { ++logStreamChangedCalls; },
+        };
     }
-    void clearAllMessages() override { ++clearMessagesCalls; }
-    void clearAllLogs() override { ++clearLogsCalls; }
-    void clearAllHistory() override { ++clearHistoryCalls; }
 
-    SettingsCoreSignalHandlers handlers;
-    QString themeModeValue = QStringLiteral("system");
-    QString effectiveThemeValue = QStringLiteral("light");
-    QString languageModeValue = QStringLiteral("system");
-    int messageRetentionLimitValue = 5000;
-    int logRetentionLimitValue = 2000;
-    int historyPageSizeValue = 500;
-    int maxIncomingPayloadBytesValue = 1024 * 1024;
-    bool deleteHistoryWithSessionValue = true;
-    bool saveMessagesWhenOutputPausedValue = true;
-    QString clearMessagesOnExitValue = QStringLiteral("never");
-    QString clearLogsOnExitValue = QStringLiteral("never");
-    int windowWidthValue = 1480;
-    int windowHeightValue = 820;
-    bool windowMaximizedValue = false;
-    int clearMessagesCalls = 0;
-    int clearLogsCalls = 0;
-    int clearHistoryCalls = 0;
+    QSettings settings;
+    ThemeController themeController;
+    LanguageController languageController;
+    PreferencesController preferencesController;
+    QVector<SessionState> sessions;
+    EventStreamModel messages;
+    EventStreamModel logs;
+    std::function<void()> themeModeChanged;
+    std::function<void()> effectiveThemeChanged;
+    std::function<void()> languageModeChanged;
+    std::function<void()> languageChanged;
+    std::function<void()> messageRetentionLimitChanged;
+    std::function<void()> logRetentionLimitChanged;
+    std::function<void()> historyPageSizeChanged;
+    std::function<void()> maxIncomingPayloadBytesChanged;
+    std::function<void()> deleteHistoryWithSessionChanged;
+    std::function<void()> saveMessagesWhenOutputPausedChanged;
+    std::function<void()> clearMessagesOnExitChanged;
+    std::function<void()> clearLogsOnExitChanged;
+    std::function<void()> windowWidthChanged;
+    std::function<void()> windowHeightChanged;
+    std::function<void()> windowMaximizedChanged;
+    int reloadHistoryCalls = 0;
+    int refreshScriptSamplesCalls = 0;
+    int messageStreamChangedCalls = 0;
+    int logStreamChangedCalls = 0;
 };
 
 class SettingsOptionsViewModelTest : public QObject
@@ -75,9 +90,9 @@ private slots:
     void resolvesOptionIndexes();
     void clampsOptionValues();
     void exposesDefaultSettingIndexes();
-    void readsSettingsThroughCorePort();
-    void writesSettingsThroughCorePort();
-    void forwardsCorePortSignals();
+    void readsSettingsThroughDependencies();
+    void writesSettingsThroughDependencies();
+    void forwardsDependencySignals();
 };
 
 void SettingsOptionsViewModelTest::resolvesOptionIndexes()
@@ -112,18 +127,16 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(settings.clearLogsOnExitIndex(), 0);
 }
 
-void SettingsOptionsViewModelTest::readsSettingsThroughCorePort()
+void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
 {
-    FakeSettingsCore core;
-    core.themeModeValue = QStringLiteral("dark");
-    core.effectiveThemeValue = QStringLiteral("dark");
-    core.languageModeValue = QStringLiteral("zh_CN");
-    core.messageRetentionLimitValue = 10000;
-    core.logRetentionLimitValue = 5000;
-    core.windowWidthValue = 1200;
-    core.windowHeightValue = 700;
-    core.windowMaximizedValue = true;
-    SettingsViewModel settings(&core);
+    FakeSettingsDeps deps;
+    deps.themeController.setMode(QStringLiteral("dark"));
+    deps.languageController.setMode(QStringLiteral("zh_CN"));
+    deps.preferencesController.setMessageRetentionLimit(10000);
+    deps.preferencesController.setLogRetentionLimit(5000);
+    deps.preferencesController.setWindowGeometry(1200, 700);
+    deps.preferencesController.setWindowMaximized(true);
+    SettingsViewModel settings(deps.dependencies());
 
     QCOMPARE(settings.themeModeIndex(), 2);
     QCOMPARE(settings.effectiveTheme(), QStringLiteral("dark"));
@@ -135,10 +148,10 @@ void SettingsOptionsViewModelTest::readsSettingsThroughCorePort()
     QCOMPARE(settings.windowMaximized(), true);
 }
 
-void SettingsOptionsViewModelTest::writesSettingsThroughCorePort()
+void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
 {
-    FakeSettingsCore core;
-    SettingsViewModel settings(&core);
+    FakeSettingsDeps deps;
+    SettingsViewModel settings(deps.dependencies());
 
     settings.setThemeModeIndex(1);
     settings.setLanguageModeIndex(1);
@@ -156,39 +169,40 @@ void SettingsOptionsViewModelTest::writesSettingsThroughCorePort()
     settings.clearAllLogs();
     settings.clearAllHistory();
 
-    QCOMPARE(core.themeModeValue, QStringLiteral("light"));
-    QCOMPARE(core.languageModeValue, QStringLiteral("en"));
-    QCOMPARE(core.messageRetentionLimitValue, 1000);
-    QCOMPARE(core.logRetentionLimitValue, 500);
-    QCOMPARE(core.historyPageSizeValue, 1000);
-    QCOMPARE(core.maxIncomingPayloadBytesValue, 5242880);
-    QCOMPARE(core.clearMessagesOnExitValue, QStringLiteral("all"));
-    QCOMPARE(core.clearLogsOnExitValue, QStringLiteral("current"));
-    QCOMPARE(core.deleteHistoryWithSessionValue, false);
-    QCOMPARE(core.saveMessagesWhenOutputPausedValue, false);
-    QCOMPARE(core.windowMaximizedValue, true);
-    QCOMPARE(core.windowWidthValue, 1600);
-    QCOMPARE(core.windowHeightValue, 900);
-    QCOMPARE(core.clearMessagesCalls, 1);
-    QCOMPARE(core.clearLogsCalls, 1);
-    QCOMPARE(core.clearHistoryCalls, 1);
+    QCOMPARE(deps.themeController.mode(), QStringLiteral("light"));
+    QCOMPARE(deps.languageController.mode(), QStringLiteral("en"));
+    QCOMPARE(deps.preferencesController.messageRetentionLimit(), 1000);
+    QCOMPARE(deps.preferencesController.logRetentionLimit(), 500);
+    QCOMPARE(deps.preferencesController.historyPageSize(), 1000);
+    QCOMPARE(deps.preferencesController.maxIncomingPayloadBytes(), 5242880);
+    QCOMPARE(deps.preferencesController.clearMessagesOnExit(), QStringLiteral("all"));
+    QCOMPARE(deps.preferencesController.clearLogsOnExit(), QStringLiteral("current"));
+    QCOMPARE(deps.preferencesController.deleteHistoryWithSession(), false);
+    QCOMPARE(deps.preferencesController.saveMessagesWhenOutputPaused(), false);
+    QCOMPARE(deps.preferencesController.windowMaximized(), true);
+    QCOMPARE(deps.preferencesController.windowWidth(), 1600);
+    QCOMPARE(deps.preferencesController.windowHeight(), 900);
+    QCOMPARE(deps.reloadHistoryCalls, 2);
+    QCOMPARE(deps.refreshScriptSamplesCalls, 2);
+    QCOMPARE(deps.messageStreamChangedCalls, 3);
+    QCOMPARE(deps.logStreamChangedCalls, 3);
 }
 
-void SettingsOptionsViewModelTest::forwardsCorePortSignals()
+void SettingsOptionsViewModelTest::forwardsDependencySignals()
 {
-    FakeSettingsCore core;
-    SettingsViewModel settings(&core);
+    FakeSettingsDeps deps;
+    SettingsViewModel settings(deps.dependencies());
     QSignalSpy themeSpy(&settings, &SettingsViewModel::themeModeChanged);
     QSignalSpy languageSpy(&settings, &SettingsViewModel::languageChanged);
     QSignalSpy windowSpy(&settings, &SettingsViewModel::windowMaximizedChanged);
 
-    QVERIFY(core.handlers.themeModeChanged);
-    QVERIFY(core.handlers.languageChanged);
-    QVERIFY(core.handlers.windowMaximizedChanged);
+    QVERIFY(deps.themeModeChanged);
+    QVERIFY(deps.languageChanged);
+    QVERIFY(deps.windowMaximizedChanged);
 
-    core.handlers.themeModeChanged();
-    core.handlers.languageChanged();
-    core.handlers.windowMaximizedChanged();
+    deps.themeModeChanged();
+    deps.languageChanged();
+    deps.windowMaximizedChanged();
 
     QCOMPARE(themeSpy.count(), 1);
     QCOMPARE(languageSpy.count(), 1);

@@ -6,14 +6,20 @@
 #include <QStringList>
 #include <QVariantMap>
 
+#include <functional>
+
 #include "models/eventstreammodel.h"
 #include "models/scriptlibrarymodel.h"
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
+#include "platform/platformactions.h"
 #include "viewmodels/sessioneditorviewmodel.h"
 #include "viewmodels/subscriptioneditorviewmodel.h"
 
-class WorkbenchCorePort;
+class EventController;
+class MqttController;
+class SessionController;
+class SubscriptionController;
 
 class WorkbenchViewModel : public QObject
 {
@@ -42,7 +48,24 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(QString pendingSubscriptionDeleteDisplayName READ pendingSubscriptionDeleteDisplayName NOTIFY pendingSubscriptionDeleteChanged)
 
 public:
-    explicit WorkbenchViewModel(WorkbenchCorePort *core = nullptr, QObject *parent = nullptr);
+    struct Dependencies {
+        std::function<void(QObject *, std::function<void()>)> bindCurrentSessionIndexChanged;
+        std::function<void(QObject *, std::function<void()>)> bindCurrentSessionChanged;
+        std::function<void(QObject *, std::function<void()>)> bindMessageStreamChanged;
+        std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindMessageStreamRowAppended;
+        std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
+        SessionController *sessionController = nullptr;
+        MqttController *mqttController = nullptr;
+        SubscriptionController *subscriptionController = nullptr;
+        EventController *eventController = nullptr;
+        SessionListModel *sessions = nullptr;
+        SubscriptionFilterModel *filteredSubscriptions = nullptr;
+        EventStreamModel *messages = nullptr;
+        ScriptLibraryModel *scripts = nullptr;
+    };
+
+    explicit WorkbenchViewModel(QObject *parent = nullptr);
+    explicit WorkbenchViewModel(const Dependencies &dependencies, QObject *parent = nullptr);
 
     SessionListModel *sessions() const;
     SubscriptionFilterModel *filteredSubscriptions() const;
@@ -127,7 +150,8 @@ private:
     void emitSubscriptionFilterSignals(const QString &oldText, const QString &oldMode);
     void clearPendingSubscriptionDelete();
 
-    WorkbenchCorePort *m_core = nullptr;
+    Dependencies m_dependencies;
+    PlatformActions m_platformActions;
     QString m_publishTopic;
     QString m_publishPayload;
     int m_publishFormat = 1;

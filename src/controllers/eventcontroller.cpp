@@ -1,8 +1,8 @@
 #include "eventcontroller.h"
 
-#include "controllers/eventcontrollercontext.h"
 #include "controllers/scriptcontroller.h"
 #include "controllers/subscriptioncontroller.h"
+#include "controllers/preferencescontroller.h"
 #include "services/apputils.h"
 #include "models/eventstreammodel.h"
 #include "presentation/eventrenderer.h"
@@ -115,10 +115,15 @@ PayloadStoragePlan makePayloadStoragePlan(const QString &topic, const QByteArray
 }
 }
 
-EventController::EventController(EventControllerContext *app, QObject *parent)
+EventController::EventController(QObject *parent)
     : QObject(parent)
-    , m_app(*app)
 {
+}
+
+void EventController::setDependencies(const Dependencies &dependencies)
+{
+    m_dependencies = dependencies;
+
     m_messageHistoryFlushTimer.setInterval(kMessageHistoryFlushIntervalMs);
     m_messageHistoryFlushTimer.setSingleShot(true);
     connect(
@@ -130,59 +135,59 @@ EventController::EventController(EventControllerContext *app, QObject *parent)
 
 void EventController::clearCurrentMessages()
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSessionState();
     if (!session) {
         return;
     }
 
-    m_app.historyStore().clearMessages(session->id);
+    (*m_dependencies.historyStore).clearMessages(session->id);
     session->messageRows.clear();
     session->oldestLoadedMessageId = 0;
     session->loadedAllMessageHistory = true;
-    m_app.messagesModel().clear();
-    m_app.refreshScriptTestSamplesModel();
-    m_app.emitMessageStreamChanged();
+    (*m_dependencies.messagesModel).clear();
+    m_dependencies.refreshScriptTestSamplesModel();
+    m_dependencies.emitMessageStreamChanged();
 }
 
 void EventController::clearCurrentLogs()
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSessionState();
     if (!session) {
         return;
     }
 
-    m_app.historyStore().clearLogs(session->id);
+    (*m_dependencies.historyStore).clearLogs(session->id);
     session->logRows.clear();
     session->oldestLoadedLogId = 0;
     session->loadedAllLogHistory = true;
-    m_app.logsModel().clear();
-    m_app.emitLogStreamChanged();
+    (*m_dependencies.logsModel).clear();
+    m_dependencies.emitLogStreamChanged();
 }
 
 int EventController::loadOlderCurrentSessionMessages()
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSessionState();
     if (!session || session->loadedAllMessageHistory || session->oldestLoadedMessageId <= 0) {
         return 0;
     }
 
     flushPendingMessageHistory();
 
-    const int pageSize = m_app.historyPageSize();
+    const int pageSize = m_dependencies.preferencesController->historyPageSize();
     QVariantList rows = EventRenderer::loadHistoryRows(
-        m_app.historyStore().loadMessagesBefore(session->id, session->oldestLoadedMessageId, pageSize),
+        (*m_dependencies.historyStore).loadMessagesBefore(session->id, session->oldestLoadedMessageId, pageSize),
         session->subscriptionFormats,
-        m_app.launchTimestamp(),
+        (*m_dependencies.launchTimestamp),
         false);
     if (rows.isEmpty()) {
         session->loadedAllMessageHistory = true;
         return 0;
     }
 
-    if (EventRenderer::containsRowsBeforeLaunch(rows, m_app.launchTimestamp())
-            && EventRenderer::startsWithCurrentLaunchRows(session->messageRows, m_app.launchTimestamp())
+    if (EventRenderer::containsRowsBeforeLaunch(rows, (*m_dependencies.launchTimestamp))
+            && EventRenderer::startsWithCurrentLaunchRows(session->messageRows, (*m_dependencies.launchTimestamp))
             && !EventRenderer::containsLaunchDivider(session->messageRows)) {
-        rows.append(EventRenderer::launchDividerRow(m_app.launchTimestamp()));
+        rows.append(EventRenderer::launchDividerRow((*m_dependencies.launchTimestamp)));
     }
 
     QVariantList merged;
@@ -195,33 +200,33 @@ int EventController::loadOlderCurrentSessionMessages()
     }
     session->messageRows = merged;
     session->oldestLoadedMessageId = EventRenderer::firstHistoryId(session->messageRows);
-    m_app.messagesModel().prependRows(rows);
-    m_app.refreshScriptTestSamplesModel();
+    (*m_dependencies.messagesModel).prependRows(rows);
+    m_dependencies.refreshScriptTestSamplesModel();
     return rows.size();
 }
 
 int EventController::loadOlderCurrentSessionLogs()
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSessionState();
     if (!session || session->loadedAllLogHistory || session->oldestLoadedLogId <= 0) {
         return 0;
     }
 
-    const int pageSize = m_app.historyPageSize();
+    const int pageSize = m_dependencies.preferencesController->historyPageSize();
     QVariantList rows = EventRenderer::loadHistoryRows(
-        m_app.historyStore().loadLogsBefore(session->id, session->oldestLoadedLogId, pageSize),
+        (*m_dependencies.historyStore).loadLogsBefore(session->id, session->oldestLoadedLogId, pageSize),
         session->subscriptionFormats,
-        m_app.launchTimestamp(),
+        (*m_dependencies.launchTimestamp),
         false);
     if (rows.isEmpty()) {
         session->loadedAllLogHistory = true;
         return 0;
     }
 
-    if (EventRenderer::containsRowsBeforeLaunch(rows, m_app.launchTimestamp())
-            && EventRenderer::startsWithCurrentLaunchRows(session->logRows, m_app.launchTimestamp())
+    if (EventRenderer::containsRowsBeforeLaunch(rows, (*m_dependencies.launchTimestamp))
+            && EventRenderer::startsWithCurrentLaunchRows(session->logRows, (*m_dependencies.launchTimestamp))
             && !EventRenderer::containsLaunchDivider(session->logRows)) {
-        rows.append(EventRenderer::launchDividerRow(m_app.launchTimestamp()));
+        rows.append(EventRenderer::launchDividerRow((*m_dependencies.launchTimestamp)));
     }
 
     QVariantList merged;
@@ -234,42 +239,42 @@ int EventController::loadOlderCurrentSessionLogs()
     }
     session->logRows = merged;
     session->oldestLoadedLogId = EventRenderer::firstHistoryId(session->logRows);
-    m_app.logsModel().prependRows(rows);
+    (*m_dependencies.logsModel).prependRows(rows);
     return rows.size();
 }
 
 void EventController::appendRenderedMessageRow(SessionState &session, const QVariantMap &row)
 {
-    if (&session != m_app.currentSessionState()) {
+    if (&session != m_dependencies.currentSessionState()) {
         return;
     }
 
     session.messageRows.append(row);
     trimVisibleMessageRows(session);
-    m_app.messagesModel().appendRow(row);
-    m_app.messagesModel().trimToLimit(kMaxVisibleEventRows);
-    m_app.emitMessageStreamRowAppended(row);
-    m_app.refreshScriptTestSamplesModel();
+    (*m_dependencies.messagesModel).appendRow(row);
+    (*m_dependencies.messagesModel).trimToLimit(kMaxVisibleEventRows);
+    m_dependencies.emitMessageStreamRowAppended(row);
+    m_dependencies.refreshScriptTestSamplesModel();
 }
 
 void EventController::appendRenderedLogRow(SessionState &session, const QVariantMap &row)
 {
-    if (&session != m_app.currentSessionState()) {
+    if (&session != m_dependencies.currentSessionState()) {
         return;
     }
 
     session.logRows.append(row);
     trimVisibleLogRows(session);
-    m_app.logsModel().appendRow(row);
-    m_app.logsModel().trimToLimit(kMaxVisibleEventRows);
-    m_app.emitLogStreamRowAppended(row);
+    (*m_dependencies.logsModel).appendRow(row);
+    (*m_dependencies.logsModel).trimToLimit(kMaxVisibleEventRows);
+    m_dependencies.emitLogStreamRowAppended(row);
 }
 
 void EventController::appendEvent(SessionState &session, const QString &channel, const QString &message)
 {
     const QString timestamp = timestampNow();
-    const qint64 historyId = m_app.historyStore().appendEvent(session.id, timestamp, channel, message);
-    m_app.historyStore().pruneLogs(session.id, m_app.logRetentionLimit());
+    const qint64 historyId = (*m_dependencies.historyStore).appendEvent(session.id, timestamp, channel, message);
+    (*m_dependencies.historyStore).pruneLogs(session.id, m_dependencies.preferencesController->logRetentionLimit());
 
     appendRenderedLogRow(session, EventRenderer::eventRow(historyId, timestamp, channel, message));
 }
@@ -294,7 +299,7 @@ LuaScriptResult EventController::parseIncomingPayload(
         return {};
     }
 
-    const auto *script = m_app.scriptController().scriptById(subscription->scriptId);
+    const auto *script = (*m_dependencies.scriptController).scriptById(subscription->scriptId);
     if (!script) {
         LuaScriptResult result;
         result.error = tr("Selected Lua script is missing.");
@@ -315,7 +320,7 @@ LuaScriptResult EventController::parseIncomingPayload(
 
 void EventController::appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes)
 {
-    auto *session = m_app.sessionById(sessionId);
+    auto *session = m_dependencies.sessionById(sessionId);
     if (!session) {
         return;
     }
@@ -331,23 +336,23 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
 
         subscription.recentMessageTimestampsMs.append(nowMs);
         pruneRecentMessageTimestamps(subscription.recentMessageTimestampsMs, nowMs);
-        refreshCurrentSubscriptionFps = refreshCurrentSubscriptionFps || session == m_app.currentSessionState();
+        refreshCurrentSubscriptionFps = refreshCurrentSubscriptionFps || session == m_dependencies.currentSessionState();
     }
 
-    if (session->outputPaused && !m_app.saveMessagesWhenOutputPaused()) {
-        if (refreshCurrentSubscriptionFps && !m_app.subscriptionFpsRefreshTimer().isActive()) {
-            m_app.refreshSubscriptionsModel();
-            m_app.emitSubscriptionsChanged();
-            m_app.subscriptionFpsRefreshTimer().start();
+    if (session->outputPaused && !m_dependencies.preferencesController->saveMessagesWhenOutputPaused()) {
+        if (refreshCurrentSubscriptionFps && !(*m_dependencies.subscriptionFpsRefreshTimer).isActive()) {
+            m_dependencies.refreshSubscriptionsModel();
+            m_dependencies.emitSubscriptionsChanged();
+            (*m_dependencies.subscriptionFpsRefreshTimer).start();
         }
         return;
     }
 
-    const SubscriptionEntry *displaySubscription = m_app.subscriptionController().bestSubscriptionForTopic(*session, topic);
+    const SubscriptionEntry *displaySubscription = (*m_dependencies.subscriptionController).bestSubscriptionForTopic(*session, topic);
     const PayloadStoragePlan payloadPlan = makePayloadStoragePlan(
         topic,
         payloadBytes,
-        m_app.maxIncomingPayloadBytes());
+        m_dependencies.preferencesController->maxIncomingPayloadBytes());
     if (payloadPlan.shouldReport) {
         appendEvent(*session, QStringLiteral("Payload"), payloadPlan.reportMessage);
     }
@@ -367,7 +372,7 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
             decodedPayload);
     } else if (hasScript) {
         scriptResult.error = QStringLiteral("Lua script skipped because payload exceeds the configured size limit.");
-        scriptDisplayName = m_app.scriptName(displaySubscription->scriptId);
+        scriptDisplayName = m_dependencies.scriptController->scriptName(displaySubscription->scriptId);
     }
     const QString scriptId = hasScript ? displaySubscription->scriptId : QString();
     const QString parsedFormat = hasScript && scriptResult.success
@@ -377,7 +382,7 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
         ? scriptResult.error
         : QString();
 
-    const qint64 historyId = m_app.historyStore().enqueueMessage(
+    const qint64 historyId = (*m_dependencies.historyStore).enqueueMessage(
         sessionId,
         timestamp,
         topic,
@@ -394,19 +399,19 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
     if (historyId <= 0) {
         reportMessageStorageError(
             *session,
-            QStringLiteral("Cannot queue incoming message: %1").arg(m_app.historyStore().lastError()));
+            QStringLiteral("Cannot queue incoming message: %1").arg((*m_dependencies.historyStore).lastError()));
     } else {
         m_lastMessageStorageError.clear();
         scheduleMessageHistoryFlush();
     }
 
-    if (refreshCurrentSubscriptionFps && !m_app.subscriptionFpsRefreshTimer().isActive()) {
-        m_app.refreshSubscriptionsModel();
-        m_app.emitSubscriptionsChanged();
-        m_app.subscriptionFpsRefreshTimer().start();
+    if (refreshCurrentSubscriptionFps && !(*m_dependencies.subscriptionFpsRefreshTimer).isActive()) {
+        m_dependencies.refreshSubscriptionsModel();
+        m_dependencies.emitSubscriptionsChanged();
+        (*m_dependencies.subscriptionFpsRefreshTimer).start();
     }
 
-    if (session != m_app.currentSessionState() || session->outputPaused) {
+    if (session != m_dependencies.currentSessionState() || session->outputPaused) {
         return;
     }
 
@@ -456,55 +461,55 @@ void EventController::trimVisibleLogRows(SessionState &session)
 
 void EventController::reloadCurrentSessionHistory()
 {
-    auto *session = m_app.currentSessionState();
+    auto *session = m_dependencies.currentSessionState();
     if (!session) {
         return;
     }
     flushPendingMessageHistory();
 
-    const int pageSize = m_app.historyPageSize();
-    const QVariantList messageRows = m_app.historyStore().loadMessages(session->id, pageSize);
+    const int pageSize = m_dependencies.preferencesController->historyPageSize();
+    const QVariantList messageRows = (*m_dependencies.historyStore).loadMessages(session->id, pageSize);
     session->messageRows = EventRenderer::loadHistoryRows(
         messageRows,
         session->subscriptionFormats,
-        m_app.launchTimestamp(),
+        (*m_dependencies.launchTimestamp),
         true);
     session->oldestLoadedMessageId = EventRenderer::firstHistoryId(session->messageRows);
     session->loadedAllMessageHistory = messageRows.size() < pageSize;
-    m_app.messagesModel().setRows(session->messageRows);
+    (*m_dependencies.messagesModel).setRows(session->messageRows);
 
-    const QVariantList logRows = m_app.historyStore().loadLogs(session->id, pageSize);
+    const QVariantList logRows = (*m_dependencies.historyStore).loadLogs(session->id, pageSize);
     session->logRows = EventRenderer::loadHistoryRows(
         logRows,
         session->subscriptionFormats,
-        m_app.launchTimestamp(),
+        (*m_dependencies.launchTimestamp),
         true);
     session->oldestLoadedLogId = EventRenderer::firstHistoryId(session->logRows);
     session->loadedAllLogHistory = logRows.size() < pageSize;
-    m_app.logsModel().setRows(session->logRows);
+    (*m_dependencies.logsModel).setRows(session->logRows);
 
-    m_app.refreshScriptTestSamplesModel();
+    m_dependencies.refreshScriptTestSamplesModel();
 }
 
 void EventController::flushPendingMessageHistory()
 {
-    if (m_app.historyStore().pendingMessageCount() <= 0) {
+    if ((*m_dependencies.historyStore).pendingMessageCount() <= 0) {
         return;
     }
 
-    const QStringList flushedSessionIds = m_app.historyStore().flushPendingMessages();
-    if (flushedSessionIds.isEmpty() && !m_app.historyStore().lastError().isEmpty()) {
-        if (auto *session = m_app.currentSessionState()) {
+    const QStringList flushedSessionIds = (*m_dependencies.historyStore).flushPendingMessages();
+    if (flushedSessionIds.isEmpty() && !(*m_dependencies.historyStore).lastError().isEmpty()) {
+        if (auto *session = m_dependencies.currentSessionState()) {
             reportMessageStorageError(
                 *session,
-                QStringLiteral("Cannot save queued messages: %1").arg(m_app.historyStore().lastError()));
+                QStringLiteral("Cannot save queued messages: %1").arg((*m_dependencies.historyStore).lastError()));
         }
         return;
     }
 
-    if (m_app.messageRetentionLimit() > 0) {
+    if (m_dependencies.preferencesController->messageRetentionLimit() > 0) {
         for (const QString &flushedSessionId : flushedSessionIds) {
-            m_app.historyStore().pruneMessages(flushedSessionId, m_app.messageRetentionLimit());
+            (*m_dependencies.historyStore).pruneMessages(flushedSessionId, m_dependencies.preferencesController->messageRetentionLimit());
         }
     }
     m_lastMessageStorageError.clear();
@@ -522,7 +527,7 @@ void EventController::reportMessageStorageError(SessionState &session, const QSt
 
 void EventController::scheduleMessageHistoryFlush()
 {
-    if (m_app.historyStore().pendingMessageCount() >= kMessageHistoryFlushBatchSize) {
+    if ((*m_dependencies.historyStore).pendingMessageCount() >= kMessageHistoryFlushBatchSize) {
         flushPendingMessageHistory();
         return;
     }

@@ -11,7 +11,7 @@ class ArchitectureBoundariesTest : public QObject
 
 private slots:
     void controllersDoNotDependOnApplicationCore();
-    void controllerHeadersUseDedicatedContexts();
+    void controllerHeadersUseDedicatedDependencies();
     void applicationCoreDoesNotFriendControllers();
     void applicationCoreDoesNotImplementControllerContexts();
     void applicationCoreHeaderKeepsOnlyCompositionBoundary();
@@ -24,7 +24,7 @@ private slots:
     void applicationCoreDelegatesSessionRuntimeAndPersistence();
     void applicationCoreDelegatesExitCleanup();
     void applicationCoreDelegatesSignalBindings();
-    void applicationCoreDelegatesWorkspaceDependencyComposition();
+    void applicationCoreRemovesWorkspaceDependencyComposition();
     void applicationObjectGraphOwnsApplicationComposition();
     void qmlUsesApplicationViewModelRootOnly();
     void translationsDoNotReferenceLegacyFacade();
@@ -34,11 +34,11 @@ private slots:
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
-    void workbenchViewModelDependsOnWorkbenchCorePort();
-    void logsViewModelDependsOnLogsCorePort();
-    void scriptsViewModelDependsOnScriptsCorePort();
-    void settingsViewModelDependsOnSettingsCorePort();
-    void applicationViewModelUsesFeatureCorePortsOnly();
+    void workbenchViewModelUsesDirectDependencies();
+    void logsViewModelUsesDirectDependencies();
+    void scriptsViewModelUsesDirectDependencies();
+    void settingsViewModelUsesDirectDependencies();
+    void applicationViewModelUsesDirectDependencies();
     void workbenchViewModelDoesNotExposeLegacyCommands();
     void workbenchViewModelDoesNotExposeUnusedRawModels();
     void workbenchViewModelDoesNotForwardNonWorkbenchSignals();
@@ -90,52 +90,67 @@ void ArchitectureBoundariesTest::controllersDoNotDependOnApplicationCore()
     }
 }
 
-void ArchitectureBoundariesTest::controllerHeadersUseDedicatedContexts()
+void ArchitectureBoundariesTest::controllerHeadersUseDedicatedDependencies()
 {
-    const QMap<QString, QStringList> expectedIncludes {
+    const QMap<QString, QStringList> expectedTokens {
         {
             QStringLiteral("src/controllers/eventcontroller.h"),
             {
-                QStringLiteral("#include \"controllers/eventcontrollercontext.h\""),
-                QStringLiteral("EventControllerContext"),
+                QStringLiteral("struct Dependencies"),
+                QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
             QStringLiteral("src/controllers/mqttcontroller.h"),
             {
-                QStringLiteral("#include \"controllers/mqttcontrollercontext.h\""),
-                QStringLiteral("MqttControllerContext"),
+                QStringLiteral("struct Dependencies"),
+                QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
             QStringLiteral("src/controllers/sessioncontroller.h"),
             {
-                QStringLiteral("#include \"controllers/sessioncontrollercontext.h\""),
-                QStringLiteral("SessionControllerContext"),
+                QStringLiteral("struct Dependencies"),
+                QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
             QStringLiteral("src/controllers/subscriptioncontroller.h"),
             {
-                QStringLiteral("#include \"controllers/subscriptioncontrollercontext.h\""),
-                QStringLiteral("SubscriptionControllerContext"),
+                QStringLiteral("struct Dependencies"),
+                QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
     };
 
-    for (auto it = expectedIncludes.cbegin(); it != expectedIncludes.cend(); ++it) {
+    for (auto it = expectedTokens.cbegin(); it != expectedTokens.cend(); ++it) {
         QString source;
         QVERIFY2(readSourceFile(it.key(), source), qPrintable(QStringLiteral("Cannot read %1").arg(it.key())));
         for (const QString &token : it.value()) {
             QVERIFY2(source.contains(token),
-                qPrintable(QStringLiteral("%1 must depend on dedicated controller port %2").arg(it.key(), token)));
+                qPrintable(QStringLiteral("%1 must expose dedicated controller dependencies through %2").arg(it.key(), token)));
         }
-        QVERIFY2(!source.contains(QStringLiteral("applicationcontext.h")),
-            qPrintable(QStringLiteral("%1 must not include the aggregate applicationcontext.h").arg(it.key())));
+        QVERIFY2(!source.contains(QStringLiteral("controllercontext.h")),
+            qPrintable(QStringLiteral("%1 must not include deleted controller context headers").arg(it.key())));
+        QVERIFY2(!source.contains(QStringLiteral("#include \"app/")),
+            qPrintable(QStringLiteral("%1 must not include app-layer headers").arg(it.key())));
     }
 
     const QString aggregatePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/applicationcontext.h");
     QVERIFY2(!QFile::exists(aggregatePath), "Aggregate controller context header must be removed");
+
+    const QStringList deletedContextPaths {
+        QStringLiteral("/src/controllers/eventcontrollercontext.h"),
+        QStringLiteral("/src/controllers/mqttcontrollercontext.h"),
+        QStringLiteral("/src/controllers/sessioncontrollercontext.h"),
+        QStringLiteral("/src/controllers/subscriptioncontrollercontext.h"),
+        QStringLiteral("/src/app/applicationcontrollercontexts.h"),
+        QStringLiteral("/src/app/applicationcontrollercontexts.cpp"),
+    };
+    for (const QString &path : deletedContextPaths) {
+        QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + path),
+            qPrintable(QStringLiteral("Deleted controller context artifact must stay removed: %1").arg(path)));
+    }
 }
 
 void ArchitectureBoundariesTest::applicationCoreDoesNotFriendControllers()
@@ -154,113 +169,46 @@ void ArchitectureBoundariesTest::applicationCoreDoesNotImplementControllerContex
     QString coreHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcore.h"), coreHeader));
 
-    const QStringList forbiddenBaseClasses {
-        QStringLiteral("public SessionControllerContext"),
-        QStringLiteral("public MqttControllerContext"),
-        QStringLiteral("public EventControllerContext"),
-        QStringLiteral("public SubscriptionControllerContext"),
+    const QStringList forbiddenContextTokens {
+        QStringLiteral("SessionControllerContext"),
+        QStringLiteral("MqttControllerContext"),
+        QStringLiteral("EventControllerContext"),
+        QStringLiteral("SubscriptionControllerContext"),
+        QStringLiteral("ApplicationControllerContexts"),
     };
-    for (const QString &token : forbiddenBaseClasses) {
+    for (const QString &token : forbiddenContextTokens) {
         QVERIFY2(!coreHeader.contains(token),
-            qPrintable(QStringLiteral("ApplicationCore must compose controller contexts instead of inheriting %1").arg(token)));
+            qPrintable(QStringLiteral("ApplicationCore must not retain deleted controller context token %1").arg(token)));
     }
-    QVERIFY2(!coreHeader.contains(QStringLiteral("controllers/applicationcontext.h")),
-        "ApplicationCore must not include the aggregate controller context header directly");
     QVERIFY2(coreHeader.contains(QStringLiteral("std::unique_ptr<ApplicationCoreState> m_state")),
         "ApplicationCore must keep concrete runtime ownership behind ApplicationCoreState");
 
-    const QStringList forbiddenContextHelpers {
-        QStringLiteral("SessionState *currentSessionState"),
-        QStringLiteral("SessionState *sessionById"),
-        QStringLiteral("QString scriptName"),
-        QStringLiteral("HistoryStore &historyStore"),
-        QStringLiteral("EventStreamModel &messagesModel"),
-        QStringLiteral("SubscriptionListModel &subscriptionsModel"),
-        QStringLiteral("ScriptController &scriptController"),
-        QStringLiteral("SubscriptionController &subscriptionController"),
-        QStringLiteral("EventController &eventController"),
-        QStringLiteral("QTimer &subscriptionFpsRefreshTimer"),
-        QStringLiteral("void configureSession"),
-        QStringLiteral("void initializeSessionRuntime"),
-        QStringLiteral("void destroySessionRuntime"),
-        QStringLiteral("void connectSession"),
-        QStringLiteral("void notifyCurrentSessionViewsChanged"),
-        QStringLiteral("void notifySessionCollectionViewsChanged"),
-        QStringLiteral("void appendEvent"),
-        QStringLiteral("void appendIncomingMessage"),
-        QStringLiteral("void reloadCurrentSessionHistory"),
-        QStringLiteral("bool saveSessions"),
-        QStringLiteral("SessionState createDefaultSession"),
-        QStringLiteral("void reportStorageError"),
-        QStringLiteral("void emitSessionsChanged"),
-    };
-    for (const QString &token : forbiddenContextHelpers) {
-        QVERIFY2(!coreHeader.contains(token),
-            qPrintable(QStringLiteral("ApplicationCore must not retain controller context helper %1").arg(token)));
-    }
-
     QString coreStateSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreStateSource));
-    QVERIFY2(!coreStateSource.contains(QStringLiteral("sessionController.setCore(this)")),
-        "SessionController must not receive ApplicationCore as its context");
-    QVERIFY2(coreStateSource.contains(QStringLiteral("sessionController.setCore(&controllerContexts.session())")),
-        "SessionController must receive the session-specific controller context");
-    QVERIFY2(coreStateSource.contains(QStringLiteral("subscriptionController(&controllerContexts.subscription()")),
-        "SubscriptionController must receive the subscription-specific controller context");
-    QVERIFY2(coreStateSource.contains(QStringLiteral("mqttController(&controllerContexts.mqtt()")),
-        "MqttController must receive the MQTT-specific controller context");
-    QVERIFY2(coreStateSource.contains(QStringLiteral("eventController(&controllerContexts.event()")),
-        "EventController must receive the event-specific controller context");
+    QVERIFY2(!coreStateSource.contains(QStringLiteral("controllerContexts")),
+        "ApplicationCoreState must wire controllers directly without the deleted adapter bundle");
+    QVERIFY2(!coreStateSource.contains(QStringLiteral("setCore(")),
+        "SessionController must not retain the old setCore context hook");
 
-    QString contextsHeader;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcontrollercontexts.h"), contextsHeader));
-    const QMap<QString, QString> expectedAdapters {
-        {QStringLiteral("class ApplicationSessionControllerContextAdapter"), QStringLiteral("public SessionControllerContext")},
-        {QStringLiteral("class ApplicationMqttControllerContextAdapter"), QStringLiteral("public MqttControllerContext")},
-        {QStringLiteral("class ApplicationEventControllerContextAdapter"), QStringLiteral("public EventControllerContext")},
-        {QStringLiteral("class ApplicationSubscriptionControllerContextAdapter"), QStringLiteral("public SubscriptionControllerContext")},
+    const QStringList expectedDependencyCalls {
+        QStringLiteral("sessionController.setDependencies"),
+        QStringLiteral("mqttController.setDependencies"),
+        QStringLiteral("eventController.setDependencies"),
+        QStringLiteral("subscriptionController.setDependencies"),
     };
-    for (auto it = expectedAdapters.cbegin(); it != expectedAdapters.cend(); ++it) {
-        QVERIFY2(contextsHeader.contains(it.key()) && contextsHeader.contains(it.value()),
-            qPrintable(QStringLiteral("%1 must implement %2").arg(it.key(), it.value())));
+    for (const QString &token : expectedDependencyCalls) {
+        QVERIFY2(coreStateSource.contains(token),
+            qPrintable(QStringLiteral("ApplicationCoreState must inject dedicated controller dependencies through %1").arg(token)));
     }
-    QVERIFY2(contextsHeader.contains(QStringLiteral("class ApplicationControllerContexts")),
-        "ApplicationControllerContexts must remain a bundle rather than a controller port implementation");
-    QVERIFY2(!contextsHeader.contains(QStringLiteral("class ApplicationControllerContexts\n    : public")),
-        "ApplicationControllerContexts must not directly implement controller contexts");
-    QVERIFY2(!contextsHeader.contains(QStringLiteral("ApplicationNotifier")),
-        "ApplicationControllerContexts must not depend directly on UI notification delivery");
-    QVERIFY2(!contextsHeader.contains(QStringLiteral("ApplicationModelRefresher")),
-        "ApplicationControllerContexts must not depend directly on model refresh projection");
-    QVERIFY2(!contextsHeader.contains(QStringLiteral("struct ApplicationControllerContextDependencies")),
-        "ApplicationControllerContexts must not expose a shared dependency bag to every controller adapter");
-
-    const QStringList expectedDependencyStructs {
-        QStringLiteral("struct ApplicationSessionControllerContextDependencies"),
-        QStringLiteral("struct ApplicationMqttControllerContextDependencies"),
-        QStringLiteral("struct ApplicationEventControllerContextDependencies"),
-        QStringLiteral("struct ApplicationSubscriptionControllerContextDependencies"),
-    };
-    for (const QString &token : expectedDependencyStructs) {
-        QVERIFY2(contextsHeader.contains(token),
-            qPrintable(QStringLiteral("ApplicationControllerContexts must keep dedicated dependency struct %1").arg(token)));
-    }
-    QVERIFY2(!contextsHeader.contains(QStringLiteral("ApplicationControllerContextsDependencies *m_dependencies")),
-        "Controller context adapters must not receive the whole dependency bundle");
-
-    QString contextsSource;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcontrollercontexts.cpp"), contextsSource));
-    QVERIFY2(!contextsSource.contains(QStringLiteral("applicationnotifier.h")),
-        "ApplicationControllerContexts must delegate UI notification delivery to ApplicationViewRefreshCoordinator");
-    QVERIFY2(!contextsSource.contains(QStringLiteral("applicationmodelrefresher.h")),
-        "ApplicationControllerContexts must delegate model refresh projection to ApplicationViewRefreshCoordinator");
-    QVERIFY2(!contextsSource.contains(QStringLiteral("setRows(")),
-        "ApplicationControllerContexts must not directly mutate visible stream models");
 
     const QString oldAdapterHeaderPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcontrollercontextadapter.h");
     QVERIFY2(!QFile::exists(oldAdapterHeaderPath), "Obsolete aggregate ApplicationControllerContextAdapter header must be removed");
     const QString oldAdapterSourcePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcontrollercontextadapter.cpp");
     QVERIFY2(!QFile::exists(oldAdapterSourcePath), "Obsolete aggregate ApplicationControllerContextAdapter source must be removed");
+    const QString controllerContextsHeaderPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcontrollercontexts.h");
+    QVERIFY2(!QFile::exists(controllerContextsHeaderPath), "ApplicationControllerContexts header must stay removed");
+    const QString controllerContextsSourcePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcontrollercontexts.cpp");
+    QVERIFY2(!QFile::exists(controllerContextsSourcePath), "ApplicationControllerContexts source must stay removed");
 
     const QString eventsSourcePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcoreevents.cpp");
     QVERIFY2(!QFile::exists(eventsSourcePath), "Obsolete ApplicationCore event forwarding source file must be removed");
@@ -278,10 +226,6 @@ void ArchitectureBoundariesTest::applicationCoreHeaderKeepsOnlyCompositionBounda
 
     const QStringList allowedForwardDeclarations {
         QStringLiteral("struct ApplicationCoreState;"),
-        QStringLiteral("struct LogsWorkspaceDependencies;"),
-        QStringLiteral("struct ScriptsWorkspaceDependencies;"),
-        QStringLiteral("struct SettingsWorkspaceDependencies;"),
-        QStringLiteral("struct WorkbenchWorkspaceDependencies;"),
     };
     for (const QString &token : allowedForwardDeclarations) {
         QVERIFY2(source.contains(token),
@@ -364,10 +308,10 @@ void ArchitectureBoundariesTest::applicationCoreDoesNotOwnPlatformActions()
         }
     }
 
-    QString workspaceHeader;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/workbenchworkspace.h"), workspaceHeader));
-    QVERIFY2(workspaceHeader.contains(QStringLiteral("PlatformActions")),
-        "WorkbenchWorkspace must own workbench platform action integration");
+    QString workbenchHeader;
+    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/workbenchviewmodel.h"), workbenchHeader));
+    QVERIFY2(workbenchHeader.contains(QStringLiteral("PlatformActions")),
+        "WorkbenchViewModel must own workbench platform action integration after deleting WorkbenchWorkspace");
 
     const QString menuSourcePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcoremenus.cpp");
     QVERIFY2(!QFile::exists(menuSourcePath), "Obsolete ApplicationCore menu source file must be removed");
@@ -484,12 +428,8 @@ void ArchitectureBoundariesTest::applicationCoreDoesNotImplementWorkbenchPort()
     };
 
     for (const QString &path : workspaceFiles) {
-        QString workspaceSource;
-        QVERIFY2(readSourceFile(path, workspaceSource), qPrintable(QStringLiteral("Cannot read %1").arg(path)));
-        QVERIFY2(!workspaceSource.contains(QStringLiteral("app/applicationcore.h")),
-            qPrintable(QStringLiteral("%1 must not include the aggregate ApplicationCore header").arg(path)));
-        QVERIFY2(!workspaceSource.contains(QStringLiteral("m_core")),
-            qPrintable(QStringLiteral("%1 must use explicit dependencies instead of m_core forwarding").arg(path)));
+        QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QLatin1Char('/') + path),
+            qPrintable(QStringLiteral("Deleted Workbench workspace file must not return: %1").arg(path)));
     }
 }
 
@@ -497,33 +437,41 @@ void ArchitectureBoundariesTest::applicationCoreUsesNotifierForUiNotifications()
 {
     QString coreHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcore.h"), coreHeader));
-    QVERIFY2(!coreHeader.contains(QStringLiteral("signals:")),
-        "ApplicationCore must not expose QML/UI notification signals directly");
+    QVERIFY2(coreHeader.contains(QStringLiteral("signals:")),
+        "ApplicationCore must own UI notification signals after deleting ApplicationNotifier");
+    QVERIFY2(coreHeader.contains(QStringLiteral("void sessionsChanged()")),
+        "ApplicationCore must expose session change notifications");
+    QVERIFY2(coreHeader.contains(QStringLiteral("void logStreamRowAppended")),
+        "ApplicationCore must expose row-append notifications for stream consumers");
+    QVERIFY2(coreHeader.contains(QStringLiteral("void notifySessionsChanged()")),
+        "ApplicationCore must own session notification helpers");
 
     QString coreStateHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.h"), coreStateHeader));
-    QVERIFY2(coreStateHeader.contains(QStringLiteral("ApplicationNotifier notifier")),
-        "ApplicationCoreState must own ApplicationNotifier as the UI notification outlet");
+    QVERIFY2(coreStateHeader.contains(QStringLiteral("ApplicationCore &core")),
+        "ApplicationCoreState must keep ApplicationCore as the UI notification outlet");
+    QVERIFY2(!coreStateHeader.contains(QStringLiteral("ApplicationNotifier")),
+        "ApplicationCoreState must not keep the deleted ApplicationNotifier");
 
-    QString notifierHeader;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationnotifier.h"), notifierHeader));
-    QVERIFY2(notifierHeader.contains(QStringLiteral("signals:")),
-        "ApplicationNotifier must own the UI notification signals");
-    QVERIFY2(notifierHeader.contains(QStringLiteral("void sessionsChanged()")),
-        "ApplicationNotifier must expose session change notifications");
-    QVERIFY2(notifierHeader.contains(QStringLiteral("void logStreamRowAppended")),
-        "ApplicationNotifier must expose row-append notifications for stream consumers");
+    const QStringList deletedPaths {
+        QStringLiteral("/src/app/applicationnotifier.h"),
+        QStringLiteral("/src/app/applicationnotifier.cpp"),
+    };
+    for (const QString &path : deletedPaths) {
+        QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + path),
+            qPrintable(QStringLiteral("Deleted notifier artifact must stay removed: %1").arg(path)));
+    }
 
-    QString dependencyFactory;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationworkspacedependenciesfactory.cpp"), dependencyFactory));
-    QVERIFY2(dependencyFactory.contains(QStringLiteral("ApplicationNotifier::")),
-        "ApplicationWorkspaceDependenciesFactory must bind ViewModel/workspace callbacks to ApplicationNotifier");
-    QVERIFY2(!dependencyFactory.contains(QStringLiteral("&ApplicationCore::sessionsChanged")),
-        "Workspace dependencies must not bind to ApplicationCore UI signals");
-    QVERIFY2(!dependencyFactory.contains(QStringLiteral("&ApplicationCore::logStreamChanged")),
-        "Workspace dependencies must not bind to ApplicationCore UI signals");
-    QVERIFY2(!dependencyFactory.contains(QStringLiteral("&ApplicationCore::scriptLibraryChanged")),
-        "Workspace dependencies must not bind to ApplicationCore UI signals");
+    QString objectGraph;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationobjectgraph.cpp"), objectGraph));
+    QVERIFY2(objectGraph.contains(QStringLiteral("ApplicationCore::")),
+        "ApplicationObjectGraph direct dependencies must bind ViewModel callbacks to ApplicationCore");
+    QVERIFY2(objectGraph.contains(QStringLiteral("&ApplicationCore::currentSessionChanged")),
+        "ViewModel dependencies must bind current-session notifications to ApplicationCore UI signals");
+    QVERIFY2(objectGraph.contains(QStringLiteral("&ApplicationCore::logStreamChanged")),
+        "ViewModel dependencies must bind log-stream notifications to ApplicationCore UI signals");
+    QVERIFY2(objectGraph.contains(QStringLiteral("&ApplicationCore::scriptLibraryChanged")),
+        "ViewModel dependencies must bind script-library notifications to ApplicationCore UI signals");
 }
 
 void ArchitectureBoundariesTest::applicationCoreDelegatesModelProjection()
@@ -533,8 +481,11 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesModelProjection()
     QVERIFY2(coreStateHeader.contains(QStringLiteral("ApplicationModelRefresher modelRefresher")),
         "ApplicationCoreState must delegate list-model projection to ApplicationModelRefresher");
 
-    QString coreModels;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcoremodels.cpp"), coreModels));
+    const QString coreModelsPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcoremodels.cpp");
+    QVERIFY2(!QFile::exists(coreModelsPath), "Obsolete ApplicationCore model dependency source file must be removed");
+
+    QString coreHeader;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcore.h"), coreHeader));
     const QStringList forbiddenProjectionTokens {
         QStringLiteral("SessionListRow row"),
         QStringLiteral("SubscriptionListRow row"),
@@ -544,12 +495,12 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesModelProjection()
         QStringLiteral("ScriptStore::scriptFilePath"),
     };
     for (const QString &token : forbiddenProjectionTokens) {
-        QVERIFY2(!coreModels.contains(token),
+        QVERIFY2(!coreHeader.contains(token),
             qPrintable(QStringLiteral("ApplicationCore must not build model projection row %1").arg(token)));
     }
-    QVERIFY2(!coreModels.contains(QStringLiteral("void ApplicationCore::refreshSessionsModel")),
+    QVERIFY2(!coreHeader.contains(QStringLiteral("void ApplicationCore::refreshSessionsModel")),
         "ApplicationCore must not retain session model refresh forwarding methods");
-    QVERIFY2(!coreModels.contains(QStringLiteral("void ApplicationCore::refreshSubscriptionsModel")),
+    QVERIFY2(!coreHeader.contains(QStringLiteral("void ApplicationCore::refreshSubscriptionsModel")),
         "ApplicationCore must not retain subscription model refresh forwarding methods");
 
     QString refresher;
@@ -563,11 +514,6 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesModelProjection()
     QVERIFY2(refresher.contains(QStringLiteral("ScriptTestSampleRow sample")),
         "ApplicationModelRefresher must own script sample row projection");
 
-    QString contexts;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcontrollercontexts.cpp"), contexts));
-    QVERIFY2(!contexts.contains(QStringLiteral("modelRefresher->")),
-        "Application controller contexts must delegate view refresh orchestration");
-
     QString refreshCoordinator;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationviewrefreshcoordinator.cpp"), refreshCoordinator));
     QVERIFY2(refreshCoordinator.contains(QStringLiteral("m_dependencies.modelRefresher->refreshSessions")),
@@ -578,11 +524,10 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesModelProjection()
 
 void ArchitectureBoundariesTest::applicationCoreDelegatesSessionConfiguration()
 {
-    QString startup;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationstartup.cpp"), startup));
+    QString coreStateSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreStateSource));
 
     const QStringList forbiddenConfigTokens {
-        QStringLiteral("ApplicationSessionConfigurator::applyConfig"),
         QStringLiteral("QMqttConnectionProperties connectionProperties"),
         QStringLiteral("setAuthenticationMethod"),
         QStringLiteral("setConnectionProperties"),
@@ -590,7 +535,7 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSessionConfiguration()
         QStringLiteral("sanitizeOptionalUInt16"),
     };
     for (const QString &token : forbiddenConfigTokens) {
-        QVERIFY2(!startup.contains(token),
+        QVERIFY2(!coreStateSource.contains(token),
             qPrintable(QStringLiteral("ApplicationCore must not own session configuration detail %1").arg(token)));
     }
 
@@ -601,10 +546,8 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSessionConfiguration()
     QVERIFY2(configurator.contains(QStringLiteral("setConnectionProperties")),
         "ApplicationSessionConfigurator must apply MQTT connection properties");
 
-    QString contexts;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcontrollercontexts.cpp"), contexts));
-    QVERIFY2(contexts.contains(QStringLiteral("ApplicationSessionConfigurator::applyConfig")),
-        "Application session controller context must route session configuration to ApplicationSessionConfigurator");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("ApplicationSessionConfigurator::applyConfig")),
+        "ApplicationCoreState must route session controller configuration dependency to ApplicationSessionConfigurator");
 }
 
 void ArchitectureBoundariesTest::applicationCoreDelegatesSessionRuntimeAndPersistence()
@@ -618,8 +561,8 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSessionRuntimeAndPersis
 
     QString coreSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcore.cpp"), coreSource));
-    QVERIFY2(coreSource.contains(QStringLiteral("m_state->startup.run()")),
-        "ApplicationCore startup must delegate startup loading to ApplicationStartup");
+    QVERIFY2(coreSource.contains(QStringLiteral("m_state->runStartup()")),
+        "ApplicationCore startup must delegate startup loading to ApplicationCoreState");
     QVERIFY2(!coreSource.contains(QStringLiteral("loadSessions()")),
         "ApplicationCore must not retain session startup helpers");
     QVERIFY2(!coreSource.contains(QStringLiteral("loadScripts()")),
@@ -632,10 +575,10 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSessionRuntimeAndPersis
     QVERIFY2(!coreHeader.contains(QStringLiteral("loadScripts")),
         "ApplicationCore header must not expose startup helpers");
 
-    QString startup;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationstartup.cpp"), startup));
-    QVERIFY2(startup.contains(QStringLiteral("m_dependencies.sessionRepository->loadSessions")),
-        "ApplicationStartup must delegate persistence work to ApplicationSessionRepository");
+    QString coreStateSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreStateSource));
+    QVERIFY2(coreStateSource.contains(QStringLiteral("sessionRepository.loadSessions")),
+        "ApplicationCoreState startup must delegate persistence work to ApplicationSessionRepository");
 
     const QStringList forbiddenRuntimeTokens {
         QStringLiteral("m_sessionRuntime.initialize"),
@@ -647,8 +590,8 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSessionRuntimeAndPersis
         QStringLiteral("QUuid::createUuid"),
     };
     for (const QString &token : forbiddenRuntimeTokens) {
-        QVERIFY2(!startup.contains(token),
-            qPrintable(QStringLiteral("ApplicationStartup must not own session runtime detail %1").arg(token)));
+        QVERIFY2(!coreStateSource.contains(token),
+            qPrintable(QStringLiteral("ApplicationCoreState startup must not own session runtime detail %1").arg(token)));
     }
 
     const QStringList forbiddenPersistenceTokens {
@@ -658,9 +601,14 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSessionRuntimeAndPersis
         QStringLiteral("SessionSettingsStore::writeSessions"),
     };
     for (const QString &token : forbiddenPersistenceTokens) {
-        QVERIFY2(!startup.contains(token),
-            qPrintable(QStringLiteral("ApplicationStartup must not own session persistence detail %1").arg(token)));
+        QVERIFY2(!coreStateSource.contains(token),
+            qPrintable(QStringLiteral("ApplicationCoreState startup must not own session persistence detail %1").arg(token)));
     }
+
+    QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationstartup.h")),
+        "Deleted ApplicationStartup header must stay removed");
+    QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationstartup.cpp")),
+        "Deleted ApplicationStartup source must stay removed");
 
     const QString oldSessionsSourcePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcoresessions.cpp");
     QVERIFY2(!QFile::exists(oldSessionsSourcePath), "Obsolete ApplicationCore session startup source file must be removed");
@@ -674,14 +622,12 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSessionRuntimeAndPersis
     QVERIFY2(runtime.contains(QStringLiteral("deleteLater")),
         "ApplicationSessionRuntime must own runtime object destruction");
 
-    QString contexts;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcontrollercontexts.cpp"), contexts));
-    QVERIFY2(contexts.contains(QStringLiteral("m_dependencies->sessionRuntime->initialize")),
-        "Application session controller context must route runtime initialization to ApplicationSessionRuntime");
-    QVERIFY2(contexts.contains(QStringLiteral("m_dependencies->sessionRuntime->destroy")),
-        "Application session controller context must route runtime destruction to ApplicationSessionRuntime");
-    QVERIFY2(contexts.contains(QStringLiteral("sessionRepository.saveSessions")),
-        "Application controller contexts must route session saving to ApplicationSessionRepository");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("sessionRuntime.initialize")),
+        "ApplicationCoreState must route session controller runtime initialization to ApplicationSessionRuntime");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("sessionRuntime.destroy")),
+        "ApplicationCoreState must route session controller runtime destruction to ApplicationSessionRuntime");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("sessionRepository.saveSessions")),
+        "ApplicationCoreState must route controller session saving to ApplicationSessionRepository");
 
     QString repository;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationsessionrepository.cpp"), repository));
@@ -700,11 +646,11 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesExitCleanup()
     QVERIFY2(!coreHeader.contains(QStringLiteral("clearLogsOnExit() const")),
         "ApplicationCore must not expose exit cleanup preference helpers");
     QVERIFY2(!coreHeader.contains(QStringLiteral("applyExitCleanup")),
-        "ApplicationCore must delegate exit cleanup to ApplicationExitCleanup");
+        "ApplicationCore must delegate exit cleanup to ApplicationCoreState");
 
     QString coreSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcore.cpp"), coreSource));
-    QVERIFY2(coreSource.contains(QStringLiteral("m_state->exitCleanup.apply()")),
+    QVERIFY2(coreSource.contains(QStringLiteral("m_state->applyExitCleanup()")),
         "ApplicationCore destructor must delegate exit cleanup");
 
     const QStringList forbiddenCoreTokens {
@@ -723,29 +669,35 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesExitCleanup()
 
     QString coreStateHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.h"), coreStateHeader));
-    QVERIFY2(coreStateHeader.contains(QStringLiteral("ApplicationExitCleanup exitCleanup")),
-        "ApplicationCoreState must own the exit cleanup collaborator");
+    QVERIFY2(coreStateHeader.contains(QStringLiteral("void applyExitCleanup()")),
+        "ApplicationCoreState must own the exit cleanup entry point");
+    QVERIFY2(!coreStateHeader.contains(QStringLiteral("ApplicationExitCleanup")),
+        "ApplicationCoreState must not keep the deleted exit cleanup collaborator");
 
-    QString cleanupSource;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationexitcleanup.cpp"), cleanupSource));
-    QVERIFY2(cleanupSource.contains(QStringLiteral("flushPendingMessageHistory")),
-        "ApplicationExitCleanup must flush pending history before cleanup");
-    QVERIFY2(cleanupSource.contains(QStringLiteral("clearAllMessages")),
-        "ApplicationExitCleanup must own message cleanup policy");
-    QVERIFY2(cleanupSource.contains(QStringLiteral("clearAllLogs")),
-        "ApplicationExitCleanup must own log cleanup policy");
-    QVERIFY2(cleanupSource.contains(QStringLiteral("clearMessagesOnExit")),
-        "ApplicationExitCleanup must read exit cleanup preferences");
-    QVERIFY2(cleanupSource.contains(QStringLiteral("clearLogsOnExit")),
-        "ApplicationExitCleanup must read exit cleanup preferences");
+    QString coreStateSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreStateSource));
+    QVERIFY2(coreStateSource.contains(QStringLiteral("flushPendingMessageHistory")),
+        "ApplicationCoreState exit cleanup must flush pending history before cleanup");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("clearAllMessages")),
+        "ApplicationCoreState exit cleanup must own message cleanup policy");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("clearAllLogs")),
+        "ApplicationCoreState exit cleanup must own log cleanup policy");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("clearMessagesOnExit")),
+        "ApplicationCoreState exit cleanup must read exit cleanup preferences");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("clearLogsOnExit")),
+        "ApplicationCoreState exit cleanup must read exit cleanup preferences");
+    QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationexitcleanup.h")),
+        "Deleted ApplicationExitCleanup header must stay removed");
+    QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationexitcleanup.cpp")),
+        "Deleted ApplicationExitCleanup source must stay removed");
 }
 
 void ArchitectureBoundariesTest::applicationCoreDelegatesSignalBindings()
 {
     QString coreSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcore.cpp"), coreSource));
-    QVERIFY2(coreSource.contains(QStringLiteral("m_state->signalBindings.install(this)")),
-        "ApplicationCore constructor must install signal bindings through ApplicationSignalBindings");
+    QVERIFY2(coreSource.contains(QStringLiteral("m_state->installSignalBindings()")),
+        "ApplicationCore constructor must delegate signal binding installation to ApplicationCoreState");
 
     const QStringList forbiddenCoreTokens {
         QStringLiteral("connect(&m_state->scriptController"),
@@ -754,8 +706,6 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSignalBindings()
         QStringLiteral("connect(&m_state->preferencesController"),
         QStringLiteral("subscriptionFpsRefreshTimer.setInterval"),
         QStringLiteral("&QTimer::timeout"),
-        QStringLiteral("notifyThemeModeChanged"),
-        QStringLiteral("notifyHistoryPageSizeChanged"),
     };
     for (const QString &token : forbiddenCoreTokens) {
         QVERIFY2(!coreSource.contains(token),
@@ -764,23 +714,31 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSignalBindings()
 
     QString coreStateHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.h"), coreStateHeader));
-    QVERIFY2(coreStateHeader.contains(QStringLiteral("ApplicationSignalBindings signalBindings")),
-        "ApplicationCoreState must own the signal binding collaborator");
+    QVERIFY2(coreStateHeader.contains(QStringLiteral("void installSignalBindings()")),
+        "ApplicationCoreState must own the signal binding entry point");
+    QVERIFY2(!coreStateHeader.contains(QStringLiteral("ApplicationSignalBindings")),
+        "ApplicationCoreState must not keep the deleted signal binding collaborator");
 
-    QString bindingsSource;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationsignalbindings.cpp"), bindingsSource));
-    QVERIFY2(bindingsSource.contains(QStringLiteral("ScriptController::storageError")),
-        "ApplicationSignalBindings must bind script storage errors");
-    QVERIFY2(bindingsSource.contains(QStringLiteral("ThemeController::modeChanged")),
-        "ApplicationSignalBindings must bind theme notifications");
-    QVERIFY2(bindingsSource.contains(QStringLiteral("LanguageController::languageChanged")),
-        "ApplicationSignalBindings must bind language refresh notifications");
-    QVERIFY2(bindingsSource.contains(QStringLiteral("PreferencesController::historyPageSizeChanged")),
-        "ApplicationSignalBindings must bind history page-size notifications");
-    QVERIFY2(bindingsSource.contains(QStringLiteral("subscriptionFpsRefreshTimer->setInterval")),
-        "ApplicationSignalBindings must configure subscription FPS refresh timer");
-    QVERIFY2(bindingsSource.contains(QStringLiteral("SubscriptionController::refreshSubscriptionFps")),
-        "ApplicationSignalBindings must connect subscription FPS refresh timer");
+    QString coreStateSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreStateSource));
+    QVERIFY2(coreStateSource.contains(QStringLiteral("ScriptController::storageError")),
+        "ApplicationCoreState must bind script storage errors");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("ThemeController::modeChanged")),
+        "ApplicationCoreState must bind theme notifications");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("ApplicationCore::notifyThemeModeChanged")),
+        "ApplicationCoreState must route theme notifications through ApplicationCore");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("LanguageController::languageChanged")),
+        "ApplicationCoreState must bind language refresh notifications");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("PreferencesController::historyPageSizeChanged")),
+        "ApplicationCoreState must bind history page-size notifications");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("subscriptionFpsRefreshTimer.setInterval")),
+        "ApplicationCoreState must configure subscription FPS refresh timer");
+    QVERIFY2(coreStateSource.contains(QStringLiteral("SubscriptionController::refreshSubscriptionFps")),
+        "ApplicationCoreState must connect subscription FPS refresh timer");
+    QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationsignalbindings.h")),
+        "Deleted ApplicationSignalBindings header must stay removed");
+    QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationsignalbindings.cpp")),
+        "Deleted ApplicationSignalBindings source must stay removed");
 
     QString refreshCoordinator;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationviewrefreshcoordinator.cpp"), refreshCoordinator));
@@ -790,79 +748,35 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSignalBindings()
         "ApplicationViewRefreshCoordinator must own history page-size refresh orchestration");
 }
 
-void ArchitectureBoundariesTest::applicationCoreDelegatesWorkspaceDependencyComposition()
+void ArchitectureBoundariesTest::applicationCoreRemovesWorkspaceDependencyComposition()
 {
     QString coreStateHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.h"), coreStateHeader));
-    QVERIFY2(coreStateHeader.contains(QStringLiteral("ApplicationWorkspaceDependenciesFactory workspaceDependencies")),
-        "ApplicationCoreState must own the workspace dependency factory");
-
-    const QMap<QString, QStringList> coreDependencySources {
-        {
-            QStringLiteral("src/app/applicationcoremodels.cpp"),
-            {
-                QStringLiteral("m_state->workspaceDependencies.workbench()"),
-                QStringLiteral("m_state->workspaceDependencies.logs()"),
-                QStringLiteral("m_state->workspaceDependencies.scripts()"),
-            },
-        },
-        {
-            QStringLiteral("src/app/applicationcorepreferences.cpp"),
-            {
-                QStringLiteral("m_state->workspaceDependencies.settings()"),
-            },
-        },
-    };
-
-    for (auto it = coreDependencySources.cbegin(); it != coreDependencySources.cend(); ++it) {
-        QString source;
-        QVERIFY2(readSourceFile(it.key(), source), qPrintable(QStringLiteral("Cannot read %1").arg(it.key())));
-        for (const QString &token : it.value()) {
-            QVERIFY2(source.contains(token),
-                qPrintable(QStringLiteral("%1 must delegate workspace dependency composition through %2").arg(it.key(), token)));
-        }
-        QVERIFY2(!source.contains(QStringLiteral("QObject::connect")),
-            qPrintable(QStringLiteral("%1 must not own workspace notifier binding detail").arg(it.key())));
-        QVERIFY2(!source.contains(QStringLiteral("ApplicationNotifier::")),
-            qPrintable(QStringLiteral("%1 must not bind directly to ApplicationNotifier").arg(it.key())));
-    }
-
-    QString factoryHeader;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationworkspacedependenciesfactory.h"), factoryHeader));
-    QVERIFY2(factoryHeader.contains(QStringLiteral("class ApplicationWorkspaceDependenciesFactory")),
-        "ApplicationWorkspaceDependenciesFactory must be the dedicated workspace dependency composition boundary");
-    QVERIFY2(!factoryHeader.contains(QStringLiteral("#include \"controllers/")),
-        "ApplicationWorkspaceDependenciesFactory header must not expose controller details");
-    QVERIFY2(!factoryHeader.contains(QStringLiteral("#include \"models/")),
-        "ApplicationWorkspaceDependenciesFactory header must not expose model details");
-
-    QString factorySource;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationworkspacedependenciesfactory.cpp"), factorySource));
-    const QStringList expectedFactoryMethods {
-        QStringLiteral("ApplicationWorkspaceDependenciesFactory::workbench"),
-        QStringLiteral("ApplicationWorkspaceDependenciesFactory::logs"),
-        QStringLiteral("ApplicationWorkspaceDependenciesFactory::scripts"),
-        QStringLiteral("ApplicationWorkspaceDependenciesFactory::settings"),
-    };
-    for (const QString &token : expectedFactoryMethods) {
-        QVERIFY2(factorySource.contains(token),
-            qPrintable(QStringLiteral("Workspace dependency factory must implement %1").arg(token)));
-    }
+    QVERIFY2(!coreStateHeader.contains(QStringLiteral("ApplicationWorkspaceDependenciesFactory")),
+        "ApplicationCoreState must not keep the deleted workspace dependency factory");
 
     QString coreHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcore.h"), coreHeader));
-    const int privateIndex = coreHeader.indexOf(QStringLiteral("private:"));
-    QVERIFY2(privateIndex > 0, "ApplicationCore header must keep workspace dependency methods private");
-    const QString publicSurface = coreHeader.left(privateIndex);
-    const QStringList dependencyMethods {
+    const QStringList deletedMethods {
         QStringLiteral("workbenchDependencies()"),
         QStringLiteral("logsWorkspaceDependencies()"),
         QStringLiteral("scriptsWorkspaceDependencies()"),
         QStringLiteral("settingsWorkspaceDependencies()"),
     };
-    for (const QString &token : dependencyMethods) {
-        QVERIFY2(!publicSurface.contains(token),
-            qPrintable(QStringLiteral("ApplicationCore must not expose workspace dependency factory method %1 publicly").arg(token)));
+    for (const QString &token : deletedMethods) {
+        QVERIFY2(!coreHeader.contains(token),
+            qPrintable(QStringLiteral("ApplicationCore must not keep deleted workspace dependency method %1").arg(token)));
+    }
+
+    const QStringList deletedPaths {
+        QStringLiteral("/src/app/applicationworkspacedependenciesfactory.h"),
+        QStringLiteral("/src/app/applicationworkspacedependenciesfactory.cpp"),
+        QStringLiteral("/src/app/applicationcoremodels.cpp"),
+        QStringLiteral("/src/app/applicationcorepreferences.cpp"),
+    };
+    for (const QString &path : deletedPaths) {
+        QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + path),
+            qPrintable(QStringLiteral("Deleted workspace composition artifact must stay removed: %1").arg(path)));
     }
 }
 
@@ -874,27 +788,35 @@ void ArchitectureBoundariesTest::applicationObjectGraphOwnsApplicationCompositio
         "ApplicationObjectGraph must own application-level object composition");
     QVERIFY2(graphHeader.contains(QStringLiteral("ApplicationCore m_core")),
         "ApplicationObjectGraph must own ApplicationCore");
-    QVERIFY2(graphHeader.contains(QStringLiteral("WorkbenchWorkspace m_workbenchWorkspace")),
-        "ApplicationObjectGraph must own WorkbenchWorkspace");
+    QVERIFY2(!graphHeader.contains(QStringLiteral("WorkbenchWorkspace")),
+        "ApplicationObjectGraph must not keep the deleted WorkbenchWorkspace");
+    QVERIFY2(!graphHeader.contains(QStringLiteral("LogsWorkspace")),
+        "ApplicationObjectGraph must not keep the deleted LogsWorkspace");
+    QVERIFY2(!graphHeader.contains(QStringLiteral("ScriptsWorkspace")),
+        "ApplicationObjectGraph must not keep the deleted ScriptsWorkspace");
+    QVERIFY2(!graphHeader.contains(QStringLiteral("SettingsWorkspace")),
+        "ApplicationObjectGraph must not keep the deleted SettingsWorkspace");
     QVERIFY2(graphHeader.contains(QStringLiteral("ApplicationViewModel m_viewModel")),
         "ApplicationObjectGraph must own ApplicationViewModel");
 
     QString graphSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationobjectgraph.cpp"), graphSource));
-    QVERIFY2(graphSource.contains(QStringLiteral("m_core.workbenchDependencies()")),
-        "ApplicationObjectGraph must compose WorkbenchWorkspace from ApplicationCore dependencies");
-    QVERIFY2(graphSource.contains(QStringLiteral("&m_logsWorkspace")),
-        "ApplicationObjectGraph must pass LogsWorkspace as the LogsCorePort");
-    QVERIFY2(!graphSource.contains(QStringLiteral("m_logsWorkspace.viewModelDependencies()")),
-        "ApplicationObjectGraph must not compose Logs through a ViewModel dependency bag");
-    QVERIFY2(graphSource.contains(QStringLiteral("&m_scriptsWorkspace")),
-        "ApplicationObjectGraph must pass ScriptsWorkspace as the ScriptsCorePort");
-    QVERIFY2(!graphSource.contains(QStringLiteral("m_scriptsWorkspace.viewModelDependencies()")),
-        "ApplicationObjectGraph must not compose Scripts through a ViewModel dependency bag");
-    QVERIFY2(graphSource.contains(QStringLiteral("&m_settingsWorkspace")),
-        "ApplicationObjectGraph must pass SettingsWorkspace as the SettingsCorePort");
-    QVERIFY2(!graphSource.contains(QStringLiteral("m_settingsWorkspace.viewModelDependencies()")),
-        "ApplicationObjectGraph must not compose Settings through a ViewModel dependency bag");
+    QVERIFY2(graphSource.contains(QStringLiteral("workbenchDependencies(*m_core.m_state)")),
+        "ApplicationObjectGraph must compose WorkbenchViewModel direct dependencies");
+    QVERIFY2(graphSource.contains(QStringLiteral("logsDependencies(*m_core.m_state)")),
+        "ApplicationObjectGraph must compose LogsViewModel direct dependencies");
+    QVERIFY2(graphSource.contains(QStringLiteral("scriptsDependencies(*m_core.m_state)")),
+        "ApplicationObjectGraph must compose ScriptsViewModel direct dependencies");
+    QVERIFY2(graphSource.contains(QStringLiteral("settingsDependencies(*m_core.m_state)")),
+        "ApplicationObjectGraph must compose SettingsViewModel direct dependencies");
+    QVERIFY2(!graphSource.contains(QStringLiteral("&m_logsWorkspace")),
+        "ApplicationObjectGraph must not pass the deleted LogsWorkspace");
+    QVERIFY2(!graphSource.contains(QStringLiteral("&m_scriptsWorkspace")),
+        "ApplicationObjectGraph must not pass the deleted ScriptsWorkspace");
+    QVERIFY2(!graphSource.contains(QStringLiteral("&m_workbenchWorkspace")),
+        "ApplicationObjectGraph must not pass the deleted WorkbenchWorkspace");
+    QVERIFY2(!graphSource.contains(QStringLiteral("&m_settingsWorkspace")),
+        "ApplicationObjectGraph must not pass the deleted SettingsWorkspace");
 }
 
 void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()
@@ -1138,7 +1060,7 @@ void ArchitectureBoundariesTest::workbenchViewsUseIntentCommands()
     }
 }
 
-void ArchitectureBoundariesTest::workbenchViewModelDependsOnWorkbenchCorePort()
+void ArchitectureBoundariesTest::workbenchViewModelUsesDirectDependencies()
 {
     const QStringList files {
         QStringLiteral("src/viewmodels/workbenchviewmodel.h"),
@@ -1149,118 +1071,189 @@ void ArchitectureBoundariesTest::workbenchViewModelDependsOnWorkbenchCorePort()
         QString source;
         QVERIFY2(readSourceFile(path, source), qPrintable(QStringLiteral("Cannot read %1").arg(path)));
         QVERIFY2(!source.contains(QStringLiteral("ApplicationCore")),
-            qPrintable(QStringLiteral("%1 must depend on WorkbenchCorePort, not ApplicationCore").arg(path)));
+            qPrintable(QStringLiteral("%1 must depend on direct dependencies, not ApplicationCore").arg(path)));
         QVERIFY2(!source.contains(QStringLiteral("app/applicationcore.h")),
             qPrintable(QStringLiteral("%1 must not include the aggregate ApplicationCore header").arg(path)));
+        QVERIFY2(!source.contains(QStringLiteral("WorkbenchCorePort")),
+            qPrintable(QStringLiteral("%1 must not depend on the deleted WorkbenchCorePort").arg(path)));
     }
 
+    QString header;
+    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/workbenchviewmodel.h"), header));
+    QVERIFY2(header.contains(QStringLiteral("struct Dependencies")),
+        "WorkbenchViewModel must expose a direct dependency struct");
+    QVERIFY2(header.contains(QStringLiteral("SessionController *sessionController")),
+        "WorkbenchViewModel must receive session controller directly");
+    QVERIFY2(header.contains(QStringLiteral("MqttController *mqttController")),
+        "WorkbenchViewModel must receive MQTT controller directly");
+    QVERIFY2(header.contains(QStringLiteral("SubscriptionController *subscriptionController")),
+        "WorkbenchViewModel must receive subscription controller directly");
+    QVERIFY2(header.contains(QStringLiteral("EventController *eventController")),
+        "WorkbenchViewModel must receive event controller directly");
+    QVERIFY2(header.contains(QStringLiteral("SessionListModel *sessions")),
+        "WorkbenchViewModel must receive session model directly");
+    QVERIFY2(header.contains(QStringLiteral("SubscriptionFilterModel *filteredSubscriptions")),
+        "WorkbenchViewModel must receive filtered subscription model directly");
+    QVERIFY2(header.contains(QStringLiteral("EventStreamModel *messages")),
+        "WorkbenchViewModel must receive message model directly");
+    QVERIFY2(header.contains(QStringLiteral("ScriptLibraryModel *scripts")),
+        "WorkbenchViewModel must receive script model directly");
+
     QString source;
-    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/workbenchviewmodel.h"), source));
-    QVERIFY2(source.contains(QStringLiteral("WorkbenchCorePort")),
-        "WorkbenchViewModel must take the narrow WorkbenchCorePort dependency");
+    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/workbenchviewmodel.cpp"), source));
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.bindCurrentSessionChanged")),
+        "WorkbenchViewModel must bind workbench notifications through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.sessionController")),
+        "WorkbenchViewModel must route session commands through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.mqttController")),
+        "WorkbenchViewModel must route MQTT commands through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.subscriptionController")),
+        "WorkbenchViewModel must route subscription commands through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.eventController")),
+        "WorkbenchViewModel must route event commands through direct dependencies");
+
+    const QStringList deletedPaths {
+        QStringLiteral("/src/viewmodels/workbenchcoreport.h"),
+        QStringLiteral("/src/app/workbenchworkspace.h"),
+        QStringLiteral("/src/app/workbenchworkspace.cpp"),
+        QStringLiteral("/src/app/workbenchworkspacedependencies.h"),
+    };
+    for (const QString &path : deletedPaths) {
+        QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + path),
+            qPrintable(QStringLiteral("Obsolete workbench abstraction must stay removed: %1").arg(path)));
+    }
 }
 
-void ArchitectureBoundariesTest::logsViewModelDependsOnLogsCorePort()
+void ArchitectureBoundariesTest::logsViewModelUsesDirectDependencies()
 {
     QString header;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/logsviewmodel.h"), header));
-    QVERIFY2(header.contains(QStringLiteral("class LogsCorePort")),
-        "LogsViewModel must forward declare LogsCorePort");
-    QVERIFY2(header.contains(QStringLiteral("explicit LogsViewModel(LogsCorePort *core")),
-        "LogsViewModel must receive the LogsCorePort directly");
-    QVERIFY2(header.contains(QStringLiteral("LogsCorePort *m_core")),
-        "LogsViewModel must hold the LogsCorePort instead of a dependency bag");
-    QVERIFY2(!header.contains(QStringLiteral("LogsViewModelDependencies")),
-        "LogsViewModel must not depend on LogsViewModelDependencies");
+    QVERIFY2(header.contains(QStringLiteral("struct Dependencies")),
+        "LogsViewModel must expose a small direct dependency struct");
+    QVERIFY2(header.contains(QStringLiteral("EventStreamModel *logs")),
+        "LogsViewModel must receive the log model directly");
+    QVERIFY2(header.contains(QStringLiteral("std::function<void()> clearCurrentLogs")),
+        "LogsViewModel must receive clear command dependency directly");
+    QVERIFY2(header.contains(QStringLiteral("std::function<int()> loadOlderCurrentSessionLogs")),
+        "LogsViewModel must receive history loading command dependency directly");
+    QVERIFY2(!header.contains(QStringLiteral("LogsCorePort")),
+        "LogsViewModel must not depend on the deleted LogsCorePort");
 
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/logsviewmodel.cpp"), source));
-    QVERIFY2(source.contains(QStringLiteral("m_core->bindLogsSignals")),
-        "LogsViewModel must bind to LogsCorePort signals");
-    QVERIFY2(source.contains(QStringLiteral("m_core->clearCurrentLogs()")),
-        "LogsViewModel must route clear through LogsCorePort");
-    QVERIFY2(source.contains(QStringLiteral("m_core->loadOlderCurrentSessionLogs()")),
-        "LogsViewModel must route history loading through LogsCorePort");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.bindLogStreamChanged")),
+        "LogsViewModel must bind log stream changes through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.clearCurrentLogs()")),
+        "LogsViewModel must route clear through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.loadOlderCurrentSessionLogs()")),
+        "LogsViewModel must route history loading through direct dependencies");
+    QVERIFY2(!source.contains(QStringLiteral("m_core")),
+        "LogsViewModel must not retain the old CorePort member");
 
-    QString workspaceHeader;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/logsworkspace.h"), workspaceHeader));
-    QVERIFY2(workspaceHeader.contains(QStringLiteral("public LogsCorePort")),
-        "LogsWorkspace must implement LogsCorePort");
-
-    const QString oldDependenciesPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/viewmodels/logsviewmodeldependencies.h");
-    QVERIFY2(!QFile::exists(oldDependenciesPath), "Obsolete LogsViewModelDependencies header must be removed");
+    const QStringList deletedPaths {
+        QStringLiteral("/src/viewmodels/logscoreport.h"),
+        QStringLiteral("/src/app/logsworkspace.h"),
+        QStringLiteral("/src/app/logsworkspace.cpp"),
+    };
+    for (const QString &path : deletedPaths) {
+        QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + path),
+            qPrintable(QStringLiteral("Obsolete logs abstraction must stay removed: %1").arg(path)));
+    }
 }
 
-void ArchitectureBoundariesTest::scriptsViewModelDependsOnScriptsCorePort()
+void ArchitectureBoundariesTest::scriptsViewModelUsesDirectDependencies()
 {
     QString header;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/scriptsviewmodel.h"), header));
-    QVERIFY2(header.contains(QStringLiteral("class ScriptsCorePort")),
-        "ScriptsViewModel must forward declare ScriptsCorePort");
-    QVERIFY2(header.contains(QStringLiteral("explicit ScriptsViewModel(ScriptsCorePort *core")),
-        "ScriptsViewModel must receive the ScriptsCorePort directly");
-    QVERIFY2(header.contains(QStringLiteral("ScriptsCorePort *m_core")),
-        "ScriptsViewModel must hold the ScriptsCorePort instead of a dependency bag");
-    QVERIFY2(!header.contains(QStringLiteral("ScriptsViewModelDependencies")),
-        "ScriptsViewModel must not depend on ScriptsViewModelDependencies");
+    QVERIFY2(header.contains(QStringLiteral("struct Dependencies")),
+        "ScriptsViewModel must expose a small direct dependency struct");
+    QVERIFY2(header.contains(QStringLiteral("ScriptLibraryModel *scripts")),
+        "ScriptsViewModel must receive the script model directly");
+    QVERIFY2(header.contains(QStringLiteral("std::function<QString(")),
+        "ScriptsViewModel must receive script save command dependency directly");
+    QVERIFY2(!header.contains(QStringLiteral("ScriptsCorePort")),
+        "ScriptsViewModel must not depend on the deleted ScriptsCorePort");
 
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/scriptsviewmodel.cpp"), source));
-    QVERIFY2(source.contains(QStringLiteral("m_core->bindScriptsSignals")),
-        "ScriptsViewModel must bind to ScriptsCorePort signals");
-    QVERIFY2(source.contains(QStringLiteral("m_core->upsertScript")),
-        "ScriptsViewModel must save through ScriptsCorePort");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.bindScriptLibraryChanged")),
+        "ScriptsViewModel must bind script library changes through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.upsertScript")),
+        "ScriptsViewModel must save through direct dependencies");
+    QVERIFY2(!source.contains(QStringLiteral("m_core")),
+        "ScriptsViewModel must not retain the old CorePort member");
 
-    QString workspaceHeader;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/scriptsworkspace.h"), workspaceHeader));
-    QVERIFY2(workspaceHeader.contains(QStringLiteral("public ScriptsCorePort")),
-        "ScriptsWorkspace must implement ScriptsCorePort");
-
-    const QString oldDependenciesPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/viewmodels/scriptsviewmodeldependencies.h");
-    QVERIFY2(!QFile::exists(oldDependenciesPath), "Obsolete ScriptsViewModelDependencies header must be removed");
+    const QStringList deletedPaths {
+        QStringLiteral("/src/viewmodels/scriptscoreport.h"),
+        QStringLiteral("/src/app/scriptsworkspace.h"),
+        QStringLiteral("/src/app/scriptsworkspace.cpp"),
+    };
+    for (const QString &path : deletedPaths) {
+        QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + path),
+            qPrintable(QStringLiteral("Obsolete scripts abstraction must stay removed: %1").arg(path)));
+    }
 }
 
-void ArchitectureBoundariesTest::settingsViewModelDependsOnSettingsCorePort()
+void ArchitectureBoundariesTest::settingsViewModelUsesDirectDependencies()
 {
     QString header;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/settingsviewmodel.h"), header));
-    QVERIFY2(header.contains(QStringLiteral("class SettingsCorePort")),
-        "SettingsViewModel must forward declare SettingsCorePort");
-    QVERIFY2(header.contains(QStringLiteral("explicit SettingsViewModel(SettingsCorePort *core")),
-        "SettingsViewModel must receive the SettingsCorePort directly");
-    QVERIFY2(header.contains(QStringLiteral("SettingsCorePort *m_core")),
-        "SettingsViewModel must hold the SettingsCorePort instead of a dependency bag");
+    QVERIFY2(header.contains(QStringLiteral("struct Dependencies")),
+        "SettingsViewModel must expose a direct dependency struct");
+    QVERIFY2(header.contains(QStringLiteral("ThemeController *themeController")),
+        "SettingsViewModel must receive theme controller directly");
+    QVERIFY2(header.contains(QStringLiteral("LanguageController *languageController")),
+        "SettingsViewModel must receive language controller directly");
+    QVERIFY2(header.contains(QStringLiteral("PreferencesController *preferencesController")),
+        "SettingsViewModel must receive preferences controller directly");
+    QVERIFY2(header.contains(QStringLiteral("HistoryStore *historyStore")),
+        "SettingsViewModel must receive history store directly");
+    QVERIFY2(header.contains(QStringLiteral("EventStreamModel *messages")),
+        "SettingsViewModel must receive message stream model directly");
+    QVERIFY2(header.contains(QStringLiteral("EventStreamModel *logs")),
+        "SettingsViewModel must receive log stream model directly");
+    QVERIFY2(!header.contains(QStringLiteral("SettingsCorePort")),
+        "SettingsViewModel must not depend on the deleted SettingsCorePort");
     QVERIFY2(!header.contains(QStringLiteral("SettingsViewModelDependencies")),
         "SettingsViewModel must not depend on SettingsViewModelDependencies");
 
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/settingsviewmodel.cpp"), source));
-    QVERIFY2(source.contains(QStringLiteral("m_core->bindSettingsSignals")),
-        "SettingsViewModel must bind to SettingsCorePort signals");
-    QVERIFY2(source.contains(QStringLiteral("m_core->setThemeMode")),
-        "SettingsViewModel must route setting writes through SettingsCorePort");
-    QVERIFY2(source.contains(QStringLiteral("m_core->clearAllHistory")),
-        "SettingsViewModel must route cleanup commands through SettingsCorePort");
-
-    QString workspaceHeader;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/settingsworkspace.h"), workspaceHeader));
-    QVERIFY2(workspaceHeader.contains(QStringLiteral("public SettingsCorePort")),
-        "SettingsWorkspace must implement SettingsCorePort");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.bindThemeModeChanged")),
+        "SettingsViewModel must bind settings notifications through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.themeController->setMode")),
+        "SettingsViewModel must route theme writes through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.preferencesController->setMessageRetentionLimit")),
+        "SettingsViewModel must route preference writes through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_dependencies.historyStore->clearAllMessages")),
+        "SettingsViewModel must route cleanup commands through direct dependencies");
+    QVERIFY2(!source.contains(QStringLiteral("m_core")),
+        "SettingsViewModel must not retain the old CorePort member");
 
     const QString oldDependenciesPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/viewmodels/settingsviewmodeldependencies.h");
     QVERIFY2(!QFile::exists(oldDependenciesPath), "Obsolete SettingsViewModelDependencies header must be removed");
+
+    const QStringList deletedPaths {
+        QStringLiteral("/src/viewmodels/settingscoreport.h"),
+        QStringLiteral("/src/app/settingsworkspace.h"),
+        QStringLiteral("/src/app/settingsworkspace.cpp"),
+    };
+    for (const QString &path : deletedPaths) {
+        QVERIFY2(!QFile::exists(QStringLiteral(MQTT_PLUS_SOURCE_DIR) + path),
+            qPrintable(QStringLiteral("Obsolete settings abstraction must stay removed: %1").arg(path)));
+    }
 }
 
-void ArchitectureBoundariesTest::applicationViewModelUsesFeatureCorePortsOnly()
+void ArchitectureBoundariesTest::applicationViewModelUsesDirectDependencies()
 {
     QString header;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/applicationviewmodel.h"), header));
 
     const QStringList expectedPorts {
-        QStringLiteral("WorkbenchCorePort *workbenchCore"),
-        QStringLiteral("LogsCorePort *logsCore"),
-        QStringLiteral("ScriptsCorePort *scriptsCore"),
-        QStringLiteral("SettingsCorePort *settingsCore"),
+        QStringLiteral("const WorkbenchViewModel::Dependencies &workbenchDependencies"),
+        QStringLiteral("const LogsViewModel::Dependencies &logsDependencies"),
+        QStringLiteral("const ScriptsViewModel::Dependencies &scriptsDependencies"),
+        QStringLiteral("const SettingsViewModel::Dependencies &settingsDependencies"),
     };
     for (const QString &token : expectedPorts) {
         QVERIFY2(header.contains(token),
@@ -1268,8 +1261,10 @@ void ArchitectureBoundariesTest::applicationViewModelUsesFeatureCorePortsOnly()
     }
 
     const QStringList forbiddenViewModelDependencies {
-        QStringLiteral("LogsViewModelDependencies"),
-        QStringLiteral("ScriptsViewModelDependencies"),
+        QStringLiteral("WorkbenchCorePort *workbenchCore"),
+        QStringLiteral("LogsCorePort *logsCore"),
+        QStringLiteral("ScriptsCorePort *scriptsCore"),
+        QStringLiteral("SettingsCorePort *settingsCore"),
         QStringLiteral("SettingsViewModelDependencies"),
     };
     for (const QString &token : forbiddenViewModelDependencies) {
@@ -1279,14 +1274,14 @@ void ArchitectureBoundariesTest::applicationViewModelUsesFeatureCorePortsOnly()
 
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/applicationviewmodel.cpp"), source));
-    QVERIFY2(source.contains(QStringLiteral("m_workbench(workbenchCore, this)")),
-        "ApplicationViewModel must wire WorkbenchViewModel from WorkbenchCorePort");
-    QVERIFY2(source.contains(QStringLiteral("m_logs(logsCore, this)")),
-        "ApplicationViewModel must wire LogsViewModel from LogsCorePort");
-    QVERIFY2(source.contains(QStringLiteral("m_scripts(scriptsCore, this)")),
-        "ApplicationViewModel must wire ScriptsViewModel from ScriptsCorePort");
-    QVERIFY2(source.contains(QStringLiteral("m_settings(settingsCore, this)")),
-        "ApplicationViewModel must wire SettingsViewModel from SettingsCorePort");
+    QVERIFY2(source.contains(QStringLiteral("m_workbench(workbenchDependencies, this)")),
+        "ApplicationViewModel must wire WorkbenchViewModel from direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_logs(logsDependencies, this)")),
+        "ApplicationViewModel must wire LogsViewModel from direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_scripts(scriptsDependencies, this)")),
+        "ApplicationViewModel must wire ScriptsViewModel from direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_settings(settingsDependencies, this)")),
+        "ApplicationViewModel must wire SettingsViewModel from direct dependencies");
 
     const QStringList removedDependencyHeaders {
         QStringLiteral("/src/viewmodels/logsviewmodeldependencies.h"),
@@ -1383,7 +1378,7 @@ void ArchitectureBoundariesTest::featureViewModelsDoNotDependOnApplicationCore()
         QVERIFY2(!source.contains(QStringLiteral("ApplicationCore")),
             qPrintable(QStringLiteral("%1 must depend on narrow ViewModel dependencies, not ApplicationCore").arg(path)));
         QVERIFY2(!source.contains(QStringLiteral("ViewModelDependencies")),
-            qPrintable(QStringLiteral("%1 must depend on CorePort, not ViewModel dependency bags").arg(path)));
+            qPrintable(QStringLiteral("%1 must use inline direct dependency structs, not legacy ViewModel dependency bags").arg(path)));
         QVERIFY2(!source.contains(QStringLiteral("app/applicationcore.h")),
             qPrintable(QStringLiteral("%1 must not include the aggregate ApplicationCore header").arg(path)));
     }

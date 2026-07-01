@@ -1,35 +1,37 @@
 #include "models/eventstreammodel.h"
-#include "viewmodels/logscoreport.h"
 #include "viewmodels/logsviewmodel.h"
 
 #include <QtTest/QtTest>
 
-class FakeLogsCore final : public LogsCorePort
+#include <functional>
+#include <utility>
+
+class FakeLogsDeps
 {
 public:
-    void bindLogsSignals(QObject *, const LogsCoreSignalHandlers &newHandlers) override
+    LogsViewModel::Dependencies dependencies()
     {
-        handlers = newHandlers;
-    }
-
-    EventStreamModel *logs() override
-    {
-        return &model;
-    }
-
-    void clearCurrentLogs() override
-    {
-        clearCalled = true;
-    }
-
-    int loadOlderCurrentSessionLogs() override
-    {
-        ++loadCalls;
-        return loadResult;
+        return {
+            &model,
+            [this](QObject *, std::function<void()> handler) {
+                logStreamChanged = std::move(handler);
+            },
+            [this](QObject *, std::function<void(const QVariantMap &)> handler) {
+                logStreamRowAppended = std::move(handler);
+            },
+            [this]() {
+                clearCalled = true;
+            },
+            [this]() {
+                ++loadCalls;
+                return loadResult;
+            },
+        };
     }
 
     EventStreamModel model;
-    LogsCoreSignalHandlers handlers;
+    std::function<void()> logStreamChanged;
+    std::function<void(const QVariantMap &)> logStreamRowAppended;
     bool clearCalled = false;
     int loadCalls = 0;
     int loadResult = 0;
@@ -42,8 +44,8 @@ class LogsViewModelTest : public QObject
 private slots:
     void formatsLogRows();
     void rendersLogTextFromModel();
-    void delegatesCommandsToCorePort();
-    void forwardsCorePortSignals();
+    void delegatesCommandsToDependencies();
+    void forwardsDependencySignals();
 };
 
 void LogsViewModelTest::formatsLogRows()
@@ -91,28 +93,28 @@ void LogsViewModelTest::rendersLogTextFromModel()
         QStringLiteral("[10:00:00] [DEBUG] packet received\n[10:00:01] [ERROR] [broker] timeout"));
 }
 
-void LogsViewModelTest::delegatesCommandsToCorePort()
+void LogsViewModelTest::delegatesCommandsToDependencies()
 {
-    FakeLogsCore core;
-    core.loadResult = 3;
-    LogsViewModel viewModel(&core);
+    FakeLogsDeps deps;
+    deps.loadResult = 3;
+    LogsViewModel viewModel(deps.dependencies());
 
     viewModel.clearCurrentLogs();
-    QCOMPARE(core.clearCalled, true);
+    QCOMPARE(deps.clearCalled, true);
     QCOMPARE(viewModel.loadOlderCurrentSessionLogs(), 3);
-    QCOMPARE(core.loadCalls, 1);
+    QCOMPARE(deps.loadCalls, 1);
 }
 
-void LogsViewModelTest::forwardsCorePortSignals()
+void LogsViewModelTest::forwardsDependencySignals()
 {
-    FakeLogsCore core;
-    LogsViewModel viewModel(&core);
+    FakeLogsDeps deps;
+    LogsViewModel viewModel(deps.dependencies());
     QSignalSpy streamSpy(&viewModel, &LogsViewModel::logStreamChanged);
     QSignalSpy rowSpy(&viewModel, &LogsViewModel::logStreamRowAppended);
     QSignalSpy textSpy(&viewModel, &LogsViewModel::logTextChanged);
 
-    QVERIFY(core.handlers.logStreamChanged);
-    core.handlers.logStreamChanged();
+    QVERIFY(deps.logStreamChanged);
+    deps.logStreamChanged();
     QCOMPARE(streamSpy.count(), 1);
     QCOMPARE(textSpy.count(), 1);
 
@@ -121,8 +123,8 @@ void LogsViewModelTest::forwardsCorePortSignals()
         {QStringLiteral("title"), QStringLiteral("broker")},
         {QStringLiteral("payload"), QStringLiteral("connected")},
     };
-    QVERIFY(core.handlers.logStreamRowAppended);
-    core.handlers.logStreamRowAppended(row);
+    QVERIFY(deps.logStreamRowAppended);
+    deps.logStreamRowAppended(row);
     QCOMPARE(rowSpy.count(), 1);
     QCOMPARE(rowSpy.takeFirst().at(0).toMap(), row);
     QCOMPARE(textSpy.count(), 2);

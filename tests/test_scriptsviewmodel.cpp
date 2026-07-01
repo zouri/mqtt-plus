@@ -1,38 +1,38 @@
 #include "models/scriptlibrarymodel.h"
-#include "viewmodels/scriptscoreport.h"
 #include "viewmodels/scriptsviewmodel.h"
 
 #include <QtTest/QtTest>
 
-class FakeScriptsCore final : public ScriptsCorePort
+#include <functional>
+#include <utility>
+
+class FakeScriptsDeps
 {
 public:
-    void bindScriptsSignals(QObject *, const ScriptsCoreSignalHandlers &newHandlers) override
+    ScriptsViewModel::Dependencies dependencies()
     {
-        handlers = newHandlers;
-    }
-
-    ScriptLibraryModel *scripts() override
-    {
-        return &model;
-    }
-
-    QString upsertScript(
-        const QString &id,
-        const QString &name,
-        const QString &description,
-        const QString &code) override
-    {
-        ++upsertCalls;
-        lastId = id;
-        lastName = name;
-        lastDescription = description;
-        lastCode = code;
-        return savedId;
+        return {
+            &model,
+            [this](QObject *, std::function<void()> handler) {
+                scriptLibraryChanged = std::move(handler);
+            },
+            [this](
+                const QString &id,
+                const QString &name,
+                const QString &description,
+                const QString &code) {
+                ++upsertCalls;
+                lastId = id;
+                lastName = name;
+                lastDescription = description;
+                lastCode = code;
+                return savedId;
+            },
+        };
     }
 
     ScriptLibraryModel model;
-    ScriptsCoreSignalHandlers handlers;
+    std::function<void()> scriptLibraryChanged;
     QString savedId = QStringLiteral("saved-script");
     QString lastId;
     QString lastName;
@@ -48,9 +48,9 @@ class ScriptsViewModelTest : public QObject
 private slots:
     void matchesScriptFilter();
     void ownsEditorWorkflowCommands();
-    void delegatesSaveToCorePort();
+    void delegatesSaveToDependencies();
     void forwardsScriptLibrarySignal();
-    void readsScriptListThroughCorePort();
+    void readsScriptListThroughDependencies();
 };
 
 void ScriptsViewModelTest::matchesScriptFilter()
@@ -86,10 +86,10 @@ void ScriptsViewModelTest::ownsEditorWorkflowCommands()
     QCOMPARE(viewModel.editor()->validationStatus(), QStringLiteral("Structure invalid: define function parse(ctx) ... end"));
 }
 
-void ScriptsViewModelTest::delegatesSaveToCorePort()
+void ScriptsViewModelTest::delegatesSaveToDependencies()
 {
-    FakeScriptsCore core;
-    ScriptsViewModel viewModel(&core);
+    FakeScriptsDeps deps;
+    ScriptsViewModel viewModel(deps.dependencies());
 
     viewModel.newScript();
     viewModel.editor()->setName(QStringLiteral("Decoder"));
@@ -97,29 +97,29 @@ void ScriptsViewModelTest::delegatesSaveToCorePort()
     viewModel.editor()->setCode(QStringLiteral("function parse(ctx)\n    return ctx.payload\nend"));
 
     QVERIFY(viewModel.saveEditor());
-    QCOMPARE(core.upsertCalls, 1);
-    QCOMPARE(core.lastName, QStringLiteral("Decoder"));
-    QCOMPARE(core.lastDescription, QStringLiteral("Binary payload"));
-    QCOMPARE(core.lastCode, QStringLiteral("function parse(ctx)\n    return ctx.payload\nend"));
+    QCOMPARE(deps.upsertCalls, 1);
+    QCOMPARE(deps.lastName, QStringLiteral("Decoder"));
+    QCOMPARE(deps.lastDescription, QStringLiteral("Binary payload"));
+    QCOMPARE(deps.lastCode, QStringLiteral("function parse(ctx)\n    return ctx.payload\nend"));
     QCOMPARE(viewModel.editor()->currentScriptId(), QStringLiteral("saved-script"));
     QVERIFY(!viewModel.editor()->hasUnsavedChanges());
 }
 
 void ScriptsViewModelTest::forwardsScriptLibrarySignal()
 {
-    FakeScriptsCore core;
-    ScriptsViewModel viewModel(&core);
+    FakeScriptsDeps deps;
+    ScriptsViewModel viewModel(deps.dependencies());
     QSignalSpy spy(&viewModel, &ScriptsViewModel::scriptLibraryChanged);
 
-    QVERIFY(core.handlers.scriptLibraryChanged);
-    core.handlers.scriptLibraryChanged();
+    QVERIFY(deps.scriptLibraryChanged);
+    deps.scriptLibraryChanged();
     QCOMPARE(spy.count(), 1);
 }
 
-void ScriptsViewModelTest::readsScriptListThroughCorePort()
+void ScriptsViewModelTest::readsScriptListThroughDependencies()
 {
-    FakeScriptsCore core;
-    core.model.setRows({
+    FakeScriptsDeps deps;
+    deps.model.setRows({
         {
             QStringLiteral("decoder"),
             QStringLiteral("Decoder"),
@@ -137,9 +137,9 @@ void ScriptsViewModelTest::readsScriptListThroughCorePort()
             {},
         },
     });
-    ScriptsViewModel viewModel(&core);
+    ScriptsViewModel viewModel(deps.dependencies());
 
-    QCOMPARE(viewModel.scripts(), &core.model);
+    QCOMPARE(viewModel.scripts(), &deps.model);
     QCOMPARE(viewModel.visibleScriptCount(QStringLiteral("binary")), 1);
     QVERIFY(viewModel.selectScriptAt(1));
     QCOMPARE(viewModel.editor()->currentScriptId(), QStringLiteral("logger"));

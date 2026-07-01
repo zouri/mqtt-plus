@@ -1,17 +1,27 @@
 #include "viewmodels/applicationviewmodel.h"
 
+ApplicationViewModel::ApplicationViewModel(QObject *parent)
+    : ApplicationViewModel(
+          WorkbenchViewModel::Dependencies {},
+          LogsViewModel::Dependencies {},
+          ScriptsViewModel::Dependencies {},
+          SettingsViewModel::Dependencies {},
+          parent)
+{
+}
+
 ApplicationViewModel::ApplicationViewModel(
-    WorkbenchCorePort *workbenchCore,
-    LogsCorePort *logsCore,
-    ScriptsCorePort *scriptsCore,
-    SettingsCorePort *settingsCore,
+    const WorkbenchViewModel::Dependencies &workbenchDependencies,
+    const LogsViewModel::Dependencies &logsDependencies,
+    const ScriptsViewModel::Dependencies &scriptsDependencies,
+    const SettingsViewModel::Dependencies &settingsDependencies,
     QObject *parent)
     : QObject(parent)
     , m_navigation(this)
-    , m_workbench(workbenchCore, this)
-    , m_logs(logsCore, this)
-    , m_scripts(scriptsCore, this)
-    , m_settings(settingsCore, this)
+    , m_workbench(workbenchDependencies, this)
+    , m_logs(logsDependencies, this)
+    , m_scripts(scriptsDependencies, this)
+    , m_settings(settingsDependencies, this)
 {
 }
 

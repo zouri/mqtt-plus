@@ -1,7 +1,6 @@
 #include "viewmodels/logsviewmodel.h"
 
 #include "models/eventstreammodel.h"
-#include "viewmodels/logscoreport.h"
 
 #include <QStringList>
 
@@ -30,20 +29,25 @@ QString indentedPayload(QString payload)
 }
 }
 
-LogsViewModel::LogsViewModel(LogsCorePort *core, QObject *parent)
-    : QObject(parent)
-    , m_core(core)
+LogsViewModel::LogsViewModel(QObject *parent)
+    : LogsViewModel(Dependencies {}, parent)
 {
-    if (m_core) {
-        m_core->bindLogsSignals(this, {
-            [this]() {
-                emit logTextChanged();
-                emit logStreamChanged();
-            },
-            [this](const QVariantMap &row) {
-                emit logTextChanged();
-                emit logStreamRowAppended(row);
-            },
+}
+
+LogsViewModel::LogsViewModel(const Dependencies &dependencies, QObject *parent)
+    : QObject(parent)
+    , m_dependencies(dependencies)
+{
+    if (m_dependencies.bindLogStreamChanged) {
+        m_dependencies.bindLogStreamChanged(this, [this]() {
+            emit logTextChanged();
+            emit logStreamChanged();
+        });
+    }
+    if (m_dependencies.bindLogStreamRowAppended) {
+        m_dependencies.bindLogStreamRowAppended(this, [this](const QVariantMap &row) {
+            emit logTextChanged();
+            emit logStreamRowAppended(row);
         });
     }
     if (auto *model = logs()) {
@@ -53,7 +57,7 @@ LogsViewModel::LogsViewModel(LogsCorePort *core, QObject *parent)
 
 EventStreamModel *LogsViewModel::logs() const
 {
-    return m_core ? m_core->logs() : nullptr;
+    return m_dependencies.logs;
 }
 
 QString LogsViewModel::logText() const
@@ -100,12 +104,12 @@ QString LogsViewModel::renderedLogText(const EventStreamModel *model)
 
 void LogsViewModel::clearCurrentLogs()
 {
-    if (m_core) {
-        m_core->clearCurrentLogs();
+    if (m_dependencies.clearCurrentLogs) {
+        m_dependencies.clearCurrentLogs();
     }
 }
 
 int LogsViewModel::loadOlderCurrentSessionLogs()
 {
-    return m_core ? m_core->loadOlderCurrentSessionLogs() : 0;
+    return m_dependencies.loadOlderCurrentSessionLogs ? m_dependencies.loadOlderCurrentSessionLogs() : 0;
 }

@@ -1,19 +1,36 @@
 #pragma once
 
-#include "controllers/mqttcontrollercontext.h"
-
 #include <QObject>
 #include <QSslConfiguration>
 #include <QString>
 
+#include <functional>
+
 #include "domain/session.h"
+
+class EventController;
+class SubscriptionController;
 
 class MqttController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit MqttController(MqttControllerContext *app, QObject *parent = nullptr);
+    struct Dependencies
+    {
+        SubscriptionController *subscriptionController = nullptr;
+        EventController *eventController = nullptr;
+        std::function<SessionState *()> currentSessionState;
+        std::function<SessionState *(const QString &)> sessionById;
+        std::function<void(SessionState &, const QString &, const QString &)> appendEvent;
+        std::function<void()> notifyCurrentSessionViewsChanged;
+        std::function<void()> notifySessionViewsChanged;
+        std::function<void()> notifySessionAndSubscriptionViewsChanged;
+    };
+
+    explicit MqttController(QObject *parent = nullptr);
+
+    void setDependencies(const Dependencies &dependencies);
 
     void connectCurrentSession();
     void disconnectCurrentSession();
@@ -33,5 +50,5 @@ public:
         qint32 messageId = -1);
 
 private:
-    MqttControllerContext &m_app;
+    Dependencies m_dependencies;
 };

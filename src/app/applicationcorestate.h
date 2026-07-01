@@ -4,16 +4,10 @@
 #include <QString>
 #include <QTimer>
 
-#include "app/applicationcontrollercontexts.h"
-#include "app/applicationexitcleanup.h"
 #include "app/applicationmodelrefresher.h"
-#include "app/applicationnotifier.h"
-#include "app/applicationsignalbindings.h"
 #include "app/applicationsessionrepository.h"
 #include "app/applicationsessionruntime.h"
-#include "app/applicationstartup.h"
 #include "app/applicationviewrefreshcoordinator.h"
-#include "app/applicationworkspacedependenciesfactory.h"
 #include "controllers/eventcontroller.h"
 #include "controllers/languagecontroller.h"
 #include "controllers/mqttcontroller.h"
@@ -30,19 +24,18 @@
 #include "models/subscriptionlistmodel.h"
 #include "services/storage/historystore.h"
 
-class QObject;
+class ApplicationCore;
 
 struct ApplicationCoreState
 {
-    explicit ApplicationCoreState(QObject *owner);
+    explicit ApplicationCoreState(ApplicationCore &core);
+
+    void applyExitCleanup();
+    void installSignalBindings();
+    void runStartup();
 
     QSettings settings;
-    ApplicationNotifier notifier;
-    ApplicationWorkspaceDependenciesFactory workspaceDependencies;
-    ApplicationExitCleanup exitCleanup;
-    ApplicationSignalBindings signalBindings;
-    ApplicationStartup startup;
-    ApplicationControllerContexts controllerContexts;
+    ApplicationCore &core;
     SessionController sessionController;
     ScriptController scriptController;
     SubscriptionController subscriptionController;

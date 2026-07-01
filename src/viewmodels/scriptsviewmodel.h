@@ -5,8 +5,9 @@
 
 #include "viewmodels/scripteditorviewmodel.h"
 
+#include <functional>
+
 class ScriptLibraryModel;
-class ScriptsCorePort;
 
 class ScriptsViewModel : public QObject
 {
@@ -15,7 +16,15 @@ class ScriptsViewModel : public QObject
     Q_PROPERTY(ScriptEditorViewModel* editor READ editor CONSTANT)
 
 public:
-    explicit ScriptsViewModel(ScriptsCorePort *core = nullptr, QObject *parent = nullptr);
+    struct Dependencies
+    {
+        ScriptLibraryModel *scripts = nullptr;
+        std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
+        std::function<QString(const QString &, const QString &, const QString &, const QString &)> upsertScript;
+    };
+
+    explicit ScriptsViewModel(QObject *parent = nullptr);
+    explicit ScriptsViewModel(const Dependencies &dependencies, QObject *parent = nullptr);
 
     ScriptLibraryModel *scripts() const;
     ScriptEditorViewModel *editor();
@@ -39,6 +48,6 @@ signals:
 private:
     QString upsertScript(const QString &id, const QString &name, const QString &description, const QString &code);
 
-    ScriptsCorePort *m_core = nullptr;
+    Dependencies m_dependencies;
     ScriptEditorViewModel m_editor;
 };
