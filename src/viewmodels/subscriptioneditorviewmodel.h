@@ -42,10 +42,10 @@ public:
     void setScriptId(const QString &scriptId);
     void setScriptIndex(int index);
 
-    Q_INVOKABLE void openForCreate();
-    Q_INVOKABLE void openForEdit(const QVariantMap &subscription);
-    Q_INVOKABLE void setScriptOptions(const QVariantList &scripts);
-    Q_INVOKABLE QVariantMap submission() const;
+    void openForCreate();
+    void openForEdit(const QVariantMap &subscription);
+    void setScriptOptions(const QVariantList &scripts);
+    QVariantMap submission() const;
 
 signals:
     void editModeChanged();

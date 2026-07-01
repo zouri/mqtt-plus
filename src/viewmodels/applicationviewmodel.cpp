@@ -1,12 +1,17 @@
 #include "viewmodels/applicationviewmodel.h"
 
-ApplicationViewModel::ApplicationViewModel(ApplicationCore *core, QObject *parent)
+ApplicationViewModel::ApplicationViewModel(
+    WorkbenchCorePort *workbenchCore,
+    LogsCorePort *logsCore,
+    ScriptsCorePort *scriptsCore,
+    SettingsCorePort *settingsCore,
+    QObject *parent)
     : QObject(parent)
     , m_navigation(this)
-    , m_workbench(core, this)
-    , m_logs(core, this)
-    , m_scripts(core, this)
-    , m_settings(core, this)
+    , m_workbench(workbenchCore, this)
+    , m_logs(logsCore, this)
+    , m_scripts(scriptsCore, this)
+    , m_settings(settingsCore, this)
 {
 }
 

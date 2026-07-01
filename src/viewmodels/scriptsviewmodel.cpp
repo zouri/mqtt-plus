@@ -1,24 +1,26 @@
 #include "viewmodels/scriptsviewmodel.h"
 
-#include "app/applicationcore.h"
 #include "models/scriptlibrarymodel.h"
+#include "viewmodels/scriptscoreport.h"
 
-ScriptsViewModel::ScriptsViewModel(ApplicationCore *core, QObject *parent)
+#include <QVariantMap>
+
+ScriptsViewModel::ScriptsViewModel(ScriptsCorePort *core, QObject *parent)
     : QObject(parent)
     , m_core(core)
     , m_editor(this)
 {
-    if (!m_core) {
-        return;
+    if (m_core) {
+        m_core->bindScriptsSignals(this, {
+            [this]() {
+                emit scriptLibraryChanged();
+            },
+        });
     }
-    connect(m_core, &ApplicationCore::scriptLibraryChanged, this, &ScriptsViewModel::scriptLibraryChanged);
-    connect(m_core, &ApplicationCore::scriptTestSamplesChanged, this, &ScriptsViewModel::scriptTestSamplesChanged);
 }
 
 ScriptLibraryModel *ScriptsViewModel::scripts() const { return m_core ? m_core->scripts() : nullptr; }
-ScriptTestSamplesModel *ScriptsViewModel::scriptTestSamples() const { return m_core ? m_core->scriptTestSamples() : nullptr; }
 ScriptEditorViewModel *ScriptsViewModel::editor() { return &m_editor; }
-QStringList ScriptsViewModel::payloadFormats() const { return m_core ? m_core->payloadFormats() : QStringList {}; }
 
 int ScriptsViewModel::matchingScriptCount(const QString &filterText) const
 {
@@ -89,6 +91,16 @@ bool ScriptsViewModel::selectScriptAt(int index)
     return true;
 }
 
+void ScriptsViewModel::newScript()
+{
+    m_editor.newScript();
+}
+
+bool ScriptsViewModel::validateEditorStructure()
+{
+    return m_editor.validateStructure();
+}
+
 bool ScriptsViewModel::saveEditor()
 {
     const QString savedId = upsertScript(
@@ -111,14 +123,4 @@ int ScriptsViewModel::visibleScriptCount(const QString &filterText) const
 QString ScriptsViewModel::upsertScript(const QString &id, const QString &name, const QString &description, const QString &code)
 {
     return m_core ? m_core->upsertScript(id, name, description, code) : QString();
-}
-
-bool ScriptsViewModel::deleteScript(const QString &id)
-{
-    return m_core && m_core->deleteScript(id);
-}
-
-QVariantMap ScriptsViewModel::testScript(const QString &code, const QString &topic, const QString &payload, int format) const
-{
-    return m_core ? m_core->testScript(code, topic, payload, format) : QVariantMap {};
 }

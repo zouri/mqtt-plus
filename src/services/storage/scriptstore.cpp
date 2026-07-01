@@ -211,10 +211,4 @@ bool saveScripts(QVector<ScriptEntry> &scripts, bool indexWritable, QString &err
     return true;
 }
 
-void removeScriptFile(const QString &fileName)
-{
-    if (!fileName.isEmpty()) {
-        QFile::remove(scriptFilePath(fileName));
-    }
-}
 }

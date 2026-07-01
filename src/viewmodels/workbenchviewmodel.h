@@ -10,20 +10,17 @@
 #include "models/scriptlibrarymodel.h"
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
-#include "models/subscriptionlistmodel.h"
 #include "viewmodels/sessioneditorviewmodel.h"
 #include "viewmodels/subscriptioneditorviewmodel.h"
 
-class ApplicationCore;
+class WorkbenchCorePort;
 
 class WorkbenchViewModel : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(SessionListModel* sessions READ sessions CONSTANT)
-    Q_PROPERTY(SubscriptionListModel* subscriptions READ subscriptions CONSTANT)
     Q_PROPERTY(SubscriptionFilterModel* filteredSubscriptions READ filteredSubscriptions CONSTANT)
     Q_PROPERTY(EventStreamModel* messages READ messages CONSTANT)
-    Q_PROPERTY(ScriptLibraryModel* scripts READ scripts CONSTANT)
     Q_PROPERTY(SessionEditorViewModel* sessionEditor READ sessionEditor CONSTANT)
     Q_PROPERTY(SubscriptionEditorViewModel* subscriptionEditor READ subscriptionEditor CONSTANT)
     Q_PROPERTY(int currentSessionIndex READ currentSessionIndex WRITE setCurrentSessionIndex NOTIFY currentSessionIndexChanged)
@@ -37,15 +34,19 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(int publishQos READ publishQos WRITE setPublishQos NOTIFY publishQosChanged)
     Q_PROPERTY(bool publishRetain READ publishRetain WRITE setPublishRetain NOTIFY publishRetainChanged)
     Q_PROPERTY(bool canPublish READ canPublish NOTIFY canPublishChanged)
+    Q_PROPERTY(QString subscriptionFilterText READ subscriptionFilterText WRITE setSubscriptionFilterText NOTIFY subscriptionFilterTextChanged)
+    Q_PROPERTY(QString subscriptionFilterMode READ subscriptionFilterMode WRITE setSubscriptionFilterMode NOTIFY subscriptionFilterModeChanged)
+    Q_PROPERTY(int subscriptionFilterModeIndex READ subscriptionFilterModeIndex WRITE setSubscriptionFilterModeIndex NOTIFY subscriptionFilterModeIndexChanged)
+    Q_PROPERTY(bool hasSubscriptionFilter READ hasSubscriptionFilter NOTIFY subscriptionFilterChanged)
+    Q_PROPERTY(QString pendingSubscriptionDeleteTopic READ pendingSubscriptionDeleteTopic NOTIFY pendingSubscriptionDeleteChanged)
+    Q_PROPERTY(QString pendingSubscriptionDeleteDisplayName READ pendingSubscriptionDeleteDisplayName NOTIFY pendingSubscriptionDeleteChanged)
 
 public:
-    explicit WorkbenchViewModel(ApplicationCore *core = nullptr, QObject *parent = nullptr);
+    explicit WorkbenchViewModel(WorkbenchCorePort *core = nullptr, QObject *parent = nullptr);
 
     SessionListModel *sessions() const;
-    SubscriptionListModel *subscriptions() const;
     SubscriptionFilterModel *filteredSubscriptions() const;
     EventStreamModel *messages() const;
-    ScriptLibraryModel *scripts() const;
     SessionEditorViewModel *sessionEditor();
     SubscriptionEditorViewModel *subscriptionEditor();
     int currentSessionIndex() const;
@@ -59,6 +60,12 @@ public:
     int publishQos() const;
     bool publishRetain() const;
     bool canPublish() const;
+    QString subscriptionFilterText() const;
+    QString subscriptionFilterMode() const;
+    int subscriptionFilterModeIndex() const;
+    bool hasSubscriptionFilter() const;
+    QString pendingSubscriptionDeleteTopic() const;
+    QString pendingSubscriptionDeleteDisplayName() const;
 
     void setCurrentSessionIndex(int index);
     void setPublishTopic(const QString &topic);
@@ -66,50 +73,70 @@ public:
     void setPublishFormat(int format);
     void setPublishQos(int qos);
     void setPublishRetain(bool retain);
+    void setSubscriptionFilterText(const QString &filterText);
+    void setSubscriptionFilterMode(const QString &filterMode);
+    void setSubscriptionFilterModeIndex(int index);
 
     Q_INVOKABLE void openSessionEditorForCreate();
     Q_INVOKABLE void openSessionEditorForEdit(int index);
     Q_INVOKABLE bool submitSessionEditor();
-    Q_INVOKABLE void duplicateSessionAt(int index);
-    Q_INVOKABLE void removeSessionAt(int index);
-    Q_INVOKABLE QString showSessionContextMenu(int index, const QPointF &globalPosition);
-    Q_INVOKABLE QString showSubscriptionContextMenu(const QString &topic, const QPointF &globalPosition);
-    Q_INVOKABLE void connectCurrentSession();
-    Q_INVOKABLE void disconnectCurrentSession();
-    Q_INVOKABLE void setCurrentOutputPaused(bool paused);
-    Q_INVOKABLE void refreshSubscriptionEditorScriptOptions();
+    Q_INVOKABLE void handleSessionContextMenu(int index, const QPointF &globalPosition);
+    Q_INVOKABLE void handleSubscriptionContextMenu(int filteredIndex, const QString &topic, const QPointF &globalPosition);
+    Q_INVOKABLE void toggleCurrentSessionConnection();
+    Q_INVOKABLE void toggleCurrentOutputPaused(bool currentlyPaused);
+    Q_INVOKABLE void openSubscriptionEditorForCreate();
+    Q_INVOKABLE bool openSubscriptionEditorForEdit(int filteredIndex);
     Q_INVOKABLE bool submitSubscriptionEditor();
-    Q_INVOKABLE void removeCurrentSubscription(const QString &topic);
-    Q_INVOKABLE void setCurrentSubscriptionPaused(const QString &topic, bool paused);
-    Q_INVOKABLE void setPublishDraft(const QString &topic, const QString &payload, int format);
+    Q_INVOKABLE void toggleCurrentSubscriptionPaused(const QString &topic, bool currentlyPaused);
+    Q_INVOKABLE void requestSubscriptionDelete(const QString &topic, const QString &displayName);
+    Q_INVOKABLE void cancelPendingSubscriptionDelete();
+    Q_INVOKABLE bool confirmPendingSubscriptionDelete();
+    Q_INVOKABLE void useMessageAsPublishDraft(const QString &topic, const QString &payload, const QString &testPayload, int format);
     Q_INVOKABLE bool publishDraft();
-    Q_INVOKABLE void copyTextToClipboard(const QString &text) const;
-    Q_INVOKABLE void clearCurrentMessages();
-    Q_INVOKABLE int loadOlderCurrentSessionMessages();
+    Q_INVOKABLE void copyMessageTopic(const QString &topic) const;
+    Q_INVOKABLE void copyMessagePayload(const QString &payload, const QString &testPayload) const;
+    Q_INVOKABLE void clearMessages();
+    Q_INVOKABLE int loadOlderMessages();
 
 signals:
     void currentSessionIndexChanged();
     void currentSessionChanged();
-    void subscriptionsChanged();
     void messageStreamChanged();
-    void logStreamChanged();
-    void messageStreamRowAppended(const QVariantMap &row);
-    void logStreamRowAppended(const QVariantMap &row);
-    void scriptLibraryChanged();
+    void messageStreamRowAppended();
     void publishTopicChanged();
     void publishPayloadChanged();
     void publishFormatChanged();
     void publishQosChanged();
     void publishRetainChanged();
     void canPublishChanged();
+    void subscriptionFilterTextChanged();
+    void subscriptionFilterModeChanged();
+    void subscriptionFilterModeIndexChanged();
+    void subscriptionFilterChanged();
+    void pendingSubscriptionDeleteChanged();
+    void sessionEditRequested(int index);
+    void subscriptionEditRequested(int index);
+    void subscriptionDeleteRequested(const QString &topic, const QString &displayName);
 
 private:
-    ApplicationCore *m_core = nullptr;
+    static QString normalizedSubscriptionFilterMode(const QString &filterMode);
+    static int subscriptionFilterModeIndexForMode(const QString &filterMode);
+    ScriptLibraryModel *scriptLibrary() const;
+    void refreshSubscriptionEditorScriptOptions();
+    void syncSubscriptionFilterModel();
+    void emitSubscriptionFilterSignals(const QString &oldText, const QString &oldMode);
+    void clearPendingSubscriptionDelete();
+
+    WorkbenchCorePort *m_core = nullptr;
     QString m_publishTopic;
     QString m_publishPayload;
     int m_publishFormat = 1;
     int m_publishQos = 0;
     bool m_publishRetain = false;
+    QString m_subscriptionFilterText;
+    QString m_subscriptionFilterMode = QStringLiteral("all");
+    QString m_pendingSubscriptionDeleteTopic;
+    QString m_pendingSubscriptionDeleteDisplayName;
     SessionEditorViewModel m_sessionEditor;
     SubscriptionEditorViewModel m_subscriptionEditor;
 };

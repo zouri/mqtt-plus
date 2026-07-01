@@ -20,7 +20,7 @@ Item {
     property string pendingSessionEditorMode: ""
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
-    property var pendingSubscription: ({})
+    property int pendingSubscriptionIndex: -1
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -29,8 +29,8 @@ Item {
         sessionActivityPanel.resetStreamPosition();
     }
 
-    function noteStreamRowAppended(row) {
-        sessionActivityPanel.noteStreamRowAppended(row);
+    function noteStreamRowAppended() {
+        sessionActivityPanel.noteStreamRowAppended();
     }
 
     function openPendingSessionEditor() {
@@ -70,53 +70,29 @@ Item {
         if (root.pendingSubscriptionDialogMode === "create") {
             addSubscriptionDialogLoader.openForCreate();
         } else if (root.pendingSubscriptionDialogMode === "edit") {
-            addSubscriptionDialogLoader.openForEdit(root.pendingSubscription);
+            addSubscriptionDialogLoader.openForEdit(root.pendingSubscriptionIndex);
         }
 
         root.pendingSubscriptionDialogMode = "";
-        root.pendingSubscription = {};
+        root.pendingSubscriptionIndex = -1;
     }
 
     function openSubscriptionDialogForCreate() {
         root.pendingSubscriptionDialogMode = "create";
-        root.pendingSubscription = {};
+        root.pendingSubscriptionIndex = -1;
         addSubscriptionDialogLoader.active = true;
         root.openPendingSubscriptionDialog();
     }
 
-    function openSubscriptionDialogForEdit(subscription) {
+    function openSubscriptionDialogForEdit(index) {
         root.pendingSubscriptionDialogMode = "edit";
-        root.pendingSubscription = subscription;
+        root.pendingSubscriptionIndex = index;
         addSubscriptionDialogLoader.active = true;
         root.openPendingSubscriptionDialog();
     }
 
     Component.onCompleted: {
         root.resetStreamPosition();
-    }
-
-    QtObject {
-        id: sessionEditorBridge
-
-        function openForCreate() {
-            root.openSessionEditorForCreate();
-        }
-
-        function openForEdit(index) {
-            root.openSessionEditorForEdit(index);
-        }
-    }
-
-    QtObject {
-        id: addSubscriptionDialogBridge
-
-        function openForCreate() {
-            root.openSubscriptionDialogForCreate();
-        }
-
-        function openForEdit(subscription) {
-            root.openSubscriptionDialogForEdit(subscription);
-        }
     }
 
     Connections {
@@ -126,12 +102,12 @@ Item {
             root.resetStreamPosition();
         }
 
-        function onLogStreamChanged() {
-            root.resetStreamPosition();
+        function onMessageStreamRowAppended() {
+            root.noteStreamRowAppended();
         }
 
-        function onMessageStreamRowAppended(row) {
-            root.noteStreamRowAppended(row);
+        function onSessionEditRequested(index) {
+            root.openSessionEditorForEdit(index);
         }
     }
 
@@ -142,10 +118,10 @@ Item {
         SessionSidebar {
             ui: root.ui
             viewModel: root.viewModel
-            sessionEditor: sessionEditorBridge
             collapsed: root.connectionPaneCollapsed
             Layout.preferredWidth: root.connectionPaneCollapsed ? 32 : root.expandedConnectionPaneWidth
             Layout.fillHeight: true
+            onSessionCreateRequested: root.openSessionEditorForCreate()
             onCollapseRequested: root.connectionPaneCollapsed = true
             onExpandRequested: root.connectionPaneCollapsed = false
         }
@@ -191,14 +167,15 @@ Item {
                         session: root.session
                         status: root.status
                         viewModel: root.viewModel
-                        sessionEditor: sessionEditorBridge
+                        onSessionEditRequested: index => root.openSessionEditorForEdit(index)
                     }
 
                     SubscriptionsPanel {
                         id: subscriptionsPanel
                         ui: root.ui
                         viewModel: root.viewModel
-                        addSubscriptionDialog: addSubscriptionDialogBridge
+                        onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
+                        onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
                     }
                 }
             }
@@ -270,10 +247,10 @@ Item {
             }
         }
 
-        function openForEdit(subscription) {
+        function openForEdit(index) {
             if (status === Loader.Ready) {
                 // qmllint disable missing-property
-                item.openForEdit(subscription);
+                item.openForEdit(index);
                 // qmllint enable missing-property
             }
         }

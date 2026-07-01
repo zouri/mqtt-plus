@@ -1,6 +1,6 @@
 #include "sessioncontroller.h"
 
-#include "controllers/applicationcontext.h"
+#include "controllers/sessioncontrollercontext.h"
 #include "controllers/subscriptioncontroller.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/sessionsettingsstore.h"
