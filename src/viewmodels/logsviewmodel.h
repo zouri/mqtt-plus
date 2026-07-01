@@ -4,8 +4,8 @@
 #include <QString>
 #include <QVariantMap>
 
-class ApplicationCore;
 class EventStreamModel;
+class LogsCorePort;
 
 class LogsViewModel : public QObject
 {
@@ -14,7 +14,7 @@ class LogsViewModel : public QObject
     Q_PROPERTY(QString logText READ logText NOTIFY logTextChanged)
 
 public:
-    explicit LogsViewModel(ApplicationCore *core = nullptr, QObject *parent = nullptr);
+    explicit LogsViewModel(LogsCorePort *core = nullptr, QObject *parent = nullptr);
 
     EventStreamModel *logs() const;
     QString logText() const;
@@ -30,5 +30,5 @@ signals:
     void logTextChanged();
 
 private:
-    ApplicationCore *m_core = nullptr;
+    LogsCorePort *m_core = nullptr;
 };

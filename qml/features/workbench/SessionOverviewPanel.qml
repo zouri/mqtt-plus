@@ -11,7 +11,8 @@ AppPanel {
     required property var session
     required property var status
     required property var viewModel
-    required property var sessionEditor
+
+    signal sessionEditRequested(int index)
 
     readonly property bool canDisconnect: control.status.state === "connected"
                                            || control.status.state === "connecting"
@@ -92,7 +93,7 @@ AppPanel {
                 outlineColor: control.ui.themePalette.innerPanelBorder
                 symbolColor: control.ui.themePalette.infoText
                 accessibleName: qsTr("Edit connection")
-                onClicked: control.sessionEditor.openForEdit(control.viewModel.currentSessionIndex)
+                onClicked: control.sessionEditRequested(control.viewModel.currentSessionIndex)
             }
 
             AppIconButton {
@@ -107,13 +108,7 @@ AppPanel {
                 accessibleName: control.connectionActionText
                 toolTipText: control.connectionActionText
 
-                onClicked: {
-                    if (control.canDisconnect) {
-                        control.viewModel.disconnectCurrentSession()
-                    } else {
-                        control.viewModel.connectCurrentSession()
-                    }
-                }
+                onClicked: control.viewModel.toggleCurrentSessionConnection()
             }
         }
 

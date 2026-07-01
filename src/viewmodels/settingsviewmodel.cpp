@@ -1,6 +1,6 @@
 #include "viewmodels/settingsviewmodel.h"
 
-#include "app/applicationcore.h"
+#include "viewmodels/settingscoreport.h"
 
 namespace {
 QVariantList themeModeValues()
@@ -39,36 +39,34 @@ QVariantList cleanupModeValues()
 }
 }
 
-SettingsViewModel::SettingsViewModel(ApplicationCore *core, QObject *parent)
+SettingsViewModel::SettingsViewModel(SettingsCorePort *core, QObject *parent)
     : SettingsOptionsViewModel(parent)
     , m_core(core)
 {
-    if (!m_core) {
-        return;
+    if (m_core) {
+        m_core->bindSettingsSignals(this, {
+            [this]() { emit themeModeChanged(); },
+            [this]() { emit effectiveThemeChanged(); },
+            [this]() { emit languageModeChanged(); },
+            [this]() { emit languageChanged(); },
+            [this]() { emit messageRetentionLimitChanged(); },
+            [this]() { emit logRetentionLimitChanged(); },
+            [this]() { emit historyPageSizeChanged(); },
+            [this]() { emit maxIncomingPayloadBytesChanged(); },
+            [this]() { emit deleteHistoryWithSessionChanged(); },
+            [this]() { emit saveMessagesWhenOutputPausedChanged(); },
+            [this]() { emit clearMessagesOnExitChanged(); },
+            [this]() { emit clearLogsOnExitChanged(); },
+            [this]() { emit windowWidthChanged(); },
+            [this]() { emit windowHeightChanged(); },
+            [this]() { emit windowMaximizedChanged(); },
+        });
     }
-
-    connect(m_core, &ApplicationCore::themeModeChanged, this, &SettingsViewModel::themeModeChanged);
-    connect(m_core, &ApplicationCore::effectiveThemeChanged, this, &SettingsViewModel::effectiveThemeChanged);
-    connect(m_core, &ApplicationCore::languageModeChanged, this, &SettingsViewModel::languageModeChanged);
-    connect(m_core, &ApplicationCore::languageChanged, this, &SettingsViewModel::languageChanged);
-    connect(m_core, &ApplicationCore::messageRetentionLimitChanged, this, &SettingsViewModel::messageRetentionLimitChanged);
-    connect(m_core, &ApplicationCore::logRetentionLimitChanged, this, &SettingsViewModel::logRetentionLimitChanged);
-    connect(m_core, &ApplicationCore::historyPageSizeChanged, this, &SettingsViewModel::historyPageSizeChanged);
-    connect(m_core, &ApplicationCore::maxIncomingPayloadBytesChanged, this, &SettingsViewModel::maxIncomingPayloadBytesChanged);
-    connect(m_core, &ApplicationCore::deleteHistoryWithSessionChanged, this, &SettingsViewModel::deleteHistoryWithSessionChanged);
-    connect(m_core, &ApplicationCore::saveMessagesWhenOutputPausedChanged, this, &SettingsViewModel::saveMessagesWhenOutputPausedChanged);
-    connect(m_core, &ApplicationCore::clearMessagesOnExitChanged, this, &SettingsViewModel::clearMessagesOnExitChanged);
-    connect(m_core, &ApplicationCore::clearLogsOnExitChanged, this, &SettingsViewModel::clearLogsOnExitChanged);
-    connect(m_core, &ApplicationCore::windowWidthChanged, this, &SettingsViewModel::windowWidthChanged);
-    connect(m_core, &ApplicationCore::windowHeightChanged, this, &SettingsViewModel::windowHeightChanged);
-    connect(m_core, &ApplicationCore::windowMaximizedChanged, this, &SettingsViewModel::windowMaximizedChanged);
 }
 
 QString SettingsViewModel::themeMode() const { return m_core ? m_core->themeMode() : QStringLiteral("system"); }
 QString SettingsViewModel::effectiveTheme() const { return m_core ? m_core->effectiveTheme() : QStringLiteral("light"); }
 QString SettingsViewModel::languageMode() const { return m_core ? m_core->languageMode() : QStringLiteral("system"); }
-QString SettingsViewModel::effectiveLanguage() const { return m_core ? m_core->effectiveLanguage() : QStringLiteral("en"); }
-QVariantList SettingsViewModel::availableLanguages() const { return m_core ? m_core->availableLanguages() : QVariantList {}; }
 int SettingsViewModel::messageRetentionLimit() const { return m_core ? m_core->messageRetentionLimit() : 5000; }
 int SettingsViewModel::logRetentionLimit() const { return m_core ? m_core->logRetentionLimit() : 2000; }
 int SettingsViewModel::historyPageSize() const { return m_core ? m_core->historyPageSize() : 500; }

@@ -1,8 +1,8 @@
 #include "subscriptioncontroller.h"
 
-#include "controllers/applicationcontext.h"
+#include "controllers/subscriptioncontrollercontext.h"
 #include "controllers/scriptcontroller.h"
-#include "app/applicationcoreutils.h"
+#include "services/apputils.h"
 #include "domain/sessionconfig.h"
 #include "models/subscriptionlistmodel.h"
 #include "services/payload/payloadcodec.h"
@@ -11,7 +11,7 @@
 
 #include <algorithm>
 
-using namespace ApplicationCoreUtils;
+using namespace AppUtils;
 
 SubscriptionController::SubscriptionController(SubscriptionControllerContext *app, QObject *parent)
     : QObject(parent)

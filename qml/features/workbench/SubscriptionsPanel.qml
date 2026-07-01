@@ -9,25 +9,20 @@ AppPanel {
     id: control
 
     required property var viewModel
-    required property var addSubscriptionDialog
 
     property string subscriptionActionVisualKey: ""
-    property string filterText: ""
-    property string filterMode: "all"
-    property string pendingDeleteTopic: ""
-    property string pendingDeleteDisplayName: ""
-    readonly property var filterModeValues: ["all", "subscribed", "paused"]
     readonly property var filterModeLabels: [qsTr("All", "subscription filter"), qsTr("Active", "subscription filter"), qsTr("Paused", "subscription filter")]
-    readonly property int filterModeIndex: Math.max(0, control.filterModeValues.indexOf(control.filterMode))
     readonly property var subscriptionModel: control.viewModel ? control.viewModel.filteredSubscriptions : null
     readonly property int matchingSubscriptionCount: control.subscriptionModel ? control.subscriptionModel.count : 0
     readonly property var sessionStatus: control.viewModel ? control.viewModel.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
-    readonly property bool hasFilter: control.filterText.trim().length > 0 || control.filterMode !== "all"
     showRightBorder: false
 
     Layout.fillWidth: true
     Layout.fillHeight: true
+
+    signal subscriptionCreateRequested
+    signal subscriptionEditRequested(int index)
 
     Timer {
         id: subscriptionActionVisualResetTimer
@@ -36,24 +31,16 @@ AppPanel {
         onTriggered: control.subscriptionActionVisualKey = ""
     }
 
-    function requestDeleteSubscription(topic, displayName) {
-        control.pendingDeleteTopic = topic;
-        control.pendingDeleteDisplayName = displayName;
-        deleteSubscriptionDialog.open();
-    }
+    Connections {
+        target: control.viewModel
 
-    Binding {
-        target: control.subscriptionModel
-        property: "filterText"
-        value: control.filterText
-        when: control.subscriptionModel !== null
-    }
+        function onSubscriptionEditRequested(index) {
+            control.subscriptionEditRequested(index);
+        }
 
-    Binding {
-        target: control.subscriptionModel
-        property: "filterMode"
-        value: control.filterMode
-        when: control.subscriptionModel !== null
+        function onSubscriptionDeleteRequested() {
+            deleteSubscriptionDialog.open();
+        }
     }
 
     ColumnLayout {
@@ -72,8 +59,8 @@ AppPanel {
                 ui: control.ui
                 Layout.fillWidth: true
                 placeholderText: qsTr("Filter topic")
-                text: control.filterText
-                onTextChanged: control.filterText = text
+                text: control.viewModel ? control.viewModel.subscriptionFilterText : ""
+                onTextEdited: control.viewModel.subscriptionFilterText = text
             }
 
             AppComboBox {
@@ -82,8 +69,8 @@ AppPanel {
                 leftPadding: 8
                 rightPadding: 24
                 model: control.filterModeLabels
-                currentIndex: control.filterModeIndex
-                onActivated: index => control.filterMode = control.filterModeValues[index] || "all"
+                currentIndex: control.viewModel ? control.viewModel.subscriptionFilterModeIndex : 0
+                onActivated: index => control.viewModel.setSubscriptionFilterModeIndex(index)
             }
 
             AppIconButton {
@@ -98,7 +85,7 @@ AppPanel {
                 accessibleName: qsTr("Add topic")
                 toolTipText: qsTr("Add subscription")
                 toolTipPosition: AppToolTip.Position.Bottom
-                onClicked: control.addSubscriptionDialog.openForCreate()
+                onClicked: control.subscriptionCreateRequested()
             }
         }
 
@@ -121,7 +108,7 @@ AppPanel {
 
                 Label {
                     Layout.fillWidth: true
-                    text: control.hasFilter ? qsTr("No matching subscriptions") : (control.connected ? qsTr("No subscriptions yet") : qsTr("Subscriptions are ready after connecting"))
+                    text: control.viewModel.hasSubscriptionFilter ? qsTr("No matching subscriptions") : (control.connected ? qsTr("No subscriptions yet") : qsTr("Subscriptions are ready after connecting"))
                     color: control.ui.textStrong
                     font.pixelSize: 12
                     font.bold: true
@@ -131,7 +118,7 @@ AppPanel {
 
                 Label {
                     Layout.fillWidth: true
-                    text: control.hasFilter ? qsTr("Adjust the filter or show all subscriptions.") : (control.connected ? qsTr("Add a topic to start listening.") : qsTr("You can add topics now; they will start listening once connected."))
+                    text: control.viewModel.hasSubscriptionFilter ? qsTr("Adjust the filter or show all subscriptions.") : (control.connected ? qsTr("Add a topic to start listening.") : qsTr("You can add topics now; they will start listening once connected."))
                     color: control.ui.textMuted
                     font.pixelSize: 11
                     horizontalAlignment: Text.AlignHCenter
@@ -140,14 +127,14 @@ AppPanel {
 
                 AppButton {
                     ui: control.ui
-                    visible: !control.hasFilter
+                    visible: !control.viewModel.hasSubscriptionFilter
                     Layout.alignment: Qt.AlignHCenter
                     text: qsTr("Add subscription")
                     minimumWidth: 112
                     primary: true
                     toolTipText: qsTr("Add subscription")
                     toolTipPosition: AppToolTip.Position.Bottom
-                    onClicked: control.addSubscriptionDialog.openForCreate()
+                    onClicked: control.subscriptionCreateRequested()
                 }
             }
         }
@@ -191,21 +178,16 @@ AppPanel {
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
 
-                function showSubscriptionContextMenu(globalPosition) {
+                function openSubscriptionContextMenu(globalPosition) {
                     control.subscriptionActionVisualKey = subscriptionDelegate.menuVisualKey;
                     subscriptionActionVisualResetTimer.stop();
-                    const action = control.viewModel.showSubscriptionContextMenu(subscriptionDelegate.topic, globalPosition);
-                    if (action === "edit") {
-                        control.addSubscriptionDialog.openForEdit(control.subscriptionModel.rowAt(subscriptionDelegate.index));
-                    } else if (action === "delete") {
-                        control.requestDeleteSubscription(subscriptionDelegate.topic, subscriptionDelegate.displayName);
-                    }
+                    control.viewModel.handleSubscriptionContextMenu(subscriptionDelegate.index, subscriptionDelegate.topic, globalPosition);
                     subscriptionActionVisualResetTimer.restart();
                 }
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
-                        subscriptionDelegate.showSubscriptionContextMenu(subscriptionDelegate.mapToGlobal(Qt.point(subscriptionDelegate.width - 10, Math.round(subscriptionDelegate.height / 2))));
+                        subscriptionDelegate.openSubscriptionContextMenu(subscriptionDelegate.mapToGlobal(Qt.point(subscriptionDelegate.width - 10, Math.round(subscriptionDelegate.height / 2))));
                         event.accepted = true;
                     }
                 }
@@ -296,7 +278,7 @@ AppPanel {
                                 onClicked: {
                                     control.subscriptionActionVisualKey = visualKey;
                                     subscriptionActionVisualResetTimer.restart();
-                                    control.viewModel.setCurrentSubscriptionPaused(subscriptionDelegate.topic, !subscriptionDelegate.paused);
+                                    control.viewModel.toggleCurrentSubscriptionPaused(subscriptionDelegate.topic, subscriptionDelegate.paused);
                                 }
                             }
 
@@ -315,7 +297,7 @@ AppPanel {
                                 accessibleName: qsTr("More actions")
 
                                 onClicked: {
-                                    subscriptionDelegate.showSubscriptionContextMenu(subscriptionMenuButton.mapToGlobal(Qt.point(Math.round(subscriptionMenuButton.width / 2), subscriptionMenuButton.height)));
+                                    subscriptionDelegate.openSubscriptionContextMenu(subscriptionMenuButton.mapToGlobal(Qt.point(Math.round(subscriptionMenuButton.width / 2), subscriptionMenuButton.height)));
                                 }
                             }
                         }
@@ -337,7 +319,7 @@ AppPanel {
                     onPressed: mouse => {
                         if (mouse.button === Qt.RightButton) {
                             subscriptionDelegate.forceActiveFocus();
-                            subscriptionDelegate.showSubscriptionContextMenu(subscriptionDelegate.mapToGlobal(Qt.point(mouse.x, mouse.y)));
+                            subscriptionDelegate.openSubscriptionContextMenu(subscriptionDelegate.mapToGlobal(Qt.point(mouse.x, mouse.y)));
                         }
                     }
                 }
@@ -386,7 +368,7 @@ AppPanel {
 
             Label {
                 Layout.fillWidth: true
-                text: qsTr("Delete %1 from this connection?").arg(control.pendingDeleteDisplayName)
+                text: qsTr("Delete %1 from this connection?").arg(control.viewModel.pendingSubscriptionDeleteDisplayName)
                 color: control.ui.textMuted
                 font.pixelSize: 12
                 wrapMode: Text.Wrap
@@ -404,7 +386,10 @@ AppPanel {
                     ui: control.ui
                     text: qsTr("Cancel")
                     minimumWidth: 78
-                    onClicked: deleteSubscriptionDialog.close()
+                    onClicked: {
+                        control.viewModel.cancelPendingSubscriptionDelete();
+                        deleteSubscriptionDialog.close();
+                    }
                 }
 
                 AppButton {
@@ -413,7 +398,7 @@ AppPanel {
                     minimumWidth: 78
                     danger: true
                     onClicked: {
-                        control.viewModel.removeCurrentSubscription(control.pendingDeleteTopic);
+                        control.viewModel.confirmPendingSubscriptionDelete();
                         deleteSubscriptionDialog.close();
                     }
                 }
@@ -421,8 +406,7 @@ AppPanel {
         }
 
         onClosed: {
-            control.pendingDeleteTopic = "";
-            control.pendingDeleteDisplayName = "";
+            control.viewModel.cancelPendingSubscriptionDelete();
         }
     }
 }

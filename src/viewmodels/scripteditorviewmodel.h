@@ -33,11 +33,11 @@ public:
     void setDescription(const QString &description);
     void setCode(const QString &code);
 
-    Q_INVOKABLE QString defaultCode() const;
-    Q_INVOKABLE void loadScript(const QVariantMap &row);
-    Q_INVOKABLE void newScript();
-    Q_INVOKABLE bool validateStructure();
-    Q_INVOKABLE void markSaved(const QString &id);
+    QString defaultCode() const;
+    void loadScript(const QVariantMap &row);
+    void newScript();
+    bool validateStructure();
+    void markSaved(const QString &id);
 
 signals:
     void currentScriptIdChanged();

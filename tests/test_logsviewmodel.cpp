@@ -1,7 +1,39 @@
 #include "models/eventstreammodel.h"
+#include "viewmodels/logscoreport.h"
 #include "viewmodels/logsviewmodel.h"
 
 #include <QtTest/QtTest>
+
+class FakeLogsCore final : public LogsCorePort
+{
+public:
+    void bindLogsSignals(QObject *, const LogsCoreSignalHandlers &newHandlers) override
+    {
+        handlers = newHandlers;
+    }
+
+    EventStreamModel *logs() override
+    {
+        return &model;
+    }
+
+    void clearCurrentLogs() override
+    {
+        clearCalled = true;
+    }
+
+    int loadOlderCurrentSessionLogs() override
+    {
+        ++loadCalls;
+        return loadResult;
+    }
+
+    EventStreamModel model;
+    LogsCoreSignalHandlers handlers;
+    bool clearCalled = false;
+    int loadCalls = 0;
+    int loadResult = 0;
+};
 
 class LogsViewModelTest : public QObject
 {
@@ -10,6 +42,8 @@ class LogsViewModelTest : public QObject
 private slots:
     void formatsLogRows();
     void rendersLogTextFromModel();
+    void delegatesCommandsToCorePort();
+    void forwardsCorePortSignals();
 };
 
 void LogsViewModelTest::formatsLogRows()
@@ -55,6 +89,43 @@ void LogsViewModelTest::rendersLogTextFromModel()
     QCOMPARE(
         LogsViewModel::renderedLogText(&model),
         QStringLiteral("[10:00:00] [DEBUG] packet received\n[10:00:01] [ERROR] [broker] timeout"));
+}
+
+void LogsViewModelTest::delegatesCommandsToCorePort()
+{
+    FakeLogsCore core;
+    core.loadResult = 3;
+    LogsViewModel viewModel(&core);
+
+    viewModel.clearCurrentLogs();
+    QCOMPARE(core.clearCalled, true);
+    QCOMPARE(viewModel.loadOlderCurrentSessionLogs(), 3);
+    QCOMPARE(core.loadCalls, 1);
+}
+
+void LogsViewModelTest::forwardsCorePortSignals()
+{
+    FakeLogsCore core;
+    LogsViewModel viewModel(&core);
+    QSignalSpy streamSpy(&viewModel, &LogsViewModel::logStreamChanged);
+    QSignalSpy rowSpy(&viewModel, &LogsViewModel::logStreamRowAppended);
+    QSignalSpy textSpy(&viewModel, &LogsViewModel::logTextChanged);
+
+    QVERIFY(core.handlers.logStreamChanged);
+    core.handlers.logStreamChanged();
+    QCOMPARE(streamSpy.count(), 1);
+    QCOMPARE(textSpy.count(), 1);
+
+    const QVariantMap row {
+        {QStringLiteral("timestamp"), QStringLiteral("10:00:00")},
+        {QStringLiteral("title"), QStringLiteral("broker")},
+        {QStringLiteral("payload"), QStringLiteral("connected")},
+    };
+    QVERIFY(core.handlers.logStreamRowAppended);
+    core.handlers.logStreamRowAppended(row);
+    QCOMPARE(rowSpy.count(), 1);
+    QCOMPARE(rowSpy.takeFirst().at(0).toMap(), row);
+    QCOMPARE(textSpy.count(), 2);
 }
 
 QTEST_MAIN(LogsViewModelTest)

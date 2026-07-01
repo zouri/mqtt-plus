@@ -1,7 +1,7 @@
 #include "viewmodels/logsviewmodel.h"
 
-#include "app/applicationcore.h"
 #include "models/eventstreammodel.h"
+#include "viewmodels/logscoreport.h"
 
 #include <QStringList>
 
@@ -30,21 +30,22 @@ QString indentedPayload(QString payload)
 }
 }
 
-LogsViewModel::LogsViewModel(ApplicationCore *core, QObject *parent)
+LogsViewModel::LogsViewModel(LogsCorePort *core, QObject *parent)
     : QObject(parent)
     , m_core(core)
 {
-    if (!m_core) {
-        return;
+    if (m_core) {
+        m_core->bindLogsSignals(this, {
+            [this]() {
+                emit logTextChanged();
+                emit logStreamChanged();
+            },
+            [this](const QVariantMap &row) {
+                emit logTextChanged();
+                emit logStreamRowAppended(row);
+            },
+        });
     }
-    connect(m_core, &ApplicationCore::logStreamChanged, this, [this]() {
-        emit logTextChanged();
-        emit logStreamChanged();
-    });
-    connect(m_core, &ApplicationCore::logStreamRowAppended, this, [this](const QVariantMap &row) {
-        emit logTextChanged();
-        emit logStreamRowAppended(row);
-    });
     if (auto *model = logs()) {
         connect(model, &EventStreamModel::countChanged, this, &LogsViewModel::logTextChanged);
     }

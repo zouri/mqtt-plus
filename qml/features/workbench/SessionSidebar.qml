@@ -11,9 +11,9 @@ Rectangle {
 
     required property AppUi ui
     required property var viewModel
-    required property var sessionEditor
     property bool collapsed: false
 
+    signal sessionCreateRequested
     signal collapseRequested
     signal expandRequested
 
@@ -97,15 +97,8 @@ Rectangle {
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
 
-                function showSessionContextMenu(globalPosition) {
-                    const action = control.viewModel.showSessionContextMenu(sessionDelegate.index, globalPosition);
-                    if (action === "edit") {
-                        control.sessionEditor.openForEdit(sessionDelegate.index);
-                    } else if (action === "copy") {
-                        control.viewModel.duplicateSessionAt(sessionDelegate.index);
-                    } else if (action === "delete") {
-                        control.viewModel.removeSessionAt(sessionDelegate.index);
-                    }
+                function openSessionContextMenu(globalPosition) {
+                    control.viewModel.handleSessionContextMenu(sessionDelegate.index, globalPosition);
                 }
 
                 Keys.onPressed: event => {
@@ -114,7 +107,7 @@ Rectangle {
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
                         control.viewModel.currentSessionIndex = sessionDelegate.index;
-                        sessionDelegate.showSessionContextMenu(sessionDelegate.mapToGlobal(Qt.point(sessionDelegate.width - 8, Math.round(sessionDelegate.height / 2))));
+                        sessionDelegate.openSessionContextMenu(sessionDelegate.mapToGlobal(Qt.point(sessionDelegate.width - 8, Math.round(sessionDelegate.height / 2))));
                         event.accepted = true;
                     }
                 }
@@ -173,7 +166,7 @@ Rectangle {
                         sessionDelegate.forceActiveFocus();
                         if (mouse.button === Qt.RightButton) {
                             control.viewModel.currentSessionIndex = sessionDelegate.index;
-                            sessionDelegate.showSessionContextMenu(sessionDelegate.mapToGlobal(Qt.point(mouse.x, mouse.y)));
+                            sessionDelegate.openSessionContextMenu(sessionDelegate.mapToGlobal(Qt.point(mouse.x, mouse.y)));
                         }
                     }
 
@@ -203,7 +196,7 @@ Rectangle {
 
                     Keys.onPressed: event => {
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
-                            control.sessionEditor.openForCreate();
+                            control.sessionCreateRequested();
                             event.accepted = true;
                         }
                     }
@@ -292,7 +285,7 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
 
                         onPressed: addSessionDelegate.forceActiveFocus()
-                        onClicked: control.sessionEditor.openForCreate()
+                        onClicked: control.sessionCreateRequested()
                     }
                 }
             }

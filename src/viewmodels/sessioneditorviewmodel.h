@@ -98,11 +98,11 @@ public:
     void setAuthenticationMethod(const QString &authenticationMethod);
     void setAuthenticationData(const QString &authenticationData);
 
-    Q_INVOKABLE void openForCreate(const QVariantMap &config);
-    Q_INVOKABLE void openForEdit(int index, const QVariantMap &config);
-    Q_INVOKABLE void loadConfig(const QVariantMap &config);
-    Q_INVOKABLE QVariantMap collectedConfig() const;
-    Q_INVOKABLE bool validate();
+    void openForCreate(const QVariantMap &config);
+    void openForEdit(int index, const QVariantMap &config);
+    void loadConfig(const QVariantMap &config);
+    QVariantMap collectedConfig() const;
+    bool validate();
 
 signals:
     void editModeChanged();

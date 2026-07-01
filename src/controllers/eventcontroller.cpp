@@ -1,9 +1,9 @@
 #include "eventcontroller.h"
 
-#include "controllers/applicationcontext.h"
+#include "controllers/eventcontrollercontext.h"
 #include "controllers/scriptcontroller.h"
 #include "controllers/subscriptioncontroller.h"
-#include "app/applicationcoreutils.h"
+#include "services/apputils.h"
 #include "models/eventstreammodel.h"
 #include "presentation/eventrenderer.h"
 #include "services/payload/payloadcodec.h"
@@ -14,7 +14,7 @@
 
 #include <algorithm>
 
-using namespace ApplicationCoreUtils;
+using namespace AppUtils;
 
 namespace {
 constexpr int kMessageHistoryFlushIntervalMs = 250;
@@ -142,7 +142,6 @@ void EventController::clearCurrentMessages()
     m_app.messagesModel().clear();
     m_app.refreshScriptTestSamplesModel();
     m_app.emitMessageStreamChanged();
-    m_app.emitScriptTestSamplesChanged();
 }
 
 void EventController::clearCurrentLogs()
@@ -198,7 +197,6 @@ int EventController::loadOlderCurrentSessionMessages()
     session->oldestLoadedMessageId = EventRenderer::firstHistoryId(session->messageRows);
     m_app.messagesModel().prependRows(rows);
     m_app.refreshScriptTestSamplesModel();
-    m_app.emitScriptTestSamplesChanged();
     return rows.size();
 }
 
@@ -252,7 +250,6 @@ void EventController::appendRenderedMessageRow(SessionState &session, const QVar
     m_app.messagesModel().trimToLimit(kMaxVisibleEventRows);
     m_app.emitMessageStreamRowAppended(row);
     m_app.refreshScriptTestSamplesModel();
-    m_app.emitScriptTestSamplesChanged();
 }
 
 void EventController::appendRenderedLogRow(SessionState &session, const QVariantMap &row)
@@ -487,7 +484,6 @@ void EventController::reloadCurrentSessionHistory()
     m_app.logsModel().setRows(session->logRows);
 
     m_app.refreshScriptTestSamplesModel();
-    m_app.emitScriptTestSamplesChanged();
 }
 
 void EventController::flushPendingMessageHistory()

@@ -1,13 +1,11 @@
 #include "scriptcontroller.h"
 
-#include "app/applicationcoreutils.h"
-#include "services/payload/payloadcodec.h"
-#include "services/scripting/luarunner.h"
+#include "services/apputils.h"
 #include "services/storage/scriptstore.h"
 
 #include <QUuid>
 
-using namespace ApplicationCoreUtils;
+using namespace AppUtils;
 
 ScriptController::ScriptController(QObject *parent)
     : QObject(parent)
@@ -87,70 +85,6 @@ QString ScriptController::upsertScript(
         return QString();
     }
     return script.id;
-}
-
-ScriptController::DeleteResult ScriptController::deleteScript(const QString &id)
-{
-    const QString scriptId = id.trimmed();
-    if (scriptId.isEmpty()) {
-        return {};
-    }
-
-    const QVector<ScriptEntry> previousScripts = m_scripts;
-    DeleteResult result;
-    for (int i = 0; i < m_scripts.size(); ++i) {
-        if (m_scripts.at(i).id == scriptId) {
-            result.fileName = m_scripts.at(i).fileName;
-            m_scripts.removeAt(i);
-            result.success = true;
-            break;
-        }
-    }
-    if (!result.success) {
-        return {};
-    }
-
-    if (!saveScripts()) {
-        m_scripts = previousScripts;
-        return {};
-    }
-    return result;
-}
-
-QVariantMap ScriptController::testScript(const QString &code, const QString &topic, const QString &payload, int format) const
-{
-    QString encodeError;
-    QByteArray payloadBytes;
-    const PayloadFormat payloadFormat = PayloadCodec::formatFromInt(format);
-    if (!PayloadCodec::encodeForPublish(payloadFormat, payload, payloadBytes, encodeError)) {
-        payloadBytes = payload.toUtf8();
-    }
-
-    QString decodeError;
-    const QString decoded = PayloadCodec::decodeForDisplay(payloadFormat, payloadBytes, decodeError);
-
-    LuaScriptContext context;
-    context.topic = topic.trimmed().isEmpty() ? QStringLiteral("test/topic") : topic.trimmed();
-    context.payloadBytes = payloadBytes;
-    context.decodedPayload = decoded;
-    context.decodeError = decodeError;
-    context.format = payloadFormat;
-    context.timestamp = timestampNow();
-
-    const LuaScriptResult result = LuaRunner::run(code, context);
-    QVariantMap row;
-    row.insert(QStringLiteral("success"), result.success);
-    row.insert(QStringLiteral("output"), result.output);
-    row.insert(QStringLiteral("error"), result.error);
-    if (!encodeError.isEmpty()) {
-        row.insert(QStringLiteral("inputError"), encodeError);
-    }
-    return row;
-}
-
-void ScriptController::removeScriptFile(const QString &fileName) const
-{
-    ScriptStore::removeScriptFile(fileName);
 }
 
 bool ScriptController::saveScripts()

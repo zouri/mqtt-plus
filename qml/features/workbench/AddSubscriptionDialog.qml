@@ -13,15 +13,16 @@ Dialog {
     readonly property var editor: root.viewModel.subscriptionEditor
 
     function openForCreate() {
-        root.editor.openForCreate()
+        root.viewModel.openSubscriptionEditorForCreate()
         open()
         topicField.forceActiveFocus()
     }
 
-    function openForEdit(subscription) {
-        root.editor.openForEdit(subscription)
-        open()
-        aliasField.forceActiveFocus()
+    function openForEdit(index) {
+        if (root.viewModel.openSubscriptionEditorForEdit(index)) {
+            open()
+            aliasField.forceActiveFocus()
+        }
     }
 
     function submit() {
