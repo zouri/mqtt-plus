@@ -4,7 +4,6 @@
 #include <QString>
 #include <QTimer>
 
-#include "app/applicationmodelrefresher.h"
 #include "app/applicationsessionrepository.h"
 #include "app/applicationsessionruntime.h"
 #include "app/applicationviewrefreshcoordinator.h"
@@ -52,7 +51,6 @@ struct ApplicationCoreState
     EventStreamModel logsModel;
     ScriptLibraryModel scriptsModel;
     ScriptTestSamplesModel scriptTestSamplesModel;
-    ApplicationModelRefresher modelRefresher;
     ApplicationViewRefreshCoordinator viewRefreshCoordinator;
     ApplicationSessionRuntime sessionRuntime;
     ApplicationSessionRepository sessionRepository;

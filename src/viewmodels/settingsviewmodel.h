@@ -1,7 +1,6 @@
 #pragma once
 
 #include "domain/session.h"
-#include "viewmodels/settingsoptionsviewmodel.h"
 
 #include <QObject>
 #include <QString>
@@ -16,7 +15,7 @@ class LanguageController;
 class PreferencesController;
 class ThemeController;
 
-class SettingsViewModel : public SettingsOptionsViewModel
+class SettingsViewModel : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString effectiveTheme READ effectiveTheme NOTIFY effectiveThemeChanged)

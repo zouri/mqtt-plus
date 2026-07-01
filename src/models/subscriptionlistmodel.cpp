@@ -1,68 +1,12 @@
 #include "subscriptionlistmodel.h"
 
-namespace {
+#include "domain/session.h"
+#include "services/apputils.h"
+#include "services/payload/payloadcodec.h"
 
-QList<int> changedRoles(const SubscriptionListRow &oldRow, const SubscriptionListRow &newRow)
-{
-    QList<int> roles;
-    if (oldRow.topic != newRow.topic) {
-        roles.append(SubscriptionListModel::TopicRole);
-    }
-    if (oldRow.alias != newRow.alias) {
-        roles.append(SubscriptionListModel::AliasRole);
-    }
-    if (oldRow.displayName != newRow.displayName) {
-        roles.append(SubscriptionListModel::DisplayNameRole);
-    }
-    if (oldRow.requestedQos != newRow.requestedQos) {
-        roles.append(SubscriptionListModel::RequestedQosRole);
-    }
-    if (oldRow.grantedQos != newRow.grantedQos) {
-        roles.append(SubscriptionListModel::GrantedQosRole);
-    }
-    if (oldRow.topicFps != newRow.topicFps) {
-        roles.append(SubscriptionListModel::TopicFpsRole);
-    }
-    if (oldRow.format != newRow.format) {
-        roles.append(SubscriptionListModel::FormatRole);
-    }
-    if (oldRow.formatName != newRow.formatName) {
-        roles.append(SubscriptionListModel::FormatNameRole);
-    }
-    if (oldRow.scriptId != newRow.scriptId) {
-        roles.append(SubscriptionListModel::ScriptIdRole);
-    }
-    if (oldRow.scriptName != newRow.scriptName) {
-        roles.append(SubscriptionListModel::ScriptNameRole);
-    }
-    if (oldRow.paused != newRow.paused) {
-        roles.append(SubscriptionListModel::PausedRole);
-    }
-    if (oldRow.state != newRow.state) {
-        roles.append(SubscriptionListModel::StateRole);
-    }
-    if (oldRow.lastError != newRow.lastError) {
-        roles.append(SubscriptionListModel::LastErrorRole);
-    }
-    return roles;
-}
+#include <QDateTime>
 
-bool hasSameIdentityOrder(const QVector<SubscriptionListRow> &oldRows, const QVector<SubscriptionListRow> &newRows)
-{
-    if (oldRows.size() != newRows.size()) {
-        return false;
-    }
-
-    for (qsizetype i = 0; i < oldRows.size(); ++i) {
-        if (oldRows.at(i).topic != newRows.at(i).topic) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-} // namespace
+using namespace AppUtils;
 
 SubscriptionListModel::SubscriptionListModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -71,7 +15,7 @@ SubscriptionListModel::SubscriptionListModel(QObject *parent)
 
 int SubscriptionListModel::rowCount(const QModelIndex &parent) const
 {
-    return parent.isValid() ? 0 : m_rows.size();
+    return parent.isValid() || !m_subs ? 0 : m_subs->size();
 }
 
 int SubscriptionListModel::count() const
@@ -81,38 +25,39 @@ int SubscriptionListModel::count() const
 
 QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
+    if (!index.isValid() || !m_subs || index.row() < 0 || index.row() >= m_subs->size()) {
         return {};
     }
 
-    const SubscriptionListRow &row = m_rows.at(index.row());
+    const auto &sub = m_subs->at(index.row());
+    const int row = index.row();
     switch (role) {
     case TopicRole:
-        return row.topic;
+        return sub.topic;
     case AliasRole:
-        return row.alias;
+        return sub.alias;
     case DisplayNameRole:
-        return row.displayName;
+        return displayNameForSub(sub);
     case RequestedQosRole:
-        return row.requestedQos;
+        return sub.requestedQos;
     case GrantedQosRole:
-        return row.grantedQos;
+        return sub.grantedQos;
     case TopicFpsRole:
-        return row.topicFps;
+        return row < m_fpsCache.size() ? m_fpsCache.at(row) : 0.0;
     case FormatRole:
-        return row.format;
+        return sub.format;
     case FormatNameRole:
-        return row.formatName;
+        return PayloadCodec::formatName(PayloadCodec::formatFromInt(sub.format));
     case ScriptIdRole:
-        return row.scriptId;
+        return sub.scriptId;
     case ScriptNameRole:
-        return row.scriptName;
+        return row < m_scriptNameCache.size() ? m_scriptNameCache.at(row) : QString();
     case PausedRole:
-        return row.paused;
+        return sub.paused;
     case StateRole:
-        return row.state;
+        return sub.runtimeState;
     case LastErrorRole:
-        return row.lastError;
+        return sub.lastError;
     default:
         return {};
     }
@@ -140,69 +85,101 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
 
 QVariantMap SubscriptionListModel::rowAt(int row) const
 {
-    if (row < 0 || row >= m_rows.size()) {
+    if (!m_subs || row < 0 || row >= m_subs->size()) {
         return {};
     }
-    return rowToMap(m_rows.at(row));
+
+    return rowToMap(m_subs->at(row), row);
 }
 
-void SubscriptionListModel::setRows(const QVector<SubscriptionListRow> &rows)
+void SubscriptionListModel::setSource(const SessionState *session)
 {
-    if (hasSameIdentityOrder(m_rows, rows)) {
-        for (qsizetype i = 0; i < rows.size(); ++i) {
-            const QList<int> roles = changedRoles(m_rows.at(i), rows.at(i));
-            if (roles.isEmpty()) {
-                continue;
-            }
+    if (session) {
+        m_subs = &session->subscriptions;
+    } else {
+        m_subs = &m_empty;
+    }
+    rebuildCache();
+}
 
-            m_rows[i] = rows.at(i);
-            const QModelIndex rowIndex = index(static_cast<int>(i), 0);
-            emit dataChanged(rowIndex, rowIndex, roles);
-        }
+void SubscriptionListModel::setScriptNameLookup(std::function<QString(const QString &)> lookup)
+{
+    m_scriptNameLookup = std::move(lookup);
+}
+
+void SubscriptionListModel::notifyRefresh()
+{
+    rebuildCache();
+}
+
+void SubscriptionListModel::updateTopicFps(qint64 nowMs)
+{
+    if (!m_subs || m_subs->isEmpty()) {
         return;
     }
 
-    const bool countWillChange = rows.size() != m_rows.size();
+    const qsizetype n = m_subs->size();
+    m_fpsCache.resize(n);
+    for (qsizetype i = 0; i < n; ++i) {
+        m_fpsCache[i] = static_cast<qreal>(recentMessageCount(m_subs->at(i).recentMessageTimestampsMs, nowMs));
+    }
+
+    for (qsizetype i = 0; i < n; ++i) {
+        const QModelIndex rowIndex = index(static_cast<int>(i), 0);
+        emit dataChanged(rowIndex, rowIndex, {TopicFpsRole});
+    }
+}
+
+void SubscriptionListModel::rebuildCache()
+{
+    const bool countWillChange = !m_subs || m_fpsCache.size() != static_cast<qsizetype>(m_subs->size());
     beginResetModel();
-    m_rows = rows;
+
+    if (m_subs) {
+        const qsizetype n = m_subs->size();
+        const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+        m_fpsCache.resize(n);
+
+        m_scriptNameCache.resize(n);
+        for (qsizetype i = 0; i < n; ++i) {
+            m_fpsCache[i] = static_cast<qreal>(recentMessageCount(m_subs->at(i).recentMessageTimestampsMs, nowMs));
+            m_scriptNameCache[i] = m_scriptNameLookup
+                ? m_scriptNameLookup(m_subs->at(i).scriptId)
+                : QString();
+        }
+    } else {
+        m_fpsCache.clear();
+        m_scriptNameCache.clear();
+    }
+
     endResetModel();
     if (countWillChange) {
         emit countChanged();
     }
 }
 
-void SubscriptionListModel::setTopicFpsRows(const QVector<SubscriptionFpsRow> &rows)
-{
-    if (rows.size() != m_rows.size()) {
-        return;
-    }
-
-    for (qsizetype i = 0; i < rows.size(); ++i) {
-        if (m_rows.at(i).topic != rows.at(i).topic || m_rows.at(i).topicFps == rows.at(i).topicFps) {
-            continue;
-        }
-
-        m_rows[i].topicFps = rows.at(i).topicFps;
-        const QModelIndex rowIndex = index(static_cast<int>(i), 0);
-        emit dataChanged(rowIndex, rowIndex, {TopicFpsRole});
-    }
-}
-
-QVariantMap SubscriptionListModel::rowToMap(const SubscriptionListRow &row) const
+QVariantMap SubscriptionListModel::rowToMap(const SubscriptionEntry &sub, int row) const
 {
     QVariantMap map;
-    map.insert(QStringLiteral("topic"), row.topic);
-    map.insert(QStringLiteral("alias"), row.alias);
-    map.insert(QStringLiteral("displayName"), row.displayName);
-    map.insert(QStringLiteral("requestedQos"), row.requestedQos);
-    map.insert(QStringLiteral("grantedQos"), row.grantedQos);
-    map.insert(QStringLiteral("topicFps"), row.topicFps);
-    map.insert(QStringLiteral("format"), row.format);
-    map.insert(QStringLiteral("formatName"), row.formatName);
-    map.insert(QStringLiteral("scriptId"), row.scriptId);
-    map.insert(QStringLiteral("scriptName"), row.scriptName);
-    map.insert(QStringLiteral("paused"), row.paused);
-    map.insert(QStringLiteral("state"), row.state);
-    map.insert(QStringLiteral("lastError"), row.lastError);
+    const qreal fps = row >= 0 && row < m_fpsCache.size() ? m_fpsCache.at(row) : 0.0;
+    const QString scriptName = row >= 0 && row < m_scriptNameCache.size() ? m_scriptNameCache.at(row) : QString();
+    map.insert(QStringLiteral("topic"), sub.topic);
+    map.insert(QStringLiteral("alias"), sub.alias);
+    map.insert(QStringLiteral("displayName"), displayNameForSub(sub));
+    map.insert(QStringLiteral("requestedQos"), sub.requestedQos);
+    map.insert(QStringLiteral("grantedQos"), sub.grantedQos);
+    map.insert(QStringLiteral("topicFps"), fps);
+    map.insert(QStringLiteral("format"), sub.format);
+    map.insert(QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(sub.format)));
+    map.insert(QStringLiteral("scriptId"), sub.scriptId);
+    map.insert(QStringLiteral("scriptName"), scriptName);
+    map.insert(QStringLiteral("paused"), sub.paused);
+    map.insert(QStringLiteral("state"), sub.runtimeState);
+    map.insert(QStringLiteral("lastError"), sub.lastError);
     return map;
+}
+
+QString SubscriptionListModel::displayNameForSub(const SubscriptionEntry &sub) const
+{
+    return sub.alias.isEmpty() ? sub.topic : sub.alias;
 }

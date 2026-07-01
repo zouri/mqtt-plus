@@ -2,7 +2,6 @@
 #include "controllers/preferencescontroller.h"
 #include "controllers/themecontroller.h"
 #include "models/eventstreammodel.h"
-#include "viewmodels/settingsoptionsviewmodel.h"
 #include "viewmodels/settingsviewmodel.h"
 
 #include <QtTest/QtTest>
@@ -87,31 +86,11 @@ class SettingsOptionsViewModelTest : public QObject
     Q_OBJECT
 
 private slots:
-    void resolvesOptionIndexes();
-    void clampsOptionValues();
     void exposesDefaultSettingIndexes();
     void readsSettingsThroughDependencies();
     void writesSettingsThroughDependencies();
     void forwardsDependencySignals();
 };
-
-void SettingsOptionsViewModelTest::resolvesOptionIndexes()
-{
-    SettingsOptionsViewModel options;
-
-    QCOMPARE(options.optionIndex(QVariantList {QStringLiteral("system"), QStringLiteral("light")}, QStringLiteral("light")), 1);
-    QCOMPARE(options.optionIndex(QVariantList {1000, 5000}, 42), 0);
-}
-
-void SettingsOptionsViewModelTest::clampsOptionValues()
-{
-    SettingsOptionsViewModel options;
-    const QVariantList values {QStringLiteral("never"), QStringLiteral("current"), QStringLiteral("all")};
-
-    QCOMPARE(options.optionValue(values, -1).toString(), QStringLiteral("never"));
-    QCOMPARE(options.optionValue(values, 1).toString(), QStringLiteral("current"));
-    QCOMPARE(options.optionValue(values, 99).toString(), QStringLiteral("all"));
-}
 
 void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
 {

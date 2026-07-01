@@ -478,11 +478,14 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesModelProjection()
 {
     QString coreStateHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.h"), coreStateHeader));
-    QVERIFY2(coreStateHeader.contains(QStringLiteral("ApplicationModelRefresher modelRefresher")),
-        "ApplicationCoreState must delegate list-model projection to ApplicationModelRefresher");
+    QVERIFY2(!coreStateHeader.contains(QStringLiteral("ApplicationModelRefresher")),
+        "ApplicationCoreState must not delegate model projection via ApplicationModelRefresher — models hold data-source pointers directly");
 
     const QString coreModelsPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcoremodels.cpp");
     QVERIFY2(!QFile::exists(coreModelsPath), "Obsolete ApplicationCore model dependency source file must be removed");
+
+    const QString refresherPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationmodelrefresher.cpp");
+    QVERIFY2(!QFile::exists(refresherPath), "ApplicationModelRefresher must be removed — models hold data-source pointers directly");
 
     QString coreHeader;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcore.h"), coreHeader));
@@ -503,23 +506,17 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesModelProjection()
     QVERIFY2(!coreHeader.contains(QStringLiteral("void ApplicationCore::refreshSubscriptionsModel")),
         "ApplicationCore must not retain subscription model refresh forwarding methods");
 
-    QString refresher;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationmodelrefresher.cpp"), refresher));
-    QVERIFY2(refresher.contains(QStringLiteral("SessionListRow row")),
-        "ApplicationModelRefresher must own session row projection");
-    QVERIFY2(refresher.contains(QStringLiteral("SubscriptionListRow row")),
-        "ApplicationModelRefresher must own subscription row projection");
-    QVERIFY2(refresher.contains(QStringLiteral("ScriptLibraryRow row")),
-        "ApplicationModelRefresher must own script row projection");
-    QVERIFY2(refresher.contains(QStringLiteral("ScriptTestSampleRow sample")),
-        "ApplicationModelRefresher must own script sample row projection");
+    QString sessionModel;
+    QVERIFY(readSourceFile(QStringLiteral("src/models/sessionlistmodel.cpp"), sessionModel));
+    QVERIFY2(sessionModel.contains(QStringLiteral("sessionStateName")),
+        "SessionListModel must own session row projection by reading domain data directly");
 
-    QString refreshCoordinator;
-    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationviewrefreshcoordinator.cpp"), refreshCoordinator));
-    QVERIFY2(refreshCoordinator.contains(QStringLiteral("m_dependencies.modelRefresher->refreshSessions")),
-        "ApplicationViewRefreshCoordinator must route session model refreshes to ApplicationModelRefresher");
-    QVERIFY2(refreshCoordinator.contains(QStringLiteral("m_dependencies.modelRefresher->refreshSubscriptions")),
-        "ApplicationViewRefreshCoordinator must route subscription model refreshes to ApplicationModelRefresher");
+    QString refresher;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationviewrefreshcoordinator.cpp"), refresher));
+    QVERIFY2(refresher.contains(QStringLiteral("m_deps.sessionsModel->notifyRefresh")),
+        "ApplicationViewRefreshCoordinator must route session model refreshes to models directly");
+    QVERIFY2(refresher.contains(QStringLiteral("m_deps.subscriptionsModel->setSource(currentSession(m_deps))")),
+        "ApplicationViewRefreshCoordinator must bind subscription model refreshes to the current session directly");
 }
 
 void ArchitectureBoundariesTest::applicationCoreDelegatesSessionConfiguration()
@@ -1491,8 +1488,11 @@ void ArchitectureBoundariesTest::settingsViewModelDoesNotExposeWritableRawOption
 
 void ArchitectureBoundariesTest::settingsViewModelDoesNotExposeInternalOptionHelpers()
 {
+    const QString optionsPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/viewmodels/settingsoptionsviewmodel.h");
+    QVERIFY2(!QFile::exists(optionsPath), "SettingsOptionsViewModel is deleted — option helpers are free functions in SettingsViewModel implementation");
+
     QString source;
-    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/settingsoptionsviewmodel.h"), source));
+    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/settingsviewmodel.h"), source));
 
     const QStringList forbiddenInvokables {
         QStringLiteral("Q_INVOKABLE int optionIndex"),

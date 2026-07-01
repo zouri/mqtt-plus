@@ -1,3 +1,4 @@
+#include "domain/script.h"
 #include "models/scriptlibrarymodel.h"
 #include "viewmodels/scriptsviewmodel.h"
 
@@ -119,24 +120,21 @@ void ScriptsViewModelTest::forwardsScriptLibrarySignal()
 void ScriptsViewModelTest::readsScriptListThroughDependencies()
 {
     FakeScriptsDeps deps;
-    deps.model.setRows({
+    QVector<ScriptEntry> scripts {
         {
             QStringLiteral("decoder"),
             QStringLiteral("Decoder"),
             QStringLiteral("Binary payload"),
             QStringLiteral("function parse(ctx)\nend"),
-            {},
-            {},
         },
         {
             QStringLiteral("logger"),
             QStringLiteral("Logger"),
             QStringLiteral("Debug event"),
             QStringLiteral("function parse(ctx)\nend"),
-            {},
-            {},
         },
-    });
+    };
+    deps.model.setSource(&scripts);
     ScriptsViewModel viewModel(deps.dependencies());
 
     QCOMPARE(viewModel.scripts(), &deps.model);

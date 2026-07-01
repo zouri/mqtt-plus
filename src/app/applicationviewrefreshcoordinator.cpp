@@ -1,129 +1,177 @@
 #include "app/applicationviewrefreshcoordinator.h"
 
-#include "app/applicationmodelrefresher.h"
 #include "app/applicationcore.h"
 #include "controllers/eventcontroller.h"
+#include "controllers/scriptcontroller.h"
 #include "controllers/sessioncontroller.h"
 #include "models/eventstreammodel.h"
+#include "models/scriptlibrarymodel.h"
+#include "models/scripttestsamplesmodel.h"
+#include "models/sessionlistmodel.h"
+#include "models/subscriptionlistmodel.h"
 
 #include <QVariantList>
 
 namespace {
 
-SessionState *currentSession(const ApplicationViewRefreshDependencies &dependencies)
+SessionState *currentSession(const ApplicationViewRefreshDependencies &deps)
 {
-    return dependencies.sessionController->currentSession();
+    if (!deps.sessionController) {
+        return nullptr;
+    }
+    return deps.sessionController->currentSession();
 }
 
 } // namespace
 
 void ApplicationViewRefreshCoordinator::setDependencies(const ApplicationViewRefreshDependencies &dependencies)
 {
-    m_dependencies = dependencies;
+    m_deps = dependencies;
 }
 
 void ApplicationViewRefreshCoordinator::refreshSessionsModel()
 {
-    m_dependencies.modelRefresher->refreshSessions();
+    if (m_deps.sessionsModel) {
+        m_deps.sessionsModel->notifyRefresh();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::refreshSubscriptionsModel()
 {
-    m_dependencies.modelRefresher->refreshSubscriptions(currentSession(m_dependencies));
+    if (m_deps.subscriptionsModel) {
+        m_deps.subscriptionsModel->setSource(currentSession(m_deps));
+    }
 }
 
 void ApplicationViewRefreshCoordinator::refreshScriptsModel()
 {
-    m_dependencies.modelRefresher->refreshScripts();
+    if (m_deps.scriptsModel) {
+        m_deps.scriptsModel->notifyRefresh();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::refreshScriptTestSamplesModel()
 {
-    m_dependencies.modelRefresher->refreshScriptTestSamples(currentSession(m_dependencies));
+    if (m_deps.scriptTestSamplesModel) {
+        auto *session = currentSession(m_deps);
+        m_deps.scriptTestSamplesModel->setSource(session ? &session->messageRows : nullptr);
+    }
 }
 
 void ApplicationViewRefreshCoordinator::reloadCurrentSessionHistory()
 {
-    m_dependencies.eventController->reloadCurrentSessionHistory();
+    if (m_deps.eventController) {
+        m_deps.eventController->reloadCurrentSessionHistory();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::notifyCurrentSessionViewsChanged()
 {
     refreshSessionsModel();
-    m_dependencies.core->notifyCurrentSessionChanged();
+    if (m_deps.core) {
+        m_deps.core->notifyCurrentSessionChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::notifyCurrentSessionAndSubscriptionsChanged()
 {
     refreshSessionsModel();
     refreshSubscriptionsModel();
-    m_dependencies.core->notifyCurrentSessionChanged();
-    m_dependencies.core->notifySubscriptionsChanged();
+    if (m_deps.core) {
+        m_deps.core->notifyCurrentSessionChanged();
+        m_deps.core->notifySubscriptionsChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::notifySessionViewsChanged()
 {
     refreshSessionsModel();
-    m_dependencies.core->notifySessionsChanged();
-    m_dependencies.core->notifyCurrentSessionChanged();
+    if (m_deps.core) {
+        m_deps.core->notifySessionsChanged();
+        m_deps.core->notifyCurrentSessionChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::notifySessionAndSubscriptionViewsChanged()
 {
     refreshSessionsModel();
     refreshSubscriptionsModel();
-    m_dependencies.core->notifySessionsChanged();
-    m_dependencies.core->notifyCurrentSessionChanged();
-    m_dependencies.core->notifySubscriptionsChanged();
+    if (m_deps.core) {
+        m_deps.core->notifySessionsChanged();
+        m_deps.core->notifyCurrentSessionChanged();
+        m_deps.core->notifySubscriptionsChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::notifySelectedSessionViewsChanged()
 {
     refreshSubscriptionsModel();
-    m_dependencies.messagesModel->setRows(currentSession(m_dependencies) ? currentSession(m_dependencies)->messageRows : QVariantList {});
-    m_dependencies.logsModel->setRows(currentSession(m_dependencies) ? currentSession(m_dependencies)->logRows : QVariantList {});
+    if (m_deps.messagesModel) {
+        auto *session = currentSession(m_deps);
+        m_deps.messagesModel->setRows(session ? session->messageRows : QVariantList {});
+    }
+    if (m_deps.logsModel) {
+        auto *session = currentSession(m_deps);
+        m_deps.logsModel->setRows(session ? session->logRows : QVariantList {});
+    }
     refreshScriptTestSamplesModel();
-    m_dependencies.core->notifyCurrentSessionIndexChanged();
-    m_dependencies.core->notifyCurrentSessionChanged();
-    m_dependencies.core->notifySubscriptionsChanged();
-    m_dependencies.core->notifyMessageStreamChanged();
-    m_dependencies.core->notifyLogStreamChanged();
-    m_dependencies.core->notifyScriptLibraryChanged();
+    if (m_deps.core) {
+        m_deps.core->notifyCurrentSessionIndexChanged();
+        m_deps.core->notifyCurrentSessionChanged();
+        m_deps.core->notifySubscriptionsChanged();
+        m_deps.core->notifyMessageStreamChanged();
+        m_deps.core->notifyLogStreamChanged();
+        m_deps.core->notifyScriptLibraryChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::notifySessionCollectionViewsChanged()
 {
     refreshSessionsModel();
     refreshSubscriptionsModel();
-    m_dependencies.messagesModel->setRows(currentSession(m_dependencies) ? currentSession(m_dependencies)->messageRows : QVariantList {});
-    m_dependencies.logsModel->setRows(currentSession(m_dependencies) ? currentSession(m_dependencies)->logRows : QVariantList {});
+    if (m_deps.messagesModel) {
+        auto *session = currentSession(m_deps);
+        m_deps.messagesModel->setRows(session ? session->messageRows : QVariantList {});
+    }
+    if (m_deps.logsModel) {
+        auto *session = currentSession(m_deps);
+        m_deps.logsModel->setRows(session ? session->logRows : QVariantList {});
+    }
     refreshScriptsModel();
     refreshScriptTestSamplesModel();
-    m_dependencies.core->notifySessionsChanged();
-    m_dependencies.core->notifyCurrentSessionIndexChanged();
-    m_dependencies.core->notifyCurrentSessionChanged();
-    m_dependencies.core->notifySubscriptionsChanged();
-    m_dependencies.core->notifyMessageStreamChanged();
-    m_dependencies.core->notifyLogStreamChanged();
-    m_dependencies.core->notifyScriptLibraryChanged();
+    if (m_deps.core) {
+        m_deps.core->notifySessionsChanged();
+        m_deps.core->notifyCurrentSessionIndexChanged();
+        m_deps.core->notifyCurrentSessionChanged();
+        m_deps.core->notifySubscriptionsChanged();
+        m_deps.core->notifyMessageStreamChanged();
+        m_deps.core->notifyLogStreamChanged();
+        m_deps.core->notifyScriptLibraryChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::notifyLanguageChanged()
 {
     refreshSessionsModel();
     refreshSubscriptionsModel();
-    m_dependencies.core->notifyCurrentSessionChanged();
-    m_dependencies.core->notifySessionsChanged();
-    m_dependencies.core->notifySubscriptionsChanged();
-    m_dependencies.core->notifyLanguageChanged();
+    if (m_deps.core) {
+        m_deps.core->notifyCurrentSessionChanged();
+        m_deps.core->notifySessionsChanged();
+        m_deps.core->notifySubscriptionsChanged();
+        m_deps.core->notifyLanguageChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::notifyHistoryPageSizeChanged()
 {
-    m_dependencies.eventController->reloadCurrentSessionHistory();
-    m_dependencies.core->notifyMessageStreamChanged();
-    m_dependencies.core->notifyLogStreamChanged();
-    m_dependencies.core->notifyHistoryPageSizeChanged();
+    if (m_deps.eventController) {
+        m_deps.eventController->reloadCurrentSessionHistory();
+    }
+    if (m_deps.core) {
+        m_deps.core->notifyMessageStreamChanged();
+        m_deps.core->notifyLogStreamChanged();
+        m_deps.core->notifyHistoryPageSizeChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::reportStorageError(const QString &message)
@@ -132,9 +180,11 @@ void ApplicationViewRefreshCoordinator::reportStorageError(const QString &messag
         return;
     }
 
-    if (auto *session = currentSession(m_dependencies)) {
+    if (auto *session = currentSession(m_deps)) {
         session->lastError = message;
-        m_dependencies.eventController->appendEvent(*session, QStringLiteral("Storage"), message);
+        if (m_deps.eventController) {
+            m_deps.eventController->appendEvent(*session, QStringLiteral("Storage"), message);
+        }
     }
 
     notifySessionViewsChanged();
@@ -142,30 +192,42 @@ void ApplicationViewRefreshCoordinator::reportStorageError(const QString &messag
 
 void ApplicationViewRefreshCoordinator::emitSessionsChanged()
 {
-    m_dependencies.core->notifySessionsChanged();
+    if (m_deps.core) {
+        m_deps.core->notifySessionsChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::emitSubscriptionsChanged()
 {
-    m_dependencies.core->notifySubscriptionsChanged();
+    if (m_deps.core) {
+        m_deps.core->notifySubscriptionsChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::emitMessageStreamChanged()
 {
-    m_dependencies.core->notifyMessageStreamChanged();
+    if (m_deps.core) {
+        m_deps.core->notifyMessageStreamChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::emitLogStreamChanged()
 {
-    m_dependencies.core->notifyLogStreamChanged();
+    if (m_deps.core) {
+        m_deps.core->notifyLogStreamChanged();
+    }
 }
 
 void ApplicationViewRefreshCoordinator::emitMessageStreamRowAppended(const QVariantMap &row)
 {
-    m_dependencies.core->notifyMessageStreamRowAppended(row);
+    if (m_deps.core) {
+        m_deps.core->notifyMessageStreamRowAppended(row);
+    }
 }
 
 void ApplicationViewRefreshCoordinator::emitLogStreamRowAppended(const QVariantMap &row)
 {
-    m_dependencies.core->notifyLogStreamRowAppended(row);
+    if (m_deps.core) {
+        m_deps.core->notifyLogStreamRowAppended(row);
+    }
 }

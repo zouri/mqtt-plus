@@ -7,6 +7,8 @@
 #include "models/eventstreammodel.h"
 #include "services/storage/historystore.h"
 
+#include <algorithm>
+
 namespace {
 QVariantList themeModeValues()
 {
@@ -42,6 +44,24 @@ QVariantList cleanupModeValues()
 {
     return {QStringLiteral("never"), QStringLiteral("current"), QStringLiteral("all")};
 }
+
+int optionIndex(const QVariantList &values, const QVariant &value)
+{
+    for (int i = 0; i < values.size(); ++i) {
+        if (values.at(i) == value) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+QVariant optionValue(const QVariantList &values, int index)
+{
+    if (values.isEmpty()) {
+        return {};
+    }
+    return values.at(std::clamp(index, 0, static_cast<int>(values.size()) - 1));
+}
 }
 
 SettingsViewModel::SettingsViewModel(QObject *parent)
@@ -50,7 +70,7 @@ SettingsViewModel::SettingsViewModel(QObject *parent)
 }
 
 SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QObject *parent)
-    : SettingsOptionsViewModel(parent)
+    : QObject(parent)
     , m_dependencies(dependencies)
 {
     if (m_dependencies.bindThemeModeChanged) {

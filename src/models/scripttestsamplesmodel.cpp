@@ -7,7 +7,7 @@ ScriptTestSamplesModel::ScriptTestSamplesModel(QObject *parent)
 
 int ScriptTestSamplesModel::rowCount(const QModelIndex &parent) const
 {
-    return parent.isValid() ? 0 : m_rows.size();
+    return parent.isValid() ? 0 : m_sampleRows.size();
 }
 
 int ScriptTestSamplesModel::count() const
@@ -17,24 +17,24 @@ int ScriptTestSamplesModel::count() const
 
 QVariant ScriptTestSamplesModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_sampleRows.size()) {
         return {};
     }
 
-    const ScriptTestSampleRow &row = m_rows.at(index.row());
+    const QVariantMap &row = m_sampleRows.at(index.row()).toMap();
     switch (role) {
     case TopicRole:
-        return row.topic;
+        return row.value(QStringLiteral("topic"));
     case PayloadRole:
-        return row.payload;
+        return row.value(QStringLiteral("testPayload"));
     case FormatRole:
-        return row.format;
+        return row.value(QStringLiteral("testFormat"));
     case FormatNameRole:
-        return row.formatName;
+        return row.value(QStringLiteral("testFormatName"));
     case TimestampRole:
-        return row.timestamp;
+        return row.value(QStringLiteral("timestamp"));
     case PayloadSizeRole:
-        return row.payloadSize;
+        return row.value(QStringLiteral("payloadSize"));
     default:
         return {};
     }
@@ -55,31 +55,43 @@ QHash<int, QByteArray> ScriptTestSamplesModel::roleNames() const
 
 QVariantMap ScriptTestSamplesModel::rowAt(int row) const
 {
-    if (row < 0 || row >= m_rows.size()) {
+    if (row < 0 || row >= m_sampleRows.size()) {
         return {};
     }
-    return rowToMap(m_rows.at(row));
+    return m_sampleRows.at(row).toMap();
 }
 
-void ScriptTestSamplesModel::setRows(const QVector<ScriptTestSampleRow> &rows)
+void ScriptTestSamplesModel::setSource(const QVariantList *messageRows)
 {
-    const bool countWillChange = rows.size() != m_rows.size();
+    m_messageRows = messageRows;
+    rebuild(0);
+}
+
+void ScriptTestSamplesModel::notifyRefresh()
+{
+    rebuild(0);
+}
+
+void ScriptTestSamplesModel::rebuild(int newCount)
+{
+    Q_UNUSED(newCount)
+
+    QVariantList samples;
+    if (m_messageRows) {
+        constexpr int kMaxScriptTestSamples = 24;
+        samples.reserve(kMaxScriptTestSamples);
+        for (auto it = m_messageRows->crbegin();
+             it != m_messageRows->crend() && samples.size() < kMaxScriptTestSamples;
+             ++it) {
+            samples.append(*it);
+        }
+    }
+
+    const bool countWillChange = samples.size() != m_sampleRows.size();
     beginResetModel();
-    m_rows = rows;
+    m_sampleRows = std::move(samples);
     endResetModel();
     if (countWillChange) {
         emit countChanged();
     }
-}
-
-QVariantMap ScriptTestSamplesModel::rowToMap(const ScriptTestSampleRow &row) const
-{
-    QVariantMap map;
-    map.insert(QStringLiteral("topic"), row.topic);
-    map.insert(QStringLiteral("payload"), row.payload);
-    map.insert(QStringLiteral("format"), row.format);
-    map.insert(QStringLiteral("formatName"), row.formatName);
-    map.insert(QStringLiteral("timestamp"), row.timestamp);
-    map.insert(QStringLiteral("payloadSize"), row.payloadSize);
-    return map;
 }

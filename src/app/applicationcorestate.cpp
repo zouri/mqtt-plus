@@ -58,14 +58,6 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
     , logsModel(&owner)
     , scriptsModel(&owner)
     , scriptTestSamplesModel(&owner)
-    , modelRefresher(
-          sessionController,
-          scriptController,
-          subscriptionController,
-          sessionsModel,
-          subscriptionsModel,
-          scriptsModel,
-          scriptTestSamplesModel)
     , sessionRuntime(
           &owner,
           {
@@ -88,13 +80,23 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
           scriptController,
           sessionRuntime)
 {
+    sessionsModel.setSource(&sessionController.sessions());
+    scriptsModel.setSource(&scriptController.scripts());
+    subscriptionsModel.setScriptNameLookup([this](const QString &id) {
+        return scriptController.scriptName(id);
+    });
+
     viewRefreshCoordinator.setDependencies({
         &core,
-        &modelRefresher,
         &sessionController,
         &eventController,
+        &scriptController,
+        &sessionsModel,
+        &subscriptionsModel,
         &messagesModel,
         &logsModel,
+        &scriptsModel,
+        &scriptTestSamplesModel,
     });
     sessionController.setDependencies({
         &historyStore,
@@ -331,7 +333,7 @@ void ApplicationCoreState::installSignalBindings()
 void ApplicationCoreState::runStartup()
 {
     scriptController.loadScripts();
-    modelRefresher.refreshScripts();
+    scriptsModel.notifyRefresh();
 
     QString errorMessage;
     if (!sessionRepository.loadSessions(errorMessage)) {

@@ -1,16 +1,7 @@
 #pragma once
 
 #include <QAbstractListModel>
-#include <QVector>
-
-struct ScriptTestSampleRow {
-    QString topic;
-    QString payload;
-    int format = 0;
-    QString formatName;
-    QString timestamp;
-    int payloadSize = 0;
-};
+#include <QVariantList>
 
 class ScriptTestSamplesModel : public QAbstractListModel
 {
@@ -37,13 +28,16 @@ public:
 
     Q_INVOKABLE QVariantMap rowAt(int row) const;
 
-    void setRows(const QVector<ScriptTestSampleRow> &rows);
+    void setSource(const QVariantList *messageRows);
+    void notifyRefresh();
 
 signals:
     void countChanged();
 
 private:
-    QVariantMap rowToMap(const ScriptTestSampleRow &row) const;
+    void rebuild(int newCount);
 
-    QVector<ScriptTestSampleRow> m_rows;
+    const QVariantList *m_messageRows = nullptr;
+    QVariantList m_empty;
+    QVariantList m_sampleRows;
 };

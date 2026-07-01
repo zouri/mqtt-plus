@@ -1,5 +1,11 @@
 #include "scriptlibrarymodel.h"
 
+#include "domain/script.h"
+#include "services/apputils.h"
+#include "services/storage/scriptstore.h"
+
+using namespace AppUtils;
+
 ScriptLibraryModel::ScriptLibraryModel(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -7,7 +13,7 @@ ScriptLibraryModel::ScriptLibraryModel(QObject *parent)
 
 int ScriptLibraryModel::rowCount(const QModelIndex &parent) const
 {
-    return parent.isValid() ? 0 : m_rows.size();
+    return parent.isValid() || !m_scripts ? 0 : m_scripts->size();
 }
 
 int ScriptLibraryModel::count() const
@@ -17,24 +23,24 @@ int ScriptLibraryModel::count() const
 
 QVariant ScriptLibraryModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
+    if (!index.isValid() || !m_scripts || index.row() < 0 || index.row() >= m_scripts->size()) {
         return {};
     }
 
-    const ScriptLibraryRow &row = m_rows.at(index.row());
+    const auto &script = m_scripts->at(index.row());
     switch (role) {
     case IdRole:
-        return row.id;
+        return script.id;
     case NameRole:
-        return row.name;
+        return script.name;
     case DescriptionRole:
-        return row.description;
+        return script.description;
     case CodeRole:
-        return row.code;
+        return script.code;
     case UpdatedAtRole:
-        return row.updatedAt;
+        return displayTimestamp(script.updatedAt);
     case FilePathRole:
-        return row.filePath;
+        return ScriptStore::scriptFilePath(script.fileName);
     default:
         return {};
     }
@@ -55,41 +61,45 @@ QHash<int, QByteArray> ScriptLibraryModel::roleNames() const
 
 QVariantMap ScriptLibraryModel::rowAt(int row) const
 {
-    if (row < 0 || row >= m_rows.size()) {
+    if (!m_scripts || row < 0 || row >= m_scripts->size()) {
         return {};
     }
-    return rowToMap(m_rows.at(row));
+
+    const auto &script = m_scripts->at(row);
+    QVariantMap map;
+    map.insert(QStringLiteral("id"), script.id);
+    map.insert(QStringLiteral("name"), script.name);
+    map.insert(QStringLiteral("description"), script.description);
+    map.insert(QStringLiteral("code"), script.code);
+    map.insert(QStringLiteral("updatedAt"), displayTimestamp(script.updatedAt));
+    map.insert(QStringLiteral("filePath"), ScriptStore::scriptFilePath(script.fileName));
+    return map;
 }
 
 int ScriptLibraryModel::indexOfId(const QString &id) const
 {
-    for (int i = 0; i < m_rows.size(); ++i) {
-        if (m_rows.at(i).id == id) {
-            return i;
+    if (!m_scripts) {
+        return -1;
+    }
+    for (qsizetype i = 0; i < m_scripts->size(); ++i) {
+        if (m_scripts->at(i).id == id) {
+            return static_cast<int>(i);
         }
     }
     return -1;
 }
 
-void ScriptLibraryModel::setRows(const QVector<ScriptLibraryRow> &rows)
+void ScriptLibraryModel::setSource(const QVector<ScriptEntry> *scripts)
 {
-    const bool countWillChange = rows.size() != m_rows.size();
+    m_scripts = scripts;
     beginResetModel();
-    m_rows = rows;
     endResetModel();
-    if (countWillChange) {
-        emit countChanged();
-    }
+    emit countChanged();
 }
 
-QVariantMap ScriptLibraryModel::rowToMap(const ScriptLibraryRow &row) const
+void ScriptLibraryModel::notifyRefresh()
 {
-    QVariantMap map;
-    map.insert(QStringLiteral("id"), row.id);
-    map.insert(QStringLiteral("name"), row.name);
-    map.insert(QStringLiteral("description"), row.description);
-    map.insert(QStringLiteral("code"), row.code);
-    map.insert(QStringLiteral("updatedAt"), row.updatedAt);
-    map.insert(QStringLiteral("filePath"), row.filePath);
-    return map;
+    beginResetModel();
+    endResetModel();
+    emit countChanged();
 }
