@@ -8,11 +8,6 @@
 #include "viewmodels/settingsviewmodel.h"
 #include "viewmodels/workbenchviewmodel.h"
 
-class WorkbenchCorePort;
-class LogsCorePort;
-class ScriptsCorePort;
-class SettingsCorePort;
-
 class ApplicationViewModel : public QObject
 {
     Q_OBJECT
@@ -23,11 +18,12 @@ class ApplicationViewModel : public QObject
     Q_PROPERTY(SettingsViewModel* settings READ settings CONSTANT)
 
 public:
+    explicit ApplicationViewModel(QObject *parent = nullptr);
     explicit ApplicationViewModel(
-        WorkbenchCorePort *workbenchCore = nullptr,
-        LogsCorePort *logsCore = nullptr,
-        ScriptsCorePort *scriptsCore = nullptr,
-        SettingsCorePort *settingsCore = nullptr,
+        const WorkbenchViewModel::Dependencies &workbenchDependencies,
+        const LogsViewModel::Dependencies &logsDependencies,
+        const ScriptsViewModel::Dependencies &scriptsDependencies,
+        const SettingsViewModel::Dependencies &settingsDependencies,
         QObject *parent = nullptr);
 
     NavigationViewModel *navigation();

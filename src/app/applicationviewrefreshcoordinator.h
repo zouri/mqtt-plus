@@ -4,14 +4,14 @@
 #include <QVariantMap>
 
 class ApplicationModelRefresher;
-class ApplicationNotifier;
+class ApplicationCore;
 class EventController;
 class EventStreamModel;
 class SessionController;
 
 struct ApplicationViewRefreshDependencies
 {
-    ApplicationNotifier *notifier = nullptr;
+    ApplicationCore *core = nullptr;
     ApplicationModelRefresher *modelRefresher = nullptr;
     SessionController *sessionController = nullptr;
     EventController *eventController = nullptr;
@@ -28,6 +28,8 @@ public:
     void refreshSubscriptionsModel();
     void refreshScriptsModel();
     void refreshScriptTestSamplesModel();
+
+    void reloadCurrentSessionHistory();
 
     void notifyCurrentSessionViewsChanged();
     void notifyCurrentSessionAndSubscriptionsChanged();
