@@ -3,14 +3,7 @@
 #include <QAbstractListModel>
 #include <QVector>
 
-struct ScriptLibraryRow {
-    QString id;
-    QString name;
-    QString description;
-    QString code;
-    QString updatedAt;
-    QString filePath;
-};
+struct ScriptEntry;
 
 class ScriptLibraryModel : public QAbstractListModel
 {
@@ -38,13 +31,12 @@ public:
     Q_INVOKABLE QVariantMap rowAt(int row) const;
     Q_INVOKABLE int indexOfId(const QString &id) const;
 
-    void setRows(const QVector<ScriptLibraryRow> &rows);
+    void setSource(const QVector<ScriptEntry> *scripts);
+    void notifyRefresh();
 
 signals:
     void countChanged();
 
 private:
-    QVariantMap rowToMap(const ScriptLibraryRow &row) const;
-
-    QVector<ScriptLibraryRow> m_rows;
+    const QVector<ScriptEntry> *m_scripts = nullptr;
 };

@@ -1,5 +1,11 @@
 #include "sessionlistmodel.h"
 
+#include "domain/session.h"
+#include "domain/sessionconfig.h"
+#include "services/apputils.h"
+
+using namespace AppUtils;
+
 SessionListModel::SessionListModel(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -7,7 +13,7 @@ SessionListModel::SessionListModel(QObject *parent)
 
 int SessionListModel::rowCount(const QModelIndex &parent) const
 {
-    return parent.isValid() ? 0 : m_rows.size();
+    return parent.isValid() || !m_sessions ? 0 : m_sessions->size();
 }
 
 int SessionListModel::count() const
@@ -17,36 +23,38 @@ int SessionListModel::count() const
 
 QVariant SessionListModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
+    if (!index.isValid() || !m_sessions || index.row() < 0 || index.row() >= m_sessions->size()) {
         return {};
     }
 
-    const SessionListRow &row = m_rows.at(index.row());
+    const auto &session = m_sessions->at(index.row());
+    const auto *client = session.client;
+
     switch (role) {
     case IdRole:
-        return row.id;
+        return session.id;
     case NameRole:
-        return row.name;
+        return session.name;
     case StateRole:
-        return row.state;
+        return sessionStateName(session, client);
     case ConnectedRole:
-        return row.connected;
+        return client && client->state() == QMqttClient::Connected;
     case HostRole:
-        return row.host;
+        return client ? client->hostname() : QString();
     case PortRole:
-        return row.port;
+        return client ? client->port() : SessionConfig::kDefaultPort;
     case TransportRole:
-        return row.transport;
+        return session.transport;
     case TransportLabelRole:
-        return row.transportLabel;
+        return transportLabel(session.transport);
     case ProtocolVersionRole:
-        return row.protocolVersion;
+        return session.protocolVersion;
     case ProtocolVersionNameRole:
-        return row.protocolVersionName;
+        return protocolVersionLabel(session.protocolVersion);
     case SummaryRole:
-        return row.summary;
+        return session.brokerInfo.isEmpty() ? session.lastError : session.brokerInfo;
     case LastErrorRole:
-        return row.lastError;
+        return session.lastError;
     default:
         return {};
     }
@@ -73,37 +81,39 @@ QHash<int, QByteArray> SessionListModel::roleNames() const
 
 QVariantMap SessionListModel::rowAt(int row) const
 {
-    if (row < 0 || row >= m_rows.size()) {
+    if (!m_sessions || row < 0 || row >= m_sessions->size()) {
         return {};
     }
-    return rowToMap(m_rows.at(row));
-}
 
-void SessionListModel::setRows(const QVector<SessionListRow> &rows)
-{
-    const bool countWillChange = rows.size() != m_rows.size();
-    beginResetModel();
-    m_rows = rows;
-    endResetModel();
-    if (countWillChange) {
-        emit countChanged();
-    }
-}
-
-QVariantMap SessionListModel::rowToMap(const SessionListRow &row) const
-{
     QVariantMap map;
-    map.insert(QStringLiteral("id"), row.id);
-    map.insert(QStringLiteral("name"), row.name);
-    map.insert(QStringLiteral("state"), row.state);
-    map.insert(QStringLiteral("connected"), row.connected);
-    map.insert(QStringLiteral("host"), row.host);
-    map.insert(QStringLiteral("port"), row.port);
-    map.insert(QStringLiteral("transport"), row.transport);
-    map.insert(QStringLiteral("transportLabel"), row.transportLabel);
-    map.insert(QStringLiteral("protocolVersion"), row.protocolVersion);
-    map.insert(QStringLiteral("protocolVersionName"), row.protocolVersionName);
-    map.insert(QStringLiteral("summary"), row.summary);
-    map.insert(QStringLiteral("lastError"), row.lastError);
+    const auto &session = m_sessions->at(row);
+    const auto *client = session.client;
+    map.insert(QStringLiteral("id"), session.id);
+    map.insert(QStringLiteral("name"), session.name);
+    map.insert(QStringLiteral("state"), sessionStateName(session, client));
+    map.insert(QStringLiteral("connected"), client && client->state() == QMqttClient::Connected);
+    map.insert(QStringLiteral("host"), client ? client->hostname() : QString());
+    map.insert(QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort);
+    map.insert(QStringLiteral("transport"), session.transport);
+    map.insert(QStringLiteral("transportLabel"), transportLabel(session.transport));
+    map.insert(QStringLiteral("protocolVersion"), session.protocolVersion);
+    map.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session.protocolVersion));
+    map.insert(QStringLiteral("summary"), session.brokerInfo.isEmpty() ? session.lastError : session.brokerInfo);
+    map.insert(QStringLiteral("lastError"), session.lastError);
     return map;
+}
+
+void SessionListModel::setSource(const QVector<SessionState> *sessions)
+{
+    m_sessions = sessions;
+    beginResetModel();
+    endResetModel();
+    emit countChanged();
+}
+
+void SessionListModel::notifyRefresh()
+{
+    beginResetModel();
+    endResetModel();
+    emit countChanged();
 }

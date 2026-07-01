@@ -3,20 +3,28 @@
 #include <QString>
 #include <QVariantMap>
 
-class ApplicationModelRefresher;
 class ApplicationCore;
 class EventController;
 class EventStreamModel;
+class ScriptController;
+class ScriptLibraryModel;
+class ScriptTestSamplesModel;
 class SessionController;
+class SessionListModel;
+class SubscriptionListModel;
 
 struct ApplicationViewRefreshDependencies
 {
     ApplicationCore *core = nullptr;
-    ApplicationModelRefresher *modelRefresher = nullptr;
     SessionController *sessionController = nullptr;
     EventController *eventController = nullptr;
+    ScriptController *scriptController = nullptr;
+    SessionListModel *sessionsModel = nullptr;
+    SubscriptionListModel *subscriptionsModel = nullptr;
     EventStreamModel *messagesModel = nullptr;
     EventStreamModel *logsModel = nullptr;
+    ScriptLibraryModel *scriptsModel = nullptr;
+    ScriptTestSamplesModel *scriptTestSamplesModel = nullptr;
 };
 
 class ApplicationViewRefreshCoordinator
@@ -50,5 +58,5 @@ public:
     void emitLogStreamRowAppended(const QVariantMap &row);
 
 private:
-    ApplicationViewRefreshDependencies m_dependencies;
+    ApplicationViewRefreshDependencies m_deps;
 };
