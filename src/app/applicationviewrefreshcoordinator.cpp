@@ -1,7 +1,7 @@
 #include "app/applicationviewrefreshcoordinator.h"
 
 #include "app/applicationmodelrefresher.h"
-#include "app/applicationnotifier.h"
+#include "app/applicationcore.h"
 #include "controllers/eventcontroller.h"
 #include "controllers/sessioncontroller.h"
 #include "models/eventstreammodel.h"
@@ -42,34 +42,39 @@ void ApplicationViewRefreshCoordinator::refreshScriptTestSamplesModel()
     m_dependencies.modelRefresher->refreshScriptTestSamples(currentSession(m_dependencies));
 }
 
+void ApplicationViewRefreshCoordinator::reloadCurrentSessionHistory()
+{
+    m_dependencies.eventController->reloadCurrentSessionHistory();
+}
+
 void ApplicationViewRefreshCoordinator::notifyCurrentSessionViewsChanged()
 {
     refreshSessionsModel();
-    m_dependencies.notifier->notifyCurrentSessionChanged();
+    m_dependencies.core->notifyCurrentSessionChanged();
 }
 
 void ApplicationViewRefreshCoordinator::notifyCurrentSessionAndSubscriptionsChanged()
 {
     refreshSessionsModel();
     refreshSubscriptionsModel();
-    m_dependencies.notifier->notifyCurrentSessionChanged();
-    m_dependencies.notifier->notifySubscriptionsChanged();
+    m_dependencies.core->notifyCurrentSessionChanged();
+    m_dependencies.core->notifySubscriptionsChanged();
 }
 
 void ApplicationViewRefreshCoordinator::notifySessionViewsChanged()
 {
     refreshSessionsModel();
-    m_dependencies.notifier->notifySessionsChanged();
-    m_dependencies.notifier->notifyCurrentSessionChanged();
+    m_dependencies.core->notifySessionsChanged();
+    m_dependencies.core->notifyCurrentSessionChanged();
 }
 
 void ApplicationViewRefreshCoordinator::notifySessionAndSubscriptionViewsChanged()
 {
     refreshSessionsModel();
     refreshSubscriptionsModel();
-    m_dependencies.notifier->notifySessionsChanged();
-    m_dependencies.notifier->notifyCurrentSessionChanged();
-    m_dependencies.notifier->notifySubscriptionsChanged();
+    m_dependencies.core->notifySessionsChanged();
+    m_dependencies.core->notifyCurrentSessionChanged();
+    m_dependencies.core->notifySubscriptionsChanged();
 }
 
 void ApplicationViewRefreshCoordinator::notifySelectedSessionViewsChanged()
@@ -78,12 +83,12 @@ void ApplicationViewRefreshCoordinator::notifySelectedSessionViewsChanged()
     m_dependencies.messagesModel->setRows(currentSession(m_dependencies) ? currentSession(m_dependencies)->messageRows : QVariantList {});
     m_dependencies.logsModel->setRows(currentSession(m_dependencies) ? currentSession(m_dependencies)->logRows : QVariantList {});
     refreshScriptTestSamplesModel();
-    m_dependencies.notifier->notifyCurrentSessionIndexChanged();
-    m_dependencies.notifier->notifyCurrentSessionChanged();
-    m_dependencies.notifier->notifySubscriptionsChanged();
-    m_dependencies.notifier->notifyMessageStreamChanged();
-    m_dependencies.notifier->notifyLogStreamChanged();
-    m_dependencies.notifier->notifyScriptLibraryChanged();
+    m_dependencies.core->notifyCurrentSessionIndexChanged();
+    m_dependencies.core->notifyCurrentSessionChanged();
+    m_dependencies.core->notifySubscriptionsChanged();
+    m_dependencies.core->notifyMessageStreamChanged();
+    m_dependencies.core->notifyLogStreamChanged();
+    m_dependencies.core->notifyScriptLibraryChanged();
 }
 
 void ApplicationViewRefreshCoordinator::notifySessionCollectionViewsChanged()
@@ -94,31 +99,31 @@ void ApplicationViewRefreshCoordinator::notifySessionCollectionViewsChanged()
     m_dependencies.logsModel->setRows(currentSession(m_dependencies) ? currentSession(m_dependencies)->logRows : QVariantList {});
     refreshScriptsModel();
     refreshScriptTestSamplesModel();
-    m_dependencies.notifier->notifySessionsChanged();
-    m_dependencies.notifier->notifyCurrentSessionIndexChanged();
-    m_dependencies.notifier->notifyCurrentSessionChanged();
-    m_dependencies.notifier->notifySubscriptionsChanged();
-    m_dependencies.notifier->notifyMessageStreamChanged();
-    m_dependencies.notifier->notifyLogStreamChanged();
-    m_dependencies.notifier->notifyScriptLibraryChanged();
+    m_dependencies.core->notifySessionsChanged();
+    m_dependencies.core->notifyCurrentSessionIndexChanged();
+    m_dependencies.core->notifyCurrentSessionChanged();
+    m_dependencies.core->notifySubscriptionsChanged();
+    m_dependencies.core->notifyMessageStreamChanged();
+    m_dependencies.core->notifyLogStreamChanged();
+    m_dependencies.core->notifyScriptLibraryChanged();
 }
 
 void ApplicationViewRefreshCoordinator::notifyLanguageChanged()
 {
     refreshSessionsModel();
     refreshSubscriptionsModel();
-    m_dependencies.notifier->notifyCurrentSessionChanged();
-    m_dependencies.notifier->notifySessionsChanged();
-    m_dependencies.notifier->notifySubscriptionsChanged();
-    m_dependencies.notifier->notifyLanguageChanged();
+    m_dependencies.core->notifyCurrentSessionChanged();
+    m_dependencies.core->notifySessionsChanged();
+    m_dependencies.core->notifySubscriptionsChanged();
+    m_dependencies.core->notifyLanguageChanged();
 }
 
 void ApplicationViewRefreshCoordinator::notifyHistoryPageSizeChanged()
 {
     m_dependencies.eventController->reloadCurrentSessionHistory();
-    m_dependencies.notifier->notifyMessageStreamChanged();
-    m_dependencies.notifier->notifyLogStreamChanged();
-    m_dependencies.notifier->notifyHistoryPageSizeChanged();
+    m_dependencies.core->notifyMessageStreamChanged();
+    m_dependencies.core->notifyLogStreamChanged();
+    m_dependencies.core->notifyHistoryPageSizeChanged();
 }
 
 void ApplicationViewRefreshCoordinator::reportStorageError(const QString &message)
@@ -137,30 +142,30 @@ void ApplicationViewRefreshCoordinator::reportStorageError(const QString &messag
 
 void ApplicationViewRefreshCoordinator::emitSessionsChanged()
 {
-    m_dependencies.notifier->notifySessionsChanged();
+    m_dependencies.core->notifySessionsChanged();
 }
 
 void ApplicationViewRefreshCoordinator::emitSubscriptionsChanged()
 {
-    m_dependencies.notifier->notifySubscriptionsChanged();
+    m_dependencies.core->notifySubscriptionsChanged();
 }
 
 void ApplicationViewRefreshCoordinator::emitMessageStreamChanged()
 {
-    m_dependencies.notifier->notifyMessageStreamChanged();
+    m_dependencies.core->notifyMessageStreamChanged();
 }
 
 void ApplicationViewRefreshCoordinator::emitLogStreamChanged()
 {
-    m_dependencies.notifier->notifyLogStreamChanged();
+    m_dependencies.core->notifyLogStreamChanged();
 }
 
 void ApplicationViewRefreshCoordinator::emitMessageStreamRowAppended(const QVariantMap &row)
 {
-    m_dependencies.notifier->notifyMessageStreamRowAppended(row);
+    m_dependencies.core->notifyMessageStreamRowAppended(row);
 }
 
 void ApplicationViewRefreshCoordinator::emitLogStreamRowAppended(const QVariantMap &row)
 {
-    m_dependencies.notifier->notifyLogStreamRowAppended(row);
+    m_dependencies.core->notifyLogStreamRowAppended(row);
 }

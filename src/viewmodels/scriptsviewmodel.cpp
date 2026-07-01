@@ -1,25 +1,27 @@
 #include "viewmodels/scriptsviewmodel.h"
 
 #include "models/scriptlibrarymodel.h"
-#include "viewmodels/scriptscoreport.h"
 
 #include <QVariantMap>
 
-ScriptsViewModel::ScriptsViewModel(ScriptsCorePort *core, QObject *parent)
+ScriptsViewModel::ScriptsViewModel(QObject *parent)
+    : ScriptsViewModel(Dependencies {}, parent)
+{
+}
+
+ScriptsViewModel::ScriptsViewModel(const Dependencies &dependencies, QObject *parent)
     : QObject(parent)
-    , m_core(core)
+    , m_dependencies(dependencies)
     , m_editor(this)
 {
-    if (m_core) {
-        m_core->bindScriptsSignals(this, {
-            [this]() {
-                emit scriptLibraryChanged();
-            },
+    if (m_dependencies.bindScriptLibraryChanged) {
+        m_dependencies.bindScriptLibraryChanged(this, [this]() {
+            emit scriptLibraryChanged();
         });
     }
 }
 
-ScriptLibraryModel *ScriptsViewModel::scripts() const { return m_core ? m_core->scripts() : nullptr; }
+ScriptLibraryModel *ScriptsViewModel::scripts() const { return m_dependencies.scripts; }
 ScriptEditorViewModel *ScriptsViewModel::editor() { return &m_editor; }
 
 int ScriptsViewModel::matchingScriptCount(const QString &filterText) const
@@ -122,5 +124,5 @@ int ScriptsViewModel::visibleScriptCount(const QString &filterText) const
 
 QString ScriptsViewModel::upsertScript(const QString &id, const QString &name, const QString &description, const QString &code)
 {
-    return m_core ? m_core->upsertScript(id, name, description, code) : QString();
+    return m_dependencies.upsertScript ? m_dependencies.upsertScript(id, name, description, code) : QString();
 }
