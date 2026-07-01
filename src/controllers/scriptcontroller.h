@@ -4,7 +4,6 @@
 
 #include <QObject>
 #include <QString>
-#include <QVariantMap>
 #include <QVector>
 
 class ScriptController : public QObject
@@ -12,11 +11,6 @@ class ScriptController : public QObject
     Q_OBJECT
 
 public:
-    struct DeleteResult {
-        bool success = false;
-        QString fileName;
-    };
-
     explicit ScriptController(QObject *parent = nullptr);
 
     const QVector<ScriptEntry> &scripts() const;
@@ -29,9 +23,6 @@ public:
         const QString &name,
         const QString &description,
         const QString &code);
-    DeleteResult deleteScript(const QString &id);
-    QVariantMap testScript(const QString &code, const QString &topic, const QString &payload, int format) const;
-    void removeScriptFile(const QString &fileName) const;
 
 signals:
     void storageError(const QString &message);

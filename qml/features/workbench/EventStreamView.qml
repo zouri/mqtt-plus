@@ -10,8 +10,6 @@ Item {
 
     required property var viewModel
     required property var streamModel
-    required property var loadOlderRows
-    required property var clearRows
     required property var session
     required property var ui
     required property string fontFamily
@@ -21,7 +19,7 @@ Item {
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
 
-    signal publishDraftRequested(string topic, string payload, int format)
+    signal publishDraftRevealRequested()
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -41,7 +39,7 @@ Item {
         })
     }
 
-    function noteStreamRowAppended(row) {
+    function noteStreamRowAppended() {
         const shouldStickToBottom = !eventList || eventList.shouldFollowOutput
 
         if (shouldStickToBottom && eventList) {
@@ -63,7 +61,7 @@ Item {
         root.loadingOlderEvents = true
         const previousContentHeight = eventList.contentHeight
         const previousContentY = eventList.contentY
-        const insertedRows = root.loadOlderRows()
+        const insertedRows = root.viewModel.loadOlderMessages()
         if (insertedRows === 0) {
             root.reachedHistoryStart = true
             root.loadingOlderEvents = false
@@ -132,7 +130,7 @@ Item {
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     accessibleName: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
-                    onClicked: root.viewModel.setCurrentOutputPaused(!root.session.outputPaused)
+                    onClicked: root.viewModel.toggleCurrentOutputPaused(root.session.outputPaused)
                 }
 
                 AppIconButton {
@@ -145,7 +143,7 @@ Item {
                     restBg: root.ui.themePalette.windowBg
                     outlineColor: root.ui.themePalette.innerPanelBorder
                     accessibleName: qsTr("Clear history")
-                    onClicked: root.clearRows()
+                    onClicked: root.viewModel.clearMessages()
                 }
             }
         }
@@ -330,7 +328,7 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Copy topic")
-                                onClicked: root.viewModel.copyTextToClipboard(eventDelegate.topic)
+                                onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
                             }
 
                             AppIconButton {
@@ -344,10 +342,7 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Copy payload")
-                                onClicked: root.viewModel.copyTextToClipboard(
-                                               eventDelegate.testPayload.length > 0
-                                               ? eventDelegate.testPayload
-                                               : eventDelegate.payload)
+                                onClicked: root.viewModel.copyMessagePayload(eventDelegate.payload, eventDelegate.testPayload)
                             }
 
                             AppIconButton {
@@ -361,12 +356,14 @@ Item {
                                 restBg: "transparent"
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Use this message in publisher")
-                                onClicked: root.publishDraftRequested(
-                                               eventDelegate.topic,
-                                               eventDelegate.testPayload.length > 0
-                                               ? eventDelegate.testPayload
-                                               : eventDelegate.payload,
-                                               eventDelegate.testFormat)
+                                onClicked: {
+                                    root.viewModel.useMessageAsPublishDraft(
+                                                eventDelegate.topic,
+                                                eventDelegate.payload,
+                                                eventDelegate.testPayload,
+                                                eventDelegate.testFormat)
+                                    root.publishDraftRevealRequested()
+                                }
                             }
                         }
 

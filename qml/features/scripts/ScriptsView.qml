@@ -17,7 +17,7 @@ Item {
     Layout.fillHeight: true
 
     function newScript() {
-        control.editor.newScript()
+        control.viewModel.newScript()
         nameField.forceActiveFocus()
         nameField.selectAll()
     }
@@ -231,7 +231,7 @@ Item {
                     ui: control.ui
                     text: qsTr("Validate structure")
                     minimumWidth: 98
-                    onClicked: control.editor.validateStructure()
+                    onClicked: control.viewModel.validateEditorStructure()
                 }
 
                 AppButton {

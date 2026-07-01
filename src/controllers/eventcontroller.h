@@ -1,6 +1,6 @@
 #pragma once
 
-#include "controllers/applicationcontext.h"
+#include "controllers/eventcontrollercontext.h"
 #include "domain/session.h"
 #include "domain/subscription.h"
 #include "services/scripting/luarunner.h"

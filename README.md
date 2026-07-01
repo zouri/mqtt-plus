@@ -39,7 +39,7 @@
 ```text
 .
 ├── src/                    # C++ 应用逻辑
-│   ├── app/                # ApplicationCore：应用级协调、运行时状态和持久化编排
+│   ├── app/                # 对象图、Workspace/Core Port 适配和应用运行时协作
 │   ├── controllers/        # 会话、MQTT、订阅、事件、脚本等控制器
 │   ├── domain/             # 会话、订阅和脚本领域数据结构
 │   ├── models/             # 暴露给 QML 的列表模型
@@ -49,7 +49,6 @@
 ├── qml/                    # Qt Quick 界面
 │   ├── Main.qml            # 主窗口
 │   ├── features/           # 工作区、历史、脚本、设置等功能视图与组件
-│   ├── features/           # 业务功能组件
 │   └── components/         # 复用 UI 组件
 ├── assets/                 # 应用图标等资源
 ├── scripts/                # 平台打包脚本
@@ -61,11 +60,17 @@
 
 ## 架构
 
-应用采用 MVVM 分层：
+应用采用 MVVM 分层，依赖方向为：
 
-- `ApplicationCore` 是非 QML 核心，负责组合 Controller、Service、Model，并维护会话运行时状态。
-- `src/viewmodels/` 暴露 QML 所需的页面级状态和命令，包括 `ApplicationViewModel`、`WorkbenchViewModel`、`LogsViewModel`、`ScriptsViewModel` 和 `SettingsViewModel`。
-- QML 只接收 `ApplicationViewModel`，再通过 `app.navigation`、`app.workbench`、`app.logs`、`app.scripts`、`app.settings` 访问功能视图模型。
+```text
+QML -> ViewModel -> Workspace/Core Port -> Controllers/Services/Domain
+```
+
+- QML 只接收 `ApplicationViewModel`，再通过 `app.navigation`、`app.workbench`、`app.logs`、`app.scripts`、`app.settings` 访问功能 ViewModel。
+- `ApplicationViewModel` 组合页面级 ViewModel；页面 ViewModel 只依赖 `WorkbenchCorePort`、`LogsCorePort`、`ScriptsCorePort`、`SettingsCorePort` 等窄端口。
+- `Workspace` 实现对应 Core Port，并把 ViewModel 命令适配到 Controller、Service、Domain 和输出模型。
+- `ApplicationObjectGraph` 是应用对象图组合边界，负责创建 `ApplicationCore`、Workspace 和根 ViewModel。
+- `ApplicationCore` 不暴露给 QML，也不实现页面端口；它保留运行时状态拥有、启动、信号绑定、退出清理等非 QML 协作职责。
 - `src/models/` 中的 `QAbstractListModel` 仍作为 ViewModel 的列表输出，避免把列表角色和刷新逻辑散落到 QML。
 
 ## 环境要求

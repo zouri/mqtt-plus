@@ -49,8 +49,7 @@ Item {
         return resizeMouse.mapToItem(root, mouse.x, mouse.y).y
     }
 
-    function setDraft(topic, payload, format) {
-        root.viewModel.setPublishDraft(topic || "", payload || "", format)
+    function revealDraftEditor() {
         root.expanded = true
         publishPayloadArea.forceActiveFocus()
     }

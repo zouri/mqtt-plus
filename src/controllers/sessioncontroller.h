@@ -1,6 +1,6 @@
 #pragma once
 
-#include "controllers/applicationcontext.h"
+#include "controllers/sessioncontrollercontext.h"
 #include "domain/session.h"
 
 #include <QObject>

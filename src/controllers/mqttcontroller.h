@@ -1,6 +1,6 @@
 #pragma once
 
-#include "controllers/applicationcontext.h"
+#include "controllers/mqttcontrollercontext.h"
 
 #include <QObject>
 #include <QSslConfiguration>
