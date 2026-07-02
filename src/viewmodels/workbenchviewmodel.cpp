@@ -12,6 +12,29 @@
 
 using namespace AppUtils;
 
+namespace {
+
+PublishDraftViewModel::Dependencies publishDraftDependencies(const WorkbenchViewModel::Dependencies &dependencies)
+{
+    return {
+        dependencies.bindCurrentSessionChanged,
+        [dependencies]() {
+            const auto *session = dependencies.sessionController ? dependencies.sessionController->currentSession() : nullptr;
+            if (!session) {
+                return false;
+            }
+            return sessionStateName(*session, session->client) == QStringLiteral("connected");
+        },
+        [dependencies](const QString &topic, const QString &payload, int format, int qos, bool retain) {
+            if (dependencies.mqttController) {
+                dependencies.mqttController->publishCurrentSession(topic, payload, format, qos, retain);
+            }
+        },
+    };
+}
+
+} // namespace
+
 WorkbenchViewModel::WorkbenchViewModel(QObject *parent)
     : WorkbenchViewModel(Dependencies {}, parent)
 {
@@ -20,6 +43,7 @@ WorkbenchViewModel::WorkbenchViewModel(QObject *parent)
 WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject *parent)
     : QObject(parent)
     , m_dependencies(dependencies)
+    , m_publisher(publishDraftDependencies(dependencies), this)
 {
     if (m_dependencies.bindCurrentSessionIndexChanged) {
         m_dependencies.bindCurrentSessionIndexChanged(this, [this]() {
@@ -29,7 +53,6 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
     if (m_dependencies.bindCurrentSessionChanged) {
         m_dependencies.bindCurrentSessionChanged(this, [this]() {
             emit currentSessionChanged();
-            emit canPublishChanged();
         });
     }
     if (m_dependencies.bindMessageStreamChanged) {
@@ -47,13 +70,13 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
             refreshSubscriptionEditorScriptOptions();
         });
     }
-    syncSubscriptionFilterModel();
     refreshSubscriptionEditorScriptOptions();
 }
 
 SessionListModel *WorkbenchViewModel::sessions() const { return m_dependencies.sessions; }
 SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return m_dependencies.filteredSubscriptions; }
 EventStreamModel *WorkbenchViewModel::messages() const { return m_dependencies.messages; }
+PublishDraftViewModel *WorkbenchViewModel::publisher() { return &m_publisher; }
 SessionEditorViewModel *WorkbenchViewModel::sessionEditor() { return &m_sessionEditor; }
 SubscriptionEditorViewModel *WorkbenchViewModel::subscriptionEditor() { return &m_subscriptionEditor; }
 int WorkbenchViewModel::currentSessionIndex() const
@@ -143,23 +166,6 @@ QVariantMap WorkbenchViewModel::publishStatus() const
 }
 
 QStringList WorkbenchViewModel::payloadFormats() const { return PayloadCodec::formatNames(); }
-QString WorkbenchViewModel::publishTopic() const { return m_publishTopic; }
-QString WorkbenchViewModel::publishPayload() const { return m_publishPayload; }
-int WorkbenchViewModel::publishFormat() const { return m_publishFormat; }
-int WorkbenchViewModel::publishQos() const { return m_publishQos; }
-bool WorkbenchViewModel::publishRetain() const { return m_publishRetain; }
-bool WorkbenchViewModel::canPublish() const
-{
-    return sessionStatus().value(QStringLiteral("state")).toString() == QStringLiteral("connected")
-        && !m_publishTopic.trimmed().isEmpty();
-}
-QString WorkbenchViewModel::subscriptionFilterText() const { return m_subscriptionFilterText; }
-QString WorkbenchViewModel::subscriptionFilterMode() const { return m_subscriptionFilterMode; }
-int WorkbenchViewModel::subscriptionFilterModeIndex() const { return subscriptionFilterModeIndexForMode(m_subscriptionFilterMode); }
-bool WorkbenchViewModel::hasSubscriptionFilter() const
-{
-    return !m_subscriptionFilterText.trimmed().isEmpty() || m_subscriptionFilterMode != QStringLiteral("all");
-}
 QString WorkbenchViewModel::pendingSubscriptionDeleteTopic() const { return m_pendingSubscriptionDeleteTopic; }
 QString WorkbenchViewModel::pendingSubscriptionDeleteDisplayName() const { return m_pendingSubscriptionDeleteDisplayName; }
 
@@ -168,98 +174,6 @@ void WorkbenchViewModel::setCurrentSessionIndex(int index)
     if (m_dependencies.sessionController) {
         m_dependencies.sessionController->setCurrentSessionIndex(index);
     }
-}
-
-void WorkbenchViewModel::setPublishTopic(const QString &topic)
-{
-    if (m_publishTopic == topic) {
-        return;
-    }
-
-    const bool wasPublishable = canPublish();
-    m_publishTopic = topic;
-    emit publishTopicChanged();
-    if (wasPublishable != canPublish()) {
-        emit canPublishChanged();
-    }
-}
-
-void WorkbenchViewModel::setPublishPayload(const QString &payload)
-{
-    if (m_publishPayload == payload) {
-        return;
-    }
-
-    m_publishPayload = payload;
-    emit publishPayloadChanged();
-}
-
-void WorkbenchViewModel::setPublishFormat(int format)
-{
-    if (m_publishFormat == format) {
-        return;
-    }
-
-    m_publishFormat = format;
-    emit publishFormatChanged();
-}
-
-void WorkbenchViewModel::setPublishQos(int qos)
-{
-    if (m_publishQos == qos) {
-        return;
-    }
-
-    m_publishQos = qos;
-    emit publishQosChanged();
-}
-
-void WorkbenchViewModel::setPublishRetain(bool retain)
-{
-    if (m_publishRetain == retain) {
-        return;
-    }
-
-    m_publishRetain = retain;
-    emit publishRetainChanged();
-}
-
-void WorkbenchViewModel::setSubscriptionFilterText(const QString &filterText)
-{
-    const QString oldText = m_subscriptionFilterText;
-    const QString oldMode = m_subscriptionFilterMode;
-    const QString trimmedText = filterText.trimmed();
-    if (m_subscriptionFilterText == trimmedText) {
-        return;
-    }
-
-    m_subscriptionFilterText = trimmedText;
-    syncSubscriptionFilterModel();
-    emitSubscriptionFilterSignals(oldText, oldMode);
-}
-
-void WorkbenchViewModel::setSubscriptionFilterMode(const QString &filterMode)
-{
-    const QString oldText = m_subscriptionFilterText;
-    const QString oldMode = m_subscriptionFilterMode;
-    const QString normalizedMode = normalizedSubscriptionFilterMode(filterMode);
-    if (m_subscriptionFilterMode == normalizedMode) {
-        return;
-    }
-
-    m_subscriptionFilterMode = normalizedMode;
-    syncSubscriptionFilterModel();
-    emitSubscriptionFilterSignals(oldText, oldMode);
-}
-
-void WorkbenchViewModel::setSubscriptionFilterModeIndex(int index)
-{
-    static const QStringList modes {
-        QStringLiteral("all"),
-        QStringLiteral("subscribed"),
-        QStringLiteral("paused"),
-    };
-    setSubscriptionFilterMode(index >= 0 && index < modes.size() ? modes.at(index) : QStringLiteral("all"));
 }
 
 void WorkbenchViewModel::openSessionEditorForCreate()
@@ -455,34 +369,6 @@ bool WorkbenchViewModel::confirmPendingSubscriptionDelete()
     return true;
 }
 
-void WorkbenchViewModel::useMessageAsPublishDraft(const QString &topic, const QString &payload, const QString &testPayload, int format)
-{
-    setPublishTopic(topic);
-    setPublishPayload(testPayload.isEmpty() ? payload : testPayload);
-    if (format >= 0) {
-        setPublishFormat(format);
-    }
-}
-
-bool WorkbenchViewModel::publishDraft()
-{
-    if (!canPublish()) {
-        return false;
-    }
-
-    if (!m_dependencies.mqttController) {
-        return false;
-    }
-
-    m_dependencies.mqttController->publishCurrentSession(
-        m_publishTopic.trimmed(),
-        m_publishPayload,
-        m_publishFormat,
-        m_publishQos,
-        m_publishRetain);
-    return true;
-}
-
 void WorkbenchViewModel::copyMessageTopic(const QString &topic) const
 {
     m_platformActions.copyTextToClipboard(topic);
@@ -505,52 +391,9 @@ int WorkbenchViewModel::loadOlderMessages()
     return m_dependencies.eventController ? m_dependencies.eventController->loadOlderCurrentSessionMessages() : 0;
 }
 
-QString WorkbenchViewModel::normalizedSubscriptionFilterMode(const QString &filterMode)
-{
-    return filterMode == QStringLiteral("subscribed") || filterMode == QStringLiteral("paused")
-        ? filterMode
-        : QStringLiteral("all");
-}
-
-int WorkbenchViewModel::subscriptionFilterModeIndexForMode(const QString &filterMode)
-{
-    const QString normalizedMode = normalizedSubscriptionFilterMode(filterMode);
-    if (normalizedMode == QStringLiteral("subscribed")) {
-        return 1;
-    }
-    if (normalizedMode == QStringLiteral("paused")) {
-        return 2;
-    }
-    return 0;
-}
-
 ScriptLibraryModel *WorkbenchViewModel::scriptLibrary() const
 {
     return m_dependencies.scripts;
-}
-
-void WorkbenchViewModel::syncSubscriptionFilterModel()
-{
-    if (!filteredSubscriptions()) {
-        return;
-    }
-
-    filteredSubscriptions()->setFilterText(m_subscriptionFilterText);
-    filteredSubscriptions()->setFilterMode(m_subscriptionFilterMode);
-}
-
-void WorkbenchViewModel::emitSubscriptionFilterSignals(const QString &oldText, const QString &oldMode)
-{
-    if (oldText != m_subscriptionFilterText) {
-        emit subscriptionFilterTextChanged();
-    }
-    if (oldMode != m_subscriptionFilterMode) {
-        emit subscriptionFilterModeChanged();
-        emit subscriptionFilterModeIndexChanged();
-    }
-    if ((!oldText.trimmed().isEmpty() || oldMode != QStringLiteral("all")) != hasSubscriptionFilter()) {
-        emit subscriptionFilterChanged();
-    }
 }
 
 void WorkbenchViewModel::clearPendingSubscriptionDelete()

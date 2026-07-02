@@ -8,7 +8,7 @@ import "../../components"
 Item {
     id: root
 
-    required property var viewModel
+    required property var publisher
     required property var publishStatus
     required property var status
     required property var ui
@@ -178,9 +178,9 @@ Item {
                             ui: root.ui
                             id: publishTopicField
                             Layout.fillWidth: true
-                            text: root.viewModel.publishTopic
+                            text: root.publisher.topic
                             placeholderText: qsTr("home/living-room/light/set")
-                            onTextEdited: root.viewModel.publishTopic = text
+                            onTextEdited: root.publisher.topic = text
                         }
                     }
 
@@ -199,9 +199,9 @@ Item {
                             ui: root.ui
                             id: publishQosBox
                             model: [qsTr("QoS 0"), qsTr("QoS 1")]
-                            currentIndex: root.viewModel.publishQos
+                            currentIndex: root.publisher.qos
                             Layout.fillWidth: true
-                            onActivated: root.viewModel.publishQos = currentIndex
+                            onActivated: root.publisher.qos = currentIndex
                         }
                     }
 
@@ -219,10 +219,10 @@ Item {
                         AppComboBox {
                             ui: root.ui
                             id: publishFormatBox
-                            model: root.viewModel.payloadFormats
-                            currentIndex: root.viewModel.publishFormat
+                            model: root.publisher.payloadFormats
+                            currentIndex: root.publisher.format
                             Layout.fillWidth: true
-                            onActivated: root.viewModel.publishFormat = currentIndex
+                            onActivated: root.publisher.format = currentIndex
                         }
                     }
 
@@ -241,8 +241,8 @@ Item {
                             ui: root.ui
                             id: retainCheck
                             text: qsTr("Retain")
-                            checked: root.viewModel.publishRetain
-                            onToggled: root.viewModel.publishRetain = checked
+                            checked: root.publisher.retain
+                            onToggled: root.publisher.retain = checked
                         }
                     }
                 }
@@ -259,11 +259,11 @@ Item {
                         placeholderText: publishFormatBox.currentText === "JSON"
                                          ? "{\"value\": 23.7}"
                                          : qsTr("Payload")
-                        text: root.viewModel.publishPayload
+                        text: root.publisher.payload
                         wrapMode: TextEdit.Wrap
                         onTextChanged: {
-                            if (root.viewModel.publishPayload !== text) {
-                                root.viewModel.publishPayload = text
+                            if (root.publisher.payload !== text) {
+                                root.publisher.payload = text
                             }
                         }
                     }
@@ -280,9 +280,9 @@ Item {
                         iconSource: root.ui.materialIcon("send")
                         iconSize: 17
                         primary: true
-                        enabled: root.viewModel.canPublish
+                        enabled: root.publisher.canPublish
                         accessibleName: qsTr("Publish message")
-                        onClicked: root.viewModel.publishDraft()
+                        onClicked: root.publisher.publishDraft()
                     }
                 }
             }

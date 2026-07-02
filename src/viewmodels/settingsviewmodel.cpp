@@ -13,48 +13,67 @@
 #include <QVariantMap>
 
 #include <algorithm>
+#include <utility>
 
 using namespace AppUtils;
 
 namespace {
 
-QVariantList themeModeValues()
+enum class SettingsOption
 {
-    return {QStringLiteral("system"), QStringLiteral("light"), QStringLiteral("dark")};
+    ThemeMode,
+    LanguageMode,
+    MessageRetentionLimit,
+    LogRetentionLimit,
+    HistoryPageSize,
+    MaxIncomingPayloadBytes,
+    CleanupMode,
+};
+
+const QVariantList &optionValues(SettingsOption option)
+{
+    static const QVariantList themeModes {
+        QStringLiteral("system"),
+        QStringLiteral("light"),
+        QStringLiteral("dark"),
+    };
+    static const QVariantList languageModes {
+        QStringLiteral("system"),
+        QStringLiteral("en"),
+        QStringLiteral("zh_CN"),
+    };
+    static const QVariantList messageRetentionLimits {1000, 5000, 10000, 0};
+    static const QVariantList logRetentionLimits {500, 2000, 5000, 0};
+    static const QVariantList historyPageSizes {200, 500, 1000};
+    static const QVariantList maxIncomingPayloadBytes {262144, 1048576, 5242880, 16777216};
+    static const QVariantList cleanupModes {
+        QStringLiteral("never"),
+        QStringLiteral("current"),
+        QStringLiteral("all"),
+    };
+
+    switch (option) {
+    case SettingsOption::ThemeMode:
+        return themeModes;
+    case SettingsOption::LanguageMode:
+        return languageModes;
+    case SettingsOption::MessageRetentionLimit:
+        return messageRetentionLimits;
+    case SettingsOption::LogRetentionLimit:
+        return logRetentionLimits;
+    case SettingsOption::HistoryPageSize:
+        return historyPageSizes;
+    case SettingsOption::MaxIncomingPayloadBytes:
+        return maxIncomingPayloadBytes;
+    case SettingsOption::CleanupMode:
+        return cleanupModes;
+    }
+    return themeModes;
 }
 
-QVariantList languageModeValues()
+int optionIndex(SettingsOption option, const QVariant &value)
 {
-    return {QStringLiteral("system"), QStringLiteral("en"), QStringLiteral("zh_CN")};
-}
-
-QVariantList messageRetentionLimitValues()
-{
-    return {1000, 5000, 10000, 0};
-}
-
-QVariantList logRetentionLimitValues()
-{
-    return {500, 2000, 5000, 0};
-}
-
-QVariantList historyPageSizeValues()
-{
-    return {200, 500, 1000};
-}
-
-QVariantList maxIncomingPayloadByteValues()
-{
-    return {262144, 1048576, 5242880, 16777216};
-}
-
-QVariantList cleanupModeValues()
-{
-    return {QStringLiteral("never"), QStringLiteral("current"), QStringLiteral("all")};
-}
-
-int optionIndex(const QVariantList &values, const QVariant &value)
-{
+    const QVariantList &values = optionValues(option);
     for (int i = 0; i < values.size(); ++i) {
         if (values.at(i) == value) {
             return i;
@@ -63,12 +82,72 @@ int optionIndex(const QVariantList &values, const QVariant &value)
     return 0;
 }
 
-QVariant optionValue(const QVariantList &values, int index)
+QVariant optionValue(SettingsOption option, int index)
 {
+    const QVariantList &values = optionValues(option);
     if (values.isEmpty()) {
         return {};
     }
     return values.at(std::clamp(index, 0, static_cast<int>(values.size()) - 1));
+}
+
+void bindDependencyChange(
+    const std::function<void(QObject *, std::function<void()>)> &binder,
+    QObject *context,
+    std::function<void()> handler)
+{
+    if (binder) {
+        binder(context, std::move(handler));
+    }
+}
+
+void clearSessionMessages(QVector<SessionState> *sessions)
+{
+    if (!sessions) {
+        return;
+    }
+
+    for (auto &session : *sessions) {
+        session.messageRows.clear();
+        session.oldestLoadedMessageId = 0;
+        session.loadedAllMessageHistory = true;
+    }
+}
+
+void clearSessionLogs(QVector<SessionState> *sessions)
+{
+    if (!sessions) {
+        return;
+    }
+
+    for (auto &session : *sessions) {
+        session.logRows.clear();
+        session.oldestLoadedLogId = 0;
+        session.loadedAllLogHistory = true;
+    }
+}
+
+void notifyMessagesCleared(SettingsViewModel::Dependencies &dependencies)
+{
+    if (dependencies.messages) {
+        dependencies.messages->clear();
+    }
+    if (dependencies.refreshScriptTestSamplesModel) {
+        dependencies.refreshScriptTestSamplesModel();
+    }
+    if (dependencies.emitMessageStreamChanged) {
+        dependencies.emitMessageStreamChanged();
+    }
+}
+
+void notifyLogsCleared(SettingsViewModel::Dependencies &dependencies)
+{
+    if (dependencies.logs) {
+        dependencies.logs->clear();
+    }
+    if (dependencies.emitLogStreamChanged) {
+        dependencies.emitLogStreamChanged();
+    }
 }
 
 QString sanitizeLanguageMode(const QString &value)
@@ -109,39 +188,17 @@ SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QSettings
             [this](Qt::ColorScheme) { refreshSystemColorScheme(); });
     }
 
-    if (m_dependencies.bindMessageRetentionLimitChanged) {
-        m_dependencies.bindMessageRetentionLimitChanged(this, [this]() { emit messageRetentionLimitChanged(); });
-    }
-    if (m_dependencies.bindLogRetentionLimitChanged) {
-        m_dependencies.bindLogRetentionLimitChanged(this, [this]() { emit logRetentionLimitChanged(); });
-    }
-    if (m_dependencies.bindHistoryPageSizeChanged) {
-        m_dependencies.bindHistoryPageSizeChanged(this, [this]() { emit historyPageSizeChanged(); });
-    }
-    if (m_dependencies.bindMaxIncomingPayloadBytesChanged) {
-        m_dependencies.bindMaxIncomingPayloadBytesChanged(this, [this]() { emit maxIncomingPayloadBytesChanged(); });
-    }
-    if (m_dependencies.bindDeleteHistoryWithSessionChanged) {
-        m_dependencies.bindDeleteHistoryWithSessionChanged(this, [this]() { emit deleteHistoryWithSessionChanged(); });
-    }
-    if (m_dependencies.bindSaveMessagesWhenOutputPausedChanged) {
-        m_dependencies.bindSaveMessagesWhenOutputPausedChanged(this, [this]() { emit saveMessagesWhenOutputPausedChanged(); });
-    }
-    if (m_dependencies.bindClearMessagesOnExitChanged) {
-        m_dependencies.bindClearMessagesOnExitChanged(this, [this]() { emit clearMessagesOnExitChanged(); });
-    }
-    if (m_dependencies.bindClearLogsOnExitChanged) {
-        m_dependencies.bindClearLogsOnExitChanged(this, [this]() { emit clearLogsOnExitChanged(); });
-    }
-    if (m_dependencies.bindWindowWidthChanged) {
-        m_dependencies.bindWindowWidthChanged(this, [this]() { emit windowWidthChanged(); });
-    }
-    if (m_dependencies.bindWindowHeightChanged) {
-        m_dependencies.bindWindowHeightChanged(this, [this]() { emit windowHeightChanged(); });
-    }
-    if (m_dependencies.bindWindowMaximizedChanged) {
-        m_dependencies.bindWindowMaximizedChanged(this, [this]() { emit windowMaximizedChanged(); });
-    }
+    bindDependencyChange(m_dependencies.bindMessageRetentionLimitChanged, this, [this]() { emit messageRetentionLimitChanged(); });
+    bindDependencyChange(m_dependencies.bindLogRetentionLimitChanged, this, [this]() { emit logRetentionLimitChanged(); });
+    bindDependencyChange(m_dependencies.bindHistoryPageSizeChanged, this, [this]() { emit historyPageSizeChanged(); });
+    bindDependencyChange(m_dependencies.bindMaxIncomingPayloadBytesChanged, this, [this]() { emit maxIncomingPayloadBytesChanged(); });
+    bindDependencyChange(m_dependencies.bindDeleteHistoryWithSessionChanged, this, [this]() { emit deleteHistoryWithSessionChanged(); });
+    bindDependencyChange(m_dependencies.bindSaveMessagesWhenOutputPausedChanged, this, [this]() { emit saveMessagesWhenOutputPausedChanged(); });
+    bindDependencyChange(m_dependencies.bindClearMessagesOnExitChanged, this, [this]() { emit clearMessagesOnExitChanged(); });
+    bindDependencyChange(m_dependencies.bindClearLogsOnExitChanged, this, [this]() { emit clearLogsOnExitChanged(); });
+    bindDependencyChange(m_dependencies.bindWindowWidthChanged, this, [this]() { emit windowWidthChanged(); });
+    bindDependencyChange(m_dependencies.bindWindowHeightChanged, this, [this]() { emit windowHeightChanged(); });
+    bindDependencyChange(m_dependencies.bindWindowMaximizedChanged, this, [this]() { emit windowMaximizedChanged(); });
 }
 
 QString SettingsViewModel::themeMode() const { return m_themeMode; }
@@ -193,14 +250,14 @@ QString SettingsViewModel::clearLogsOnExit() const { return m_dependencies.prefe
 int SettingsViewModel::windowWidth() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowWidth() : 1480; }
 int SettingsViewModel::windowHeight() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowHeight() : 820; }
 bool SettingsViewModel::windowMaximized() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->windowMaximized(); }
-int SettingsViewModel::themeModeIndex() const { return optionIndex(themeModeValues(), themeMode()); }
-int SettingsViewModel::languageModeIndex() const { return optionIndex(languageModeValues(), languageMode()); }
-int SettingsViewModel::messageRetentionLimitIndex() const { return optionIndex(messageRetentionLimitValues(), messageRetentionLimit()); }
-int SettingsViewModel::logRetentionLimitIndex() const { return optionIndex(logRetentionLimitValues(), logRetentionLimit()); }
-int SettingsViewModel::historyPageSizeIndex() const { return optionIndex(historyPageSizeValues(), historyPageSize()); }
-int SettingsViewModel::maxIncomingPayloadBytesIndex() const { return optionIndex(maxIncomingPayloadByteValues(), maxIncomingPayloadBytes()); }
-int SettingsViewModel::clearMessagesOnExitIndex() const { return optionIndex(cleanupModeValues(), clearMessagesOnExit()); }
-int SettingsViewModel::clearLogsOnExitIndex() const { return optionIndex(cleanupModeValues(), clearLogsOnExit()); }
+int SettingsViewModel::themeModeIndex() const { return optionIndex(SettingsOption::ThemeMode, themeMode()); }
+int SettingsViewModel::languageModeIndex() const { return optionIndex(SettingsOption::LanguageMode, languageMode()); }
+int SettingsViewModel::messageRetentionLimitIndex() const { return optionIndex(SettingsOption::MessageRetentionLimit, messageRetentionLimit()); }
+int SettingsViewModel::logRetentionLimitIndex() const { return optionIndex(SettingsOption::LogRetentionLimit, logRetentionLimit()); }
+int SettingsViewModel::historyPageSizeIndex() const { return optionIndex(SettingsOption::HistoryPageSize, historyPageSize()); }
+int SettingsViewModel::maxIncomingPayloadBytesIndex() const { return optionIndex(SettingsOption::MaxIncomingPayloadBytes, maxIncomingPayloadBytes()); }
+int SettingsViewModel::clearMessagesOnExitIndex() const { return optionIndex(SettingsOption::CleanupMode, clearMessagesOnExit()); }
+int SettingsViewModel::clearLogsOnExitIndex() const { return optionIndex(SettingsOption::CleanupMode, clearLogsOnExit()); }
 
 void SettingsViewModel::setThemeMode(const QString &mode)
 {
@@ -349,36 +406,22 @@ void SettingsViewModel::saveWindowGeometry(int width, int height)
     }
 }
 
-void SettingsViewModel::setThemeModeIndex(int index) { setThemeMode(optionValue(themeModeValues(), index).toString()); }
-void SettingsViewModel::setLanguageModeIndex(int index) { setLanguageMode(optionValue(languageModeValues(), index).toString()); }
-void SettingsViewModel::setMessageRetentionLimitIndex(int index) { setMessageRetentionLimit(optionValue(messageRetentionLimitValues(), index).toInt()); }
-void SettingsViewModel::setLogRetentionLimitIndex(int index) { setLogRetentionLimit(optionValue(logRetentionLimitValues(), index).toInt()); }
-void SettingsViewModel::setHistoryPageSizeIndex(int index) { setHistoryPageSize(optionValue(historyPageSizeValues(), index).toInt()); }
-void SettingsViewModel::setMaxIncomingPayloadBytesIndex(int index) { setMaxIncomingPayloadBytes(optionValue(maxIncomingPayloadByteValues(), index).toInt()); }
-void SettingsViewModel::setClearMessagesOnExitIndex(int index) { setClearMessagesOnExit(optionValue(cleanupModeValues(), index).toString()); }
-void SettingsViewModel::setClearLogsOnExitIndex(int index) { setClearLogsOnExit(optionValue(cleanupModeValues(), index).toString()); }
+void SettingsViewModel::setThemeModeIndex(int index) { setThemeMode(optionValue(SettingsOption::ThemeMode, index).toString()); }
+void SettingsViewModel::setLanguageModeIndex(int index) { setLanguageMode(optionValue(SettingsOption::LanguageMode, index).toString()); }
+void SettingsViewModel::setMessageRetentionLimitIndex(int index) { setMessageRetentionLimit(optionValue(SettingsOption::MessageRetentionLimit, index).toInt()); }
+void SettingsViewModel::setLogRetentionLimitIndex(int index) { setLogRetentionLimit(optionValue(SettingsOption::LogRetentionLimit, index).toInt()); }
+void SettingsViewModel::setHistoryPageSizeIndex(int index) { setHistoryPageSize(optionValue(SettingsOption::HistoryPageSize, index).toInt()); }
+void SettingsViewModel::setMaxIncomingPayloadBytesIndex(int index) { setMaxIncomingPayloadBytes(optionValue(SettingsOption::MaxIncomingPayloadBytes, index).toInt()); }
+void SettingsViewModel::setClearMessagesOnExitIndex(int index) { setClearMessagesOnExit(optionValue(SettingsOption::CleanupMode, index).toString()); }
+void SettingsViewModel::setClearLogsOnExitIndex(int index) { setClearLogsOnExit(optionValue(SettingsOption::CleanupMode, index).toString()); }
 
 void SettingsViewModel::clearAllMessages()
 {
     if (m_dependencies.historyStore) {
         m_dependencies.historyStore->clearAllMessages();
     }
-    if (m_dependencies.sessions) {
-        for (auto &session : *m_dependencies.sessions) {
-            session.messageRows.clear();
-            session.oldestLoadedMessageId = 0;
-            session.loadedAllMessageHistory = true;
-        }
-    }
-    if (m_dependencies.messages) {
-        m_dependencies.messages->clear();
-    }
-    if (m_dependencies.refreshScriptTestSamplesModel) {
-        m_dependencies.refreshScriptTestSamplesModel();
-    }
-    if (m_dependencies.emitMessageStreamChanged) {
-        m_dependencies.emitMessageStreamChanged();
-    }
+    clearSessionMessages(m_dependencies.sessions);
+    notifyMessagesCleared(m_dependencies);
 }
 
 void SettingsViewModel::clearAllLogs()
@@ -386,19 +429,8 @@ void SettingsViewModel::clearAllLogs()
     if (m_dependencies.historyStore) {
         m_dependencies.historyStore->clearAllLogs();
     }
-    if (m_dependencies.sessions) {
-        for (auto &session : *m_dependencies.sessions) {
-            session.logRows.clear();
-            session.oldestLoadedLogId = 0;
-            session.loadedAllLogHistory = true;
-        }
-    }
-    if (m_dependencies.logs) {
-        m_dependencies.logs->clear();
-    }
-    if (m_dependencies.emitLogStreamChanged) {
-        m_dependencies.emitLogStreamChanged();
-    }
+    clearSessionLogs(m_dependencies.sessions);
+    notifyLogsCleared(m_dependencies);
 }
 
 void SettingsViewModel::clearAllHistory()
@@ -407,31 +439,10 @@ void SettingsViewModel::clearAllHistory()
         m_dependencies.historyStore->clearAllMessages();
         m_dependencies.historyStore->clearAllLogs();
     }
-    if (m_dependencies.sessions) {
-        for (auto &session : *m_dependencies.sessions) {
-            session.messageRows.clear();
-            session.oldestLoadedMessageId = 0;
-            session.loadedAllMessageHistory = true;
-            session.logRows.clear();
-            session.oldestLoadedLogId = 0;
-            session.loadedAllLogHistory = true;
-        }
-    }
-    if (m_dependencies.messages) {
-        m_dependencies.messages->clear();
-    }
-    if (m_dependencies.logs) {
-        m_dependencies.logs->clear();
-    }
-    if (m_dependencies.refreshScriptTestSamplesModel) {
-        m_dependencies.refreshScriptTestSamplesModel();
-    }
-    if (m_dependencies.emitMessageStreamChanged) {
-        m_dependencies.emitMessageStreamChanged();
-    }
-    if (m_dependencies.emitLogStreamChanged) {
-        m_dependencies.emitLogStreamChanged();
-    }
+    clearSessionMessages(m_dependencies.sessions);
+    clearSessionLogs(m_dependencies.sessions);
+    notifyMessagesCleared(m_dependencies);
+    notifyLogsCleared(m_dependencies);
 }
 
 void SettingsViewModel::refreshSystemColorScheme()

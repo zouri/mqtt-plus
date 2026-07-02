@@ -51,6 +51,49 @@ void clearExitLogs(ApplicationCoreState &state, const QString &mode)
     }
 }
 
+SessionState *currentSession(ApplicationCoreState &state)
+{
+    return state.sessionController.currentSession();
+}
+
+void refreshSubscriptionsModel(ApplicationCoreState &state)
+{
+    state.subscriptionsModel.setSource(currentSession(state));
+}
+
+void refreshScriptTestSamplesModel(ApplicationCoreState &state)
+{
+    auto *session = currentSession(state);
+    state.scriptTestSamplesModel.setSource(session ? &session->messageRows : nullptr);
+}
+
+void refreshEventStreamModels(ApplicationCoreState &state)
+{
+    if (auto *session = currentSession(state)) {
+        state.messagesModel.setRows(session->messageRows);
+        state.logsModel.setRows(session->logRows);
+    }
+}
+
+void refreshSessionModels(ApplicationCoreState &state)
+{
+    state.sessionsModel.notifyRefresh();
+    refreshSubscriptionsModel(state);
+}
+
+void refreshSessionModelsAndSamples(ApplicationCoreState &state)
+{
+    refreshSessionModels(state);
+    refreshScriptTestSamplesModel(state);
+}
+
+void refreshCurrentSessionViews(ApplicationCoreState &state)
+{
+    refreshSessionModels(state);
+    refreshEventStreamModels(state);
+    refreshScriptTestSamplesModel(state);
+}
+
 } // namespace
 
 ApplicationCoreState::ApplicationCoreState(QObject *parent)
@@ -77,9 +120,9 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
               [this](SessionState &session, const QString &channel, const QString &message) {
                   eventController.appendEvent(session, channel, message);
               },
-            [this]() {
-                sessionsModel.notifyRefresh();
-            },
+              [this]() {
+                  sessionsModel.notifyRefresh();
+              },
               [this](SessionState *session) {
                   mqttController.bindSessionSignals(session);
               },
@@ -131,22 +174,13 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
             sessionsModel.notifyRefresh();
         },
         [this]() {
-            sessionsModel.notifyRefresh();
-            subscriptionsModel.setSource(sessionController.currentSession());
-            scriptTestSamplesModel.setSource(sessionController.currentSession() ? &sessionController.currentSession()->messageRows : nullptr);
+            refreshSessionModelsAndSamples(*this);
         },
         [this]() {
-            sessionsModel.notifyRefresh();
-            subscriptionsModel.setSource(sessionController.currentSession());
+            refreshSessionModels(*this);
         },
         [this]() {
-            sessionsModel.notifyRefresh();
-            subscriptionsModel.setSource(sessionController.currentSession());
-            if (auto *s = sessionController.currentSession()) {
-                messagesModel.setRows(s->messageRows);
-                logsModel.setRows(s->logRows);
-            }
-            scriptTestSamplesModel.setSource(sessionController.currentSession() ? &sessionController.currentSession()->messageRows : nullptr);
+            refreshCurrentSessionViews(*this);
         },
         [this]() {
             scriptsModel.notifyRefresh();
@@ -165,17 +199,12 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
             eventController.appendEvent(session, channel, message);
         },
         [this]() {
-            sessionsModel.notifyRefresh();
-            subscriptionsModel.setSource(sessionController.currentSession());
+            refreshSessionModels(*this);
             subscriptionController.subscriptionsChanged();
         },
         [this]() {
-            sessionsModel.notifyRefresh();
-            subscriptionsModel.setSource(sessionController.currentSession());
-            if (auto *s = sessionController.currentSession()) {
-                messagesModel.setRows(s->messageRows);
-                logsModel.setRows(s->logRows);
-            }
+            refreshSessionModels(*this);
+            refreshEventStreamModels(*this);
         },
     });
     eventController.setDependencies({
@@ -195,10 +224,10 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
             return sessionController.sessionById(sessionId);
         },
         [this]() {
-            subscriptionsModel.setSource(sessionController.currentSession());
+            refreshSubscriptionsModel(*this);
         },
         [this]() {
-            scriptTestSamplesModel.setSource(sessionController.currentSession() ? &sessionController.currentSession()->messageRows : nullptr);
+            refreshScriptTestSamplesModel(*this);
         },
     });
     subscriptionController.setDependencies({
@@ -221,7 +250,7 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
             return false;
         },
         [this]() {
-            subscriptionsModel.setSource(sessionController.currentSession());
+            refreshSubscriptionsModel(*this);
         },
     });
     filteredSubscriptionsModel.setSourceModel(&subscriptionsModel);
@@ -260,8 +289,7 @@ void ApplicationCoreState::runStartup()
     }
 
     sessionController.setCurrentIndex(0);
-    sessionsModel.notifyRefresh();
-    subscriptionsModel.setSource(sessionController.currentSession());
+    refreshSessionModels(*this);
     eventController.reloadCurrentSessionHistory();
     sessionController.currentSessionIndexChanged();
     sessionController.currentSessionChanged();

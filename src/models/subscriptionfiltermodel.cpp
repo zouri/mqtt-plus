@@ -26,6 +26,16 @@ QString SubscriptionFilterModel::filterMode() const
     return m_filterMode;
 }
 
+int SubscriptionFilterModel::filterModeIndex() const
+{
+    return filterModeIndexForMode(m_filterMode);
+}
+
+bool SubscriptionFilterModel::hasFilter() const
+{
+    return !m_filterText.isEmpty() || m_filterMode != QStringLiteral("all");
+}
+
 void SubscriptionFilterModel::setSourceModel(QAbstractItemModel *sourceModel)
 {
     QSortFilterProxyModel::setSourceModel(sourceModel);
@@ -35,6 +45,7 @@ void SubscriptionFilterModel::setSourceModel(QAbstractItemModel *sourceModel)
 
 void SubscriptionFilterModel::setFilterText(const QString &filterText)
 {
+    const bool hadFilter = hasFilter();
     const QString trimmedText = filterText.trimmed();
     if (m_filterText == trimmedText) {
         return;
@@ -44,14 +55,15 @@ void SubscriptionFilterModel::setFilterText(const QString &filterText)
     beginFilterChange();
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
     emit filterTextChanged();
+    if (hadFilter != hasFilter()) {
+        emit filterChanged();
+    }
 }
 
 void SubscriptionFilterModel::setFilterMode(const QString &filterMode)
 {
-    const QString normalizedMode = filterMode == QStringLiteral("subscribed")
-            || filterMode == QStringLiteral("paused")
-        ? filterMode
-        : QStringLiteral("all");
+    const bool hadFilter = hasFilter();
+    const QString normalizedMode = normalizedFilterMode(filterMode);
     if (m_filterMode == normalizedMode) {
         return;
     }
@@ -60,6 +72,20 @@ void SubscriptionFilterModel::setFilterMode(const QString &filterMode)
     beginFilterChange();
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
     emit filterModeChanged();
+    emit filterModeIndexChanged();
+    if (hadFilter != hasFilter()) {
+        emit filterChanged();
+    }
+}
+
+void SubscriptionFilterModel::setFilterModeIndex(int index)
+{
+    static const QStringList modes {
+        QStringLiteral("all"),
+        QStringLiteral("subscribed"),
+        QStringLiteral("paused"),
+    };
+    setFilterMode(index >= 0 && index < modes.size() ? modes.at(index) : QStringLiteral("all"));
 }
 
 QVariantMap SubscriptionFilterModel::rowAt(int row) const
@@ -89,6 +115,25 @@ void SubscriptionFilterModel::connectCountSignals()
     connect(this, &QAbstractItemModel::rowsRemoved, this, &SubscriptionFilterModel::countChanged, Qt::UniqueConnection);
     connect(this, &QAbstractItemModel::modelReset, this, &SubscriptionFilterModel::countChanged, Qt::UniqueConnection);
     connect(this, &QAbstractItemModel::layoutChanged, this, &SubscriptionFilterModel::countChanged, Qt::UniqueConnection);
+}
+
+QString SubscriptionFilterModel::normalizedFilterMode(const QString &filterMode)
+{
+    return filterMode == QStringLiteral("subscribed") || filterMode == QStringLiteral("paused")
+        ? filterMode
+        : QStringLiteral("all");
+}
+
+int SubscriptionFilterModel::filterModeIndexForMode(const QString &filterMode)
+{
+    const QString normalizedMode = normalizedFilterMode(filterMode);
+    if (normalizedMode == QStringLiteral("subscribed")) {
+        return 1;
+    }
+    if (normalizedMode == QStringLiteral("paused")) {
+        return 2;
+    }
+    return 0;
 }
 
 bool SubscriptionFilterModel::modeAcceptsRow(const QModelIndex &sourceIndex) const
