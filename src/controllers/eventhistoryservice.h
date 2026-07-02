@@ -13,11 +13,11 @@
 class EventStreamModel;
 class HistoryStore;
 class PreferencesController;
-class ScriptController;
+class ScriptService;
 class ScriptTestSamplesModel;
-class SubscriptionController;
+class SubscriptionService;
 
-class EventController : public QObject
+class EventHistoryService : public QObject
 {
     Q_OBJECT
 
@@ -28,8 +28,8 @@ public:
         EventStreamModel *messagesModel = nullptr;
         EventStreamModel *logsModel = nullptr;
         ScriptTestSamplesModel *scriptTestSamplesModel = nullptr;
-        ScriptController *scriptController = nullptr;
-        SubscriptionController *subscriptionController = nullptr;
+        ScriptService *scriptController = nullptr;
+        SubscriptionService *subscriptionController = nullptr;
         QTimer *subscriptionFpsRefreshTimer = nullptr;
         QString *launchTimestamp = nullptr;
         PreferencesController *preferencesController = nullptr;
@@ -39,7 +39,7 @@ public:
         std::function<void()> refreshScriptTestSamplesModel;
     };
 
-    explicit EventController(QObject *parent = nullptr);
+    explicit EventHistoryService(QObject *parent = nullptr);
 
     void setDependencies(const Dependencies &dependencies);
 

@@ -1,4 +1,4 @@
-#include "controllers/sessioncontroller.h"
+#include "controllers/sessionservice.h"
 #include "domain/session.h"
 #include "models/subscriptionlistmodel.h"
 
@@ -15,7 +15,7 @@ private slots:
 
 void SubscriptionListModelTest::refreshBindsCurrentSession()
 {
-    SessionController sessions;
+    SessionService sessions;
     SubscriptionListModel model;
 
     SessionState first;
@@ -38,7 +38,7 @@ void SubscriptionListModelTest::refreshBindsCurrentSession()
 
 void SubscriptionListModelTest::refreshRebuildsScriptNameCache()
 {
-    SessionController sessions;
+    SessionService sessions;
     SubscriptionListModel model;
     QString scriptName = QStringLiteral("Decoder");
 

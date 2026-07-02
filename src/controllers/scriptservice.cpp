@@ -1,4 +1,4 @@
-#include "scriptcontroller.h"
+#include "scriptservice.h"
 
 #include "services/apputils.h"
 #include "services/storage/scriptstore.h"
@@ -7,17 +7,17 @@
 
 using namespace AppUtils;
 
-ScriptController::ScriptController(QObject *parent)
+ScriptService::ScriptService(QObject *parent)
     : QObject(parent)
 {
 }
 
-const QVector<ScriptEntry> &ScriptController::scripts() const
+const QVector<ScriptEntry> &ScriptService::scripts() const
 {
     return m_scripts;
 }
 
-const ScriptEntry *ScriptController::scriptById(const QString &id) const
+const ScriptEntry *ScriptService::scriptById(const QString &id) const
 {
     if (id.trimmed().isEmpty()) {
         return nullptr;
@@ -30,13 +30,13 @@ const ScriptEntry *ScriptController::scriptById(const QString &id) const
     return nullptr;
 }
 
-QString ScriptController::scriptName(const QString &id) const
+QString ScriptService::scriptName(const QString &id) const
 {
     const auto *script = scriptById(id);
     return script ? script->name : QString();
 }
 
-void ScriptController::loadScripts()
+void ScriptService::loadScripts()
 {
     const ScriptStore::LoadResult result = ScriptStore::loadScripts();
     m_scripts = result.scripts;
@@ -44,7 +44,7 @@ void ScriptController::loadScripts()
     emit scriptsChanged();
 }
 
-QString ScriptController::upsertScript(
+QString ScriptService::upsertScript(
     const QString &id,
     const QString &name,
     const QString &description,
@@ -90,7 +90,7 @@ QString ScriptController::upsertScript(
     return script.id;
 }
 
-bool ScriptController::saveScripts()
+bool ScriptService::saveScripts()
 {
     QString errorMessage;
     if (ScriptStore::saveScripts(m_scripts, m_scriptIndexWritable, errorMessage)) {

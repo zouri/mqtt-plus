@@ -43,7 +43,13 @@ bool ensureColumn(QSqlDatabase &db, const QString &table, const QString &column,
 HistoryStore::HistoryStore()
 {
     m_connectionName = QStringLiteral("history-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    initialize();
+    initialize(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
+}
+
+HistoryStore::HistoryStore(const QString &dataPath)
+{
+    m_connectionName = QStringLiteral("history-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    initialize(dataPath);
 }
 
 HistoryStore::~HistoryStore()
@@ -155,7 +161,7 @@ QStringList HistoryStore::flushPendingMessages()
         query.bindValue(1, message.timestamp);
         query.bindValue(2, message.topic);
         query.bindValue(3, nonNullString(message.payloadPreview));
-        query.bindValue(4, QString());
+        query.bindValue(4, QStringLiteral(""));
         query.bindValue(5, nonNullString(message.parsedPayload));
         query.bindValue(6, nonNullString(message.parsedFormat));
         query.bindValue(7, nonNullString(message.parseError));
@@ -522,10 +528,8 @@ void HistoryStore::pruneLogs(const QString &sessionId, int keepCount)
     }
 }
 
-bool HistoryStore::initialize()
+bool HistoryStore::initialize(const QString &dataPath)
 {
-    const QString dataPath =
-        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (dataPath.isEmpty()) {
         m_lastError = QStringLiteral("Cannot resolve app data path.");
         return false;

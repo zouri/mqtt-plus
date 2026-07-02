@@ -18,6 +18,7 @@ public:
         ConnectedRole,
         HostRole,
         PortRole,
+        ClientIdRole,
         TransportRole,
         TransportLabelRole,
         ProtocolVersionRole,

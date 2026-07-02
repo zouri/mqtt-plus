@@ -1,15 +1,23 @@
 #include "viewmodels/settingsviewmodel.h"
 
-#include "controllers/eventcontroller.h"
-#include "controllers/languagecontroller.h"
+#include "controllers/eventhistoryservice.h"
 #include "controllers/preferencescontroller.h"
-#include "controllers/themecontroller.h"
 #include "models/eventstreammodel.h"
+#include "services/apputils.h"
 #include "services/storage/historystore.h"
+
+#include <QCoreApplication>
+#include <QGuiApplication>
+#include <QLocale>
+#include <QStyleHints>
+#include <QVariantMap>
 
 #include <algorithm>
 
+using namespace AppUtils;
+
 namespace {
+
 QVariantList themeModeValues()
 {
     return {QStringLiteral("system"), QStringLiteral("light"), QStringLiteral("dark")};
@@ -62,29 +70,45 @@ QVariant optionValue(const QVariantList &values, int index)
     }
     return values.at(std::clamp(index, 0, static_cast<int>(values.size()) - 1));
 }
+
+QString sanitizeLanguageMode(const QString &value)
+{
+    const QString mode = value.trimmed();
+    if (mode == QStringLiteral("en") || mode == QStringLiteral("zh_CN")) {
+        return mode;
+    }
+    return QStringLiteral("system");
 }
 
-SettingsViewModel::SettingsViewModel(QObject *parent)
-    : SettingsViewModel(Dependencies {}, parent)
+} // namespace
+
+SettingsViewModel::SettingsViewModel(QSettings *settings, QObject *parent)
+    : SettingsViewModel(Dependencies{}, settings, parent)
 {
 }
 
-SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QObject *parent)
+SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QSettings *settings, QObject *parent)
     : QObject(parent)
+    , m_settings(settings)
     , m_dependencies(dependencies)
 {
-    if (m_dependencies.bindThemeModeChanged) {
-        m_dependencies.bindThemeModeChanged(this, [this]() { emit themeModeChanged(); });
+    if (m_settings) {
+        m_themeMode = sanitizeThemeMode(
+            m_settings->value(QStringLiteral("appearance/themeMode"), QStringLiteral("system")).toString());
+        m_languageMode = sanitizeLanguageMode(
+            m_settings->value(QStringLiteral("appearance/languageMode"), QStringLiteral("system")).toString());
     }
-    if (m_dependencies.bindEffectiveThemeChanged) {
-        m_dependencies.bindEffectiveThemeChanged(this, [this]() { emit effectiveThemeChanged(); });
+    refreshSystemColorScheme();
+    applyCurrentLanguage();
+
+    if (QGuiApplication::styleHints()) {
+        connect(
+            QGuiApplication::styleHints(),
+            &QStyleHints::colorSchemeChanged,
+            this,
+            [this](Qt::ColorScheme) { refreshSystemColorScheme(); });
     }
-    if (m_dependencies.bindLanguageModeChanged) {
-        m_dependencies.bindLanguageModeChanged(this, [this]() { emit languageModeChanged(); });
-    }
-    if (m_dependencies.bindLanguageChanged) {
-        m_dependencies.bindLanguageChanged(this, [this]() { emit languageChanged(); });
-    }
+
     if (m_dependencies.bindMessageRetentionLimitChanged) {
         m_dependencies.bindMessageRetentionLimitChanged(this, [this]() { emit messageRetentionLimitChanged(); });
     }
@@ -120,9 +144,44 @@ SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QObject *
     }
 }
 
-QString SettingsViewModel::themeMode() const { return m_dependencies.themeController ? m_dependencies.themeController->mode() : QStringLiteral("system"); }
-QString SettingsViewModel::effectiveTheme() const { return m_dependencies.themeController ? m_dependencies.themeController->effectiveTheme() : QStringLiteral("light"); }
-QString SettingsViewModel::languageMode() const { return m_dependencies.languageController ? m_dependencies.languageController->mode() : QStringLiteral("system"); }
+QString SettingsViewModel::themeMode() const { return m_themeMode; }
+
+QString SettingsViewModel::effectiveTheme() const
+{
+    if (m_themeMode == QStringLiteral("light") || m_themeMode == QStringLiteral("dark")) {
+        return m_themeMode;
+    }
+    return m_systemDarkMode ? QStringLiteral("dark") : QStringLiteral("light");
+}
+
+QString SettingsViewModel::languageMode() const { return m_languageMode; }
+
+QVariantList SettingsViewModel::availableLanguages() const
+{
+    QVariantList languages;
+    {
+        QVariantMap system;
+        system.insert(QStringLiteral("mode"), QStringLiteral("system"));
+        system.insert(QStringLiteral("label"), tr("System"));
+        languages.append(system);
+    }
+    {
+        QVariantMap english;
+        english.insert(QStringLiteral("mode"), QStringLiteral("en"));
+        english.insert(QStringLiteral("label"), QStringLiteral("English"));
+        languages.append(english);
+    }
+    {
+        QVariantMap simplifiedChinese;
+        simplifiedChinese.insert(QStringLiteral("mode"), QStringLiteral("zh_CN"));
+        simplifiedChinese.insert(QStringLiteral("label"), QStringLiteral("简体中文"));
+        languages.append(simplifiedChinese);
+    }
+    return languages;
+}
+
+QString SettingsViewModel::effectiveLanguage() const { return m_effectiveLanguage; }
+
 int SettingsViewModel::messageRetentionLimit() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->messageRetentionLimit() : 5000; }
 int SettingsViewModel::logRetentionLimit() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->logRetentionLimit() : 2000; }
 int SettingsViewModel::historyPageSize() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->historyPageSize() : 500; }
@@ -145,16 +204,40 @@ int SettingsViewModel::clearLogsOnExitIndex() const { return optionIndex(cleanup
 
 void SettingsViewModel::setThemeMode(const QString &mode)
 {
-    if (m_dependencies.themeController) {
-        m_dependencies.themeController->setMode(mode);
+    const QString sanitized = sanitizeThemeMode(mode);
+    if (sanitized == m_themeMode) {
+        return;
+    }
+
+    const QString previousEffectiveTheme = effectiveTheme();
+    m_themeMode = sanitized;
+    if (m_settings) {
+        m_settings->setValue(QStringLiteral("appearance/themeMode"), m_themeMode);
+        m_settings->sync();
+    }
+
+    emit themeModeChanged();
+    if (effectiveTheme() != previousEffectiveTheme) {
+        emit effectiveThemeChanged();
     }
 }
 
 void SettingsViewModel::setLanguageMode(const QString &mode)
 {
-    if (m_dependencies.languageController) {
-        m_dependencies.languageController->setMode(mode);
+    const QString sanitized = sanitizeLanguageMode(mode);
+    if (sanitized == m_languageMode) {
+        return;
     }
+
+    m_languageMode = sanitized;
+    if (m_settings) {
+        m_settings->setValue(QStringLiteral("appearance/languageMode"), m_languageMode);
+        m_settings->sync();
+    }
+
+    applyCurrentLanguage();
+    emit languageModeChanged();
+    emit languageChanged();
 }
 
 void SettingsViewModel::setMessageRetentionLimit(int limit)
@@ -265,6 +348,7 @@ void SettingsViewModel::saveWindowGeometry(int width, int height)
         m_dependencies.preferencesController->setWindowGeometry(width, height);
     }
 }
+
 void SettingsViewModel::setThemeModeIndex(int index) { setThemeMode(optionValue(themeModeValues(), index).toString()); }
 void SettingsViewModel::setLanguageModeIndex(int index) { setLanguageMode(optionValue(languageModeValues(), index).toString()); }
 void SettingsViewModel::setMessageRetentionLimitIndex(int index) { setMessageRetentionLimit(optionValue(messageRetentionLimitValues(), index).toInt()); }
@@ -273,6 +357,7 @@ void SettingsViewModel::setHistoryPageSizeIndex(int index) { setHistoryPageSize(
 void SettingsViewModel::setMaxIncomingPayloadBytesIndex(int index) { setMaxIncomingPayloadBytes(optionValue(maxIncomingPayloadByteValues(), index).toInt()); }
 void SettingsViewModel::setClearMessagesOnExitIndex(int index) { setClearMessagesOnExit(optionValue(cleanupModeValues(), index).toString()); }
 void SettingsViewModel::setClearLogsOnExitIndex(int index) { setClearLogsOnExit(optionValue(cleanupModeValues(), index).toString()); }
+
 void SettingsViewModel::clearAllMessages()
 {
     if (m_dependencies.historyStore) {
@@ -346,5 +431,48 @@ void SettingsViewModel::clearAllHistory()
     }
     if (m_dependencies.emitLogStreamChanged) {
         m_dependencies.emitLogStreamChanged();
+    }
+}
+
+void SettingsViewModel::refreshSystemColorScheme()
+{
+    const bool darkMode = QGuiApplication::styleHints()
+        && QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+    if (darkMode == m_systemDarkMode) {
+        return;
+    }
+
+    const QString previousEffectiveTheme = effectiveTheme();
+    m_systemDarkMode = darkMode;
+    if (effectiveTheme() != previousEffectiveTheme) {
+        emit effectiveThemeChanged();
+    }
+}
+
+QString SettingsViewModel::resolvedLanguage() const
+{
+    if (m_languageMode == QStringLiteral("en") || m_languageMode == QStringLiteral("zh_CN")) {
+        return m_languageMode;
+    }
+
+    const QLocale systemLocale;
+    return systemLocale.language() == QLocale::Chinese ? QStringLiteral("zh_CN") : QStringLiteral("en");
+}
+
+void SettingsViewModel::applyCurrentLanguage()
+{
+    if (m_translatorInstalled) {
+        QCoreApplication::removeTranslator(&m_translator);
+        m_translatorInstalled = false;
+    }
+
+    m_effectiveLanguage = resolvedLanguage();
+    if (m_effectiveLanguage != QStringLiteral("zh_CN")) {
+        return;
+    }
+
+    if (m_translator.load(QStringLiteral(":/i18n/mqtt_plus_zh_CN.qm"))) {
+        QCoreApplication::installTranslator(&m_translator);
+        m_translatorInstalled = true;
     }
 }

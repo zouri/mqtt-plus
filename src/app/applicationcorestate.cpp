@@ -60,8 +60,6 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
     , subscriptionController(parent)
     , mqttController(parent)
     , eventController(parent)
-    , themeController(&settings, parent)
-    , languageController(&settings, parent)
     , preferencesController(&settings, parent)
     , sessionsModel(parent)
     , subscriptionsModel(parent)
@@ -230,7 +228,7 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
 
     QObject::connect(
         &scriptController,
-        &ScriptController::storageError,
+        &ScriptService::storageError,
         &sessionController,
         [this](const QString &message) {
             reportStorageError(*this, message);
@@ -241,7 +239,7 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
         &subscriptionFpsRefreshTimer,
         &QTimer::timeout,
         &subscriptionController,
-        &SubscriptionController::refreshSubscriptionFps);
+        &SubscriptionService::refreshSubscriptionFps);
 }
 
 void ApplicationCoreState::applyExitCleanup()

@@ -1,44 +1,44 @@
-#include "sessioncontroller.h"
+#include "sessionservice.h"
 
-#include "controllers/mqttcontroller.h"
-#include "controllers/subscriptioncontroller.h"
+#include "controllers/mqttsessionservice.h"
+#include "controllers/subscriptionservice.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/sessionsettingsstore.h"
 #include "services/storage/historystore.h"
 
 #include <QDateTime>
 
-SessionController::SessionController(QObject *parent)
+SessionService::SessionService(QObject *parent)
     : QObject(parent)
 {
 }
 
-void SessionController::setDependencies(const Dependencies &dependencies)
+void SessionService::setDependencies(const Dependencies &dependencies)
 {
     m_dependencies = dependencies;
 }
 
-QVector<SessionState> &SessionController::sessions()
+QVector<SessionState> &SessionService::sessions()
 {
     return m_sessions;
 }
 
-const QVector<SessionState> &SessionController::sessions() const
+const QVector<SessionState> &SessionService::sessions() const
 {
     return m_sessions;
 }
 
-int SessionController::currentIndex() const
+int SessionService::currentIndex() const
 {
     return m_currentIndex;
 }
 
-void SessionController::setCurrentIndex(int index)
+void SessionService::setCurrentIndex(int index)
 {
     m_currentIndex = index;
 }
 
-SessionState *SessionController::currentSession()
+SessionState *SessionService::currentSession()
 {
     if (!isValidIndex(m_currentIndex)) {
         return nullptr;
@@ -46,7 +46,7 @@ SessionState *SessionController::currentSession()
     return &m_sessions[m_currentIndex];
 }
 
-const SessionState *SessionController::currentSession() const
+const SessionState *SessionService::currentSession() const
 {
     if (!isValidIndex(m_currentIndex)) {
         return nullptr;
@@ -54,7 +54,7 @@ const SessionState *SessionController::currentSession() const
     return &m_sessions[m_currentIndex];
 }
 
-SessionState *SessionController::sessionById(const QString &sessionId)
+SessionState *SessionService::sessionById(const QString &sessionId)
 {
     for (auto &session : m_sessions) {
         if (session.id == sessionId) {
@@ -64,7 +64,7 @@ SessionState *SessionController::sessionById(const QString &sessionId)
     return nullptr;
 }
 
-const SessionState *SessionController::sessionById(const QString &sessionId) const
+const SessionState *SessionService::sessionById(const QString &sessionId) const
 {
     for (const auto &session : m_sessions) {
         if (session.id == sessionId) {
@@ -74,28 +74,28 @@ const SessionState *SessionController::sessionById(const QString &sessionId) con
     return nullptr;
 }
 
-void SessionController::appendSession(const SessionState &session)
+void SessionService::appendSession(const SessionState &session)
 {
     m_sessions.append(session);
 }
 
-SessionState SessionController::takeSessionAt(int index)
+SessionState SessionService::takeSessionAt(int index)
 {
     return m_sessions.takeAt(index);
 }
 
-void SessionController::clear()
+void SessionService::clear()
 {
     m_sessions.clear();
     m_currentIndex = -1;
 }
 
-bool SessionController::isValidIndex(int index) const
+bool SessionService::isValidIndex(int index) const
 {
     return index >= 0 && index < m_sessions.size();
 }
 
-void SessionController::setCurrentSessionIndex(int index)
+void SessionService::setCurrentSessionIndex(int index)
 {
     if (!m_dependencies.subscriptionController || !m_dependencies.subscriptionFpsRefreshTimer || !isValidIndex(index) || index == m_currentIndex) {
         return;
@@ -117,12 +117,12 @@ void SessionController::setCurrentSessionIndex(int index)
     emit currentSessionChanged();
 }
 
-QVariantMap SessionController::defaultSessionConfig() const
+QVariantMap SessionService::defaultSessionConfig() const
 {
     return SessionConfig::defaultConfig(m_sessions.size() + 1);
 }
 
-QVariantMap SessionController::sessionConfigAt(int index) const
+QVariantMap SessionService::sessionConfigAt(int index) const
 {
     if (index < 0 || index >= m_sessions.size()) {
         return defaultSessionConfig();
@@ -132,7 +132,7 @@ QVariantMap SessionController::sessionConfigAt(int index) const
     return SessionSettingsStore::configFromState(session);
 }
 
-bool SessionController::updateSessionConfigAt(int index, const QVariantMap &config)
+bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
 {
     if (!m_dependencies.configureSession || !m_dependencies.mqttController || !m_dependencies.saveSessions || index < 0 || index >= m_sessions.size()) {
         return false;
@@ -172,7 +172,7 @@ bool SessionController::updateSessionConfigAt(int index, const QVariantMap &conf
     return saved;
 }
 
-void SessionController::addSessionWithConfig(const QVariantMap &config)
+void SessionService::addSessionWithConfig(const QVariantMap &config)
 {
     if (!m_dependencies.createDefaultSession || !m_dependencies.configureSession || !m_dependencies.saveSessions) {
         return;
@@ -203,7 +203,7 @@ void SessionController::addSessionWithConfig(const QVariantMap &config)
     emit currentSessionChanged();
 }
 
-void SessionController::duplicateSessionAt(int index)
+void SessionService::duplicateSessionAt(int index)
 {
     if (!m_dependencies.createDefaultSession || !m_dependencies.configureSession || !m_dependencies.saveSessions || index < 0 || index >= m_sessions.size()) {
         return;
@@ -244,7 +244,7 @@ void SessionController::duplicateSessionAt(int index)
     emit currentSessionChanged();
 }
 
-void SessionController::removeSessionAt(int index)
+void SessionService::removeSessionAt(int index)
 {
     if (!m_dependencies.historyStore || !m_dependencies.destroySessionRuntime || !m_dependencies.saveSessions || m_sessions.size() <= 1 || index < 0 || index >= m_sessions.size()) {
         return;
@@ -282,7 +282,7 @@ void SessionController::removeSessionAt(int index)
     emit currentSessionChanged();
 }
 
-void SessionController::setCurrentOutputPaused(bool paused)
+void SessionService::setCurrentOutputPaused(bool paused)
 {
     if (!m_dependencies.saveSessions) {
         return;

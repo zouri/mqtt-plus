@@ -240,6 +240,18 @@ if(BUILD_TESTING)
         src/viewmodels/subscriptioneditorviewmodel.cpp
     )
 
+    add_mqtt_plus_qt_test(test_sessionlistmodel
+        tests/test_sessionlistmodel.cpp
+        src/domain/sessionconfig.cpp
+        src/models/sessionlistmodel.cpp
+        src/services/apputils.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_historystore
+        tests/test_historystore.cpp
+        src/services/storage/historystore.cpp
+    )
+
     add_mqtt_plus_qt_test(test_subscriptionlistmodel
         tests/test_subscriptionlistmodel.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}

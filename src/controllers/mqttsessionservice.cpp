@@ -1,7 +1,7 @@
-#include "mqttcontroller.h"
+#include "mqttsessionservice.h"
 
-#include "controllers/eventcontroller.h"
-#include "controllers/subscriptioncontroller.h"
+#include "controllers/eventhistoryservice.h"
+#include "controllers/subscriptionservice.h"
 #include "services/apputils.h"
 #include "domain/sessionconfig.h"
 #include "services/payload/payloadcodec.h"
@@ -42,17 +42,17 @@ QString clientErrorLogName(QMqttClient::ClientError error)
 }
 }
 
-MqttController::MqttController(QObject *parent)
+MqttSessionService::MqttSessionService(QObject *parent)
     : QObject(parent)
 {
 }
 
-void MqttController::setDependencies(const Dependencies &dependencies)
+void MqttSessionService::setDependencies(const Dependencies &dependencies)
 {
     m_dependencies = dependencies;
 }
 
-void MqttController::connectCurrentSession()
+void MqttSessionService::connectCurrentSession()
 {
     auto *session = m_dependencies.currentSessionState();
     auto *client = session ? session->client : nullptr;
@@ -92,7 +92,7 @@ void MqttController::connectCurrentSession()
     emit sessionStateChanged();
 }
 
-void MqttController::disconnectCurrentSession()
+void MqttSessionService::disconnectCurrentSession()
 {
     auto *session = m_dependencies.currentSessionState();
     auto *client = session ? session->client : nullptr;
@@ -111,7 +111,7 @@ void MqttController::disconnectCurrentSession()
     emit sessionStateChanged();
 }
 
-void MqttController::publishCurrentSession(
+void MqttSessionService::publishCurrentSession(
     const QString &topic,
     const QString &payload,
     int format,
@@ -184,7 +184,7 @@ void MqttController::publishCurrentSession(
     emit sessionStateChanged();
 }
 
-void MqttController::bindSessionSignals(SessionState *session)
+void MqttSessionService::bindSessionSignals(SessionState *session)
 {
     auto *client = session ? session->client : nullptr;
     if (!session || !client) {
@@ -339,7 +339,7 @@ void MqttController::bindSessionSignals(SessionState *session)
     });
 }
 
-void MqttController::connectSession(SessionState &session, const QString &eventPrefix)
+void MqttSessionService::connectSession(SessionState &session, const QString &eventPrefix)
 {
     auto *client = session.client;
     if (!client) {
@@ -377,7 +377,7 @@ void MqttController::connectSession(SessionState &session, const QString &eventP
     }
 }
 
-QSslConfiguration MqttController::sslConfigurationForSession(const SessionState &session, QString &errorMessage) const
+QSslConfiguration MqttSessionService::sslConfigurationForSession(const SessionState &session, QString &errorMessage) const
 {
     QSslConfiguration configuration = QSslConfiguration::defaultConfiguration();
     configuration.setPeerVerifyMode(session.sslSecure ? QSslSocket::AutoVerifyPeer : QSslSocket::VerifyNone);
@@ -420,7 +420,7 @@ QSslConfiguration MqttController::sslConfigurationForSession(const SessionState 
     return configuration;
 }
 
-void MqttController::updatePublishStatus(
+void MqttSessionService::updatePublishStatus(
     SessionState &session,
     const QString &state,
     const QString &reason,

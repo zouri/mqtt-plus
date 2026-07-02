@@ -1,6 +1,7 @@
 #include "app/applicationobjectgraph.h"
 
 #include "app/applicationcorestate.h"
+#include "services/apputils.h"
 
 #include <QObject>
 #include <utility>
@@ -11,21 +12,21 @@ WorkbenchViewModel::Dependencies workbenchDependencies(ApplicationCoreState &sta
 {
     return {
         [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.sessionController, &SessionController::currentSessionIndexChanged, context, std::move(handler));
+            QObject::connect(&state.sessionController, &SessionService::currentSessionIndexChanged, context, std::move(handler));
         },
         [&state](QObject *context, std::function<void()> handler) {
             auto shared = std::make_shared<std::function<void()>>(std::move(handler));
-            QObject::connect(&state.sessionController, &SessionController::currentSessionChanged, context, [shared]() { (*shared)(); });
-            QObject::connect(&state.mqttController, &MqttController::sessionStateChanged, context, [shared]() { (*shared)(); });
+            QObject::connect(&state.sessionController, &SessionService::currentSessionChanged, context, [shared]() { (*shared)(); });
+            QObject::connect(&state.mqttController, &MqttSessionService::sessionStateChanged, context, [shared]() { (*shared)(); });
         },
         [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.eventController, &EventController::messageStreamChanged, context, std::move(handler));
+            QObject::connect(&state.eventController, &EventHistoryService::messageStreamChanged, context, std::move(handler));
         },
         [&state](QObject *context, std::function<void(const QVariantMap &)> handler) {
-            QObject::connect(&state.eventController, &EventController::messageAppended, context, std::move(handler));
+            QObject::connect(&state.eventController, &EventHistoryService::messageAppended, context, std::move(handler));
         },
         [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.scriptController, &ScriptController::scriptsChanged, context, std::move(handler));
+            QObject::connect(&state.scriptController, &ScriptService::scriptsChanged, context, std::move(handler));
         },
         &state.sessionController,
         &state.mqttController,
@@ -43,10 +44,10 @@ LogsViewModel::Dependencies logsDependencies(ApplicationCoreState &state)
     return {
         &state.logsModel,
         [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.eventController, &EventController::logStreamChanged, context, std::move(handler));
+            QObject::connect(&state.eventController, &EventHistoryService::logStreamChanged, context, std::move(handler));
         },
         [&state](QObject *context, std::function<void(const QVariantMap &)> handler) {
-            QObject::connect(&state.eventController, &EventController::logAppended, context, std::move(handler));
+            QObject::connect(&state.eventController, &EventHistoryService::logAppended, context, std::move(handler));
         },
         [&state]() {
             state.eventController.clearCurrentLogs();
@@ -62,7 +63,7 @@ ScriptsViewModel::Dependencies scriptsDependencies(ApplicationCoreState &state)
     return {
         &state.scriptsModel,
         [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.scriptController, &ScriptController::scriptsChanged, context, std::move(handler));
+            QObject::connect(&state.scriptController, &ScriptService::scriptsChanged, context, std::move(handler));
         },
         [&state](
             const QString &id,
@@ -74,7 +75,6 @@ ScriptsViewModel::Dependencies scriptsDependencies(ApplicationCoreState &state)
                 return QString();
             }
             state.scriptsModel.notifyRefresh();
-            state.scriptController.scriptsChanged();
             return savedId;
         },
     };
@@ -83,26 +83,12 @@ ScriptsViewModel::Dependencies scriptsDependencies(ApplicationCoreState &state)
 SettingsViewModel::Dependencies settingsDependencies(ApplicationCoreState &state)
 {
     return {
-        &state.themeController,
-        &state.languageController,
         &state.preferencesController,
         &state.eventController,
         &state.historyStore,
         &state.sessionController.sessions(),
         &state.messagesModel,
         &state.logsModel,
-        [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.themeController, &ThemeController::modeChanged, context, std::move(handler));
-        },
-        [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.themeController, &ThemeController::effectiveThemeChanged, context, std::move(handler));
-        },
-        [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.languageController, &LanguageController::modeChanged, context, std::move(handler));
-        },
-        [&state](QObject *context, std::function<void()> handler) {
-            QObject::connect(&state.languageController, &LanguageController::languageChanged, context, std::move(handler));
-        },
         [&state](QObject *context, std::function<void()> handler) {
             QObject::connect(&state.preferencesController, &PreferencesController::messageRetentionLimitChanged, context, std::move(handler));
         },
@@ -159,13 +145,16 @@ SettingsViewModel::Dependencies settingsDependencies(ApplicationCoreState &state
 } // namespace
 
 ApplicationObjectGraph::ApplicationObjectGraph()
-    : m_state(std::make_unique<ApplicationCoreState>(nullptr))
+    : m_owner(nullptr)
+    , m_state(std::make_unique<ApplicationCoreState>(&m_owner))
     , m_viewModel(
           workbenchDependencies(*m_state),
           logsDependencies(*m_state),
           scriptsDependencies(*m_state),
-          settingsDependencies(*m_state))
+          settingsDependencies(*m_state),
+          &m_state->settings)
 {
+    m_state->launchTimestamp = AppUtils::timestampNow();
     m_state->runStartup();
 }
 

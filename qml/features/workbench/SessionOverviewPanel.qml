@@ -38,7 +38,7 @@ AppPanel {
 
     Layout.fillWidth: true
     Layout.minimumHeight: 70
-    Layout.preferredHeight: 80
+    Layout.preferredHeight: 96
 
     ColumnLayout {
         id: currentSessionColumn
@@ -71,12 +71,24 @@ AppPanel {
 
                 }
 
-                Label {
-                    text: qsTr("%1  (%2)").arg(control.endpointText).arg(control.session.transportLabel || "TCP")
-                    color: control.ui.textMuted
-                    font.pixelSize: 12
-                    elide: Label.ElideRight
+                RowLayout {
                     Layout.fillWidth: true
+                    spacing: 8
+
+                    Label {
+                        text: qsTr("Host")
+                        color: control.ui.textMuted
+                        font.pixelSize: 11
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("%1  (%2)").arg(control.endpointText).arg(control.session.transportLabel || "TCP")
+                        color: control.ui.textStrong
+                        font.pixelSize: 12
+                        font.bold: true
+                        elide: Label.ElideRight
+                    }
                 }
             }
 
@@ -130,7 +142,7 @@ AppPanel {
             }
 
             Label {
-                text: qsTr("Client ID")
+                text: qsTr("MQTT ID")
                 color: control.ui.textMuted
                 font.pixelSize: 11
             }

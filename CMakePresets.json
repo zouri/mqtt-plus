@@ -21,6 +21,20 @@
       }
     },
     {
+      "name": "qt6.11-debug-ninja",
+      "displayName": "Qt 6.11 macOS Debug Ninja",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/qt6.11-debug-ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
       "name": "qt6.11-macos-release",
       "displayName": "Qt 6.11 macOS Release",
       "generator": "Unix Makefiles",
@@ -67,6 +81,10 @@
     {
       "name": "qt6.11-debug",
       "configurePreset": "qt6.11-debug"
+    },
+    {
+      "name": "qt6.11-debug-ninja",
+      "configurePreset": "qt6.11-debug-ninja"
     },
     {
       "name": "qt6.11-macos-release",

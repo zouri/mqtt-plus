@@ -863,9 +863,14 @@
         <translation>协议</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="132"/>
-        <source>Client ID</source>
-        <translation>客户端 ID</translation>
+        <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="79"/>
+        <source>Host</source>
+        <translation>主机</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="145"/>
+        <source>MQTT ID</source>
+        <translation>MQTT ID</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="24"/>
@@ -927,6 +932,21 @@
         <location filename="../qml/features/workbench/SessionSidebar.qml" line="98"/>
         <source>Connection %1</source>
         <translation>连接 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="91"/>
+        <source>%1:%2</source>
+        <translation>%1:%2</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="92"/>
+        <source>MQTT ID %1</source>
+        <translation>MQTT ID %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="146"/>
+        <source>%1  (%2)</source>
+        <translation>%1  (%2)</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SessionSidebar.qml" line="195"/>

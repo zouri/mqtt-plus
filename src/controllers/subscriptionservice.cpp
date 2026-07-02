@@ -1,7 +1,7 @@
-#include "subscriptioncontroller.h"
+#include "subscriptionservice.h"
 
-#include "controllers/eventcontroller.h"
-#include "controllers/scriptcontroller.h"
+#include "controllers/eventhistoryservice.h"
+#include "controllers/scriptservice.h"
 #include "services/apputils.h"
 #include "domain/sessionconfig.h"
 #include "models/subscriptionlistmodel.h"
@@ -13,18 +13,18 @@
 
 using namespace AppUtils;
 
-SubscriptionController::SubscriptionController(QObject *parent)
+SubscriptionService::SubscriptionService(QObject *parent)
     : QObject(parent)
 {
 }
 
-void SubscriptionController::setDependencies(const Dependencies &dependencies)
+void SubscriptionService::setDependencies(const Dependencies &dependencies)
 {
     m_dependencies = dependencies;
 
 }
 
-bool SubscriptionController::upsertCurrentSubscription(
+bool SubscriptionService::upsertCurrentSubscription(
     const QString &topic,
     int qos,
     int format,
@@ -82,7 +82,7 @@ bool SubscriptionController::upsertCurrentSubscription(
     return saved;
 }
 
-bool SubscriptionController::updateCurrentSubscription(
+bool SubscriptionService::updateCurrentSubscription(
     const QString &topic,
     const QString &newTopic,
     const QString &alias,
@@ -158,7 +158,7 @@ bool SubscriptionController::updateCurrentSubscription(
     return saved;
 }
 
-void SubscriptionController::removeCurrentSubscription(const QString &topic)
+void SubscriptionService::removeCurrentSubscription(const QString &topic)
 {
     auto *session = m_dependencies.currentSessionState();
     if (!session) {
@@ -194,7 +194,7 @@ void SubscriptionController::removeCurrentSubscription(const QString &topic)
     emit subscriptionsChanged();
 }
 
-void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, bool paused)
+void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, bool paused)
 {
     auto *session = m_dependencies.currentSessionState();
     if (!session) {
@@ -239,7 +239,7 @@ void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, 
     emit subscriptionsChanged();
 }
 
-SubscriptionEntry *SubscriptionController::subscriptionByTopic(SessionState *session, const QString &topic)
+SubscriptionEntry *SubscriptionService::subscriptionByTopic(SessionState *session, const QString &topic)
 {
     if (!session) {
         return nullptr;
@@ -252,7 +252,7 @@ SubscriptionEntry *SubscriptionController::subscriptionByTopic(SessionState *ses
     return nullptr;
 }
 
-const SubscriptionEntry *SubscriptionController::subscriptionByTopic(const SessionState *session, const QString &topic) const
+const SubscriptionEntry *SubscriptionService::subscriptionByTopic(const SessionState *session, const QString &topic) const
 {
     if (!session) {
         return nullptr;
@@ -265,7 +265,7 @@ const SubscriptionEntry *SubscriptionController::subscriptionByTopic(const Sessi
     return nullptr;
 }
 
-const SubscriptionEntry *SubscriptionController::bestSubscriptionForTopic(
+const SubscriptionEntry *SubscriptionService::bestSubscriptionForTopic(
     const SessionState &session,
     const QString &topic) const
 {
@@ -284,7 +284,7 @@ const SubscriptionEntry *SubscriptionController::bestSubscriptionForTopic(
     return best;
 }
 
-void SubscriptionController::restoreActiveSubscriptions(SessionState &session, bool emitEvents)
+void SubscriptionService::restoreActiveSubscriptions(SessionState &session, bool emitEvents)
 {
     for (auto &entry : session.subscriptions) {
         if (!entry.paused) {
@@ -293,7 +293,7 @@ void SubscriptionController::restoreActiveSubscriptions(SessionState &session, b
     }
 }
 
-void SubscriptionController::resetRuntimeSubscriptions(SessionState &session)
+void SubscriptionService::resetRuntimeSubscriptions(SessionState &session)
 {
     for (auto &entry : session.subscriptions) {
         entry.runtimeSubscription.clear();
@@ -303,7 +303,7 @@ void SubscriptionController::resetRuntimeSubscriptions(SessionState &session)
     }
 }
 
-void SubscriptionController::ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents)
+void SubscriptionService::ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents)
 {
     auto *client = session.client;
     if (entry.paused || !client || client->state() != QMqttClient::Connected) {
@@ -359,7 +359,7 @@ void SubscriptionController::ensureSubscriptionActive(SessionState &session, Sub
     }
 }
 
-void SubscriptionController::observeSubscription(SessionState &session, SubscriptionEntry &entry, QMqttSubscription *subscription)
+void SubscriptionService::observeSubscription(SessionState &session, SubscriptionEntry &entry, QMqttSubscription *subscription)
 {
     if (!subscription || subscription->property("mqttPlusObserved").toBool()) {
         return;
@@ -376,7 +376,7 @@ void SubscriptionController::observeSubscription(SessionState &session, Subscrip
         });
 }
 
-void SubscriptionController::updateSubscriptionState(
+void SubscriptionService::updateSubscriptionState(
     const QString &sessionId,
     const QString &topic,
     const QPointer<QMqttSubscription> &subscription,
@@ -425,12 +425,12 @@ void SubscriptionController::updateSubscriptionState(
     emit subscriptionsChanged();
 }
 
-qreal SubscriptionController::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
+qreal SubscriptionService::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
 {
     return static_cast<qreal>(recentMessageCount(entry.recentMessageTimestampsMs, nowMs));
 }
 
-bool SubscriptionController::currentSessionHasActiveSubscriptionFps(qint64 nowMs) const
+bool SubscriptionService::currentSessionHasActiveSubscriptionFps(qint64 nowMs) const
 {
     const auto *session = m_dependencies.currentSessionState();
     if (!session) {
@@ -446,7 +446,7 @@ bool SubscriptionController::currentSessionHasActiveSubscriptionFps(qint64 nowMs
     return false;
 }
 
-void SubscriptionController::refreshSubscriptionFps()
+void SubscriptionService::refreshSubscriptionFps()
 {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     const auto *session = m_dependencies.currentSessionState();

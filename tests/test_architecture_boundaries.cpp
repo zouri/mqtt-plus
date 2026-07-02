@@ -66,18 +66,16 @@ bool ArchitectureBoundariesTest::readSourceFile(const QString &relativePath, QSt
 void ArchitectureBoundariesTest::controllersDoNotDependOnApplicationCore()
 {
     const QStringList controllerFiles {
-        QStringLiteral("src/controllers/eventcontroller.h"),
-        QStringLiteral("src/controllers/eventcontroller.cpp"),
-        QStringLiteral("src/controllers/mqttcontroller.h"),
-        QStringLiteral("src/controllers/mqttcontroller.cpp"),
-        QStringLiteral("src/controllers/sessioncontroller.h"),
-        QStringLiteral("src/controllers/sessioncontroller.cpp"),
-        QStringLiteral("src/controllers/scriptcontroller.h"),
-        QStringLiteral("src/controllers/scriptcontroller.cpp"),
-        QStringLiteral("src/controllers/subscriptioncontroller.h"),
-        QStringLiteral("src/controllers/subscriptioncontroller.cpp"),
-        QStringLiteral("src/controllers/themecontroller.h"),
-        QStringLiteral("src/controllers/themecontroller.cpp"),
+        QStringLiteral("src/controllers/eventhistoryservice.h"),
+        QStringLiteral("src/controllers/eventhistoryservice.cpp"),
+        QStringLiteral("src/controllers/mqttsessionservice.h"),
+        QStringLiteral("src/controllers/mqttsessionservice.cpp"),
+        QStringLiteral("src/controllers/sessionservice.h"),
+        QStringLiteral("src/controllers/sessionservice.cpp"),
+        QStringLiteral("src/controllers/scriptservice.h"),
+        QStringLiteral("src/controllers/scriptservice.cpp"),
+        QStringLiteral("src/controllers/subscriptionservice.h"),
+        QStringLiteral("src/controllers/subscriptionservice.cpp"),
     };
 
     for (const QString &header : controllerFiles) {
@@ -88,34 +86,42 @@ void ArchitectureBoundariesTest::controllersDoNotDependOnApplicationCore()
         QVERIFY2(!source.contains(QStringLiteral("#include \"app/")),
             qPrintable(QStringLiteral("%1 must not depend on app-layer headers").arg(header)));
     }
+    const QString themeHeaderPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/themecontroller.h");
+    QVERIFY2(!QFile::exists(themeHeaderPath), "ThemeController is merged into SettingsViewModel");
+    const QString themeCppPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/themecontroller.cpp");
+    QVERIFY2(!QFile::exists(themeCppPath), "ThemeController is merged into SettingsViewModel");
+    const QString langHeaderPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/languagecontroller.h");
+    QVERIFY2(!QFile::exists(langHeaderPath), "LanguageController is merged into SettingsViewModel");
+    const QString langCppPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/languagecontroller.cpp");
+    QVERIFY2(!QFile::exists(langCppPath), "LanguageController is merged into SettingsViewModel");
 }
 
 void ArchitectureBoundariesTest::controllerHeadersUseDedicatedDependencies()
 {
     const QMap<QString, QStringList> expectedTokens {
         {
-            QStringLiteral("src/controllers/eventcontroller.h"),
+            QStringLiteral("src/controllers/eventhistoryservice.h"),
             {
                 QStringLiteral("struct Dependencies"),
                 QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
-            QStringLiteral("src/controllers/mqttcontroller.h"),
+            QStringLiteral("src/controllers/mqttsessionservice.h"),
             {
                 QStringLiteral("struct Dependencies"),
                 QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
-            QStringLiteral("src/controllers/sessioncontroller.h"),
+            QStringLiteral("src/controllers/sessionservice.h"),
             {
                 QStringLiteral("struct Dependencies"),
                 QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
-            QStringLiteral("src/controllers/subscriptioncontroller.h"),
+            QStringLiteral("src/controllers/subscriptionservice.h"),
             {
                 QStringLiteral("struct Dependencies"),
                 QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
@@ -169,7 +175,7 @@ void ArchitectureBoundariesTest::applicationCoreDoesNotImplementControllerContex
     QVERIFY2(!coreStateSource.contains(QStringLiteral("controllerContexts")),
         "ApplicationCoreState must wire controllers directly without the deleted adapter bundle");
     QVERIFY2(!coreStateSource.contains(QStringLiteral("setCore(")),
-        "SessionController must not retain the old setCore context hook");
+        "SessionService must not retain the old setCore context hook");
 
     const QStringList expectedDependencyCalls {
         QStringLiteral("sessionController.setDependencies"),
@@ -411,7 +417,7 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesSignalBindings()
 
     QString coreStateSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreStateSource));
-    QVERIFY2(coreStateSource.contains(QStringLiteral("ScriptController::storageError")),
+    QVERIFY2(coreStateSource.contains(QStringLiteral("ScriptService::storageError")),
         "ApplicationCoreState must bind script storage errors");
     QVERIFY2(coreStateSource.contains(QStringLiteral("QTimer::timeout")),
         "ApplicationCoreState must configure subscription FPS refresh timer");
@@ -459,6 +465,8 @@ void ArchitectureBoundariesTest::applicationObjectGraphOwnsApplicationCompositio
         "ApplicationObjectGraph must own application-level object composition");
     QVERIFY2(graphHeader.contains(QStringLiteral("unique_ptr<ApplicationCoreState> m_state")),
         "ApplicationObjectGraph must own ApplicationCoreState directly");
+    QVERIFY2(graphHeader.contains(QStringLiteral("QObject m_owner")),
+        "ApplicationObjectGraph must keep a QObject owner for runtime-created QObject children");
     QVERIFY2(!graphHeader.contains(QStringLiteral("WorkbenchWorkspace")),
         "ApplicationObjectGraph must not keep the deleted WorkbenchWorkspace");
     QVERIFY2(!graphHeader.contains(QStringLiteral("LogsWorkspace")),
@@ -472,6 +480,10 @@ void ArchitectureBoundariesTest::applicationObjectGraphOwnsApplicationCompositio
 
     QString graphSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationobjectgraph.cpp"), graphSource));
+    QVERIFY2(graphSource.contains(QStringLiteral("std::make_unique<ApplicationCoreState>(&m_owner)")),
+        "ApplicationCoreState must receive a real QObject owner so session clients are initialized");
+    QVERIFY2(graphSource.contains(QStringLiteral("launchTimestamp = AppUtils::timestampNow()")),
+        "ApplicationObjectGraph must initialize the launch timestamp before startup loads history");
     QVERIFY2(graphSource.contains(QStringLiteral("workbenchDependencies(*m_state)")),
         "ApplicationObjectGraph must compose WorkbenchViewModel direct dependencies");
     QVERIFY2(graphSource.contains(QStringLiteral("logsDependencies(*m_state)")),
@@ -753,13 +765,13 @@ void ArchitectureBoundariesTest::workbenchViewModelUsesDirectDependencies()
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/workbenchviewmodel.h"), header));
     QVERIFY2(header.contains(QStringLiteral("struct Dependencies")),
         "WorkbenchViewModel must expose a direct dependency struct");
-    QVERIFY2(header.contains(QStringLiteral("SessionController *sessionController")),
+    QVERIFY2(header.contains(QStringLiteral("SessionService *sessionController")),
         "WorkbenchViewModel must receive session controller directly");
-    QVERIFY2(header.contains(QStringLiteral("MqttController *mqttController")),
+    QVERIFY2(header.contains(QStringLiteral("MqttSessionService *mqttController")),
         "WorkbenchViewModel must receive MQTT controller directly");
-    QVERIFY2(header.contains(QStringLiteral("SubscriptionController *subscriptionController")),
+    QVERIFY2(header.contains(QStringLiteral("SubscriptionService *subscriptionController")),
         "WorkbenchViewModel must receive subscription controller directly");
-    QVERIFY2(header.contains(QStringLiteral("EventController *eventController")),
+    QVERIFY2(header.contains(QStringLiteral("EventHistoryService *eventController")),
         "WorkbenchViewModel must receive event controller directly");
     QVERIFY2(header.contains(QStringLiteral("SessionListModel *sessions")),
         "WorkbenchViewModel must receive session model directly");
@@ -871,10 +883,6 @@ void ArchitectureBoundariesTest::settingsViewModelUsesDirectDependencies()
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/settingsviewmodel.h"), header));
     QVERIFY2(header.contains(QStringLiteral("struct Dependencies")),
         "SettingsViewModel must expose a direct dependency struct");
-    QVERIFY2(header.contains(QStringLiteral("ThemeController *themeController")),
-        "SettingsViewModel must receive theme controller directly");
-    QVERIFY2(header.contains(QStringLiteral("LanguageController *languageController")),
-        "SettingsViewModel must receive language controller directly");
     QVERIFY2(header.contains(QStringLiteral("PreferencesController *preferencesController")),
         "SettingsViewModel must receive preferences controller directly");
     QVERIFY2(header.contains(QStringLiteral("HistoryStore *historyStore")),
@@ -890,10 +898,10 @@ void ArchitectureBoundariesTest::settingsViewModelUsesDirectDependencies()
 
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/settingsviewmodel.cpp"), source));
-    QVERIFY2(source.contains(QStringLiteral("m_dependencies.bindThemeModeChanged")),
-        "SettingsViewModel must bind settings notifications through direct dependencies");
-    QVERIFY2(source.contains(QStringLiteral("m_dependencies.themeController->setMode")),
-        "SettingsViewModel must route theme writes through direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_themeMode = sanitizeThemeMode")),
+        "SettingsViewModel must own theme mode logic directly");
+    QVERIFY2(source.contains(QStringLiteral("m_languageMode = sanitizeLanguageMode")),
+        "SettingsViewModel must own language mode logic directly");
     QVERIFY2(source.contains(QStringLiteral("m_dependencies.preferencesController->setMessageRetentionLimit")),
         "SettingsViewModel must route preference writes through direct dependencies");
     QVERIFY2(source.contains(QStringLiteral("m_dependencies.historyStore->clearAllMessages")),
@@ -951,8 +959,8 @@ void ArchitectureBoundariesTest::applicationViewModelUsesDirectDependencies()
         "ApplicationViewModel must wire LogsViewModel from direct dependencies");
     QVERIFY2(source.contains(QStringLiteral("m_scripts(scriptsDependencies, this)")),
         "ApplicationViewModel must wire ScriptsViewModel from direct dependencies");
-    QVERIFY2(source.contains(QStringLiteral("m_settings(settingsDependencies, this)")),
-        "ApplicationViewModel must wire SettingsViewModel from direct dependencies");
+    QVERIFY2(source.contains(QStringLiteral("m_settings(settingsDependencies, settings, this)")),
+        "ApplicationViewModel must wire SettingsViewModel from direct dependencies with QSettings");
 
     const QStringList removedDependencyHeaders {
         QStringLiteral("/src/viewmodels/logsviewmodeldependencies.h"),
@@ -1136,8 +1144,6 @@ void ArchitectureBoundariesTest::settingsViewModelDoesNotExposeWritableRawOption
     const QStringList forbiddenTokens {
         QStringLiteral("Q_PROPERTY(QString themeMode READ themeMode"),
         QStringLiteral("Q_PROPERTY(QString languageMode READ languageMode"),
-        QStringLiteral("Q_PROPERTY(QString effectiveLanguage READ effectiveLanguage"),
-        QStringLiteral("Q_PROPERTY(QVariantList availableLanguages READ availableLanguages"),
         QStringLiteral("Q_PROPERTY(int messageRetentionLimit READ messageRetentionLimit"),
         QStringLiteral("Q_PROPERTY(int logRetentionLimit READ logRetentionLimit"),
         QStringLiteral("Q_PROPERTY(int historyPageSize READ historyPageSize"),

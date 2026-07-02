@@ -16,10 +16,10 @@
 #include "viewmodels/sessioneditorviewmodel.h"
 #include "viewmodels/subscriptioneditorviewmodel.h"
 
-class EventController;
-class MqttController;
-class SessionController;
-class SubscriptionController;
+class EventHistoryService;
+class MqttSessionService;
+class SessionService;
+class SubscriptionService;
 
 class WorkbenchViewModel : public QObject
 {
@@ -54,10 +54,10 @@ public:
         std::function<void(QObject *, std::function<void()>)> bindMessageStreamChanged;
         std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindMessageStreamRowAppended;
         std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
-        SessionController *sessionController = nullptr;
-        MqttController *mqttController = nullptr;
-        SubscriptionController *subscriptionController = nullptr;
-        EventController *eventController = nullptr;
+        SessionService *sessionController = nullptr;
+        MqttSessionService *mqttController = nullptr;
+        SubscriptionService *subscriptionController = nullptr;
+        EventHistoryService *eventController = nullptr;
         SessionListModel *sessions = nullptr;
         SubscriptionFilterModel *filteredSubscriptions = nullptr;
         EventStreamModel *messages = nullptr;

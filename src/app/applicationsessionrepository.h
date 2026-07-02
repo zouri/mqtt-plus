@@ -4,16 +4,16 @@
 
 class ApplicationSessionRuntime;
 class QSettings;
-class ScriptController;
-class SessionController;
+class ScriptService;
+class SessionService;
 
 class ApplicationSessionRepository
 {
 public:
     ApplicationSessionRepository(
         QSettings &settings,
-        SessionController &sessionController,
-        ScriptController &scriptController,
+        SessionService &sessionController,
+        ScriptService &scriptController,
         ApplicationSessionRuntime &sessionRuntime);
 
     bool loadSessions(QString &errorMessage);
@@ -21,7 +21,7 @@ public:
 
 private:
     QSettings &m_settings;
-    SessionController &m_sessionController;
-    ScriptController &m_scriptController;
+    SessionService &m_sessionController;
+    ScriptService &m_scriptController;
     ApplicationSessionRuntime &m_sessionRuntime;
 };

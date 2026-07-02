@@ -8,12 +8,12 @@
 
 #include <functional>
 
-class EventController;
+class EventHistoryService;
 class QTimer;
-class ScriptController;
+class ScriptService;
 class SubscriptionListModel;
 
-class SubscriptionController : public QObject
+class SubscriptionService : public QObject
 {
     Q_OBJECT
 
@@ -21,8 +21,8 @@ public:
     struct Dependencies
     {
         SubscriptionListModel *subscriptionsModel = nullptr;
-        ScriptController *scriptController = nullptr;
-        EventController *eventController = nullptr;
+        ScriptService *scriptController = nullptr;
+        EventHistoryService *eventController = nullptr;
         QTimer *subscriptionFpsRefreshTimer = nullptr;
         std::function<SessionState *()> currentSessionState;
         std::function<SessionState *(const QString &)> sessionById;
@@ -30,7 +30,7 @@ public:
         std::function<void()> refreshSubscriptionsModel;
     };
 
-    explicit SubscriptionController(QObject *parent = nullptr);
+    explicit SubscriptionService(QObject *parent = nullptr);
 
     void setDependencies(const Dependencies &dependencies);
 
