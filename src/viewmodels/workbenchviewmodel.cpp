@@ -1,9 +1,9 @@
 #include "viewmodels/workbenchviewmodel.h"
 
-#include "controllers/eventcontroller.h"
-#include "controllers/mqttcontroller.h"
-#include "controllers/sessioncontroller.h"
-#include "controllers/subscriptioncontroller.h"
+#include "controllers/eventhistoryservice.h"
+#include "controllers/mqttsessionservice.h"
+#include "controllers/sessionservice.h"
+#include "controllers/subscriptionservice.h"
 #include "domain/sessionconfig.h"
 #include "services/apputils.h"
 #include "services/payload/payloadcodec.h"

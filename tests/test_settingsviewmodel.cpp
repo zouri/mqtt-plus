@@ -1,6 +1,4 @@
-#include "controllers/languagecontroller.h"
 #include "controllers/preferencescontroller.h"
-#include "controllers/themecontroller.h"
 #include "models/eventstreammodel.h"
 #include "viewmodels/settingsviewmodel.h"
 
@@ -13,8 +11,6 @@ class FakeSettingsDeps
 public:
     FakeSettingsDeps()
         : settings(QStringLiteral("mqtt-plus-test"), QStringLiteral("settings-viewmodel-test"))
-        , themeController(&settings)
-        , languageController(&settings)
         , preferencesController(&settings)
     {
         settings.clear();
@@ -23,18 +19,12 @@ public:
     SettingsViewModel::Dependencies dependencies()
     {
         return {
-            &themeController,
-            &languageController,
             &preferencesController,
             nullptr,
             nullptr,
             &sessions,
             &messages,
             &logs,
-            [this](QObject *, std::function<void()> handler) { themeModeChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { effectiveThemeChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { languageModeChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { languageChanged = std::move(handler); },
             [this](QObject *, std::function<void()> handler) { messageRetentionLimitChanged = std::move(handler); },
             [this](QObject *, std::function<void()> handler) { logRetentionLimitChanged = std::move(handler); },
             [this](QObject *, std::function<void()> handler) { historyPageSizeChanged = std::move(handler); },
@@ -54,16 +44,10 @@ public:
     }
 
     QSettings settings;
-    ThemeController themeController;
-    LanguageController languageController;
     PreferencesController preferencesController;
     QVector<SessionState> sessions;
     EventStreamModel messages;
     EventStreamModel logs;
-    std::function<void()> themeModeChanged;
-    std::function<void()> effectiveThemeChanged;
-    std::function<void()> languageModeChanged;
-    std::function<void()> languageChanged;
     std::function<void()> messageRetentionLimitChanged;
     std::function<void()> logRetentionLimitChanged;
     std::function<void()> historyPageSizeChanged;
@@ -90,11 +74,14 @@ private slots:
     void readsSettingsThroughDependencies();
     void writesSettingsThroughDependencies();
     void forwardsDependencySignals();
+    void themeChangesEmitSignals();
+    void languageChangesEmitSignals();
 };
 
 void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
 {
-    SettingsViewModel settings;
+    FakeSettingsDeps deps;
+    SettingsViewModel settings(deps.dependencies(), &deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 0);
     QCOMPARE(settings.languageModeIndex(), 0);
@@ -109,13 +96,14 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
 void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
 {
     FakeSettingsDeps deps;
-    deps.themeController.setMode(QStringLiteral("dark"));
-    deps.languageController.setMode(QStringLiteral("zh_CN"));
     deps.preferencesController.setMessageRetentionLimit(10000);
     deps.preferencesController.setLogRetentionLimit(5000);
     deps.preferencesController.setWindowGeometry(1200, 700);
     deps.preferencesController.setWindowMaximized(true);
-    SettingsViewModel settings(deps.dependencies());
+
+    deps.settings.setValue(QStringLiteral("appearance/themeMode"), QStringLiteral("dark"));
+    deps.settings.setValue(QStringLiteral("appearance/languageMode"), QStringLiteral("zh_CN"));
+    SettingsViewModel settings(deps.dependencies(), &deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 2);
     QCOMPARE(settings.effectiveTheme(), QStringLiteral("dark"));
@@ -130,7 +118,7 @@ void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
 void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
 {
     FakeSettingsDeps deps;
-    SettingsViewModel settings(deps.dependencies());
+    SettingsViewModel settings(deps.dependencies(), &deps.settings);
 
     settings.setThemeModeIndex(1);
     settings.setLanguageModeIndex(1);
@@ -148,8 +136,8 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     settings.clearAllLogs();
     settings.clearAllHistory();
 
-    QCOMPARE(deps.themeController.mode(), QStringLiteral("light"));
-    QCOMPARE(deps.languageController.mode(), QStringLiteral("en"));
+    QCOMPARE(settings.themeMode(), QStringLiteral("light"));
+    QCOMPARE(settings.languageMode(), QStringLiteral("en"));
     QCOMPARE(deps.preferencesController.messageRetentionLimit(), 1000);
     QCOMPARE(deps.preferencesController.logRetentionLimit(), 500);
     QCOMPARE(deps.preferencesController.historyPageSize(), 1000);
@@ -170,22 +158,40 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
 void SettingsOptionsViewModelTest::forwardsDependencySignals()
 {
     FakeSettingsDeps deps;
-    SettingsViewModel settings(deps.dependencies());
-    QSignalSpy themeSpy(&settings, &SettingsViewModel::themeModeChanged);
-    QSignalSpy languageSpy(&settings, &SettingsViewModel::languageChanged);
+    SettingsViewModel settings(deps.dependencies(), &deps.settings);
     QSignalSpy windowSpy(&settings, &SettingsViewModel::windowMaximizedChanged);
 
-    QVERIFY(deps.themeModeChanged);
-    QVERIFY(deps.languageChanged);
     QVERIFY(deps.windowMaximizedChanged);
 
-    deps.themeModeChanged();
-    deps.languageChanged();
     deps.windowMaximizedChanged();
-
-    QCOMPARE(themeSpy.count(), 1);
-    QCOMPARE(languageSpy.count(), 1);
     QCOMPARE(windowSpy.count(), 1);
+}
+
+void SettingsOptionsViewModelTest::themeChangesEmitSignals()
+{
+    FakeSettingsDeps deps;
+    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+
+    settings.setThemeModeIndex(1);
+    QSignalSpy themeSpy(&settings, &SettingsViewModel::themeModeChanged);
+    QSignalSpy effectiveSpy(&settings, &SettingsViewModel::effectiveThemeChanged);
+
+    settings.setThemeModeIndex(2);
+    settings.setThemeModeIndex(2);
+    QCOMPARE(themeSpy.count(), 1);
+    QCOMPARE(effectiveSpy.count(), 1);
+}
+
+void SettingsOptionsViewModelTest::languageChangesEmitSignals()
+{
+    FakeSettingsDeps deps;
+    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    QSignalSpy modeSpy(&settings, &SettingsViewModel::languageModeChanged);
+    QSignalSpy langSpy(&settings, &SettingsViewModel::languageChanged);
+
+    settings.setLanguageModeIndex(2);
+    QCOMPARE(modeSpy.count(), 1);
+    QCOMPARE(langSpy.count(), 1);
 }
 
 QTEST_MAIN(SettingsOptionsViewModelTest)

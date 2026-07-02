@@ -85,10 +85,13 @@ Rectangle {
                 required property bool connected
                 required property string host
                 required property int port
+                required property string clientId
                 required property string transportLabel
                 readonly property bool selected: index === control.viewModel.currentSessionIndex
+                readonly property string endpointText: qsTr("%1:%2").arg(sessionDelegate.host || "-").arg(sessionDelegate.port || "-")
+                readonly property string mqttIdText: qsTr("MQTT ID %1").arg(sessionDelegate.clientId || "-")
                 width: ListView.view.width
-                height: 54
+                height: 62
                 radius: control.ui.innerRadius
                 color: sessionDelegate.selected ? control.ui.themePalette.selectedBg : (rowMouse.containsMouse || activeFocus ? control.ui.rowHover : control.ui.themePalette.itemBg)
                 border.color: sessionDelegate.selected ? Qt.rgba(control.ui.themePalette.selectedBorder.r, control.ui.themePalette.selectedBorder.g, control.ui.themePalette.selectedBorder.b, 0.36) : control.ui.themePalette.itemBorder
@@ -140,7 +143,15 @@ Rectangle {
 
                         Label {
                             Layout.fillWidth: true
-                            text: sessionDelegate.transportLabel || "TCP"
+                            text: qsTr("%1  (%2)").arg(sessionDelegate.endpointText).arg(sessionDelegate.transportLabel || "TCP")
+                            color: control.ui.textMuted
+                            elide: Label.ElideRight
+                            font.pixelSize: 10
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: sessionDelegate.mqttIdText
                             color: control.ui.textMuted
                             elide: Label.ElideRight
                             font.pixelSize: 10

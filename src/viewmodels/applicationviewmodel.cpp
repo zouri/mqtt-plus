@@ -6,6 +6,7 @@ ApplicationViewModel::ApplicationViewModel(QObject *parent)
           LogsViewModel::Dependencies {},
           ScriptsViewModel::Dependencies {},
           SettingsViewModel::Dependencies {},
+          nullptr,
           parent)
 {
 }
@@ -15,13 +16,14 @@ ApplicationViewModel::ApplicationViewModel(
     const LogsViewModel::Dependencies &logsDependencies,
     const ScriptsViewModel::Dependencies &scriptsDependencies,
     const SettingsViewModel::Dependencies &settingsDependencies,
+    QSettings *settings,
     QObject *parent)
     : QObject(parent)
     , m_navigation(this)
     , m_workbench(workbenchDependencies, this)
     , m_logs(logsDependencies, this)
     , m_scripts(scriptsDependencies, this)
-    , m_settings(settingsDependencies, this)
+    , m_settings(settingsDependencies, settings, this)
 {
 }
 

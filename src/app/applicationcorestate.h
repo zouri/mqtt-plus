@@ -7,14 +7,12 @@
 
 #include "app/applicationsessionrepository.h"
 #include "app/applicationsessionruntime.h"
-#include "controllers/eventcontroller.h"
-#include "controllers/languagecontroller.h"
-#include "controllers/mqttcontroller.h"
+#include "controllers/eventhistoryservice.h"
+#include "controllers/mqttsessionservice.h"
 #include "controllers/preferencescontroller.h"
-#include "controllers/scriptcontroller.h"
-#include "controllers/sessioncontroller.h"
-#include "controllers/subscriptioncontroller.h"
-#include "controllers/themecontroller.h"
+#include "controllers/scriptservice.h"
+#include "controllers/sessionservice.h"
+#include "controllers/subscriptionservice.h"
 #include "models/eventstreammodel.h"
 #include "models/scriptlibrarymodel.h"
 #include "models/scripttestsamplesmodel.h"
@@ -31,13 +29,11 @@ struct ApplicationCoreState
     void runStartup();
 
     QSettings settings;
-    SessionController sessionController;
-    ScriptController scriptController;
-    SubscriptionController subscriptionController;
-    MqttController mqttController;
-    EventController eventController;
-    ThemeController themeController;
-    LanguageController languageController;
+    SessionService sessionController;
+    ScriptService scriptController;
+    SubscriptionService subscriptionController;
+    MqttSessionService mqttController;
+    EventHistoryService eventController;
     PreferencesController preferencesController;
     HistoryStore historyStore;
     SessionListModel sessionsModel;

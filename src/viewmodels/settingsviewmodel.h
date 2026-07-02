@@ -3,22 +3,24 @@
 #include "domain/session.h"
 
 #include <QObject>
+#include <QSettings>
 #include <QString>
+#include <QTranslator>
+#include <QVariantList>
 #include <QVector>
 
 #include <functional>
 
-class EventController;
+class EventHistoryService;
 class EventStreamModel;
 class HistoryStore;
-class LanguageController;
 class PreferencesController;
-class ThemeController;
 
 class SettingsViewModel : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString effectiveTheme READ effectiveTheme NOTIFY effectiveThemeChanged)
+    Q_PROPERTY(QString effectiveLanguage READ effectiveLanguage NOTIFY languageChanged)
     Q_PROPERTY(bool deleteHistoryWithSession READ deleteHistoryWithSession WRITE setDeleteHistoryWithSession NOTIFY deleteHistoryWithSessionChanged)
     Q_PROPERTY(bool saveMessagesWhenOutputPaused READ saveMessagesWhenOutputPaused WRITE setSaveMessagesWhenOutputPaused NOTIFY saveMessagesWhenOutputPausedChanged)
     Q_PROPERTY(int windowWidth READ windowWidth NOTIFY windowWidthChanged)
@@ -35,19 +37,13 @@ class SettingsViewModel : public QObject
 
 public:
     struct Dependencies {
-        ThemeController *themeController = nullptr;
-        LanguageController *languageController = nullptr;
         PreferencesController *preferencesController = nullptr;
-        EventController *eventController = nullptr;
+        EventHistoryService *eventController = nullptr;
         HistoryStore *historyStore = nullptr;
         QVector<SessionState> *sessions = nullptr;
         EventStreamModel *messages = nullptr;
         EventStreamModel *logs = nullptr;
 
-        std::function<void(QObject *, std::function<void()>)> bindThemeModeChanged;
-        std::function<void(QObject *, std::function<void()>)> bindEffectiveThemeChanged;
-        std::function<void(QObject *, std::function<void()>)> bindLanguageModeChanged;
-        std::function<void(QObject *, std::function<void()>)> bindLanguageChanged;
         std::function<void(QObject *, std::function<void()>)> bindMessageRetentionLimitChanged;
         std::function<void(QObject *, std::function<void()>)> bindLogRetentionLimitChanged;
         std::function<void(QObject *, std::function<void()>)> bindHistoryPageSizeChanged;
@@ -66,12 +62,14 @@ public:
         std::function<void()> emitLogStreamChanged;
     };
 
-    explicit SettingsViewModel(QObject *parent = nullptr);
-    explicit SettingsViewModel(const Dependencies &dependencies, QObject *parent = nullptr);
+    explicit SettingsViewModel(QSettings *settings, QObject *parent = nullptr);
+    explicit SettingsViewModel(const Dependencies &dependencies, QSettings *settings, QObject *parent = nullptr);
 
     QString themeMode() const;
     QString effectiveTheme() const;
     QString languageMode() const;
+    QVariantList availableLanguages() const;
+    QString effectiveLanguage() const;
     int messageRetentionLimit() const;
     int logRetentionLimit() const;
     int historyPageSize() const;
@@ -135,6 +133,18 @@ private:
     void setMaxIncomingPayloadBytes(int bytes);
     void setClearMessagesOnExit(const QString &mode);
     void setClearLogsOnExit(const QString &mode);
+    void refreshSystemColorScheme();
+    QString resolvedLanguage() const;
+    void applyCurrentLanguage();
 
+    QSettings *m_settings = nullptr;
     Dependencies m_dependencies;
+
+    QString m_themeMode = QStringLiteral("system");
+    bool m_systemDarkMode = false;
+
+    QString m_languageMode = QStringLiteral("system");
+    QString m_effectiveLanguage = QStringLiteral("en");
+    QTranslator m_translator;
+    bool m_translatorInstalled = false;
 };

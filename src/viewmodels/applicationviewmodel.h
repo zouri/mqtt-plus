@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QSettings>
 
 #include "viewmodels/logsviewmodel.h"
 #include "viewmodels/navigationviewmodel.h"
@@ -24,6 +25,7 @@ public:
         const LogsViewModel::Dependencies &logsDependencies,
         const ScriptsViewModel::Dependencies &scriptsDependencies,
         const SettingsViewModel::Dependencies &settingsDependencies,
+        QSettings *settings,
         QObject *parent = nullptr);
 
     NavigationViewModel *navigation();

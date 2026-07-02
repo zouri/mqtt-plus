@@ -9,11 +9,11 @@
 #include <functional>
 
 class HistoryStore;
-class MqttController;
+class MqttSessionService;
 class QTimer;
-class SubscriptionController;
+class SubscriptionService;
 
-class SessionController : public QObject
+class SessionService : public QObject
 {
     Q_OBJECT
 
@@ -21,8 +21,8 @@ public:
     struct Dependencies
     {
         HistoryStore *historyStore = nullptr;
-        SubscriptionController *subscriptionController = nullptr;
-        MqttController *mqttController = nullptr;
+        SubscriptionService *subscriptionController = nullptr;
+        MqttSessionService *mqttController = nullptr;
         QTimer *subscriptionFpsRefreshTimer = nullptr;
         std::function<bool()> deleteHistoryWithSession;
         std::function<bool()> saveSessions;
@@ -38,7 +38,7 @@ public:
         std::function<void()> refreshScriptsModel;
     };
 
-    explicit SessionController(QObject *parent = nullptr);
+    explicit SessionService(QObject *parent = nullptr);
 
     void setDependencies(const Dependencies &dependencies);
 

@@ -2,6 +2,8 @@
 
 #include "viewmodels/applicationviewmodel.h"
 
+#include <QObject>
+
 #include <memory>
 
 struct ApplicationCoreState;
@@ -16,6 +18,7 @@ public:
     SettingsViewModel *settingsViewModel();
 
 private:
+    QObject m_owner;
     std::unique_ptr<ApplicationCoreState> m_state;
     ApplicationViewModel m_viewModel;
 };
