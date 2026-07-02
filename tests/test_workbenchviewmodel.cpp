@@ -24,12 +24,13 @@ void WorkbenchViewModelTest::exposesDefaultPublishDraft()
 {
     WorkbenchViewModel viewModel;
 
-    QCOMPARE(viewModel.publishTopic(), QString());
-    QCOMPARE(viewModel.publishPayload(), QString());
-    QCOMPARE(viewModel.publishFormat(), 1);
-    QCOMPARE(viewModel.publishQos(), 0);
-    QCOMPARE(viewModel.publishRetain(), false);
-    QVERIFY(!viewModel.canPublish());
+    QVERIFY(viewModel.publisher());
+    QCOMPARE(viewModel.publisher()->topic(), QString());
+    QCOMPARE(viewModel.publisher()->payload(), QString());
+    QCOMPARE(viewModel.publisher()->format(), 1);
+    QCOMPARE(viewModel.publisher()->qos(), 0);
+    QCOMPARE(viewModel.publisher()->retain(), false);
+    QVERIFY(!viewModel.publisher()->canPublish());
 }
 
 void WorkbenchViewModelTest::exposesSessionEditor()
@@ -97,24 +98,25 @@ void WorkbenchViewModelTest::ignoresContextMenusWithoutCore()
 void WorkbenchViewModelTest::updatesPublishDraft()
 {
     WorkbenchViewModel viewModel;
-    QSignalSpy topicSpy(&viewModel, &WorkbenchViewModel::publishTopicChanged);
-    QSignalSpy payloadSpy(&viewModel, &WorkbenchViewModel::publishPayloadChanged);
-    QSignalSpy formatSpy(&viewModel, &WorkbenchViewModel::publishFormatChanged);
-    QSignalSpy qosSpy(&viewModel, &WorkbenchViewModel::publishQosChanged);
-    QSignalSpy retainSpy(&viewModel, &WorkbenchViewModel::publishRetainChanged);
+    auto *publisher = viewModel.publisher();
+    QSignalSpy topicSpy(publisher, &PublishDraftViewModel::topicChanged);
+    QSignalSpy payloadSpy(publisher, &PublishDraftViewModel::payloadChanged);
+    QSignalSpy formatSpy(publisher, &PublishDraftViewModel::formatChanged);
+    QSignalSpy qosSpy(publisher, &PublishDraftViewModel::qosChanged);
+    QSignalSpy retainSpy(publisher, &PublishDraftViewModel::retainChanged);
 
-    viewModel.setPublishTopic(QStringLiteral(" sensors/temp "));
-    viewModel.setPublishPayload(QStringLiteral("{\"value\":23}"));
-    viewModel.setPublishFormat(2);
-    viewModel.setPublishQos(1);
-    viewModel.setPublishRetain(true);
-    viewModel.useMessageAsPublishDraft(QStringLiteral("devices/humidity"), QStringLiteral("raw"), QStringLiteral("decoded"), 0);
+    publisher->setTopic(QStringLiteral(" sensors/temp "));
+    publisher->setPayload(QStringLiteral("{\"value\":23}"));
+    publisher->setFormat(2);
+    publisher->setQos(1);
+    publisher->setRetain(true);
+    publisher->useMessageAsDraft(QStringLiteral("devices/humidity"), QStringLiteral("raw"), QStringLiteral("decoded"), 0);
 
-    QCOMPARE(viewModel.publishTopic(), QStringLiteral("devices/humidity"));
-    QCOMPARE(viewModel.publishPayload(), QStringLiteral("decoded"));
-    QCOMPARE(viewModel.publishFormat(), 0);
-    QCOMPARE(viewModel.publishQos(), 1);
-    QCOMPARE(viewModel.publishRetain(), true);
+    QCOMPARE(publisher->topic(), QStringLiteral("devices/humidity"));
+    QCOMPARE(publisher->payload(), QStringLiteral("decoded"));
+    QCOMPARE(publisher->format(), 0);
+    QCOMPARE(publisher->qos(), 1);
+    QCOMPARE(publisher->retain(), true);
     QCOMPARE(topicSpy.size(), 2);
     QCOMPARE(payloadSpy.size(), 2);
     QCOMPARE(formatSpy.size(), 2);
@@ -126,48 +128,51 @@ void WorkbenchViewModelTest::rejectsPublishWithoutConnectedSession()
 {
     WorkbenchViewModel viewModel;
 
-    viewModel.setPublishTopic(QStringLiteral("sensors/temp"));
-    viewModel.setPublishPayload(QStringLiteral("23"));
+    viewModel.publisher()->setTopic(QStringLiteral("sensors/temp"));
+    viewModel.publisher()->setPayload(QStringLiteral("23"));
 
-    QVERIFY(!viewModel.canPublish());
-    QVERIFY(!viewModel.publishDraft());
-    QCOMPARE(viewModel.publishTopic(), QStringLiteral("sensors/temp"));
-    QCOMPARE(viewModel.publishPayload(), QStringLiteral("23"));
+    QVERIFY(!viewModel.publisher()->canPublish());
+    QVERIFY(!viewModel.publisher()->publishDraft());
+    QCOMPARE(viewModel.publisher()->topic(), QStringLiteral("sensors/temp"));
+    QCOMPARE(viewModel.publisher()->payload(), QStringLiteral("23"));
 }
 
 void WorkbenchViewModelTest::ownsSubscriptionFilterState()
 {
-    WorkbenchViewModel viewModel;
-    QSignalSpy textSpy(&viewModel, &WorkbenchViewModel::subscriptionFilterTextChanged);
-    QSignalSpy modeSpy(&viewModel, &WorkbenchViewModel::subscriptionFilterModeChanged);
-    QSignalSpy indexSpy(&viewModel, &WorkbenchViewModel::subscriptionFilterModeIndexChanged);
-    QSignalSpy filterSpy(&viewModel, &WorkbenchViewModel::subscriptionFilterChanged);
+    SubscriptionFilterModel filteredSubscriptions;
+    WorkbenchViewModel::Dependencies dependencies;
+    dependencies.filteredSubscriptions = &filteredSubscriptions;
+    WorkbenchViewModel viewModel(dependencies);
+    QSignalSpy textSpy(&filteredSubscriptions, &SubscriptionFilterModel::filterTextChanged);
+    QSignalSpy modeSpy(&filteredSubscriptions, &SubscriptionFilterModel::filterModeChanged);
+    QSignalSpy indexSpy(&filteredSubscriptions, &SubscriptionFilterModel::filterModeIndexChanged);
+    QSignalSpy filterSpy(&filteredSubscriptions, &SubscriptionFilterModel::filterChanged);
 
-    QCOMPARE(viewModel.subscriptionFilterText(), QString());
-    QCOMPARE(viewModel.subscriptionFilterMode(), QStringLiteral("all"));
-    QCOMPARE(viewModel.subscriptionFilterModeIndex(), 0);
-    QVERIFY(!viewModel.hasSubscriptionFilter());
+    QCOMPARE(viewModel.filteredSubscriptions()->filterText(), QString());
+    QCOMPARE(viewModel.filteredSubscriptions()->filterMode(), QStringLiteral("all"));
+    QCOMPARE(viewModel.filteredSubscriptions()->filterModeIndex(), 0);
+    QVERIFY(!viewModel.filteredSubscriptions()->hasFilter());
 
-    viewModel.setSubscriptionFilterText(QStringLiteral("  devices/temp  "));
-    QCOMPARE(viewModel.subscriptionFilterText(), QStringLiteral("devices/temp"));
-    QVERIFY(viewModel.hasSubscriptionFilter());
+    viewModel.filteredSubscriptions()->setFilterText(QStringLiteral("  devices/temp  "));
+    QCOMPARE(viewModel.filteredSubscriptions()->filterText(), QStringLiteral("devices/temp"));
+    QVERIFY(viewModel.filteredSubscriptions()->hasFilter());
     QCOMPARE(textSpy.size(), 1);
     QCOMPARE(filterSpy.size(), 1);
 
-    viewModel.setSubscriptionFilterModeIndex(2);
-    QCOMPARE(viewModel.subscriptionFilterMode(), QStringLiteral("paused"));
-    QCOMPARE(viewModel.subscriptionFilterModeIndex(), 2);
+    viewModel.filteredSubscriptions()->setFilterModeIndex(2);
+    QCOMPARE(viewModel.filteredSubscriptions()->filterMode(), QStringLiteral("paused"));
+    QCOMPARE(viewModel.filteredSubscriptions()->filterModeIndex(), 2);
     QCOMPARE(modeSpy.size(), 1);
     QCOMPARE(indexSpy.size(), 1);
 
-    viewModel.setSubscriptionFilterMode(QStringLiteral("invalid"));
-    QCOMPARE(viewModel.subscriptionFilterMode(), QStringLiteral("all"));
-    QCOMPARE(viewModel.subscriptionFilterModeIndex(), 0);
+    viewModel.filteredSubscriptions()->setFilterMode(QStringLiteral("invalid"));
+    QCOMPARE(viewModel.filteredSubscriptions()->filterMode(), QStringLiteral("all"));
+    QCOMPARE(viewModel.filteredSubscriptions()->filterModeIndex(), 0);
     QCOMPARE(modeSpy.size(), 2);
     QCOMPARE(indexSpy.size(), 2);
 
-    viewModel.setSubscriptionFilterText(QString());
-    QVERIFY(!viewModel.hasSubscriptionFilter());
+    viewModel.filteredSubscriptions()->setFilterText(QString());
+    QVERIFY(!viewModel.filteredSubscriptions()->hasFilter());
     QCOMPARE(filterSpy.size(), 2);
 }
 
@@ -208,7 +213,7 @@ void WorkbenchViewModelTest::acceptsIntentCommandsWithoutCore()
     viewModel.clearMessages();
     QCOMPARE(viewModel.loadOlderMessages(), 0);
 
-    QVERIFY(!viewModel.canPublish());
+    QVERIFY(!viewModel.publisher()->canPublish());
 }
 
 QTEST_MAIN(WorkbenchViewModelTest)

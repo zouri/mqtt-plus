@@ -8,6 +8,7 @@ AppPanel {
     id: root
 
     required property var viewModel
+    required property var publisher
     required property var session
     required property var status
     required property var publishStatus
@@ -34,6 +35,7 @@ AppPanel {
             id: eventStreamView
             ui: root.ui
             viewModel: root.viewModel
+            publisher: root.publisher
             streamModel: root.viewModel.messages
             session: root.session
             fontFamily: root.fontFamily
@@ -47,7 +49,7 @@ AppPanel {
         PublishComposer {
             id: publishComposer
             ui: root.ui
-            viewModel: root.viewModel
+            publisher: root.publisher
             publishStatus: root.publishStatus
             status: root.status
         }

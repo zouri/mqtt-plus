@@ -59,8 +59,12 @@ AppPanel {
                 ui: control.ui
                 Layout.fillWidth: true
                 placeholderText: qsTr("Filter topic")
-                text: control.viewModel ? control.viewModel.subscriptionFilterText : ""
-                onTextEdited: control.viewModel.subscriptionFilterText = text
+                text: control.subscriptionModel ? control.subscriptionModel.filterText : ""
+                onTextEdited: {
+                    if (control.subscriptionModel) {
+                        control.subscriptionModel.filterText = text
+                    }
+                }
             }
 
             AppComboBox {
@@ -69,8 +73,12 @@ AppPanel {
                 leftPadding: 8
                 rightPadding: 24
                 model: control.filterModeLabels
-                currentIndex: control.viewModel ? control.viewModel.subscriptionFilterModeIndex : 0
-                onActivated: index => control.viewModel.setSubscriptionFilterModeIndex(index)
+                currentIndex: control.subscriptionModel ? control.subscriptionModel.filterModeIndex : 0
+                onActivated: index => {
+                    if (control.subscriptionModel) {
+                        control.subscriptionModel.filterModeIndex = index
+                    }
+                }
             }
 
             AppIconButton {
@@ -108,7 +116,7 @@ AppPanel {
 
                 Label {
                     Layout.fillWidth: true
-                    text: control.viewModel.hasSubscriptionFilter ? qsTr("No matching subscriptions") : (control.connected ? qsTr("No subscriptions yet") : qsTr("Subscriptions are ready after connecting"))
+                    text: control.subscriptionModel && control.subscriptionModel.hasFilter ? qsTr("No matching subscriptions") : (control.connected ? qsTr("No subscriptions yet") : qsTr("Subscriptions are ready after connecting"))
                     color: control.ui.textStrong
                     font.pixelSize: 12
                     font.bold: true
@@ -118,7 +126,7 @@ AppPanel {
 
                 Label {
                     Layout.fillWidth: true
-                    text: control.viewModel.hasSubscriptionFilter ? qsTr("Adjust the filter or show all subscriptions.") : (control.connected ? qsTr("Add a topic to start listening.") : qsTr("You can add topics now; they will start listening once connected."))
+                    text: control.subscriptionModel && control.subscriptionModel.hasFilter ? qsTr("Adjust the filter or show all subscriptions.") : (control.connected ? qsTr("Add a topic to start listening.") : qsTr("You can add topics now; they will start listening once connected."))
                     color: control.ui.textMuted
                     font.pixelSize: 11
                     horizontalAlignment: Text.AlignHCenter
@@ -127,7 +135,7 @@ AppPanel {
 
                 AppButton {
                     ui: control.ui
-                    visible: !control.viewModel.hasSubscriptionFilter
+                    visible: !(control.subscriptionModel && control.subscriptionModel.hasFilter)
                     Layout.alignment: Qt.AlignHCenter
                     text: qsTr("Add subscription")
                     minimumWidth: 112

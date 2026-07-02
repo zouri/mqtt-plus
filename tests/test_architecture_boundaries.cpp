@@ -765,6 +765,8 @@ void ArchitectureBoundariesTest::workbenchViewModelUsesDirectDependencies()
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/workbenchviewmodel.h"), header));
     QVERIFY2(header.contains(QStringLiteral("struct Dependencies")),
         "WorkbenchViewModel must expose a direct dependency struct");
+    QVERIFY2(header.contains(QStringLiteral("Q_PROPERTY(PublishDraftViewModel* publisher")),
+        "WorkbenchViewModel must expose a dedicated publish draft ViewModel");
     QVERIFY2(header.contains(QStringLiteral("SessionService *sessionController")),
         "WorkbenchViewModel must receive session controller directly");
     QVERIFY2(header.contains(QStringLiteral("MqttSessionService *mqttController")),
@@ -989,6 +991,8 @@ void ArchitectureBoundariesTest::workbenchViewModelDoesNotExposeLegacyCommands()
         QStringLiteral("Q_INVOKABLE void removeCurrentSubscription"),
         QStringLiteral("Q_INVOKABLE void setCurrentSubscriptionPaused"),
         QStringLiteral("Q_INVOKABLE void setPublishDraft"),
+        QStringLiteral("Q_INVOKABLE void useMessageAsPublishDraft"),
+        QStringLiteral("Q_INVOKABLE bool publishDraft"),
         QStringLiteral("Q_INVOKABLE void copyTextToClipboard"),
         QStringLiteral("Q_INVOKABLE void clearCurrentMessages"),
         QStringLiteral("Q_INVOKABLE int loadOlderCurrentSessionMessages"),
@@ -1008,8 +1012,16 @@ void ArchitectureBoundariesTest::workbenchViewModelDoesNotExposeUnusedRawModels(
     const QStringList forbiddenTokens {
         QStringLiteral("Q_PROPERTY(SubscriptionListModel* subscriptions"),
         QStringLiteral("Q_PROPERTY(ScriptLibraryModel* scripts"),
+        QStringLiteral("Q_PROPERTY(QString subscriptionFilterText"),
+        QStringLiteral("Q_PROPERTY(QString subscriptionFilterMode"),
+        QStringLiteral("Q_PROPERTY(int subscriptionFilterModeIndex"),
+        QStringLiteral("Q_PROPERTY(bool hasSubscriptionFilter"),
         QStringLiteral("SubscriptionListModel *subscriptions()"),
         QStringLiteral("ScriptLibraryModel *scripts()"),
+        QStringLiteral("QString subscriptionFilterText()"),
+        QStringLiteral("QString subscriptionFilterMode()"),
+        QStringLiteral("int subscriptionFilterModeIndex()"),
+        QStringLiteral("bool hasSubscriptionFilter()"),
         QStringLiteral("Q_INVOKABLE void refreshSubscriptionEditorScriptOptions"),
     };
 

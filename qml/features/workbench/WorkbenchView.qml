@@ -187,6 +187,7 @@ Item {
                 session: root.session
                 status: root.status
                 publishStatus: root.viewModel.publishStatus
+                publisher: root.viewModel.publisher
                 fontFamily: root.fontFamily
                 SplitView.fillWidth: true
                 SplitView.fillHeight: true
