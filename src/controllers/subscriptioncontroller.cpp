@@ -75,7 +75,10 @@ bool SubscriptionController::upsertCurrentSubscription(
     }
 
     const bool saved = m_dependencies.saveSessions();
-    m_dependencies.notifySessionAndSubscriptionViewsChanged();
+    if (m_dependencies.refreshSubscriptionsModel) {
+        m_dependencies.refreshSubscriptionsModel();
+    }
+    emit subscriptionsChanged();
     return saved;
 }
 
@@ -148,7 +151,10 @@ bool SubscriptionController::updateCurrentSubscription(
     }
 
     const bool saved = m_dependencies.saveSessions();
-    m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.refreshSubscriptionsModel) {
+        m_dependencies.refreshSubscriptionsModel();
+    }
+    emit subscriptionsChanged();
     return saved;
 }
 
@@ -182,7 +188,10 @@ void SubscriptionController::removeCurrentSubscription(const QString &topic)
     session->subscriptionFormats.remove(filter);
     session->subscriptions.erase(it);
     m_dependencies.saveSessions();
-    m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.refreshSubscriptionsModel) {
+        m_dependencies.refreshSubscriptionsModel();
+    }
+    emit subscriptionsChanged();
 }
 
 void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, bool paused)
@@ -224,7 +233,10 @@ void SubscriptionController::setCurrentSubscriptionPaused(const QString &topic, 
     }
 
     m_dependencies.saveSessions();
-    m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+    if (m_dependencies.refreshSubscriptionsModel) {
+        m_dependencies.refreshSubscriptionsModel();
+    }
+    emit subscriptionsChanged();
 }
 
 SubscriptionEntry *SubscriptionController::subscriptionByTopic(SessionState *session, const QString &topic)
@@ -410,7 +422,7 @@ void SubscriptionController::updateSubscriptionState(
     }
 
     m_dependencies.refreshSubscriptionsModel();
-    m_dependencies.emitSubscriptionsChanged();
+    emit subscriptionsChanged();
 }
 
 qreal SubscriptionController::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const

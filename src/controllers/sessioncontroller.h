@@ -31,12 +31,11 @@ public:
         std::function<void(SessionState &)> destroySessionRuntime;
         std::function<SessionState(const QString &)> createDefaultSession;
         std::function<void()> reloadCurrentSessionHistory;
-        std::function<void()> notifyCurrentSessionViewsChanged;
-        std::function<void()> notifyCurrentSessionAndSubscriptionsChanged;
-        std::function<void()> notifySelectedSessionViewsChanged;
-        std::function<void()> notifySessionCollectionViewsChanged;
-        std::function<void()> emitSessionsChanged;
-        std::function<void()> emitMessageStreamChanged;
+        std::function<void()> refreshSessionsModel;
+        std::function<void()> refreshAllModels;
+        std::function<void()> refreshSessionAndSubscriptionModels;
+        std::function<void()> refreshCurrentSessionModels;
+        std::function<void()> refreshScriptsModel;
     };
 
     explicit SessionController(QObject *parent = nullptr);
@@ -66,6 +65,10 @@ public:
     void duplicateSessionAt(int index);
     void removeSessionAt(int index);
     void setCurrentOutputPaused(bool paused);
+
+signals:
+    void currentSessionIndexChanged();
+    void currentSessionChanged();
 
 private:
     Dependencies m_dependencies;

@@ -37,11 +37,6 @@ public:
         std::function<SessionState *(const QString &)> sessionById;
         std::function<void()> refreshSubscriptionsModel;
         std::function<void()> refreshScriptTestSamplesModel;
-        std::function<void()> emitSubscriptionsChanged;
-        std::function<void()> emitMessageStreamChanged;
-        std::function<void()> emitLogStreamChanged;
-        std::function<void(const QVariantMap &)> emitMessageStreamRowAppended;
-        std::function<void(const QVariantMap &)> emitLogStreamRowAppended;
     };
 
     explicit EventController(QObject *parent = nullptr);
@@ -68,6 +63,12 @@ public:
     void trimVisibleLogRows(SessionState &session);
     void reloadCurrentSessionHistory();
     void flushPendingMessageHistory();
+
+signals:
+    void messageStreamChanged();
+    void logStreamChanged();
+    void messageAppended(const QVariantMap &row);
+    void logAppended(const QVariantMap &row);
 
 private:
     void reportMessageStorageError(SessionState &session, const QString &message);

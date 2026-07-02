@@ -50,7 +50,6 @@ MqttController::MqttController(QObject *parent)
 void MqttController::setDependencies(const Dependencies &dependencies)
 {
     m_dependencies = dependencies;
-
 }
 
 void MqttController::connectCurrentSession()
@@ -64,14 +63,20 @@ void MqttController::connectCurrentSession()
     if (client->hostname().trimmed().isEmpty()) {
         session->lastError = tr("Broker host cannot be empty.");
         m_dependencies.appendEvent(*session, QStringLiteral("Connection"), QStringLiteral("Broker host cannot be empty."));
-        m_dependencies.notifySessionViewsChanged();
+        if (m_dependencies.refreshModels) {
+            m_dependencies.refreshModels();
+        }
+        emit sessionStateChanged();
         return;
     }
 
     if (client->clientId().trimmed().isEmpty()) {
         session->lastError = tr("Client ID cannot be empty.");
         m_dependencies.appendEvent(*session, QStringLiteral("Connection"), QStringLiteral("Client ID cannot be empty."));
-        m_dependencies.notifySessionViewsChanged();
+        if (m_dependencies.refreshModels) {
+            m_dependencies.refreshModels();
+        }
+        emit sessionStateChanged();
         return;
     }
 
@@ -81,7 +86,10 @@ void MqttController::connectCurrentSession()
     updatePublishStatus(*session, QStringLiteral("idle"));
     connectSession(*session, QStringLiteral("Connecting to"));
 
-    m_dependencies.notifySessionViewsChanged();
+    if (m_dependencies.refreshModels) {
+        m_dependencies.refreshModels();
+    }
+    emit sessionStateChanged();
 }
 
 void MqttController::disconnectCurrentSession()
@@ -97,7 +105,10 @@ void MqttController::disconnectCurrentSession()
         session->connectTimeoutTimer->stop();
     }
     client->disconnectFromHost();
-    m_dependencies.notifySessionViewsChanged();
+    if (m_dependencies.refreshModels) {
+        m_dependencies.refreshModels();
+    }
+    emit sessionStateChanged();
 }
 
 void MqttController::publishCurrentSession(
@@ -167,7 +178,10 @@ void MqttController::publishCurrentSession(
                 .arg(retain ? QStringLiteral(", retain") : QString()));
     }
 
-    m_dependencies.notifyCurrentSessionViewsChanged();
+    if (m_dependencies.refreshCurrentSessionModels) {
+        m_dependencies.refreshCurrentSessionModels();
+    }
+    emit sessionStateChanged();
 }
 
 void MqttController::bindSessionSignals(SessionState *session)
@@ -194,7 +208,10 @@ void MqttController::bindSessionSignals(SessionState *session)
             (*m_dependencies.subscriptionController).restoreActiveSubscriptions(*boundSession, false);
         }
 
-        m_dependencies.notifySessionAndSubscriptionViewsChanged();
+        if (m_dependencies.refreshModels) {
+            m_dependencies.refreshModels();
+        }
+        emit sessionStateChanged();
     });
 
     connect(client, &QMqttClient::disconnected, this, [this, sessionId = session->id]() {
@@ -210,11 +227,17 @@ void MqttController::bindSessionSignals(SessionState *session)
             m_dependencies.appendEvent(*boundSession, QStringLiteral("Connection"), message);
         }
 
-        m_dependencies.notifySessionAndSubscriptionViewsChanged();
+        if (m_dependencies.refreshModels) {
+            m_dependencies.refreshModels();
+        }
+        emit sessionStateChanged();
     });
 
     connect(client, &QMqttClient::stateChanged, this, [this]() {
-        m_dependencies.notifySessionAndSubscriptionViewsChanged();
+        if (m_dependencies.refreshModels) {
+            m_dependencies.refreshModels();
+        }
+        emit sessionStateChanged();
     });
 
     connect(
@@ -240,7 +263,10 @@ void MqttController::bindSessionSignals(SessionState *session)
                 m_dependencies.appendEvent(*boundSession, QStringLiteral("Error"), logMessage);
             }
 
-            m_dependencies.notifySessionViewsChanged();
+            if (m_dependencies.refreshModels) {
+                m_dependencies.refreshModels();
+            }
+            emit sessionStateChanged();
         });
 
     connect(client, &QMqttClient::brokerSessionRestored, this, [this, sessionId = session->id]() {
@@ -248,7 +274,10 @@ void MqttController::bindSessionSignals(SessionState *session)
             boundSession->sessionRestored = true;
             m_dependencies.appendEvent(*boundSession, QStringLiteral("Connection"), QStringLiteral("Broker session restored"));
         }
-        m_dependencies.notifySessionViewsChanged();
+        if (m_dependencies.refreshModels) {
+            m_dependencies.refreshModels();
+        }
+        emit sessionStateChanged();
     });
 
     connect(
@@ -265,7 +294,10 @@ void MqttController::bindSessionSignals(SessionState *session)
                 updatePublishStatus(*boundSession, QStringLiteral("sent"), QString(), messageId);
             }
         }
-        m_dependencies.notifyCurrentSessionViewsChanged();
+        if (m_dependencies.refreshCurrentSessionModels) {
+            m_dependencies.refreshCurrentSessionModels();
+        }
+        emit sessionStateChanged();
     });
 
     connect(
@@ -287,7 +319,10 @@ void MqttController::bindSessionSignals(SessionState *session)
                 }
                 updatePublishStatus(*boundSession, messageStatusName(status), reason, messageId);
             }
-            m_dependencies.notifyCurrentSessionViewsChanged();
+            if (m_dependencies.refreshCurrentSessionModels) {
+                m_dependencies.refreshCurrentSessionModels();
+            }
+            emit sessionStateChanged();
         });
 
     connect(client, &QMqttClient::pingResponseReceived, this, [this, sessionId = session->id]() {
@@ -297,7 +332,10 @@ void MqttController::bindSessionSignals(SessionState *session)
                     .arg(protocolVersionLabel(boundSession->protocolVersion))
                     .arg(transportLabel(boundSession->transport));
         }
-        m_dependencies.notifySessionViewsChanged();
+        if (m_dependencies.refreshModels) {
+            m_dependencies.refreshModels();
+        }
+        emit sessionStateChanged();
     });
 }
 

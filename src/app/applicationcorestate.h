@@ -3,10 +3,10 @@
 #include <QSettings>
 #include <QString>
 #include <QTimer>
+#include <QVariantList>
 
 #include "app/applicationsessionrepository.h"
 #include "app/applicationsessionruntime.h"
-#include "app/applicationviewrefreshcoordinator.h"
 #include "controllers/eventcontroller.h"
 #include "controllers/languagecontroller.h"
 #include "controllers/mqttcontroller.h"
@@ -23,18 +23,14 @@
 #include "models/subscriptionlistmodel.h"
 #include "services/storage/historystore.h"
 
-class ApplicationCore;
-
 struct ApplicationCoreState
 {
-    explicit ApplicationCoreState(ApplicationCore &core);
+    explicit ApplicationCoreState(QObject *parent = nullptr);
 
     void applyExitCleanup();
-    void installSignalBindings();
     void runStartup();
 
     QSettings settings;
-    ApplicationCore &core;
     SessionController sessionController;
     ScriptController scriptController;
     SubscriptionController subscriptionController;
@@ -51,7 +47,6 @@ struct ApplicationCoreState
     EventStreamModel logsModel;
     ScriptLibraryModel scriptsModel;
     ScriptTestSamplesModel scriptTestSamplesModel;
-    ApplicationViewRefreshCoordinator viewRefreshCoordinator;
     ApplicationSessionRuntime sessionRuntime;
     ApplicationSessionRepository sessionRepository;
     QTimer subscriptionFpsRefreshTimer;

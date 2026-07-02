@@ -3,56 +3,30 @@
 #include "app/applicationcorestate.h"
 
 #include <QObject>
-
-#include <functional>
 #include <utility>
 
 namespace {
 
-template <typename Signal>
-std::function<void(QObject *, std::function<void()>)> bindNotifierSignal(ApplicationCoreState &state, Signal signal)
-{
-    return [&state, signal](QObject *context, std::function<void()> handler) {
-        QObject::connect(&state.core, signal, context, [handler = std::move(handler)]() {
-            handler();
-        });
-    };
-}
-
-std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindLogRowAppended(ApplicationCoreState &state)
-{
-    return [&state](QObject *context, std::function<void(const QVariantMap &)> handler) {
-        QObject::connect(
-            &state.core,
-            &ApplicationCore::logStreamRowAppended,
-            context,
-            [handler = std::move(handler)](const QVariantMap &row) {
-                handler(row);
-            });
-    };
-}
-
-std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindMessageRowAppended(ApplicationCoreState &state)
-{
-    return [&state](QObject *context, std::function<void(const QVariantMap &)> handler) {
-        QObject::connect(
-            &state.core,
-            &ApplicationCore::messageStreamRowAppended,
-            context,
-            [handler = std::move(handler)](const QVariantMap &row) {
-                handler(row);
-            });
-    };
-}
-
 WorkbenchViewModel::Dependencies workbenchDependencies(ApplicationCoreState &state)
 {
     return {
-        bindNotifierSignal(state, &ApplicationCore::currentSessionIndexChanged),
-        bindNotifierSignal(state, &ApplicationCore::currentSessionChanged),
-        bindNotifierSignal(state, &ApplicationCore::messageStreamChanged),
-        bindMessageRowAppended(state),
-        bindNotifierSignal(state, &ApplicationCore::scriptLibraryChanged),
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.sessionController, &SessionController::currentSessionIndexChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            auto shared = std::make_shared<std::function<void()>>(std::move(handler));
+            QObject::connect(&state.sessionController, &SessionController::currentSessionChanged, context, [shared]() { (*shared)(); });
+            QObject::connect(&state.mqttController, &MqttController::sessionStateChanged, context, [shared]() { (*shared)(); });
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.eventController, &EventController::messageStreamChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void(const QVariantMap &)> handler) {
+            QObject::connect(&state.eventController, &EventController::messageAppended, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.scriptController, &ScriptController::scriptsChanged, context, std::move(handler));
+        },
         &state.sessionController,
         &state.mqttController,
         &state.subscriptionController,
@@ -68,8 +42,12 @@ LogsViewModel::Dependencies logsDependencies(ApplicationCoreState &state)
 {
     return {
         &state.logsModel,
-        bindNotifierSignal(state, &ApplicationCore::logStreamChanged),
-        bindLogRowAppended(state),
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.eventController, &EventController::logStreamChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void(const QVariantMap &)> handler) {
+            QObject::connect(&state.eventController, &EventController::logAppended, context, std::move(handler));
+        },
         [&state]() {
             state.eventController.clearCurrentLogs();
         },
@@ -83,7 +61,9 @@ ScriptsViewModel::Dependencies scriptsDependencies(ApplicationCoreState &state)
 {
     return {
         &state.scriptsModel,
-        bindNotifierSignal(state, &ApplicationCore::scriptLibraryChanged),
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.scriptController, &ScriptController::scriptsChanged, context, std::move(handler));
+        },
         [&state](
             const QString &id,
             const QString &name,
@@ -94,8 +74,7 @@ ScriptsViewModel::Dependencies scriptsDependencies(ApplicationCoreState &state)
                 return QString();
             }
             state.scriptsModel.notifyRefresh();
-            state.core.notifyScriptLibraryChanged();
-            state.viewRefreshCoordinator.notifyCurrentSessionAndSubscriptionsChanged();
+            state.scriptController.scriptsChanged();
             return savedId;
         },
     };
@@ -112,32 +91,67 @@ SettingsViewModel::Dependencies settingsDependencies(ApplicationCoreState &state
         &state.sessionController.sessions(),
         &state.messagesModel,
         &state.logsModel,
-        bindNotifierSignal(state, &ApplicationCore::themeModeChanged),
-        bindNotifierSignal(state, &ApplicationCore::effectiveThemeChanged),
-        bindNotifierSignal(state, &ApplicationCore::languageModeChanged),
-        bindNotifierSignal(state, &ApplicationCore::languageChanged),
-        bindNotifierSignal(state, &ApplicationCore::messageRetentionLimitChanged),
-        bindNotifierSignal(state, &ApplicationCore::logRetentionLimitChanged),
-        bindNotifierSignal(state, &ApplicationCore::historyPageSizeChanged),
-        bindNotifierSignal(state, &ApplicationCore::maxIncomingPayloadBytesChanged),
-        bindNotifierSignal(state, &ApplicationCore::deleteHistoryWithSessionChanged),
-        bindNotifierSignal(state, &ApplicationCore::saveMessagesWhenOutputPausedChanged),
-        bindNotifierSignal(state, &ApplicationCore::clearMessagesOnExitChanged),
-        bindNotifierSignal(state, &ApplicationCore::clearLogsOnExitChanged),
-        bindNotifierSignal(state, &ApplicationCore::windowWidthChanged),
-        bindNotifierSignal(state, &ApplicationCore::windowHeightChanged),
-        bindNotifierSignal(state, &ApplicationCore::windowMaximizedChanged),
-        [&state]() {
-            state.viewRefreshCoordinator.reloadCurrentSessionHistory();
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.themeController, &ThemeController::modeChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.themeController, &ThemeController::effectiveThemeChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.languageController, &LanguageController::modeChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.languageController, &LanguageController::languageChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::messageRetentionLimitChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::logRetentionLimitChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::historyPageSizeChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::maxIncomingPayloadBytesChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::deleteHistoryWithSessionChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::clearMessagesOnExitChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::clearLogsOnExitChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::windowWidthChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::windowHeightChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::windowMaximizedChanged, context, std::move(handler));
         },
         [&state]() {
-            state.viewRefreshCoordinator.refreshScriptTestSamplesModel();
+            state.eventController.reloadCurrentSessionHistory();
+            state.eventController.messageStreamChanged();
+            state.eventController.logStreamChanged();
         },
         [&state]() {
-            state.core.notifyMessageStreamChanged();
+            state.scriptTestSamplesModel.setSource(
+                state.sessionController.currentSession()
+                    ? &state.sessionController.currentSession()->messageRows
+                    : nullptr);
         },
         [&state]() {
-            state.core.notifyLogStreamChanged();
+            state.eventController.messageStreamChanged();
+        },
+        [&state]() {
+            state.eventController.logStreamChanged();
         },
     };
 }
@@ -145,12 +159,21 @@ SettingsViewModel::Dependencies settingsDependencies(ApplicationCoreState &state
 } // namespace
 
 ApplicationObjectGraph::ApplicationObjectGraph()
-    : m_viewModel(
-          workbenchDependencies(*m_core.m_state),
-          logsDependencies(*m_core.m_state),
-          scriptsDependencies(*m_core.m_state),
-          settingsDependencies(*m_core.m_state))
+    : m_state(std::make_unique<ApplicationCoreState>(nullptr))
+    , m_viewModel(
+          workbenchDependencies(*m_state),
+          logsDependencies(*m_state),
+          scriptsDependencies(*m_state),
+          settingsDependencies(*m_state))
 {
+    m_state->runStartup();
+}
+
+ApplicationObjectGraph::~ApplicationObjectGraph()
+{
+    if (m_state) {
+        m_state->applyExitCleanup();
+    }
 }
 
 ApplicationViewModel *ApplicationObjectGraph::viewModel()
