@@ -41,6 +41,7 @@ void ScriptController::loadScripts()
     const ScriptStore::LoadResult result = ScriptStore::loadScripts();
     m_scripts = result.scripts;
     m_scriptIndexWritable = result.indexWritable;
+    emit scriptsChanged();
 }
 
 QString ScriptController::upsertScript(
@@ -67,6 +68,7 @@ QString ScriptController::upsertScript(
                 m_scripts = previousScripts;
                 return QString();
             }
+            emit scriptsChanged();
             return script.id;
         }
     }
@@ -84,6 +86,7 @@ QString ScriptController::upsertScript(
         m_scripts = previousScripts;
         return QString();
     }
+    emit scriptsChanged();
     return script.id;
 }
 
