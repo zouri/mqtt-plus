@@ -3,20 +3,7 @@
 #include <QAbstractListModel>
 #include <QVector>
 
-struct SessionListRow {
-    QString id;
-    QString name;
-    QString state;
-    bool connected = false;
-    QString host;
-    int port = 0;
-    QString transport;
-    QString transportLabel;
-    int protocolVersion = 5;
-    QString protocolVersionName;
-    QString summary;
-    QString lastError;
-};
+struct SessionState;
 
 class SessionListModel : public QAbstractListModel
 {
@@ -49,13 +36,12 @@ public:
 
     Q_INVOKABLE QVariantMap rowAt(int row) const;
 
-    void setRows(const QVector<SessionListRow> &rows);
+    void setSource(const QVector<SessionState> *sessions);
+    void notifyRefresh();
 
 signals:
     void countChanged();
 
 private:
-    QVariantMap rowToMap(const SessionListRow &row) const;
-
-    QVector<SessionListRow> m_rows;
+    const QVector<SessionState> *m_sessions = nullptr;
 };

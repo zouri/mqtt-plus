@@ -440,24 +440,20 @@ void SubscriptionController::refreshSubscriptionFps()
     const auto *session = m_dependencies.currentSessionState();
     if (!session) {
         (*m_dependencies.subscriptionFpsRefreshTimer).stop();
-        (*m_dependencies.subscriptionsModel).setTopicFpsRows({});
         return;
     }
 
     bool hasActiveFps = false;
-    QVector<SubscriptionFpsRow> rows;
-    rows.reserve(session->subscriptions.size());
     for (const auto &subscription : session->subscriptions) {
-        SubscriptionFpsRow row;
-        row.topic = subscription.topic;
-        row.topicFps = subscriptionFps(subscription, nowMs);
-        hasActiveFps = hasActiveFps || row.topicFps > 0.0;
-        rows.append(row);
+        if (recentMessageCount(subscription.recentMessageTimestampsMs, nowMs) > 0) {
+            hasActiveFps = true;
+            break;
+        }
     }
 
     if (!hasActiveFps) {
         (*m_dependencies.subscriptionFpsRefreshTimer).stop();
     }
 
-    (*m_dependencies.subscriptionsModel).setTopicFpsRows(rows);
+    (*m_dependencies.subscriptionsModel).updateTopicFps(nowMs);
 }

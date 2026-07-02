@@ -93,7 +93,7 @@ ScriptsViewModel::Dependencies scriptsDependencies(ApplicationCoreState &state)
             if (savedId.isEmpty()) {
                 return QString();
             }
-            state.modelRefresher.refreshScripts();
+            state.scriptsModel.notifyRefresh();
             state.core.notifyScriptLibraryChanged();
             state.viewRefreshCoordinator.notifyCurrentSessionAndSubscriptionsChanged();
             return savedId;
@@ -131,7 +131,7 @@ SettingsViewModel::Dependencies settingsDependencies(ApplicationCoreState &state
             state.viewRefreshCoordinator.reloadCurrentSessionHistory();
         },
         [&state]() {
-            state.modelRefresher.refreshScriptTestSamples(state.sessionController.currentSession());
+            state.viewRefreshCoordinator.refreshScriptTestSamplesModel();
         },
         [&state]() {
             state.core.notifyMessageStreamChanged();

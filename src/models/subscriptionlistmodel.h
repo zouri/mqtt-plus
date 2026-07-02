@@ -3,26 +3,11 @@
 #include <QAbstractListModel>
 #include <QVector>
 
-struct SubscriptionListRow {
-    QString topic;
-    QString alias;
-    QString displayName;
-    int requestedQos = 0;
-    int grantedQos = -1;
-    qreal topicFps = 0.0;
-    int format = 0;
-    QString formatName;
-    QString scriptId;
-    QString scriptName;
-    bool paused = false;
-    QString state;
-    QString lastError;
-};
+#include "domain/subscription.h"
 
-struct SubscriptionFpsRow {
-    QString topic;
-    qreal topicFps = 0.0;
-};
+#include <functional>
+
+struct SessionState;
 
 class SubscriptionListModel : public QAbstractListModel
 {
@@ -56,14 +41,22 @@ public:
 
     Q_INVOKABLE QVariantMap rowAt(int row) const;
 
-    void setRows(const QVector<SubscriptionListRow> &rows);
-    void setTopicFpsRows(const QVector<SubscriptionFpsRow> &rows);
+    void setSource(const SessionState *session);
+    void setScriptNameLookup(std::function<QString(const QString &)> lookup);
+    void notifyRefresh();
+    void updateTopicFps(qint64 nowMs);
 
 signals:
     void countChanged();
 
 private:
-    QVariantMap rowToMap(const SubscriptionListRow &row) const;
+    QVariantMap rowToMap(const SubscriptionEntry &sub, int row) const;
+    void rebuildCache();
+    QString displayNameForSub(const SubscriptionEntry &sub) const;
 
-    QVector<SubscriptionListRow> m_rows;
+    const QVector<SubscriptionEntry> *m_subs = nullptr;
+    QVector<SubscriptionEntry> m_empty;
+    QVector<qreal> m_fpsCache;
+    QVector<QString> m_scriptNameCache;
+    std::function<QString(const QString &)> m_scriptNameLookup;
 };
