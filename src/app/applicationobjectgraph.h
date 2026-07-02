@@ -1,17 +1,21 @@
 #pragma once
 
-#include "app/applicationcore.h"
 #include "viewmodels/applicationviewmodel.h"
+
+#include <memory>
+
+struct ApplicationCoreState;
 
 class ApplicationObjectGraph
 {
 public:
     ApplicationObjectGraph();
+    ~ApplicationObjectGraph();
 
     ApplicationViewModel *viewModel();
     SettingsViewModel *settingsViewModel();
 
 private:
-    ApplicationCore m_core;
+    std::unique_ptr<ApplicationCoreState> m_state;
     ApplicationViewModel m_viewModel;
 };

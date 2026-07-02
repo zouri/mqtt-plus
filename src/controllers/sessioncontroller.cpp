@@ -110,9 +110,11 @@ void SessionController::setCurrentSessionIndex(int index)
     } else {
         m_dependencies.subscriptionFpsRefreshTimer->stop();
     }
-    if (m_dependencies.notifySelectedSessionViewsChanged) {
-        m_dependencies.notifySelectedSessionViewsChanged();
+    if (m_dependencies.refreshAllModels) {
+        m_dependencies.refreshAllModels();
     }
+    emit currentSessionIndexChanged();
+    emit currentSessionChanged();
 }
 
 QVariantMap SessionController::defaultSessionConfig() const
@@ -158,13 +160,14 @@ bool SessionController::updateSessionConfigAt(int index, const QVariantMap &conf
         m_dependencies.mqttController->connectSession(*session, tr("Connecting to"));
     }
 
-    if (m_dependencies.emitSessionsChanged) {
-        m_dependencies.emitSessionsChanged();
+    if (m_dependencies.refreshSessionsModel) {
+        m_dependencies.refreshSessionsModel();
     }
     if (index == m_currentIndex) {
-        if (m_dependencies.notifyCurrentSessionAndSubscriptionsChanged) {
-            m_dependencies.notifyCurrentSessionAndSubscriptionsChanged();
+        if (m_dependencies.refreshSessionAndSubscriptionModels) {
+            m_dependencies.refreshSessionAndSubscriptionModels();
         }
+        emit currentSessionChanged();
     }
     return saved;
 }
@@ -187,9 +190,17 @@ void SessionController::addSessionWithConfig(const QVariantMap &config)
         m_dependencies.reloadCurrentSessionHistory();
     }
     m_dependencies.saveSessions();
-    if (m_dependencies.notifySessionCollectionViewsChanged) {
-        m_dependencies.notifySessionCollectionViewsChanged();
+    if (m_dependencies.refreshAllModels) {
+        m_dependencies.refreshAllModels();
     }
+    if (m_dependencies.refreshScriptsModel) {
+        m_dependencies.refreshScriptsModel();
+    }
+    if (m_dependencies.refreshSessionsModel) {
+        m_dependencies.refreshSessionsModel();
+    }
+    emit currentSessionIndexChanged();
+    emit currentSessionChanged();
 }
 
 void SessionController::duplicateSessionAt(int index)
@@ -220,9 +231,17 @@ void SessionController::duplicateSessionAt(int index)
         m_dependencies.reloadCurrentSessionHistory();
     }
     m_dependencies.saveSessions();
-    if (m_dependencies.notifySessionCollectionViewsChanged) {
-        m_dependencies.notifySessionCollectionViewsChanged();
+    if (m_dependencies.refreshAllModels) {
+        m_dependencies.refreshAllModels();
     }
+    if (m_dependencies.refreshScriptsModel) {
+        m_dependencies.refreshScriptsModel();
+    }
+    if (m_dependencies.refreshSessionsModel) {
+        m_dependencies.refreshSessionsModel();
+    }
+    emit currentSessionIndexChanged();
+    emit currentSessionChanged();
 }
 
 void SessionController::removeSessionAt(int index)
@@ -250,9 +269,17 @@ void SessionController::removeSessionAt(int index)
         m_dependencies.reloadCurrentSessionHistory();
     }
     m_dependencies.saveSessions();
-    if (m_dependencies.notifySessionCollectionViewsChanged) {
-        m_dependencies.notifySessionCollectionViewsChanged();
+    if (m_dependencies.refreshAllModels) {
+        m_dependencies.refreshAllModels();
     }
+    if (m_dependencies.refreshScriptsModel) {
+        m_dependencies.refreshScriptsModel();
+    }
+    if (m_dependencies.refreshSessionsModel) {
+        m_dependencies.refreshSessionsModel();
+    }
+    emit currentSessionIndexChanged();
+    emit currentSessionChanged();
 }
 
 void SessionController::setCurrentOutputPaused(bool paused)
@@ -268,15 +295,11 @@ void SessionController::setCurrentOutputPaused(bool paused)
 
     session->outputPaused = paused;
     m_dependencies.saveSessions();
-    if (!paused) {
-        if (m_dependencies.reloadCurrentSessionHistory) {
-            m_dependencies.reloadCurrentSessionHistory();
-        }
-        if (m_dependencies.emitMessageStreamChanged) {
-            m_dependencies.emitMessageStreamChanged();
-        }
+    if (!paused && m_dependencies.reloadCurrentSessionHistory) {
+        m_dependencies.reloadCurrentSessionHistory();
     }
-    if (m_dependencies.notifyCurrentSessionViewsChanged) {
-        m_dependencies.notifyCurrentSessionViewsChanged();
+    if (m_dependencies.refreshCurrentSessionModels) {
+        m_dependencies.refreshCurrentSessionModels();
     }
+    emit currentSessionChanged();
 }

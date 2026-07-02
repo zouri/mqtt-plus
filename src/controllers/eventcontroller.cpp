@@ -146,7 +146,7 @@ void EventController::clearCurrentMessages()
     session->loadedAllMessageHistory = true;
     (*m_dependencies.messagesModel).clear();
     m_dependencies.refreshScriptTestSamplesModel();
-    m_dependencies.emitMessageStreamChanged();
+    emit messageStreamChanged();
 }
 
 void EventController::clearCurrentLogs()
@@ -161,7 +161,7 @@ void EventController::clearCurrentLogs()
     session->oldestLoadedLogId = 0;
     session->loadedAllLogHistory = true;
     (*m_dependencies.logsModel).clear();
-    m_dependencies.emitLogStreamChanged();
+    emit logStreamChanged();
 }
 
 int EventController::loadOlderCurrentSessionMessages()
@@ -253,7 +253,7 @@ void EventController::appendRenderedMessageRow(SessionState &session, const QVar
     trimVisibleMessageRows(session);
     (*m_dependencies.messagesModel).appendRow(row);
     (*m_dependencies.messagesModel).trimToLimit(kMaxVisibleEventRows);
-    m_dependencies.emitMessageStreamRowAppended(row);
+    emit messageAppended(row);
     m_dependencies.refreshScriptTestSamplesModel();
 }
 
@@ -267,7 +267,7 @@ void EventController::appendRenderedLogRow(SessionState &session, const QVariant
     trimVisibleLogRows(session);
     (*m_dependencies.logsModel).appendRow(row);
     (*m_dependencies.logsModel).trimToLimit(kMaxVisibleEventRows);
-    m_dependencies.emitLogStreamRowAppended(row);
+    emit logAppended(row);
 }
 
 void EventController::appendEvent(SessionState &session, const QString &channel, const QString &message)
@@ -342,7 +342,7 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
     if (session->outputPaused && !m_dependencies.preferencesController->saveMessagesWhenOutputPaused()) {
         if (refreshCurrentSubscriptionFps && !(*m_dependencies.subscriptionFpsRefreshTimer).isActive()) {
             m_dependencies.refreshSubscriptionsModel();
-            m_dependencies.emitSubscriptionsChanged();
+            // subscriptionsChanged emitted by SubscriptionController
             (*m_dependencies.subscriptionFpsRefreshTimer).start();
         }
         return;
@@ -407,7 +407,7 @@ void EventController::appendIncomingMessage(const QString &sessionId, const QStr
 
     if (refreshCurrentSubscriptionFps && !(*m_dependencies.subscriptionFpsRefreshTimer).isActive()) {
         m_dependencies.refreshSubscriptionsModel();
-        m_dependencies.emitSubscriptionsChanged();
+        // subscriptionsChanged emitted by SubscriptionController
         (*m_dependencies.subscriptionFpsRefreshTimer).start();
     }
 

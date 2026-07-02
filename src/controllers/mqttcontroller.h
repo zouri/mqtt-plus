@@ -23,9 +23,8 @@ public:
         std::function<SessionState *()> currentSessionState;
         std::function<SessionState *(const QString &)> sessionById;
         std::function<void(SessionState &, const QString &, const QString &)> appendEvent;
-        std::function<void()> notifyCurrentSessionViewsChanged;
-        std::function<void()> notifySessionViewsChanged;
-        std::function<void()> notifySessionAndSubscriptionViewsChanged;
+        std::function<void()> refreshModels;
+        std::function<void()> refreshCurrentSessionModels;
     };
 
     explicit MqttController(QObject *parent = nullptr);
@@ -48,6 +47,9 @@ public:
         const QString &state,
         const QString &reason = QString(),
         qint32 messageId = -1);
+
+signals:
+    void sessionStateChanged();
 
 private:
     Dependencies m_dependencies;

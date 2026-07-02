@@ -1,6 +1,5 @@
 #include "app/applicationcorestate.h"
 
-#include "app/applicationcore.h"
 #include "app/applicationsessionconfigurator.h"
 #include "services/apputils.h"
 
@@ -9,6 +8,20 @@
 using namespace AppUtils;
 
 namespace {
+
+void reportStorageError(ApplicationCoreState &state, const QString &message)
+{
+    if (message.isEmpty()) {
+        return;
+    }
+
+    if (auto *session = state.sessionController.currentSession()) {
+        session->lastError = message;
+        state.eventController.appendEvent(*session, QStringLiteral("Storage"), message);
+        state.sessionsModel.notifyRefresh();
+        state.sessionController.currentSessionChanged();
+    }
+}
 
 void clearExitMessages(ApplicationCoreState &state, const QString &mode)
 {
@@ -40,26 +53,25 @@ void clearExitLogs(ApplicationCoreState &state, const QString &mode)
 
 } // namespace
 
-ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
+ApplicationCoreState::ApplicationCoreState(QObject *parent)
     : settings(QStringLiteral("mqtt-plus"), QStringLiteral("mqtt-plus"))
-    , core(owner)
-    , sessionController(&owner)
-    , scriptController(&owner)
-    , subscriptionController(&owner)
-    , mqttController(&owner)
-    , eventController(&owner)
-    , themeController(&settings, &owner)
-    , languageController(&settings, &owner)
-    , preferencesController(&settings, &owner)
-    , sessionsModel(&owner)
-    , subscriptionsModel(&owner)
-    , filteredSubscriptionsModel(&owner)
-    , messagesModel(&owner)
-    , logsModel(&owner)
-    , scriptsModel(&owner)
-    , scriptTestSamplesModel(&owner)
+    , sessionController(parent)
+    , scriptController(parent)
+    , subscriptionController(parent)
+    , mqttController(parent)
+    , eventController(parent)
+    , themeController(&settings, parent)
+    , languageController(&settings, parent)
+    , preferencesController(&settings, parent)
+    , sessionsModel(parent)
+    , subscriptionsModel(parent)
+    , filteredSubscriptionsModel(parent)
+    , messagesModel(parent)
+    , logsModel(parent)
+    , scriptsModel(parent)
+    , scriptTestSamplesModel(parent)
     , sessionRuntime(
-          &owner,
+          parent,
           {
               [this](const QString &sessionId) {
                   return sessionController.sessionById(sessionId);
@@ -67,9 +79,9 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
               [this](SessionState &session, const QString &channel, const QString &message) {
                   eventController.appendEvent(session, channel, message);
               },
-              [this]() {
-                  viewRefreshCoordinator.notifySessionViewsChanged();
-              },
+            [this]() {
+                sessionsModel.notifyRefresh();
+            },
               [this](SessionState *session) {
                   mqttController.bindSessionSignals(session);
               },
@@ -86,18 +98,6 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
         return scriptController.scriptName(id);
     });
 
-    viewRefreshCoordinator.setDependencies({
-        &core,
-        &sessionController,
-        &eventController,
-        &scriptController,
-        &sessionsModel,
-        &subscriptionsModel,
-        &messagesModel,
-        &logsModel,
-        &scriptsModel,
-        &scriptTestSamplesModel,
-    });
     sessionController.setDependencies({
         &historyStore,
         &subscriptionController,
@@ -111,8 +111,7 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
             if (sessionRepository.saveSessions(errorMessage)) {
                 return true;
             }
-            viewRefreshCoordinator.reportStorageError(
-                errorMessage.isEmpty() ? QStringLiteral("Cannot save sessions.") : errorMessage);
+            reportStorageError(*this, errorMessage.isEmpty() ? QStringLiteral("Cannot save sessions.") : errorMessage);
             return false;
         },
         [](SessionState &session, const QVariantMap &config, bool keepNameFallback) {
@@ -128,25 +127,31 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
             return sessionRuntime.createDefaultSession(name);
         },
         [this]() {
-            viewRefreshCoordinator.reloadCurrentSessionHistory();
+            eventController.reloadCurrentSessionHistory();
         },
         [this]() {
-            viewRefreshCoordinator.notifyCurrentSessionViewsChanged();
+            sessionsModel.notifyRefresh();
         },
         [this]() {
-            viewRefreshCoordinator.notifyCurrentSessionAndSubscriptionsChanged();
+            sessionsModel.notifyRefresh();
+            subscriptionsModel.setSource(sessionController.currentSession());
+            scriptTestSamplesModel.setSource(sessionController.currentSession() ? &sessionController.currentSession()->messageRows : nullptr);
         },
         [this]() {
-            viewRefreshCoordinator.notifySelectedSessionViewsChanged();
+            sessionsModel.notifyRefresh();
+            subscriptionsModel.setSource(sessionController.currentSession());
         },
         [this]() {
-            viewRefreshCoordinator.notifySessionCollectionViewsChanged();
+            sessionsModel.notifyRefresh();
+            subscriptionsModel.setSource(sessionController.currentSession());
+            if (auto *s = sessionController.currentSession()) {
+                messagesModel.setRows(s->messageRows);
+                logsModel.setRows(s->logRows);
+            }
+            scriptTestSamplesModel.setSource(sessionController.currentSession() ? &sessionController.currentSession()->messageRows : nullptr);
         },
         [this]() {
-            viewRefreshCoordinator.emitSessionsChanged();
-        },
-        [this]() {
-            viewRefreshCoordinator.emitMessageStreamChanged();
+            scriptsModel.notifyRefresh();
         },
     });
     mqttController.setDependencies({
@@ -162,13 +167,17 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
             eventController.appendEvent(session, channel, message);
         },
         [this]() {
-            viewRefreshCoordinator.notifyCurrentSessionViewsChanged();
+            sessionsModel.notifyRefresh();
+            subscriptionsModel.setSource(sessionController.currentSession());
+            subscriptionController.subscriptionsChanged();
         },
         [this]() {
-            viewRefreshCoordinator.notifySessionViewsChanged();
-        },
-        [this]() {
-            viewRefreshCoordinator.notifySessionAndSubscriptionViewsChanged();
+            sessionsModel.notifyRefresh();
+            subscriptionsModel.setSource(sessionController.currentSession());
+            if (auto *s = sessionController.currentSession()) {
+                messagesModel.setRows(s->messageRows);
+                logsModel.setRows(s->logRows);
+            }
         },
     });
     eventController.setDependencies({
@@ -188,25 +197,10 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
             return sessionController.sessionById(sessionId);
         },
         [this]() {
-            viewRefreshCoordinator.refreshSubscriptionsModel();
+            subscriptionsModel.setSource(sessionController.currentSession());
         },
         [this]() {
-            viewRefreshCoordinator.refreshScriptTestSamplesModel();
-        },
-        [this]() {
-            viewRefreshCoordinator.emitSubscriptionsChanged();
-        },
-        [this]() {
-            viewRefreshCoordinator.emitMessageStreamChanged();
-        },
-        [this]() {
-            viewRefreshCoordinator.emitLogStreamChanged();
-        },
-        [this](const QVariantMap &row) {
-            viewRefreshCoordinator.emitMessageStreamRowAppended(row);
-        },
-        [this](const QVariantMap &row) {
-            viewRefreshCoordinator.emitLogStreamRowAppended(row);
+            scriptTestSamplesModel.setSource(sessionController.currentSession() ? &sessionController.currentSession()->messageRows : nullptr);
         },
     });
     subscriptionController.setDependencies({
@@ -225,102 +219,22 @@ ApplicationCoreState::ApplicationCoreState(ApplicationCore &owner)
             if (sessionRepository.saveSessions(errorMessage)) {
                 return true;
             }
-            viewRefreshCoordinator.reportStorageError(
-                errorMessage.isEmpty() ? QStringLiteral("Cannot save sessions.") : errorMessage);
+            reportStorageError(*this, errorMessage.isEmpty() ? QStringLiteral("Cannot save sessions.") : errorMessage);
             return false;
         },
         [this]() {
-            viewRefreshCoordinator.refreshSubscriptionsModel();
-        },
-        [this]() {
-            viewRefreshCoordinator.notifyCurrentSessionAndSubscriptionsChanged();
-        },
-        [this]() {
-            viewRefreshCoordinator.notifySessionAndSubscriptionViewsChanged();
-        },
-        [this]() {
-            viewRefreshCoordinator.emitSubscriptionsChanged();
+            subscriptionsModel.setSource(sessionController.currentSession());
         },
     });
     filteredSubscriptionsModel.setSourceModel(&subscriptionsModel);
-}
 
-void ApplicationCoreState::applyExitCleanup()
-{
-    eventController.flushPendingMessageHistory();
-    clearExitMessages(*this, preferencesController.clearMessagesOnExit());
-    clearExitLogs(*this, preferencesController.clearLogsOnExit());
-}
-
-void ApplicationCoreState::installSignalBindings()
-{
     QObject::connect(
         &scriptController,
         &ScriptController::storageError,
-        &core,
+        &sessionController,
         [this](const QString &message) {
-            viewRefreshCoordinator.reportStorageError(message);
+            reportStorageError(*this, message);
         });
-
-    QObject::connect(&themeController, &ThemeController::modeChanged, &core, &ApplicationCore::notifyThemeModeChanged);
-    QObject::connect(&themeController, &ThemeController::effectiveThemeChanged, &core, &ApplicationCore::notifyEffectiveThemeChanged);
-    QObject::connect(&languageController, &LanguageController::modeChanged, &core, &ApplicationCore::notifyLanguageModeChanged);
-    QObject::connect(&languageController, &LanguageController::languageChanged, &core, [this]() {
-        viewRefreshCoordinator.notifyLanguageChanged();
-    });
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::messageRetentionLimitChanged,
-        &core,
-        &ApplicationCore::notifyMessageRetentionLimitChanged);
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::logRetentionLimitChanged,
-        &core,
-        &ApplicationCore::notifyLogRetentionLimitChanged);
-    QObject::connect(&preferencesController, &PreferencesController::historyPageSizeChanged, &core, [this]() {
-        viewRefreshCoordinator.notifyHistoryPageSizeChanged();
-    });
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::maxIncomingPayloadBytesChanged,
-        &core,
-        &ApplicationCore::notifyMaxIncomingPayloadBytesChanged);
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::deleteHistoryWithSessionChanged,
-        &core,
-        &ApplicationCore::notifyDeleteHistoryWithSessionChanged);
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::saveMessagesWhenOutputPausedChanged,
-        &core,
-        &ApplicationCore::notifySaveMessagesWhenOutputPausedChanged);
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::clearMessagesOnExitChanged,
-        &core,
-        &ApplicationCore::notifyClearMessagesOnExitChanged);
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::clearLogsOnExitChanged,
-        &core,
-        &ApplicationCore::notifyClearLogsOnExitChanged);
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::windowWidthChanged,
-        &core,
-        &ApplicationCore::notifyWindowWidthChanged);
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::windowHeightChanged,
-        &core,
-        &ApplicationCore::notifyWindowHeightChanged);
-    QObject::connect(
-        &preferencesController,
-        &PreferencesController::windowMaximizedChanged,
-        &core,
-        &ApplicationCore::notifyWindowMaximizedChanged);
 
     subscriptionFpsRefreshTimer.setInterval(kSubscriptionFpsRefreshIntervalMs);
     QObject::connect(
@@ -330,6 +244,13 @@ void ApplicationCoreState::installSignalBindings()
         &SubscriptionController::refreshSubscriptionFps);
 }
 
+void ApplicationCoreState::applyExitCleanup()
+{
+    eventController.flushPendingMessageHistory();
+    clearExitMessages(*this, preferencesController.clearMessagesOnExit());
+    clearExitLogs(*this, preferencesController.clearLogsOnExit());
+}
+
 void ApplicationCoreState::runStartup()
 {
     scriptController.loadScripts();
@@ -337,11 +258,13 @@ void ApplicationCoreState::runStartup()
 
     QString errorMessage;
     if (!sessionRepository.loadSessions(errorMessage)) {
-        viewRefreshCoordinator.reportStorageError(
-            errorMessage.isEmpty() ? QStringLiteral("Cannot load sessions.") : errorMessage);
+        reportStorageError(*this, errorMessage.isEmpty() ? QStringLiteral("Cannot load sessions.") : errorMessage);
     }
 
     sessionController.setCurrentIndex(0);
-    viewRefreshCoordinator.reloadCurrentSessionHistory();
-    viewRefreshCoordinator.notifySessionCollectionViewsChanged();
+    sessionsModel.notifyRefresh();
+    subscriptionsModel.setSource(sessionController.currentSession());
+    eventController.reloadCurrentSessionHistory();
+    sessionController.currentSessionIndexChanged();
+    sessionController.currentSessionChanged();
 }

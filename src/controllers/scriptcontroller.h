@@ -26,6 +26,7 @@ public:
 
 signals:
     void storageError(const QString &message);
+    void scriptsChanged();
 
 private:
     bool saveScripts();

@@ -28,9 +28,6 @@ public:
         std::function<SessionState *(const QString &)> sessionById;
         std::function<bool()> saveSessions;
         std::function<void()> refreshSubscriptionsModel;
-        std::function<void()> notifyCurrentSessionAndSubscriptionsChanged;
-        std::function<void()> notifySessionAndSubscriptionViewsChanged;
-        std::function<void()> emitSubscriptionsChanged;
     };
 
     explicit SubscriptionController(QObject *parent = nullptr);
@@ -60,6 +57,9 @@ public:
     qreal subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const;
     bool currentSessionHasActiveSubscriptionFps(qint64 nowMs) const;
     void refreshSubscriptionFps();
+
+signals:
+    void subscriptionsChanged();
 
 private:
     void observeSubscription(SessionState &session, SubscriptionEntry &entry, QMqttSubscription *subscription);
