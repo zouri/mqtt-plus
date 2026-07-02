@@ -9,6 +9,7 @@ Item {
     id: root
 
     required property var viewModel
+    required property var publisher
     required property var streamModel
     required property var session
     required property var ui
@@ -357,7 +358,7 @@ Item {
                                 outlineColor: "transparent"
                                 accessibleName: qsTr("Use this message in publisher")
                                 onClicked: {
-                                    root.viewModel.useMessageAsPublishDraft(
+                                    root.publisher.useMessageAsDraft(
                                                 eventDelegate.topic,
                                                 eventDelegate.payload,
                                                 eventDelegate.testPayload,
