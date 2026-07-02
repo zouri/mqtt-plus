@@ -6,12 +6,12 @@
 #include <QString>
 #include <QVector>
 
-class ScriptController : public QObject
+class ScriptService : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit ScriptController(QObject *parent = nullptr);
+    explicit ScriptService(QObject *parent = nullptr);
 
     const QVector<ScriptEntry> &scripts() const;
     const ScriptEntry *scriptById(const QString &id) const;

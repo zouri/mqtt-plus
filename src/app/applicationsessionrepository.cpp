@@ -3,8 +3,8 @@
 #include "services/apputils.h"
 #include "app/applicationsessionconfigurator.h"
 #include "app/applicationsessionruntime.h"
-#include "controllers/scriptcontroller.h"
-#include "controllers/sessioncontroller.h"
+#include "controllers/scriptservice.h"
+#include "controllers/sessionservice.h"
 #include "services/storage/sessionsettingsstore.h"
 
 #include <QCoreApplication>
@@ -14,8 +14,8 @@ using namespace AppUtils;
 
 ApplicationSessionRepository::ApplicationSessionRepository(
     QSettings &settings,
-    SessionController &sessionController,
-    ScriptController &scriptController,
+    SessionService &sessionController,
+    ScriptService &scriptController,
     ApplicationSessionRuntime &sessionRuntime)
     : m_settings(settings)
     , m_sessionController(sessionController)

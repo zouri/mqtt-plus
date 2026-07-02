@@ -11,6 +11,7 @@ class HistoryStore
 {
 public:
     HistoryStore();
+    explicit HistoryStore(const QString &dataPath);
     ~HistoryStore();
 
     bool isReady() const;
@@ -66,7 +67,7 @@ private:
         QString payloadHash;
     };
 
-    bool initialize();
+    bool initialize(const QString &dataPath);
 
     QSqlDatabase m_db;
     QString m_connectionName;

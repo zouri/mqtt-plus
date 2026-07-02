@@ -43,6 +43,8 @@ QVariant SessionListModel::data(const QModelIndex &index, int role) const
         return client ? client->hostname() : QString();
     case PortRole:
         return client ? client->port() : SessionConfig::kDefaultPort;
+    case ClientIdRole:
+        return client ? client->clientId() : QString();
     case TransportRole:
         return session.transport;
     case TransportLabelRole:
@@ -69,6 +71,7 @@ QHash<int, QByteArray> SessionListModel::roleNames() const
         {ConnectedRole, "connected"},
         {HostRole, "host"},
         {PortRole, "port"},
+        {ClientIdRole, "clientId"},
         {TransportRole, "transport"},
         {TransportLabelRole, "transportLabel"},
         {ProtocolVersionRole, "protocolVersion"},
@@ -94,6 +97,7 @@ QVariantMap SessionListModel::rowAt(int row) const
     map.insert(QStringLiteral("connected"), client && client->state() == QMqttClient::Connected);
     map.insert(QStringLiteral("host"), client ? client->hostname() : QString());
     map.insert(QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort);
+    map.insert(QStringLiteral("clientId"), client ? client->clientId() : QString());
     map.insert(QStringLiteral("transport"), session.transport);
     map.insert(QStringLiteral("transportLabel"), transportLabel(session.transport));
     map.insert(QStringLiteral("protocolVersion"), session.protocolVersion);

@@ -8,18 +8,18 @@
 
 #include "domain/session.h"
 
-class EventController;
-class SubscriptionController;
+class EventHistoryService;
+class SubscriptionService;
 
-class MqttController : public QObject
+class MqttSessionService : public QObject
 {
     Q_OBJECT
 
 public:
     struct Dependencies
     {
-        SubscriptionController *subscriptionController = nullptr;
-        EventController *eventController = nullptr;
+        SubscriptionService *subscriptionController = nullptr;
+        EventHistoryService *eventController = nullptr;
         std::function<SessionState *()> currentSessionState;
         std::function<SessionState *(const QString &)> sessionById;
         std::function<void(SessionState &, const QString &, const QString &)> appendEvent;
@@ -27,7 +27,7 @@ public:
         std::function<void()> refreshCurrentSessionModels;
     };
 
-    explicit MqttController(QObject *parent = nullptr);
+    explicit MqttSessionService(QObject *parent = nullptr);
 
     void setDependencies(const Dependencies &dependencies);
 
