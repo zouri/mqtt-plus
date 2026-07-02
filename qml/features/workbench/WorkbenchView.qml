@@ -13,10 +13,13 @@ Item {
     property bool connectionPaneCollapsed: false
     readonly property var session: root.viewModel.currentSession
     readonly property var status: root.viewModel.sessionStatus
-    readonly property int expandedConnectionPaneWidth: 248
+    readonly property int collapsedConnectionPaneWidth: 32
+    readonly property int connectionPaneVisualCollapseWidth: 84
+    readonly property int expandedConnectionPaneWidth: 208
+    property real connectionPaneWidth: root.connectionPaneCollapsed ? root.collapsedConnectionPaneWidth : root.expandedConnectionPaneWidth
     readonly property int subscriptionPaneMinWidth: 280
     readonly property int subscriptionPaneMaxWidth: 520
-    property int subscriptionPaneWidth: 360
+    property int subscriptionPaneWidth: root.subscriptionPaneMinWidth
     property string pendingSessionEditorMode: ""
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
@@ -24,6 +27,13 @@ Item {
 
     Layout.fillWidth: true
     Layout.fillHeight: true
+
+    Behavior on connectionPaneWidth {
+        NumberAnimation {
+            duration: 180
+            easing.type: Easing.OutCubic
+        }
+    }
 
     function resetStreamPosition() {
         sessionActivityPanel.resetStreamPosition();
@@ -118,8 +128,8 @@ Item {
         SessionSidebar {
             ui: root.ui
             viewModel: root.viewModel
-            collapsed: root.connectionPaneCollapsed
-            Layout.preferredWidth: root.connectionPaneCollapsed ? 32 : root.expandedConnectionPaneWidth
+            collapsed: root.connectionPaneWidth <= root.connectionPaneVisualCollapseWidth
+            Layout.preferredWidth: root.connectionPaneWidth
             Layout.fillHeight: true
             onSessionCreateRequested: root.openSessionEditorForCreate()
             onCollapseRequested: root.connectionPaneCollapsed = true
@@ -134,11 +144,14 @@ Item {
             orientation: Qt.Horizontal
 
             handle: Item {
-                implicitWidth: workbenchSplit.orientation === Qt.Horizontal ? 1 : workbenchSplit.width
-                implicitHeight: workbenchSplit.orientation === Qt.Horizontal ? workbenchSplit.height : 1
+                implicitWidth: workbenchSplit.orientation === Qt.Horizontal ? 6 : workbenchSplit.width
+                implicitHeight: workbenchSplit.orientation === Qt.Horizontal ? workbenchSplit.height : 6
 
                 Rectangle {
-                    anchors.fill: parent
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 1
                     color: splitHandleHover.hovered || SplitHandle.hovered || SplitHandle.pressed
                            ? root.ui.themePalette.selectedBorder
                            : root.ui.panelBorder
@@ -146,7 +159,6 @@ Item {
 
                 HoverHandler {
                     id: splitHandleHover
-                    margin: 5
                     cursorShape: Qt.SplitHCursor
                 }
             }
