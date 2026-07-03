@@ -13,6 +13,7 @@ AppPanel {
     required property var viewModel
 
     signal sessionEditRequested(int index)
+    signal connectionConnectRequested
 
     readonly property bool canDisconnect: control.status.state === "connected"
                                            || control.status.state === "connecting"
@@ -120,7 +121,12 @@ AppPanel {
                 accessibleName: control.connectionActionText
                 toolTipText: control.connectionActionText
 
-                onClicked: control.viewModel.toggleCurrentSessionConnection()
+                onClicked: {
+                    if (!control.canDisconnect) {
+                        control.connectionConnectRequested()
+                    }
+                    control.viewModel.toggleCurrentSessionConnection()
+                }
             }
         }
 
