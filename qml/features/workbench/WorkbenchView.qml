@@ -20,6 +20,7 @@ Item {
     readonly property int subscriptionPaneMinWidth: 280
     readonly property int subscriptionPaneMaxWidth: 520
     property int subscriptionPaneWidth: root.subscriptionPaneMinWidth
+    property bool collapseConnectionPaneOnConnect: false
     property string pendingSessionEditorMode: ""
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
@@ -41,6 +42,16 @@ Item {
 
     function noteStreamRowAppended() {
         sessionActivityPanel.noteStreamRowAppended();
+    }
+
+    function handleConnectionStateChanged() {
+        const state = root.status.state || "";
+        if (root.collapseConnectionPaneOnConnect && state === "connected") {
+            root.connectionPaneCollapsed = true;
+            root.collapseConnectionPaneOnConnect = false;
+        } else if (state === "disconnected" || state === "disconnecting") {
+            root.collapseConnectionPaneOnConnect = false;
+        }
     }
 
     function openPendingSessionEditor() {
@@ -119,6 +130,14 @@ Item {
         function onSessionEditRequested(index) {
             root.openSessionEditorForEdit(index);
         }
+
+        function onCurrentSessionChanged() {
+            root.handleConnectionStateChanged();
+        }
+
+        function onCurrentSessionIndexChanged() {
+            root.collapseConnectionPaneOnConnect = false;
+        }
     }
 
     RowLayout {
@@ -180,6 +199,7 @@ Item {
                         status: root.status
                         viewModel: root.viewModel
                         onSessionEditRequested: index => root.openSessionEditorForEdit(index)
+                        onConnectionConnectRequested: root.collapseConnectionPaneOnConnect = true
                     }
 
                     SubscriptionsPanel {
