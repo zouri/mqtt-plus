@@ -12,13 +12,64 @@ Rectangle {
     required property AppUi ui
     required property var viewModel
     property bool collapsed: false
+    property int sessionContextIndex: -1
+    readonly property bool canDeleteSession: sessionList.count > 1
 
     signal sessionCreateRequested
+    signal sessionEditRequested(int index)
     signal collapseRequested
     signal expandRequested
 
     color: ui.themePalette.panelBg
     clip: true
+
+    function sessionActionLabel(actionId) {
+        if (actionId === "edit") {
+            return qsTr("Edit");
+        }
+        if (actionId === "copy") {
+            return qsTr("Copy");
+        }
+        if (actionId === "delete") {
+            return qsTr("Delete");
+        }
+        return "";
+    }
+
+    function openSessionContextMenu(index) {
+        control.sessionContextIndex = index;
+        sessionContextMenu.open();
+    }
+
+    ListModel {
+        id: sessionContextActions
+
+        ListElement { actionId: "edit" }
+        ListElement { actionId: "copy" }
+        ListElement { actionId: "delete" }
+    }
+
+    AppPlatformMenu {
+        id: sessionContextMenu
+
+        model: sessionContextActions
+        actionText: actionId => control.sessionActionLabel(actionId)
+        actionEnabled: actionId => actionId !== "delete" || control.canDeleteSession
+
+        onTriggered: actionId => {
+            if (actionId === "edit") {
+                control.sessionEditRequested(control.sessionContextIndex);
+            } else if (actionId === "copy") {
+                control.viewModel.requestSessionDuplicate(control.sessionContextIndex);
+            } else if (actionId === "delete") {
+                control.viewModel.requestSessionDelete(control.sessionContextIndex);
+            }
+        }
+
+        onAboutToHide: Qt.callLater(function() {
+            control.sessionContextIndex = -1;
+        })
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -94,8 +145,8 @@ Rectangle {
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
 
-                function openSessionContextMenu(globalPosition) {
-                    control.viewModel.handleSessionContextMenu(sessionDelegate.index, globalPosition);
+                function openSessionContextMenu() {
+                    control.openSessionContextMenu(sessionDelegate.index);
                 }
 
                 Keys.onPressed: event => {
@@ -103,8 +154,7 @@ Rectangle {
                         control.viewModel.currentSessionIndex = sessionDelegate.index;
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
-                        control.viewModel.currentSessionIndex = sessionDelegate.index;
-                        sessionDelegate.openSessionContextMenu(sessionDelegate.mapToGlobal(Qt.point(sessionDelegate.width - 8, Math.round(sessionDelegate.height / 2))));
+                        sessionDelegate.openSessionContextMenu();
                         event.accepted = true;
                     }
                 }
@@ -142,15 +192,13 @@ Rectangle {
 
                     onPressed: mouse => {
                         sessionDelegate.forceActiveFocus();
-                        if (mouse.button === Qt.RightButton) {
-                            control.viewModel.currentSessionIndex = sessionDelegate.index;
-                            sessionDelegate.openSessionContextMenu(sessionDelegate.mapToGlobal(Qt.point(mouse.x, mouse.y)));
-                        }
                     }
 
                     onClicked: mouse => {
                         if (mouse.button === Qt.LeftButton) {
                             control.viewModel.currentSessionIndex = sessionDelegate.index;
+                        } else if (mouse.button === Qt.RightButton) {
+                            sessionDelegate.openSessionContextMenu();
                         }
                     }
                 }

@@ -10,6 +10,7 @@ Item {
     required property AppUi ui
     required property var viewModel
     required property string fontFamily
+    required property bool autoCollapseConnectionListOnConnect
     property bool connectionPaneCollapsed: false
     readonly property var session: root.viewModel.currentSession
     readonly property var status: root.viewModel.sessionStatus
@@ -21,6 +22,8 @@ Item {
     readonly property int subscriptionPaneMaxWidth: 520
     property int subscriptionPaneWidth: root.subscriptionPaneMinWidth
     property bool collapseConnectionPaneOnConnect: false
+    property int trackedConnectionSessionIndex: -1
+    property string trackedConnectionState: ""
     property string pendingSessionEditorMode: ""
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
@@ -46,12 +49,26 @@ Item {
 
     function handleConnectionStateChanged() {
         const state = root.status.state || "";
-        if (root.collapseConnectionPaneOnConnect && state === "connected") {
+        const sessionIndex = root.viewModel.currentSessionIndex;
+        if (root.trackedConnectionSessionIndex !== sessionIndex) {
+            root.trackedConnectionSessionIndex = sessionIndex;
+            root.trackedConnectionState = state;
+            root.collapseConnectionPaneOnConnect = false;
+            return;
+        }
+
+        if (root.autoCollapseConnectionListOnConnect && root.collapseConnectionPaneOnConnect && state === "connected") {
             root.connectionPaneCollapsed = true;
+            root.collapseConnectionPaneOnConnect = false;
+        } else if (root.autoCollapseConnectionListOnConnect
+                   && (state === "disconnecting" || state === "disconnected")
+                   && (root.trackedConnectionState === "connected" || root.trackedConnectionState === "disconnecting")) {
+            root.connectionPaneCollapsed = false;
             root.collapseConnectionPaneOnConnect = false;
         } else if (state === "disconnected" || state === "disconnecting") {
             root.collapseConnectionPaneOnConnect = false;
         }
+        root.trackedConnectionState = state;
     }
 
     function openPendingSessionEditor() {
@@ -113,7 +130,15 @@ Item {
     }
 
     Component.onCompleted: {
+        root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
+        root.trackedConnectionState = root.status.state || "";
         root.resetStreamPosition();
+    }
+
+    onAutoCollapseConnectionListOnConnectChanged: {
+        if (!root.autoCollapseConnectionListOnConnect) {
+            root.collapseConnectionPaneOnConnect = false;
+        }
     }
 
     Connections {
@@ -151,6 +176,7 @@ Item {
             Layout.preferredWidth: root.connectionPaneWidth
             Layout.fillHeight: true
             onSessionCreateRequested: root.openSessionEditorForCreate()
+            onSessionEditRequested: index => root.openSessionEditorForEdit(index)
             onCollapseRequested: root.connectionPaneCollapsed = true
             onExpandRequested: root.connectionPaneCollapsed = false
         }
@@ -199,7 +225,7 @@ Item {
                         status: root.status
                         viewModel: root.viewModel
                         onSessionEditRequested: index => root.openSessionEditorForEdit(index)
-                        onConnectionConnectRequested: root.collapseConnectionPaneOnConnect = true
+                        onConnectionConnectRequested: root.collapseConnectionPaneOnConnect = root.autoCollapseConnectionListOnConnect
                     }
 
                     SubscriptionsPanel {

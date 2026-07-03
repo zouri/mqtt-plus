@@ -18,6 +18,7 @@ public:
     int maxIncomingPayloadBytes() const;
     bool deleteHistoryWithSession() const;
     bool saveMessagesWhenOutputPaused() const;
+    bool autoCollapseConnectionListOnConnect() const;
     QString clearMessagesOnExit() const;
     QString clearLogsOnExit() const;
     int windowWidth() const;
@@ -31,6 +32,7 @@ public slots:
     void setMaxIncomingPayloadBytes(int bytes);
     void setDeleteHistoryWithSession(bool enabled);
     void setSaveMessagesWhenOutputPaused(bool enabled);
+    void setAutoCollapseConnectionListOnConnect(bool enabled);
     void setClearMessagesOnExit(const QString &mode);
     void setClearLogsOnExit(const QString &mode);
     void setWindowGeometry(int width, int height);
@@ -43,6 +45,7 @@ signals:
     void maxIncomingPayloadBytesChanged();
     void deleteHistoryWithSessionChanged();
     void saveMessagesWhenOutputPausedChanged();
+    void autoCollapseConnectionListOnConnectChanged();
     void clearMessagesOnExitChanged();
     void clearLogsOnExitChanged();
     void windowWidthChanged();
@@ -59,6 +62,7 @@ private:
     int m_maxIncomingPayloadBytes = 1024 * 1024;
     bool m_deleteHistoryWithSession = true;
     bool m_saveMessagesWhenOutputPaused = true;
+    bool m_autoCollapseConnectionListOnConnect = true;
     QString m_clearMessagesOnExit = QStringLiteral("never");
     QString m_clearLogsOnExit = QStringLiteral("never");
     int m_windowWidth = 1480;

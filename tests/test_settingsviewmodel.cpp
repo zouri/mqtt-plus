@@ -31,6 +31,7 @@ public:
             [this](QObject *, std::function<void()> handler) { maxIncomingPayloadBytesChanged = std::move(handler); },
             [this](QObject *, std::function<void()> handler) { deleteHistoryWithSessionChanged = std::move(handler); },
             [this](QObject *, std::function<void()> handler) { saveMessagesWhenOutputPausedChanged = std::move(handler); },
+            [this](QObject *, std::function<void()> handler) { autoCollapseConnectionListOnConnectChanged = std::move(handler); },
             [this](QObject *, std::function<void()> handler) { clearMessagesOnExitChanged = std::move(handler); },
             [this](QObject *, std::function<void()> handler) { clearLogsOnExitChanged = std::move(handler); },
             [this](QObject *, std::function<void()> handler) { windowWidthChanged = std::move(handler); },
@@ -54,6 +55,7 @@ public:
     std::function<void()> maxIncomingPayloadBytesChanged;
     std::function<void()> deleteHistoryWithSessionChanged;
     std::function<void()> saveMessagesWhenOutputPausedChanged;
+    std::function<void()> autoCollapseConnectionListOnConnectChanged;
     std::function<void()> clearMessagesOnExitChanged;
     std::function<void()> clearLogsOnExitChanged;
     std::function<void()> windowWidthChanged;
@@ -89,6 +91,7 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(settings.logRetentionLimitIndex(), 1);
     QCOMPARE(settings.historyPageSizeIndex(), 1);
     QCOMPARE(settings.maxIncomingPayloadBytesIndex(), 1);
+    QCOMPARE(settings.autoCollapseConnectionListOnConnect(), true);
     QCOMPARE(settings.clearMessagesOnExitIndex(), 0);
     QCOMPARE(settings.clearLogsOnExitIndex(), 0);
 }
@@ -130,6 +133,7 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     settings.setClearLogsOnExitIndex(1);
     settings.setDeleteHistoryWithSession(false);
     settings.setSaveMessagesWhenOutputPaused(false);
+    settings.setAutoCollapseConnectionListOnConnect(false);
     settings.setWindowMaximized(true);
     settings.saveWindowGeometry(1600, 900);
     settings.clearAllMessages();
@@ -146,6 +150,7 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     QCOMPARE(deps.preferencesController.clearLogsOnExit(), QStringLiteral("current"));
     QCOMPARE(deps.preferencesController.deleteHistoryWithSession(), false);
     QCOMPARE(deps.preferencesController.saveMessagesWhenOutputPaused(), false);
+    QCOMPARE(deps.preferencesController.autoCollapseConnectionListOnConnect(), false);
     QCOMPARE(deps.preferencesController.windowMaximized(), true);
     QCOMPARE(deps.preferencesController.windowWidth(), 1600);
     QCOMPARE(deps.preferencesController.windowHeight(), 900);
@@ -160,11 +165,15 @@ void SettingsOptionsViewModelTest::forwardsDependencySignals()
     FakeSettingsDeps deps;
     SettingsViewModel settings(deps.dependencies(), &deps.settings);
     QSignalSpy windowSpy(&settings, &SettingsViewModel::windowMaximizedChanged);
+    QSignalSpy autoCollapseSpy(&settings, &SettingsViewModel::autoCollapseConnectionListOnConnectChanged);
 
     QVERIFY(deps.windowMaximizedChanged);
+    QVERIFY(deps.autoCollapseConnectionListOnConnectChanged);
 
     deps.windowMaximizedChanged();
+    deps.autoCollapseConnectionListOnConnectChanged();
     QCOMPARE(windowSpy.count(), 1);
+    QCOMPARE(autoCollapseSpy.count(), 1);
 }
 
 void SettingsOptionsViewModelTest::themeChangesEmitSignals()
