@@ -11,6 +11,9 @@ AppPanel {
     required property var viewModel
 
     property string subscriptionActionVisualKey: ""
+    property int subscriptionContextIndex: -1
+    property string subscriptionContextTopic: ""
+    property string subscriptionContextDisplayName: ""
     readonly property var filterModeLabels: [qsTr("All", "subscription filter"), qsTr("Active", "subscription filter"), qsTr("Paused", "subscription filter")]
     readonly property var subscriptionModel: control.viewModel ? control.viewModel.filteredSubscriptions : null
     readonly property int matchingSubscriptionCount: control.subscriptionModel ? control.subscriptionModel.count : 0
@@ -24,6 +27,25 @@ AppPanel {
     signal subscriptionCreateRequested
     signal subscriptionEditRequested(int index)
 
+    function subscriptionActionLabel(actionId) {
+        if (actionId === "edit") {
+            return qsTr("Edit");
+        }
+        if (actionId === "delete") {
+            return qsTr("Delete");
+        }
+        return "";
+    }
+
+    function openSubscriptionContextMenu(index, topic, displayName, visualKey) {
+        control.subscriptionContextIndex = index;
+        control.subscriptionContextTopic = topic;
+        control.subscriptionContextDisplayName = displayName;
+        control.subscriptionActionVisualKey = visualKey;
+        subscriptionActionVisualResetTimer.stop();
+        subscriptionContextMenu.open();
+    }
+
     Timer {
         id: subscriptionActionVisualResetTimer
         interval: 180
@@ -34,13 +56,39 @@ AppPanel {
     Connections {
         target: control.viewModel
 
-        function onSubscriptionEditRequested(index) {
-            control.subscriptionEditRequested(index);
-        }
-
         function onSubscriptionDeleteRequested() {
             deleteSubscriptionDialog.open();
         }
+    }
+
+    ListModel {
+        id: subscriptionContextActions
+
+        ListElement { actionId: "edit" }
+        ListElement { actionId: "delete" }
+    }
+
+    AppPlatformMenu {
+        id: subscriptionContextMenu
+        model: subscriptionContextActions
+        actionText: actionId => control.subscriptionActionLabel(actionId)
+
+        onTriggered: actionId => {
+            if (actionId === "edit") {
+                control.subscriptionEditRequested(control.subscriptionContextIndex);
+            } else if (actionId === "delete") {
+                control.viewModel.requestSubscriptionDelete(
+                    control.subscriptionContextTopic,
+                    control.subscriptionContextDisplayName);
+            }
+        }
+
+        onAboutToHide: Qt.callLater(function() {
+            control.subscriptionContextIndex = -1;
+            control.subscriptionContextTopic = "";
+            control.subscriptionContextDisplayName = "";
+            subscriptionActionVisualResetTimer.restart();
+        })
     }
 
     ColumnLayout {
@@ -186,16 +234,17 @@ AppPanel {
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
 
-                function openSubscriptionContextMenu(globalPosition) {
-                    control.subscriptionActionVisualKey = subscriptionDelegate.menuVisualKey;
-                    subscriptionActionVisualResetTimer.stop();
-                    control.viewModel.handleSubscriptionContextMenu(subscriptionDelegate.index, subscriptionDelegate.topic, globalPosition);
-                    subscriptionActionVisualResetTimer.restart();
+                function openSubscriptionContextMenu() {
+                    control.openSubscriptionContextMenu(
+                        subscriptionDelegate.index,
+                        subscriptionDelegate.topic,
+                        subscriptionDelegate.displayName,
+                        subscriptionDelegate.menuVisualKey);
                 }
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
-                        subscriptionDelegate.openSubscriptionContextMenu(subscriptionDelegate.mapToGlobal(Qt.point(subscriptionDelegate.width - 10, Math.round(subscriptionDelegate.height / 2))));
+                        subscriptionDelegate.openSubscriptionContextMenu();
                         event.accepted = true;
                     }
                 }
@@ -305,7 +354,7 @@ AppPanel {
                                 accessibleName: qsTr("More actions")
 
                                 onClicked: {
-                                    subscriptionDelegate.openSubscriptionContextMenu(subscriptionMenuButton.mapToGlobal(Qt.point(Math.round(subscriptionMenuButton.width / 2), subscriptionMenuButton.height)));
+                                    subscriptionDelegate.openSubscriptionContextMenu();
                                 }
                             }
                         }
@@ -324,10 +373,10 @@ AppPanel {
                 MouseArea {
                     anchors.fill: parent
                     acceptedButtons: Qt.RightButton
-                    onPressed: mouse => {
+                    onClicked: mouse => {
                         if (mouse.button === Qt.RightButton) {
                             subscriptionDelegate.forceActiveFocus();
-                            subscriptionDelegate.openSubscriptionContextMenu(subscriptionDelegate.mapToGlobal(Qt.point(mouse.x, mouse.y)));
+                            subscriptionDelegate.openSubscriptionContextMenu();
                         }
                     }
                 }

@@ -215,6 +215,27 @@ Rectangle {
 
                 SettingsSection {
                     ui: root.ui
+                    title: qsTr("Workbench")
+                    Layout.leftMargin: 20
+                    Layout.rightMargin: 24
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Auto-collapse connections")
+                        detail: qsTr("Collapse the connection list after a connection succeeds.")
+                        showDivider: false
+
+                        AppCheckBox {
+                            ui: root.ui
+                            text: qsTr("Enabled")
+                            checked: root.viewModel.autoCollapseConnectionListOnConnect
+                            onToggled: root.viewModel.autoCollapseConnectionListOnConnect = checked
+                        }
+                    }
+                }
+
+                SettingsSection {
+                    ui: root.ui
                     title: qsTr("History")
                     Layout.leftMargin: 20
                     Layout.rightMargin: 24
