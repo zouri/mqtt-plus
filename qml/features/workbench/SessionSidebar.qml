@@ -18,6 +18,7 @@ Rectangle {
     signal expandRequested
 
     color: ui.themePalette.panelBg
+    clip: true
 
     ColumnLayout {
         anchors.fill: parent
@@ -32,7 +33,7 @@ Rectangle {
             Label {
                 text: qsTr("Connections")
                 color: control.ui.textStrong
-                font.pixelSize: 22
+                font.pixelSize: 18
                 font.bold: true
             }
 
@@ -82,16 +83,9 @@ Rectangle {
                 id: sessionDelegate
                 required property int index
                 required property string name
-                required property bool connected
-                required property string host
-                required property int port
-                required property string clientId
-                required property string transportLabel
                 readonly property bool selected: index === control.viewModel.currentSessionIndex
-                readonly property string endpointText: qsTr("%1:%2").arg(sessionDelegate.host || "-").arg(sessionDelegate.port || "-")
-                readonly property string mqttIdText: qsTr("MQTT ID %1").arg(sessionDelegate.clientId || "-")
                 width: ListView.view.width
-                height: 62
+                height: 42
                 radius: control.ui.innerRadius
                 color: sessionDelegate.selected ? control.ui.themePalette.selectedBg : (rowMouse.containsMouse || activeFocus ? control.ui.rowHover : control.ui.themePalette.itemBg)
                 border.color: sessionDelegate.selected ? Qt.rgba(control.ui.themePalette.selectedBorder.r, control.ui.themePalette.selectedBorder.g, control.ui.themePalette.selectedBorder.b, 0.36) : control.ui.themePalette.itemBorder
@@ -128,41 +122,14 @@ Rectangle {
                         color: sessionDelegate.selected ? control.ui.themePalette.selectedBorder : "transparent"
                     }
 
-                    ColumnLayout {
+                    Label {
                         Layout.fillWidth: true
-                        spacing: 2
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: sessionDelegate.name
-                            color: control.ui.textStrong
-                            elide: Label.ElideRight
-                            font.pixelSize: 12
-                            font.bold: true
-                        }
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: qsTr("%1  (%2)").arg(sessionDelegate.endpointText).arg(sessionDelegate.transportLabel || "TCP")
-                            color: control.ui.textMuted
-                            elide: Label.ElideRight
-                            font.pixelSize: 10
-                        }
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: sessionDelegate.mqttIdText
-                            color: control.ui.textMuted
-                            elide: Label.ElideRight
-                            font.pixelSize: 10
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.preferredWidth: 7
-                        Layout.preferredHeight: 7
-                        radius: 3.5
-                        color: sessionDelegate.connected ? control.ui.stateColor("connected") : control.ui.stateColor("disconnected")
+                        text: sessionDelegate.name
+                        color: control.ui.textStrong
+                        elide: Label.ElideRight
+                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: 13
+                        font.bold: true
                     }
                 }
 
@@ -305,13 +272,23 @@ Rectangle {
 
     Rectangle {
         id: collapsedBar
+
+        readonly property bool hot: collapsedMouse.containsMouse
+
         visible: control.collapsed
         anchors.fill: parent
-        color: collapsedMouse.containsMouse || activeFocus ? control.ui.themePalette.rowHover : control.ui.themePalette.panelBg
+        color: collapsedBar.hot ? control.ui.themePalette.rowHover : control.ui.themePalette.panelBg
         border.color: "transparent"
         activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: qsTr("Show connection list")
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 120
+                easing.type: Easing.OutCubic
+            }
+        }
 
         AppIconButton {
             ui: control.ui
@@ -327,6 +304,7 @@ Rectangle {
             hoverBg: "transparent"
             pressedBg: "transparent"
             outlineColor: "transparent"
+            symbolColor: collapsedBar.hot ? control.ui.themePalette.infoText : control.ui.textMuted
             accessibleName: qsTr("Show connection list")
             onClicked: control.expandRequested()
         }
@@ -335,11 +313,18 @@ Rectangle {
             anchors.centerIn: parent
             width: parent.width
             text: qsTr("Expand").split("").join("\n")
-            color: control.ui.textMuted
+            color: collapsedBar.hot ? control.ui.themePalette.infoText : control.ui.textMuted
             font.pixelSize: 10
             horizontalAlignment: Text.AlignHCenter
             lineHeight: 0.86
             lineHeightMode: Text.ProportionalHeight
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 120
+                    easing.type: Easing.OutCubic
+                }
+            }
         }
 
         MouseArea {

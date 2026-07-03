@@ -90,17 +90,17 @@ ApplicationWindow {
     }
 
     AppUi {
-        id: ui
+        id: appUi
         isDarkTheme: root.settingsViewModel.effectiveTheme === "dark"
     }
 
-    Material.theme: ui.materialTheme
-    Material.accent: ui.materialAccent
-    Material.primary: ui.materialPrimary
-    Material.background: ui.themePalette.windowBg
+    Material.theme: appUi.materialTheme
+    Material.accent: appUi.materialAccent
+    Material.primary: appUi.materialPrimary
+    Material.background: appUi.themePalette.windowBg
 
     background: Rectangle {
-        color: ui.themePalette.windowBg
+        color: appUi.themePalette.windowBg
     }
 
     readonly property var navigationViewModel: root.app.navigation
@@ -119,14 +119,14 @@ ApplicationWindow {
             Rectangle {
                 Layout.preferredWidth: 56
                 Layout.fillHeight: true
-                color: ui.themePalette.sidebarBg
+                color: appUi.themePalette.sidebarBg
 
                 Rectangle {
                     anchors.top: parent.top
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     width: 1
-                    color: ui.themePalette.sidebarBorder
+                    color: appUi.themePalette.sidebarBorder
                 }
 
                 ColumnLayout {
@@ -138,16 +138,16 @@ ApplicationWindow {
                     spacing: 10
 
                     AppIconButton {
-                        ui: ui
+                        ui: appUi
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
                         cornerRadius: 13
-                        iconSource: ui.materialIcon("workbench")
+                        iconSource: appUi.materialIcon("workbench")
                         iconSize: 21
                         restBg: "transparent"
-                        hoverBg: ui.themePalette.selectedBg
+                        hoverBg: appUi.themePalette.selectedBg
                         outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "workbench" ? ui.themePalette.infoText : ui.textMuted
+                        symbolColor: root.currentAppView === "workbench" ? appUi.themePalette.infoText : appUi.textMuted
                         forceActive: root.currentAppView === "workbench"
                         accessibleName: qsTr("Workbench")
                         toolTipText: qsTr("Workbench")
@@ -155,16 +155,16 @@ ApplicationWindow {
                     }
 
                     AppIconButton {
-                        ui: ui
+                        ui: appUi
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
                         cornerRadius: 13
-                        iconSource: ui.materialIcon("logs")
+                        iconSource: appUi.materialIcon("logs")
                         iconSize: 20
                         restBg: "transparent"
-                        hoverBg: ui.themePalette.selectedBg
+                        hoverBg: appUi.themePalette.selectedBg
                         outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "logs" ? ui.themePalette.infoText : ui.textMuted
+                        symbolColor: root.currentAppView === "logs" ? appUi.themePalette.infoText : appUi.textMuted
                         forceActive: root.currentAppView === "logs"
                         accessibleName: qsTr("Logs")
                         toolTipText: qsTr("Logs")
@@ -172,16 +172,16 @@ ApplicationWindow {
                     }
 
                     AppIconButton {
-                        ui: ui
+                        ui: appUi
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
                         cornerRadius: 13
-                        iconSource: ui.materialIcon("script-development")
+                        iconSource: appUi.materialIcon("script-development")
                         iconSize: 20
                         restBg: "transparent"
-                        hoverBg: ui.themePalette.selectedBg
+                        hoverBg: appUi.themePalette.selectedBg
                         outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "scripts" ? ui.themePalette.infoText : ui.textMuted
+                        symbolColor: root.currentAppView === "scripts" ? appUi.themePalette.infoText : appUi.textMuted
                         forceActive: root.currentAppView === "scripts"
                         accessibleName: qsTr("Lua scripts")
                         toolTipText: qsTr("Lua scripts")
@@ -193,16 +193,16 @@ ApplicationWindow {
                     }
 
                     AppIconButton {
-                        ui: ui
+                        ui: appUi
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
                         cornerRadius: 13
-                        iconSource: ui.materialIcon("settings")
+                        iconSource: appUi.materialIcon("settings")
                         iconSize: 20
                         restBg: "transparent"
-                        hoverBg: ui.themePalette.selectedBg
+                        hoverBg: appUi.themePalette.selectedBg
                         outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "settings" ? ui.themePalette.infoText : ui.textMuted
+                        symbolColor: root.currentAppView === "settings" ? appUi.themePalette.infoText : appUi.textMuted
                         forceActive: root.currentAppView === "settings"
                         accessibleName: qsTr("Settings")
                         toolTipText: qsTr("Settings")
@@ -223,26 +223,26 @@ ApplicationWindow {
 
                 WorkbenchView {
                     id: workbenchPage
-                    ui: ui
+                    ui: appUi
                     viewModel: root.app.workbench
                     fontFamily: root.font.family
                 }
 
                 LogsView {
                     id: logsPage
-                    ui: ui
+                    ui: appUi
                     viewModel: root.app.logs
                 }
 
                 ScriptsView {
                     id: scriptsPage
-                    ui: ui
+                    ui: appUi
                     viewModel: root.app.scripts
                 }
 
                 SettingsView {
                     id: settingsPage
-                    ui: ui
+                    ui: appUi
                     viewModel: root.app.settings
                 }
             }
