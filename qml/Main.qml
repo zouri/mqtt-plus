@@ -226,6 +226,7 @@ ApplicationWindow {
                     ui: appUi
                     viewModel: root.app.workbench
                     fontFamily: root.font.family
+                    autoCollapseConnectionListOnConnect: root.settingsViewModel.autoCollapseConnectionListOnConnect
                 }
 
                 LogsView {

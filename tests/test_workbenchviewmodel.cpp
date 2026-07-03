@@ -12,7 +12,7 @@ private slots:
     void exposesSubscriptionEditor();
     void preparesSubscriptionEditorForCreate();
     void rejectsSubscriptionEditorEditWithoutCore();
-    void ignoresContextMenusWithoutCore();
+    void ignoresSessionCommandsWithoutCore();
     void updatesPublishDraft();
     void rejectsPublishWithoutConnectedSession();
     void ownsSubscriptionFilterState();
@@ -80,19 +80,15 @@ void WorkbenchViewModelTest::rejectsSubscriptionEditorEditWithoutCore()
     QVERIFY(!viewModel.subscriptionEditor()->editMode());
 }
 
-void WorkbenchViewModelTest::ignoresContextMenusWithoutCore()
+void WorkbenchViewModelTest::ignoresSessionCommandsWithoutCore()
 {
     WorkbenchViewModel viewModel;
     QSignalSpy sessionEditSpy(&viewModel, &WorkbenchViewModel::sessionEditRequested);
-    QSignalSpy subscriptionEditSpy(&viewModel, &WorkbenchViewModel::subscriptionEditRequested);
-    QSignalSpy subscriptionDeleteSpy(&viewModel, &WorkbenchViewModel::subscriptionDeleteRequested);
 
-    viewModel.handleSessionContextMenu(0, QPointF());
-    viewModel.handleSubscriptionContextMenu(0, QStringLiteral("devices/+/temp"), QPointF());
+    viewModel.requestSessionDuplicate(0);
+    viewModel.requestSessionDelete(0);
 
     QCOMPARE(sessionEditSpy.size(), 0);
-    QCOMPARE(subscriptionEditSpy.size(), 0);
-    QCOMPARE(subscriptionDeleteSpy.size(), 0);
 }
 
 void WorkbenchViewModelTest::updatesPublishDraft()

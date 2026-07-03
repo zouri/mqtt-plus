@@ -108,6 +108,9 @@ SettingsViewModel::Dependencies settingsDependencies(ApplicationCoreState &state
             QObject::connect(&state.preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, context, std::move(handler));
         },
         [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.preferencesController, &PreferencesController::autoCollapseConnectionListOnConnectChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
             QObject::connect(&state.preferencesController, &PreferencesController::clearMessagesOnExitChanged, context, std::move(handler));
         },
         [&state](QObject *context, std::function<void()> handler) {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QObject>
-#include <QPointF>
 #include <QString>
 #include <QStringList>
 #include <QVariantMap>
@@ -78,8 +77,8 @@ public:
     Q_INVOKABLE void openSessionEditorForCreate();
     Q_INVOKABLE void openSessionEditorForEdit(int index);
     Q_INVOKABLE bool submitSessionEditor();
-    Q_INVOKABLE void handleSessionContextMenu(int index, const QPointF &globalPosition);
-    Q_INVOKABLE void handleSubscriptionContextMenu(int filteredIndex, const QString &topic, const QPointF &globalPosition);
+    Q_INVOKABLE void requestSessionDuplicate(int index);
+    Q_INVOKABLE void requestSessionDelete(int index);
     Q_INVOKABLE void toggleCurrentSessionConnection();
     Q_INVOKABLE void toggleCurrentOutputPaused(bool currentlyPaused);
     Q_INVOKABLE void openSubscriptionEditorForCreate();
@@ -101,7 +100,6 @@ signals:
     void messageStreamRowAppended();
     void pendingSubscriptionDeleteChanged();
     void sessionEditRequested(int index);
-    void subscriptionEditRequested(int index);
     void subscriptionDeleteRequested(const QString &topic, const QString &displayName);
 
 private:

@@ -638,7 +638,7 @@ void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions(
         QVERIFY2(!source.contains(QStringLiteral("showSessionContextMenu")),
             qPrintable(QStringLiteral("%1 must delegate session menu action handling to WorkbenchViewModel").arg(path)));
         QVERIFY2(!source.contains(QStringLiteral("showSubscriptionContextMenu")),
-            qPrintable(QStringLiteral("%1 must delegate subscription menu action handling to WorkbenchViewModel").arg(path)));
+            qPrintable(QStringLiteral("%1 must keep subscription menu presentation local to QML").arg(path)));
         QVERIFY2(!source.contains(QStringLiteral("action ===")),
             qPrintable(QStringLiteral("%1 must not branch on platform menu action strings").arg(path)));
     }
@@ -983,8 +983,10 @@ void ArchitectureBoundariesTest::workbenchViewModelDoesNotExposeLegacyCommands()
     const QStringList forbiddenInvokables {
         QStringLiteral("Q_INVOKABLE void duplicateSessionAt"),
         QStringLiteral("Q_INVOKABLE void removeSessionAt"),
+        QStringLiteral("Q_INVOKABLE void handleSessionContextMenu"),
         QStringLiteral("Q_INVOKABLE QString showSessionContextMenu"),
         QStringLiteral("Q_INVOKABLE QString showSubscriptionContextMenu"),
+        QStringLiteral("Q_INVOKABLE void handleSubscriptionContextMenu"),
         QStringLiteral("Q_INVOKABLE void connectCurrentSession"),
         QStringLiteral("Q_INVOKABLE void disconnectCurrentSession"),
         QStringLiteral("Q_INVOKABLE void setCurrentOutputPaused"),

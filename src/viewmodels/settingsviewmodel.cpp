@@ -194,6 +194,7 @@ SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QSettings
     bindDependencyChange(m_dependencies.bindMaxIncomingPayloadBytesChanged, this, [this]() { emit maxIncomingPayloadBytesChanged(); });
     bindDependencyChange(m_dependencies.bindDeleteHistoryWithSessionChanged, this, [this]() { emit deleteHistoryWithSessionChanged(); });
     bindDependencyChange(m_dependencies.bindSaveMessagesWhenOutputPausedChanged, this, [this]() { emit saveMessagesWhenOutputPausedChanged(); });
+    bindDependencyChange(m_dependencies.bindAutoCollapseConnectionListOnConnectChanged, this, [this]() { emit autoCollapseConnectionListOnConnectChanged(); });
     bindDependencyChange(m_dependencies.bindClearMessagesOnExitChanged, this, [this]() { emit clearMessagesOnExitChanged(); });
     bindDependencyChange(m_dependencies.bindClearLogsOnExitChanged, this, [this]() { emit clearLogsOnExitChanged(); });
     bindDependencyChange(m_dependencies.bindWindowWidthChanged, this, [this]() { emit windowWidthChanged(); });
@@ -245,6 +246,7 @@ int SettingsViewModel::historyPageSize() const { return m_dependencies.preferenc
 int SettingsViewModel::maxIncomingPayloadBytes() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->maxIncomingPayloadBytes() : 1024 * 1024; }
 bool SettingsViewModel::deleteHistoryWithSession() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->deleteHistoryWithSession() : true; }
 bool SettingsViewModel::saveMessagesWhenOutputPaused() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->saveMessagesWhenOutputPaused() : true; }
+bool SettingsViewModel::autoCollapseConnectionListOnConnect() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->autoCollapseConnectionListOnConnect() : true; }
 QString SettingsViewModel::clearMessagesOnExit() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->clearMessagesOnExit() : QStringLiteral("never"); }
 QString SettingsViewModel::clearLogsOnExit() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->clearLogsOnExit() : QStringLiteral("never"); }
 int SettingsViewModel::windowWidth() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowWidth() : 1480; }
@@ -375,6 +377,13 @@ void SettingsViewModel::setSaveMessagesWhenOutputPaused(bool enabled)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setSaveMessagesWhenOutputPaused(enabled);
+    }
+}
+
+void SettingsViewModel::setAutoCollapseConnectionListOnConnect(bool enabled)
+{
+    if (m_dependencies.preferencesController) {
+        m_dependencies.preferencesController->setAutoCollapseConnectionListOnConnect(enabled);
     }
 }
 

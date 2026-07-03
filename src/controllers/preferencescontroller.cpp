@@ -95,6 +95,8 @@ PreferencesController::PreferencesController(QSettings *settings, QObject *paren
         m_settings->value(QStringLiteral("history/deleteHistoryWithSession"), m_deleteHistoryWithSession).toBool();
     m_saveMessagesWhenOutputPaused =
         m_settings->value(QStringLiteral("history/saveMessagesWhenOutputPaused"), m_saveMessagesWhenOutputPaused).toBool();
+    m_autoCollapseConnectionListOnConnect =
+        m_settings->value(QStringLiteral("ui/autoCollapseConnectionListOnConnect"), m_autoCollapseConnectionListOnConnect).toBool();
     m_clearMessagesOnExit = sanitizeCleanupMode(
         m_settings->value(QStringLiteral("cleanup/clearMessagesOnExit"), m_clearMessagesOnExit).toString());
     m_clearLogsOnExit = sanitizeCleanupMode(
@@ -135,6 +137,11 @@ bool PreferencesController::deleteHistoryWithSession() const
 bool PreferencesController::saveMessagesWhenOutputPaused() const
 {
     return m_saveMessagesWhenOutputPaused;
+}
+
+bool PreferencesController::autoCollapseConnectionListOnConnect() const
+{
+    return m_autoCollapseConnectionListOnConnect;
 }
 
 QString PreferencesController::clearMessagesOnExit() const
@@ -230,6 +237,17 @@ void PreferencesController::setSaveMessagesWhenOutputPaused(bool enabled)
     m_saveMessagesWhenOutputPaused = enabled;
     syncValue(QStringLiteral("history/saveMessagesWhenOutputPaused"), m_saveMessagesWhenOutputPaused);
     emit saveMessagesWhenOutputPausedChanged();
+}
+
+void PreferencesController::setAutoCollapseConnectionListOnConnect(bool enabled)
+{
+    if (enabled == m_autoCollapseConnectionListOnConnect) {
+        return;
+    }
+
+    m_autoCollapseConnectionListOnConnect = enabled;
+    syncValue(QStringLiteral("ui/autoCollapseConnectionListOnConnect"), m_autoCollapseConnectionListOnConnect);
+    emit autoCollapseConnectionListOnConnectChanged();
 }
 
 void PreferencesController::setClearMessagesOnExit(const QString &mode)

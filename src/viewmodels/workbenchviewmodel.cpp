@@ -211,50 +211,22 @@ bool WorkbenchViewModel::submitSessionEditor()
     return index >= 0 && m_dependencies.sessionController->updateSessionConfigAt(index, config);
 }
 
-void WorkbenchViewModel::handleSessionContextMenu(int index, const QPointF &globalPosition)
+void WorkbenchViewModel::requestSessionDuplicate(int index)
 {
     if (!m_dependencies.sessionController || !sessions() || index < 0 || index >= sessions()->count()) {
         return;
     }
 
-    const QString action = m_platformActions.showSessionContextMenu(sessions()->count() > 1, globalPosition);
-    if (action == QStringLiteral("edit")) {
-        emit sessionEditRequested(index);
-    } else if (action == QStringLiteral("copy")) {
-        m_dependencies.sessionController->duplicateSessionAt(index);
-    } else if (action == QStringLiteral("delete")) {
-        m_dependencies.sessionController->removeSessionAt(index);
-    }
+    m_dependencies.sessionController->duplicateSessionAt(index);
 }
 
-void WorkbenchViewModel::handleSubscriptionContextMenu(int filteredIndex, const QString &topic, const QPointF &globalPosition)
+void WorkbenchViewModel::requestSessionDelete(int index)
 {
-    const QString normalizedTopic = topic.trimmed();
-    if (!filteredSubscriptions() || normalizedTopic.isEmpty()) {
+    if (!m_dependencies.sessionController || !sessions() || index < 0 || index >= sessions()->count() || sessions()->count() <= 1) {
         return;
     }
 
-    bool hasTopic = false;
-    for (int row = 0; row < filteredSubscriptions()->count(); ++row) {
-        const QVariantMap subscription = filteredSubscriptions()->rowAt(row);
-        if (subscription.value(QStringLiteral("topic")).toString() == normalizedTopic) {
-            hasTopic = true;
-            break;
-        }
-    }
-    if (!hasTopic) {
-        return;
-    }
-
-    const QString action = m_platformActions.showSubscriptionContextMenu(globalPosition);
-    if (action == QStringLiteral("edit")) {
-        emit subscriptionEditRequested(filteredIndex);
-    } else if (action == QStringLiteral("delete")) {
-        const QVariantMap subscription = filteredSubscriptions() ? filteredSubscriptions()->rowAt(filteredIndex) : QVariantMap {};
-        requestSubscriptionDelete(
-            topic,
-            subscription.value(QStringLiteral("displayName"), topic).toString());
-    }
+    m_dependencies.sessionController->removeSessionAt(index);
 }
 
 void WorkbenchViewModel::toggleCurrentSessionConnection()
