@@ -36,6 +36,7 @@ public:
 
     void setRows(const QVariantList &rows);
     void appendRow(const QVariantMap &row);
+    void appendRows(const QVariantList &rows);
     void prependRows(const QVariantList &rows);
     void clear();
     void trimToLimit(int limit);

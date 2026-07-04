@@ -10,6 +10,7 @@ class SessionListModelTest : public QObject
 
 private slots:
     void exposesConnectionDetails();
+    void notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable();
 };
 
 void SessionListModelTest::exposesConnectionDetails()
@@ -22,7 +23,7 @@ void SessionListModelTest::exposesConnectionDetails()
     SessionState session;
     session.id = QStringLiteral("session-1");
     session.name = QStringLiteral("Production");
-    session.client = &client;
+    session.runtime.client = &client;
 
     QVector<SessionState> sessions {session};
     SessionListModel model;
@@ -37,6 +38,31 @@ void SessionListModelTest::exposesConnectionDetails()
     QCOMPARE(row.value(QStringLiteral("host")).toString(), QStringLiteral("mqtt.example.com"));
     QCOMPARE(row.value(QStringLiteral("port")).toInt(), 1884);
     QCOMPARE(row.value(QStringLiteral("clientId")).toString(), QStringLiteral("mqtt-id-1"));
+}
+
+void SessionListModelTest::notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable()
+{
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Production");
+    QVector<SessionState> sessions {session};
+
+    SessionListModel model;
+    model.setSource(&sessions);
+
+    QSignalSpy dataSpy(&model, &SessionListModel::dataChanged);
+    QSignalSpy resetSpy(&model, &SessionListModel::modelReset);
+    QSignalSpy countSpy(&model, &SessionListModel::countChanged);
+
+    sessions[0].name = QStringLiteral("Staging");
+    model.notifyRefresh();
+
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("name")).toString(), QStringLiteral("Staging"));
+    QCOMPARE(resetSpy.count(), 0);
+    QCOMPARE(countSpy.count(), 0);
+    QCOMPARE(dataSpy.count(), 1);
+    QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 0);
+    QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 0);
 }
 
 QTEST_MAIN(SessionListModelTest)

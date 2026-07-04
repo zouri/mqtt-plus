@@ -94,12 +94,32 @@ void ScriptLibraryModel::setSource(const QVector<ScriptEntry> *scripts)
     m_scripts = scripts;
     beginResetModel();
     endResetModel();
+    m_knownCount = count();
     emit countChanged();
 }
 
 void ScriptLibraryModel::notifyRefresh()
 {
-    beginResetModel();
-    endResetModel();
-    emit countChanged();
+    const int refreshedCount = count();
+    if (refreshedCount != m_knownCount) {
+        beginResetModel();
+        endResetModel();
+        m_knownCount = refreshedCount;
+        emit countChanged();
+        return;
+    }
+
+    if (refreshedCount > 0) {
+        emit dataChanged(
+            index(0, 0),
+            index(refreshedCount - 1, 0),
+            {
+                IdRole,
+                NameRole,
+                DescriptionRole,
+                CodeRole,
+                UpdatedAtRole,
+                FilePathRole,
+            });
+    }
 }

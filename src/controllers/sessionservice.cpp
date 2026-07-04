@@ -139,24 +139,24 @@ bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
     }
 
     auto *session = &m_sessions[index];
-    auto *client = session->client;
+    auto *client = session->runtime.client;
     if (!client) {
         return false;
     }
     const bool reconnect = client->state() != QMqttClient::Disconnected;
     if (reconnect) {
-        session->disconnectRequested = true;
+        session->runtime.disconnectRequested = true;
         client->disconnectFromHost();
     }
 
     m_dependencies.configureSession(*session, config, true);
-    session->lastError.clear();
-    session->sessionRestored = false;
+    session->runtime.lastError.clear();
+    session->runtime.sessionRestored = false;
     m_dependencies.mqttController->updatePublishStatus(*session, QStringLiteral("idle"));
     const bool saved = m_dependencies.saveSessions();
 
     if (reconnect) {
-        session->disconnectRequested = false;
+        session->runtime.disconnectRequested = false;
         m_dependencies.mqttController->connectSession(*session, tr("Connecting to"));
     }
 
@@ -215,7 +215,7 @@ void SessionService::duplicateSessionAt(int index)
     SessionState session = m_dependencies.createDefaultSession(tr("%1 Copy").arg(source.name));
     m_dependencies.configureSession(session, config, false);
     session.outputPaused = source.outputPaused;
-    session.subscriptionFormats = source.subscriptionFormats;
+    session.runtime.subscriptionFormats = source.runtime.subscriptionFormats;
     session.subscriptions = source.subscriptions;
     for (auto &subscription : session.subscriptions) {
         subscription.runtimeSubscription.clear();

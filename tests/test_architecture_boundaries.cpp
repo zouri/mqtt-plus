@@ -26,6 +26,8 @@ private slots:
     void applicationCoreDelegatesSignalBindings();
     void applicationCoreRemovesWorkspaceDependencyComposition();
     void applicationObjectGraphOwnsApplicationComposition();
+    void publishStatusUsesTypedRuntimeState();
+    void sessionRuntimeStateIsSeparatedFromPersistentSessionConfig();
     void qmlUsesApplicationViewModelRootOnly();
     void translationsDoNotReferenceLegacyFacade();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
@@ -500,6 +502,60 @@ void ArchitectureBoundariesTest::applicationObjectGraphOwnsApplicationCompositio
         "ApplicationObjectGraph must not pass the deleted WorkbenchWorkspace");
     QVERIFY2(!graphSource.contains(QStringLiteral("&m_settingsWorkspace")),
         "ApplicationObjectGraph must not pass the deleted SettingsWorkspace");
+}
+
+void ArchitectureBoundariesTest::publishStatusUsesTypedRuntimeState()
+{
+    QString sessionHeader;
+    QVERIFY(readSourceFile(QStringLiteral("src/domain/session.h"), sessionHeader));
+    QVERIFY2(!sessionHeader.contains(QStringLiteral("QVariantMap publishStatus")),
+        "SessionState must not expose publish runtime state as a loose QVariantMap");
+
+    QString runtimeHeader;
+    QVERIFY(readSourceFile(QStringLiteral("src/domain/sessionruntime.h"), runtimeHeader));
+    QVERIFY2(runtimeHeader.contains(QStringLiteral("PublishStatus publishStatus")),
+        "SessionRuntimeState must store publish runtime state as a typed value, not a QVariantMap");
+    QVERIFY2(!runtimeHeader.contains(QStringLiteral("QVariantMap publishStatus")),
+        "SessionRuntimeState must not expose publish runtime state as a loose QVariantMap");
+
+    QString mqttSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/controllers/mqttsessionservice.cpp"), mqttSource));
+    QVERIFY2(!mqttSource.contains(QStringLiteral("publishStatus.insert")),
+        "MqttSessionService must update publish status through typed fields or helpers");
+    QVERIFY2(!mqttSource.contains(QStringLiteral("publishStatus.value")),
+        "MqttSessionService must read publish status through typed fields or helpers");
+}
+
+void ArchitectureBoundariesTest::sessionRuntimeStateIsSeparatedFromPersistentSessionConfig()
+{
+    QString sessionHeader;
+    QVERIFY(readSourceFile(QStringLiteral("src/domain/session.h"), sessionHeader));
+    QVERIFY2(sessionHeader.contains(QStringLiteral("SessionRuntimeState runtime")),
+        "SessionState must group runtime-only state under SessionRuntimeState");
+
+    const QStringList runtimeFields {
+        QStringLiteral("bool disconnectRequested"),
+        QStringLiteral("bool sessionRestored"),
+        QStringLiteral("QString lastError"),
+        QStringLiteral("QString brokerInfo"),
+        QStringLiteral("QHash<QString, int> subscriptionFormats"),
+        QStringLiteral("PublishStatus publishStatus"),
+        QStringLiteral("QVariantList messageRows"),
+        QStringLiteral("QVariantList logRows"),
+        QStringLiteral("qint64 oldestLoadedMessageId"),
+        QStringLiteral("qint64 oldestLoadedLogId"),
+        QStringLiteral("bool loadedAllMessageHistory"),
+        QStringLiteral("bool loadedAllLogHistory"),
+        QStringLiteral("QMqttClient *client"),
+        QStringLiteral("QTimer *connectTimeoutTimer"),
+    };
+    const int runtimeMemberIndex = sessionHeader.indexOf(QStringLiteral("SessionRuntimeState runtime"));
+    QVERIFY(runtimeMemberIndex >= 0);
+    const QString persistentSection = sessionHeader.left(runtimeMemberIndex);
+    for (const QString &field : runtimeFields) {
+        QVERIFY2(!persistentSection.contains(field),
+            qPrintable(QStringLiteral("Runtime-only field must not remain in persistent SessionState section: %1").arg(field)));
+    }
 }
 
 void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()

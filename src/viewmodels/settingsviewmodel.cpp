@@ -108,9 +108,9 @@ void clearSessionMessages(QVector<SessionState> *sessions)
     }
 
     for (auto &session : *sessions) {
-        session.messageRows.clear();
-        session.oldestLoadedMessageId = 0;
-        session.loadedAllMessageHistory = true;
+        session.runtime.messageRows.clear();
+        session.runtime.oldestLoadedMessageId = 0;
+        session.runtime.loadedAllMessageHistory = true;
     }
 }
 
@@ -121,9 +121,9 @@ void clearSessionLogs(QVector<SessionState> *sessions)
     }
 
     for (auto &session : *sessions) {
-        session.logRows.clear();
-        session.oldestLoadedLogId = 0;
-        session.loadedAllLogHistory = true;
+        session.runtime.logRows.clear();
+        session.runtime.oldestLoadedLogId = 0;
+        session.runtime.loadedAllLogHistory = true;
     }
 }
 

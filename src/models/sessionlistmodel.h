@@ -45,4 +45,5 @@ signals:
 
 private:
     const QVector<SessionState> *m_sessions = nullptr;
+    int m_knownCount = 0;
 };

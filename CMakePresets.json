@@ -9,7 +9,7 @@
     {
       "name": "qt6.11-debug",
       "displayName": "Qt 6.11 macOS Debug",
-      "generator": "Unix Makefiles",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/qt6.11-debug",
       "condition": {
         "type": "equals",

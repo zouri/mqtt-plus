@@ -28,7 +28,7 @@ QVariant SessionListModel::data(const QModelIndex &index, int role) const
     }
 
     const auto &session = m_sessions->at(index.row());
-    const auto *client = session.client;
+    const auto *client = session.runtime.client;
 
     switch (role) {
     case IdRole:
@@ -54,9 +54,9 @@ QVariant SessionListModel::data(const QModelIndex &index, int role) const
     case ProtocolVersionNameRole:
         return protocolVersionLabel(session.protocolVersion);
     case SummaryRole:
-        return session.brokerInfo.isEmpty() ? session.lastError : session.brokerInfo;
+        return session.runtime.brokerInfo.isEmpty() ? session.runtime.lastError : session.runtime.brokerInfo;
     case LastErrorRole:
-        return session.lastError;
+        return session.runtime.lastError;
     default:
         return {};
     }
@@ -90,7 +90,7 @@ QVariantMap SessionListModel::rowAt(int row) const
 
     QVariantMap map;
     const auto &session = m_sessions->at(row);
-    const auto *client = session.client;
+    const auto *client = session.runtime.client;
     map.insert(QStringLiteral("id"), session.id);
     map.insert(QStringLiteral("name"), session.name);
     map.insert(QStringLiteral("state"), sessionStateName(session, client));
@@ -102,8 +102,8 @@ QVariantMap SessionListModel::rowAt(int row) const
     map.insert(QStringLiteral("transportLabel"), transportLabel(session.transport));
     map.insert(QStringLiteral("protocolVersion"), session.protocolVersion);
     map.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session.protocolVersion));
-    map.insert(QStringLiteral("summary"), session.brokerInfo.isEmpty() ? session.lastError : session.brokerInfo);
-    map.insert(QStringLiteral("lastError"), session.lastError);
+    map.insert(QStringLiteral("summary"), session.runtime.brokerInfo.isEmpty() ? session.runtime.lastError : session.runtime.brokerInfo);
+    map.insert(QStringLiteral("lastError"), session.runtime.lastError);
     return map;
 }
 
@@ -112,12 +112,39 @@ void SessionListModel::setSource(const QVector<SessionState> *sessions)
     m_sessions = sessions;
     beginResetModel();
     endResetModel();
+    m_knownCount = count();
     emit countChanged();
 }
 
 void SessionListModel::notifyRefresh()
 {
-    beginResetModel();
-    endResetModel();
-    emit countChanged();
+    const int refreshedCount = count();
+    if (refreshedCount != m_knownCount) {
+        beginResetModel();
+        endResetModel();
+        m_knownCount = refreshedCount;
+        emit countChanged();
+        return;
+    }
+
+    if (refreshedCount > 0) {
+        emit dataChanged(
+            index(0, 0),
+            index(refreshedCount - 1, 0),
+            {
+                IdRole,
+                NameRole,
+                StateRole,
+                ConnectedRole,
+                HostRole,
+                PortRole,
+                ClientIdRole,
+                TransportRole,
+                TransportLabelRole,
+                ProtocolVersionRole,
+                ProtocolVersionNameRole,
+                SummaryRole,
+                LastErrorRole,
+            });
+    }
 }
