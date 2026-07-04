@@ -15,6 +15,7 @@ private slots:
     void ignoresSessionCommandsWithoutCore();
     void updatesPublishDraft();
     void rejectsPublishWithoutConnectedSession();
+    void forwardsSessionAndRuntimeStateNotificationsSeparately();
     void ownsSubscriptionFilterState();
     void ownsPendingSubscriptionDeleteState();
     void acceptsIntentCommandsWithoutCore();
@@ -131,6 +132,37 @@ void WorkbenchViewModelTest::rejectsPublishWithoutConnectedSession()
     QVERIFY(!viewModel.publisher()->publishDraft());
     QCOMPARE(viewModel.publisher()->topic(), QStringLiteral("sensors/temp"));
     QCOMPARE(viewModel.publisher()->payload(), QStringLiteral("23"));
+}
+
+void WorkbenchViewModelTest::forwardsSessionAndRuntimeStateNotificationsSeparately()
+{
+    std::function<void()> notifyCurrentSession;
+    std::function<void()> notifySessionRuntimeState;
+    WorkbenchViewModel::Dependencies dependencies;
+    dependencies.bindCurrentSessionChanged = [&notifyCurrentSession](QObject *, std::function<void()> handler) {
+        notifyCurrentSession = std::move(handler);
+    };
+    dependencies.bindSessionRuntimeStateChanged = [&notifySessionRuntimeState](QObject *, std::function<void()> handler) {
+        notifySessionRuntimeState = std::move(handler);
+    };
+    WorkbenchViewModel viewModel(dependencies);
+    QSignalSpy sessionSpy(&viewModel, &WorkbenchViewModel::currentSessionChanged);
+    QSignalSpy statusSpy(&viewModel, &WorkbenchViewModel::sessionStatusChanged);
+    QSignalSpy publishSpy(&viewModel, &WorkbenchViewModel::publishStatusChanged);
+
+    QVERIFY(notifyCurrentSession);
+    QVERIFY(notifySessionRuntimeState);
+    notifyCurrentSession();
+
+    QCOMPARE(sessionSpy.size(), 1);
+    QCOMPARE(statusSpy.size(), 1);
+    QCOMPARE(publishSpy.size(), 1);
+
+    notifySessionRuntimeState();
+
+    QCOMPARE(sessionSpy.size(), 1);
+    QCOMPARE(statusSpy.size(), 2);
+    QCOMPARE(publishSpy.size(), 2);
 }
 
 void WorkbenchViewModelTest::ownsSubscriptionFilterState()

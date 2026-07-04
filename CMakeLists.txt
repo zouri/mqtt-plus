@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Widgets Test LinguistTools)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Test LinguistTools)
 
 include(GNUInstallDirs)
 include(CTest)
@@ -122,7 +122,6 @@ target_link_libraries(mqtt_plus_app
         Qt6::QuickControls2
         Qt6::Sql
         Qt6::Svg
-        Qt6::Widgets
         MqttPlus::Lua
 )
 
@@ -193,7 +192,6 @@ if(BUILD_TESTING)
                 Qt6::Sql
                 Qt6::Svg
                 Qt6::Test
-                Qt6::Widgets
                 MqttPlus::Lua
         )
         add_test(NAME ${target} COMMAND ${target})
@@ -247,6 +245,16 @@ if(BUILD_TESTING)
         src/services/apputils.cpp
     )
 
+    add_mqtt_plus_qt_test(test_eventstreammodel
+        tests/test_eventstreammodel.cpp
+        src/models/eventstreammodel.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_eventhistoryservice
+        tests/test_eventhistoryservice.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
     add_mqtt_plus_qt_test(test_historystore
         tests/test_historystore.cpp
         src/services/storage/historystore.cpp
@@ -260,6 +268,18 @@ if(BUILD_TESTING)
     add_mqtt_plus_qt_test(test_scripteditorviewmodel
         tests/test_scripteditorviewmodel.cpp
         src/viewmodels/scripteditorviewmodel.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_scriptlibrarymodel
+        tests/test_scriptlibrarymodel.cpp
+        src/models/scriptlibrarymodel.cpp
+        src/services/apputils.cpp
+        src/services/storage/scriptstore.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_scripttestsamplesmodel
+        tests/test_scripttestsamplesmodel.cpp
+        src/models/scripttestsamplesmodel.cpp
     )
 
     add_mqtt_plus_qt_test(test_scriptsviewmodel

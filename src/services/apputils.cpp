@@ -188,7 +188,7 @@ QString subscriptionDisplayState(
 
 QString sessionStateName(const SessionState &session, const QMqttClient *client)
 {
-    if (session.disconnectRequested && client
+    if (session.runtime.disconnectRequested && client
         && client->state() != QMqttClient::Disconnected) {
         return QStringLiteral("disconnecting");
     }
@@ -206,19 +206,6 @@ QString sessionStateName(const SessionState &session, const QMqttClient *client)
         return QStringLiteral("connected");
     }
     return QStringLiteral("disconnected");
-}
-
-QVariantMap defaultPublishStatus()
-{
-    QVariantMap status;
-    status.insert(QStringLiteral("state"), QStringLiteral("idle"));
-    status.insert(QStringLiteral("topic"), QString());
-    status.insert(QStringLiteral("reason"), QString());
-    status.insert(QStringLiteral("messageId"), -1);
-    status.insert(QStringLiteral("qos"), 0);
-    status.insert(QStringLiteral("retain"), false);
-    status.insert(QStringLiteral("updatedAt"), QString());
-    return status;
 }
 
 void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs)

@@ -68,8 +68,8 @@ bool SubscriptionService::upsertCurrentSubscription(
         entry->lastError.clear();
     }
 
-    session->subscriptionFormats.insert(filter, format);
-    auto *client = session->client;
+    session->runtime.subscriptionFormats.insert(filter, format);
+    auto *client = session->runtime.client;
     if (client && client->state() == QMqttClient::Connected) {
         ensureSubscriptionActive(*session, *entry, true);
     }
@@ -129,23 +129,23 @@ bool SubscriptionService::updateCurrentSubscription(
         if (entry->runtimeSubscription) {
             entry->runtimeSubscription->unsubscribe();
             entry->runtimeSubscription.clear();
-        } else if (auto *client = session->client; client && client->state() == QMqttClient::Connected) {
+        } else if (auto *client = session->runtime.client; client && client->state() == QMqttClient::Connected) {
             client->unsubscribe(QMqttTopicFilter(entry->topic));
         }
 
-        session->subscriptionFormats.remove(entry->topic);
+        session->runtime.subscriptionFormats.remove(entry->topic);
         entry->topic = filter;
         entry->grantedQos = -1;
         entry->runtimeState = entry->paused ? QStringLiteral("paused") : QStringLiteral("saved");
         entry->lastError.clear();
         entry->recentMessageTimestampsMs.clear();
-        session->subscriptionFormats.insert(filter, entry->format);
+        session->runtime.subscriptionFormats.insert(filter, entry->format);
     }
 
     entry->alias = displayAlias;
     entry->scriptId = sanitizedScriptId;
 
-    auto *client = session->client;
+    auto *client = session->runtime.client;
     if (topicChanged && !entry->paused && client && client->state() == QMqttClient::Connected) {
         ensureSubscriptionActive(*session, *entry, true);
     }
@@ -180,12 +180,12 @@ void SubscriptionService::removeCurrentSubscription(const QString &topic)
 
     if (it->runtimeSubscription) {
         it->runtimeSubscription->unsubscribe();
-    } else if (auto *client = session->client; client && client->state() == QMqttClient::Connected) {
+    } else if (auto *client = session->runtime.client; client && client->state() == QMqttClient::Connected) {
         client->unsubscribe(QMqttTopicFilter(filter));
     }
 
     m_dependencies.eventController->appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Removed %1").arg(filter));
-    session->subscriptionFormats.remove(filter);
+    session->runtime.subscriptionFormats.remove(filter);
     session->subscriptions.erase(it);
     m_dependencies.saveSessions();
     if (m_dependencies.refreshSubscriptionsModel) {
@@ -211,7 +211,7 @@ void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, boo
         entry->runtimeState = QStringLiteral("paused");
         if (entry->runtimeSubscription) {
             entry->runtimeSubscription->unsubscribe();
-        } else if (auto *client = session->client; client && client->state() == QMqttClient::Connected) {
+        } else if (auto *client = session->runtime.client; client && client->state() == QMqttClient::Connected) {
             client->unsubscribe(QMqttTopicFilter(entry->topic));
         }
         m_dependencies.eventController->appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Paused %1").arg(entry->topic));
@@ -221,7 +221,7 @@ void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, boo
             entry->runtimeSubscription->unsubscribe();
             entry->runtimeSubscription.clear();
         }
-        auto *client = session->client;
+        auto *client = session->runtime.client;
         if (client && client->state() == QMqttClient::Connected) {
             ensureSubscriptionActive(*session, *entry, true);
         } else {
@@ -305,7 +305,7 @@ void SubscriptionService::resetRuntimeSubscriptions(SessionState &session)
 
 void SubscriptionService::ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents)
 {
-    auto *client = session.client;
+    auto *client = session.runtime.client;
     if (entry.paused || !client || client->state() != QMqttClient::Connected) {
         return;
     }

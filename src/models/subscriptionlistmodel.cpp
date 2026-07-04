@@ -133,28 +133,54 @@ void SubscriptionListModel::updateTopicFps(qint64 nowMs)
 void SubscriptionListModel::rebuildCache()
 {
     const bool countWillChange = !m_subs || m_fpsCache.size() != static_cast<qsizetype>(m_subs->size());
-    beginResetModel();
+    const auto rebuildRows = [this]() {
+        if (!m_subs) {
+            m_fpsCache.clear();
+            m_scriptNameCache.clear();
+            return;
+        }
 
-    if (m_subs) {
-        const qsizetype n = m_subs->size();
+        const qsizetype rowCount = m_subs->size();
         const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-        m_fpsCache.resize(n);
+        m_fpsCache.resize(rowCount);
 
-        m_scriptNameCache.resize(n);
-        for (qsizetype i = 0; i < n; ++i) {
+        m_scriptNameCache.resize(rowCount);
+        for (qsizetype i = 0; i < rowCount; ++i) {
             m_fpsCache[i] = static_cast<qreal>(recentMessageCount(m_subs->at(i).recentMessageTimestampsMs, nowMs));
             m_scriptNameCache[i] = m_scriptNameLookup
                 ? m_scriptNameLookup(m_subs->at(i).scriptId)
                 : QString();
         }
-    } else {
-        m_fpsCache.clear();
-        m_scriptNameCache.clear();
+    };
+
+    if (countWillChange) {
+        beginResetModel();
+        rebuildRows();
+        endResetModel();
+        emit countChanged();
+        return;
     }
 
-    endResetModel();
-    if (countWillChange) {
-        emit countChanged();
+    rebuildRows();
+    if (m_subs && !m_subs->isEmpty()) {
+        emit dataChanged(
+            index(0, 0),
+            index(static_cast<int>(m_subs->size() - 1), 0),
+            {
+                TopicRole,
+                AliasRole,
+                DisplayNameRole,
+                RequestedQosRole,
+                GrantedQosRole,
+                TopicFpsRole,
+                FormatRole,
+                FormatNameRole,
+                ScriptIdRole,
+                ScriptNameRole,
+                PausedRole,
+                StateRole,
+                LastErrorRole,
+            });
     }
 }
 

@@ -1,6 +1,5 @@
 #include "app/applicationsessionrepository.h"
 
-#include "services/apputils.h"
 #include "app/applicationsessionconfigurator.h"
 #include "app/applicationsessionruntime.h"
 #include "controllers/scriptservice.h"
@@ -9,8 +8,6 @@
 
 #include <QCoreApplication>
 #include <QSettings>
-
-using namespace AppUtils;
 
 ApplicationSessionRepository::ApplicationSessionRepository(
     QSettings &settings,
@@ -38,7 +35,6 @@ bool ApplicationSessionRepository::loadSessions(QString &errorMessage)
 
         m_sessionRuntime.initialize(&session);
         ApplicationSessionConfigurator::applyConfig(session, loaded.config, false);
-        session.publishStatus = defaultPublishStatus();
         m_sessionRuntime.bindSignals(&session);
         m_sessionController.appendSession(session);
     }

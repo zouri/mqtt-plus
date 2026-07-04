@@ -9,7 +9,7 @@ using namespace AppUtils;
 
 void ApplicationSessionConfigurator::applyConfig(SessionState &session, const QVariantMap &config, bool keepNameFallback)
 {
-    auto *client = session.client;
+    auto *client = session.runtime.client;
     if (!client) {
         return;
     }
@@ -65,8 +65,8 @@ void ApplicationSessionConfigurator::applyConfig(SessionState &session, const QV
     client->setKeepAlive(SessionConfig::sanitizeKeepAlive(
         config.value(QStringLiteral("keepAliveSeconds"), SessionConfig::kDefaultKeepAlive)));
     client->setAutoKeepAlive(true);
-    if (session.connectTimeoutTimer) {
-        session.connectTimeoutTimer->setInterval(session.connectTimeoutSeconds * 1000);
+    if (session.runtime.connectTimeoutTimer) {
+        session.runtime.connectTimeoutTimer->setInterval(session.connectTimeoutSeconds * 1000);
     }
 
     QMqttConnectionProperties connectionProperties;

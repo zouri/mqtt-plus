@@ -5,7 +5,9 @@
 #include "services/scripting/luarunner.h"
 
 #include <QObject>
+#include <QSet>
 #include <QTimer>
+#include <QVariantList>
 #include <QVariantMap>
 
 #include <functional>
@@ -71,10 +73,16 @@ signals:
     void logAppended(const QVariantMap &row);
 
 private:
+    void flushPendingVisibleMessageRows();
     void reportMessageStorageError(SessionState &session, const QString &message);
     void scheduleMessageHistoryFlush();
+    void scheduleVisibleMessageRowsFlush();
 
     Dependencies m_dependencies;
     QTimer m_messageHistoryFlushTimer;
+    QTimer m_visibleMessageRowsFlushTimer;
+    QVariantList m_pendingVisibleMessageRows;
+    QString m_pendingVisibleMessageSessionId;
+    QSet<QString> m_reportedPayloadStorageStates;
     QString m_lastMessageStorageError;
 };

@@ -39,4 +39,5 @@ signals:
 
 private:
     const QVector<ScriptEntry> *m_scripts = nullptr;
+    int m_knownCount = 0;
 };
