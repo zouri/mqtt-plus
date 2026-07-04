@@ -1,7 +1,7 @@
 #include "mqttsessionservice.h"
 
-#include "controllers/eventhistoryservice.h"
-#include "controllers/subscriptionservice.h"
+#include "usecases/eventhistoryservice.h"
+#include "usecases/subscriptionservice.h"
 #include "services/apputils.h"
 #include "domain/sessionconfig.h"
 #include "services/payload/payloadcodec.h"

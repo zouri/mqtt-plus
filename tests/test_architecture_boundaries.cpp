@@ -10,9 +10,9 @@ class ArchitectureBoundariesTest : public QObject
     Q_OBJECT
 
 private slots:
-    void controllersDoNotDependOnApplicationCore();
-    void controllerHeadersUseDedicatedDependencies();
-    void applicationCoreDoesNotFriendControllers();
+    void usecasesDoNotDependOnApplicationCore();
+    void usecaseHeadersUseDedicatedDependencies();
+    void applicationCoreDoesNotFriendUsecases();
     void applicationCoreDoesNotImplementControllerContexts();
     void applicationCoreHeaderKeepsOnlyCompositionBoundary();
     void applicationCoreDoesNotOwnPlatformActions();
@@ -65,65 +65,65 @@ bool ArchitectureBoundariesTest::readSourceFile(const QString &relativePath, QSt
     return true;
 }
 
-void ArchitectureBoundariesTest::controllersDoNotDependOnApplicationCore()
+void ArchitectureBoundariesTest::usecasesDoNotDependOnApplicationCore()
 {
-    const QStringList controllerFiles {
-        QStringLiteral("src/controllers/eventhistoryservice.h"),
-        QStringLiteral("src/controllers/eventhistoryservice.cpp"),
-        QStringLiteral("src/controllers/mqttsessionservice.h"),
-        QStringLiteral("src/controllers/mqttsessionservice.cpp"),
-        QStringLiteral("src/controllers/sessionservice.h"),
-        QStringLiteral("src/controllers/sessionservice.cpp"),
-        QStringLiteral("src/controllers/scriptservice.h"),
-        QStringLiteral("src/controllers/scriptservice.cpp"),
-        QStringLiteral("src/controllers/subscriptionservice.h"),
-        QStringLiteral("src/controllers/subscriptionservice.cpp"),
+    const QStringList usecaseFiles {
+        QStringLiteral("src/usecases/eventhistoryservice.h"),
+        QStringLiteral("src/usecases/eventhistoryservice.cpp"),
+        QStringLiteral("src/usecases/mqttsessionservice.h"),
+        QStringLiteral("src/usecases/mqttsessionservice.cpp"),
+        QStringLiteral("src/usecases/sessionservice.h"),
+        QStringLiteral("src/usecases/sessionservice.cpp"),
+        QStringLiteral("src/usecases/scriptservice.h"),
+        QStringLiteral("src/usecases/scriptservice.cpp"),
+        QStringLiteral("src/usecases/subscriptionservice.h"),
+        QStringLiteral("src/usecases/subscriptionservice.cpp"),
     };
 
-    for (const QString &header : controllerFiles) {
+    for (const QString &header : usecaseFiles) {
         QString source;
         QVERIFY2(readSourceFile(header, source), qPrintable(QStringLiteral("Cannot read %1").arg(header)));
         QVERIFY2(!source.contains(QStringLiteral("ApplicationCore")),
-            qPrintable(QStringLiteral("%1 must depend on a narrow controller context, not ApplicationCore").arg(header)));
+            qPrintable(QStringLiteral("%1 must depend on narrow use-case dependencies, not ApplicationCore").arg(header)));
         QVERIFY2(!source.contains(QStringLiteral("#include \"app/")),
             qPrintable(QStringLiteral("%1 must not depend on app-layer headers").arg(header)));
     }
-    const QString themeHeaderPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/themecontroller.h");
+    const QString themeHeaderPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/usecases/themecontroller.h");
     QVERIFY2(!QFile::exists(themeHeaderPath), "ThemeController is merged into SettingsViewModel");
-    const QString themeCppPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/themecontroller.cpp");
+    const QString themeCppPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/usecases/themecontroller.cpp");
     QVERIFY2(!QFile::exists(themeCppPath), "ThemeController is merged into SettingsViewModel");
-    const QString langHeaderPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/languagecontroller.h");
+    const QString langHeaderPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/usecases/languagecontroller.h");
     QVERIFY2(!QFile::exists(langHeaderPath), "LanguageController is merged into SettingsViewModel");
-    const QString langCppPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/languagecontroller.cpp");
+    const QString langCppPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/usecases/languagecontroller.cpp");
     QVERIFY2(!QFile::exists(langCppPath), "LanguageController is merged into SettingsViewModel");
 }
 
-void ArchitectureBoundariesTest::controllerHeadersUseDedicatedDependencies()
+void ArchitectureBoundariesTest::usecaseHeadersUseDedicatedDependencies()
 {
     const QMap<QString, QStringList> expectedTokens {
         {
-            QStringLiteral("src/controllers/eventhistoryservice.h"),
+            QStringLiteral("src/usecases/eventhistoryservice.h"),
             {
                 QStringLiteral("struct Dependencies"),
                 QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
-            QStringLiteral("src/controllers/mqttsessionservice.h"),
+            QStringLiteral("src/usecases/mqttsessionservice.h"),
             {
                 QStringLiteral("struct Dependencies"),
                 QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
-            QStringLiteral("src/controllers/sessionservice.h"),
+            QStringLiteral("src/usecases/sessionservice.h"),
             {
                 QStringLiteral("struct Dependencies"),
                 QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
             },
         },
         {
-            QStringLiteral("src/controllers/subscriptionservice.h"),
+            QStringLiteral("src/usecases/subscriptionservice.h"),
             {
                 QStringLiteral("struct Dependencies"),
                 QStringLiteral("void setDependencies(const Dependencies &dependencies)"),
@@ -136,7 +136,7 @@ void ArchitectureBoundariesTest::controllerHeadersUseDedicatedDependencies()
         QVERIFY2(readSourceFile(it.key(), source), qPrintable(QStringLiteral("Cannot read %1").arg(it.key())));
         for (const QString &token : it.value()) {
             QVERIFY2(source.contains(token),
-                qPrintable(QStringLiteral("%1 must expose dedicated controller dependencies through %2").arg(it.key(), token)));
+                qPrintable(QStringLiteral("%1 must expose dedicated use-case dependencies through %2").arg(it.key(), token)));
         }
         QVERIFY2(!source.contains(QStringLiteral("controllercontext.h")),
             qPrintable(QStringLiteral("%1 must not include deleted controller context headers").arg(it.key())));
@@ -144,14 +144,14 @@ void ArchitectureBoundariesTest::controllerHeadersUseDedicatedDependencies()
             qPrintable(QStringLiteral("%1 must not include app-layer headers").arg(it.key())));
     }
 
-    const QString aggregatePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/controllers/applicationcontext.h");
+    const QString aggregatePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/usecases/applicationcontext.h");
     QVERIFY2(!QFile::exists(aggregatePath), "Aggregate controller context header must be removed");
 
     const QStringList deletedContextPaths {
-        QStringLiteral("/src/controllers/eventcontrollercontext.h"),
-        QStringLiteral("/src/controllers/mqttcontrollercontext.h"),
-        QStringLiteral("/src/controllers/sessioncontrollercontext.h"),
-        QStringLiteral("/src/controllers/subscriptioncontrollercontext.h"),
+        QStringLiteral("/src/usecases/eventcontrollercontext.h"),
+        QStringLiteral("/src/usecases/mqttcontrollercontext.h"),
+        QStringLiteral("/src/usecases/sessioncontrollercontext.h"),
+        QStringLiteral("/src/usecases/subscriptioncontrollercontext.h"),
         QStringLiteral("/src/app/applicationcontrollercontexts.h"),
         QStringLiteral("/src/app/applicationcontrollercontexts.cpp"),
     };
@@ -161,10 +161,10 @@ void ArchitectureBoundariesTest::controllerHeadersUseDedicatedDependencies()
     }
 }
 
-void ArchitectureBoundariesTest::applicationCoreDoesNotFriendControllers()
+void ArchitectureBoundariesTest::applicationCoreDoesNotFriendUsecases()
 {
     const QString path = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcore.h");
-    QVERIFY2(!QFile::exists(path), "ApplicationCore header is deleted — controllers emit their own signals");
+    QVERIFY2(!QFile::exists(path), "ApplicationCore header is deleted — use-case services emit their own signals");
 }
 
 void ArchitectureBoundariesTest::applicationCoreDoesNotImplementControllerContexts()
@@ -175,7 +175,7 @@ void ArchitectureBoundariesTest::applicationCoreDoesNotImplementControllerContex
     QString coreStateSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreStateSource));
     QVERIFY2(!coreStateSource.contains(QStringLiteral("controllerContexts")),
-        "ApplicationCoreState must wire controllers directly without the deleted adapter bundle");
+        "ApplicationCoreState must wire use-case services directly without the deleted adapter bundle");
     QVERIFY2(!coreStateSource.contains(QStringLiteral("setCore(")),
         "SessionService must not retain the old setCore context hook");
 
@@ -519,7 +519,7 @@ void ArchitectureBoundariesTest::publishStatusUsesTypedRuntimeState()
         "SessionRuntimeState must not expose publish runtime state as a loose QVariantMap");
 
     QString mqttSource;
-    QVERIFY(readSourceFile(QStringLiteral("src/controllers/mqttsessionservice.cpp"), mqttSource));
+    QVERIFY(readSourceFile(QStringLiteral("src/usecases/mqttsessionservice.cpp"), mqttSource));
     QVERIFY2(!mqttSource.contains(QStringLiteral("publishStatus.insert")),
         "MqttSessionService must update publish status through typed fields or helpers");
     QVERIFY2(!mqttSource.contains(QStringLiteral("publishStatus.value")),
