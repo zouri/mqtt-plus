@@ -1,7 +1,7 @@
 #include "sessionservice.h"
 
-#include "controllers/mqttsessionservice.h"
-#include "controllers/subscriptionservice.h"
+#include "usecases/mqttsessionservice.h"
+#include "usecases/subscriptionservice.h"
 #include "domain/sessionconfig.h"
 #include "services/storage/sessionsettingsstore.h"
 #include "services/storage/historystore.h"

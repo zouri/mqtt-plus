@@ -2,8 +2,8 @@
 
 #include "app/applicationsessionconfigurator.h"
 #include "app/applicationsessionruntime.h"
-#include "controllers/scriptservice.h"
-#include "controllers/sessionservice.h"
+#include "usecases/scriptservice.h"
+#include "usecases/sessionservice.h"
 #include "services/storage/sessionsettingsstore.h"
 
 #include <QCoreApplication>

@@ -1,7 +1,7 @@
 #include "viewmodels/settingsviewmodel.h"
 
-#include "controllers/eventhistoryservice.h"
-#include "controllers/preferencescontroller.h"
+#include "usecases/eventhistoryservice.h"
+#include "usecases/preferencescontroller.h"
 #include "models/eventstreammodel.h"
 #include "services/apputils.h"
 #include "services/storage/historystore.h"

@@ -1,7 +1,7 @@
 #include "subscriptionservice.h"
 
-#include "controllers/eventhistoryservice.h"
-#include "controllers/scriptservice.h"
+#include "usecases/eventhistoryservice.h"
+#include "usecases/scriptservice.h"
 #include "services/apputils.h"
 #include "domain/sessionconfig.h"
 #include "models/subscriptionlistmodel.h"
