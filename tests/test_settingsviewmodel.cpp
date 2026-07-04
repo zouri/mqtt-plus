@@ -1,4 +1,4 @@
-#include "controllers/preferencescontroller.h"
+#include "usecases/preferencescontroller.h"
 #include "models/eventstreammodel.h"
 #include "viewmodels/settingsviewmodel.h"
 

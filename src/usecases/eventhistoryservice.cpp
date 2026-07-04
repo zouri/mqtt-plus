@@ -1,8 +1,8 @@
 #include "eventhistoryservice.h"
 
-#include "controllers/scriptservice.h"
-#include "controllers/subscriptionservice.h"
-#include "controllers/preferencescontroller.h"
+#include "usecases/scriptservice.h"
+#include "usecases/subscriptionservice.h"
+#include "usecases/preferencescontroller.h"
 #include "services/apputils.h"
 #include "models/eventstreammodel.h"
 #include "presentation/eventrenderer.h"
