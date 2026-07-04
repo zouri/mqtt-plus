@@ -135,15 +135,27 @@ Rectangle {
                 required property int index
                 required property string name
                 readonly property bool selected: index === control.viewModel.currentSessionIndex
+                readonly property bool highlighted: rowMouse.containsMouse || activeFocus
                 width: ListView.view.width
                 height: 42
                 radius: control.ui.innerRadius
-                color: sessionDelegate.selected ? control.ui.themePalette.selectedBg : (rowMouse.containsMouse || activeFocus ? control.ui.rowHover : control.ui.themePalette.itemBg)
-                border.color: sessionDelegate.selected ? Qt.rgba(control.ui.themePalette.selectedBorder.r, control.ui.themePalette.selectedBorder.g, control.ui.themePalette.selectedBorder.b, 0.36) : control.ui.themePalette.itemBorder
+                color: sessionDelegate.selected ? control.ui.themePalette.selectedBg : (sessionDelegate.highlighted ? control.ui.themePalette.selectedBg : control.ui.themePalette.itemBg)
+                border.color: sessionDelegate.selected
+                              ? Qt.rgba(control.ui.themePalette.selectedBorder.r, control.ui.themePalette.selectedBorder.g, control.ui.themePalette.selectedBorder.b, 0.36)
+                              : (sessionDelegate.highlighted
+                                 ? Qt.rgba(control.ui.themePalette.selectedBorder.r, control.ui.themePalette.selectedBorder.g, control.ui.themePalette.selectedBorder.b, 0.26)
+                                 : control.ui.themePalette.itemBorder)
                 border.width: 1
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: 100
+                        easing.type: Easing.OutCubic
+                    }
+                }
 
                 function openSessionContextMenu() {
                     control.openSessionContextMenu(sessionDelegate.index);

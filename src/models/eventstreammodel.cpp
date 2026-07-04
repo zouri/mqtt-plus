@@ -51,13 +51,35 @@ QVariantMap EventStreamModel::rowAt(int row) const
 
 void EventStreamModel::setRows(const QVariantList &rows)
 {
+    if (m_rows == rows) {
+        return;
+    }
+
     const bool countWillChange = rows.size() != m_rows.size();
+    if (!countWillChange) {
+        m_rows = rows;
+        if (!m_rows.isEmpty()) {
+            emit dataChanged(index(0, 0),
+                             index(static_cast<int>(m_rows.size() - 1), 0),
+                             {IdRole,
+                              KindRole,
+                              TimestampRole,
+                              TitleRole,
+                              PayloadRole,
+                              PayloadFormatRole,
+                              PayloadSizeRole,
+                              TopicRole,
+                              TestPayloadRole,
+                              TestFormatRole,
+                              TestFormatNameRole});
+        }
+        return;
+    }
+
     beginResetModel();
     m_rows = rows;
     endResetModel();
-    if (countWillChange) {
-        emit countChanged();
-    }
+    emit countChanged();
 }
 
 void EventStreamModel::appendRow(const QVariantMap &row)
@@ -65,6 +87,22 @@ void EventStreamModel::appendRow(const QVariantMap &row)
     const int insertRow = m_rows.size();
     beginInsertRows(QModelIndex(), insertRow, insertRow);
     m_rows.append(row);
+    endInsertRows();
+    emit countChanged();
+}
+
+void EventStreamModel::appendRows(const QVariantList &rows)
+{
+    if (rows.isEmpty()) {
+        return;
+    }
+
+    const int firstRow = m_rows.size();
+    const int lastRow = firstRow + rows.size() - 1;
+    beginInsertRows(QModelIndex(), firstRow, lastRow);
+    for (const QVariant &row : rows) {
+        m_rows.append(row);
+    }
     endInsertRows();
     emit countChanged();
 }

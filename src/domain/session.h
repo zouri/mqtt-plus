@@ -1,15 +1,10 @@
 #pragma once
 
+#include "sessionruntime.h"
 #include "subscription.h"
 
-#include <QHash>
 #include <QString>
-#include <QTimer>
-#include <QVariantList>
-#include <QVariantMap>
 #include <QVector>
-
-#include <QMqttClient>
 
 struct SessionState {
     QString id;
@@ -32,19 +27,6 @@ struct SessionState {
     QString authenticationMethod;
     QString authenticationData;
     bool outputPaused = false;
-    bool disconnectRequested = false;
-    bool sessionRestored = false;
-    QString lastError;
-    QString brokerInfo;
     QVector<SubscriptionEntry> subscriptions;
-    QHash<QString, int> subscriptionFormats;
-    QVariantMap publishStatus;
-    QVariantList messageRows;
-    QVariantList logRows;
-    qint64 oldestLoadedMessageId = 0;
-    qint64 oldestLoadedLogId = 0;
-    bool loadedAllMessageHistory = false;
-    bool loadedAllLogHistory = false;
-    QMqttClient *client = nullptr;
-    QTimer *connectTimeoutTimer = nullptr;
+    SessionRuntimeState runtime;
 };

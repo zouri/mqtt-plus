@@ -168,8 +168,10 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
     const PayloadFormat format = PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
     QString parseError;
     QString renderedPayload;
+    QString decodedPayload;
     if (payloadState == QStringLiteral("full") && (!payloadBytes.isEmpty() || payloadPreview.isEmpty())) {
-        renderedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, parseError);
+        decodedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, parseError);
+        renderedPayload = decodedPayload;
         if (!parseError.isEmpty()) {
             renderedPayload = QStringLiteral("%1\n%2").arg(renderedPayload, payloadPreview);
         }
@@ -213,7 +215,7 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
     rendered.insert(
         QStringLiteral("testPayload"),
         payloadState == QStringLiteral("full")
-            ? PayloadCodec::decodeForDisplay(format, payloadBytes, parseError)
+            ? decodedPayload
             : payloadPreview);
     rendered.insert(QStringLiteral("testFormat"), static_cast<int>(format));
     rendered.insert(QStringLiteral("testFormatName"), PayloadCodec::formatName(format));

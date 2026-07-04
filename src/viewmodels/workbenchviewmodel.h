@@ -32,8 +32,8 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(SubscriptionEditorViewModel* subscriptionEditor READ subscriptionEditor CONSTANT)
     Q_PROPERTY(int currentSessionIndex READ currentSessionIndex WRITE setCurrentSessionIndex NOTIFY currentSessionIndexChanged)
     Q_PROPERTY(QVariantMap currentSession READ currentSession NOTIFY currentSessionChanged)
-    Q_PROPERTY(QVariantMap sessionStatus READ sessionStatus NOTIFY currentSessionChanged)
-    Q_PROPERTY(QVariantMap publishStatus READ publishStatus NOTIFY currentSessionChanged)
+    Q_PROPERTY(QVariantMap sessionStatus READ sessionStatus NOTIFY sessionStatusChanged)
+    Q_PROPERTY(QVariantMap publishStatus READ publishStatus NOTIFY publishStatusChanged)
     Q_PROPERTY(QStringList payloadFormats READ payloadFormats CONSTANT)
     Q_PROPERTY(QString pendingSubscriptionDeleteTopic READ pendingSubscriptionDeleteTopic NOTIFY pendingSubscriptionDeleteChanged)
     Q_PROPERTY(QString pendingSubscriptionDeleteDisplayName READ pendingSubscriptionDeleteDisplayName NOTIFY pendingSubscriptionDeleteChanged)
@@ -42,6 +42,7 @@ public:
     struct Dependencies {
         std::function<void(QObject *, std::function<void()>)> bindCurrentSessionIndexChanged;
         std::function<void(QObject *, std::function<void()>)> bindCurrentSessionChanged;
+        std::function<void(QObject *, std::function<void()>)> bindSessionRuntimeStateChanged;
         std::function<void(QObject *, std::function<void()>)> bindMessageStreamChanged;
         std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindMessageStreamRowAppended;
         std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
@@ -96,6 +97,8 @@ public:
 signals:
     void currentSessionIndexChanged();
     void currentSessionChanged();
+    void sessionStatusChanged();
+    void publishStatusChanged();
     void messageStreamChanged();
     void messageStreamRowAppended();
     void pendingSubscriptionDeleteChanged();

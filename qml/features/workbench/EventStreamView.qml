@@ -19,6 +19,7 @@ Item {
     property bool showOutputControls: false
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
+    property bool followScrollPending: false
 
     signal publishDraftRevealRequested()
 
@@ -33,24 +34,27 @@ Item {
             eventList.unreadCount = 0
         }
 
-        Qt.callLater(function() {
-            if (eventList) {
-                eventList.scrollToBottom()
-            }
-        })
+        root.requestFollowScroll()
     }
 
     function noteStreamRowAppended() {
         const shouldStickToBottom = !eventList || eventList.shouldFollowOutput
 
         if (shouldStickToBottom && eventList) {
-            Qt.callLater(function() {
-                if (eventList) {
-                    eventList.scrollToBottom()
-                }
-            })
+            root.requestFollowScroll()
         } else if (eventList) {
             eventList.unreadCount += 1
+        }
+    }
+
+    function requestFollowScroll() {
+        if (!eventList) {
+            return
+        }
+
+        root.followScrollPending = true
+        if (!followScrollTimer.running) {
+            followScrollTimer.start()
         }
     }
 
@@ -73,6 +77,19 @@ Item {
             eventList.contentY = previousContentY + eventList.contentHeight - previousContentHeight
             root.loadingOlderEvents = false
         })
+    }
+
+    Timer {
+        id: followScrollTimer
+        interval: 16
+        repeat: false
+        onTriggered: {
+            if (!root.followScrollPending || !eventList) {
+                return
+            }
+            root.followScrollPending = false
+            eventList.scrollToBottom()
+        }
     }
 
     ColumnLayout {

@@ -88,10 +88,30 @@ void ScriptTestSamplesModel::rebuild(int newCount)
     }
 
     const bool countWillChange = samples.size() != m_sampleRows.size();
+    if (samples == m_sampleRows) {
+        return;
+    }
+
+    if (!countWillChange) {
+        m_sampleRows = std::move(samples);
+        if (!m_sampleRows.isEmpty()) {
+            emit dataChanged(
+                index(0, 0),
+                index(m_sampleRows.size() - 1, 0),
+                {
+                    TopicRole,
+                    PayloadRole,
+                    FormatRole,
+                    FormatNameRole,
+                    TimestampRole,
+                    PayloadSizeRole,
+                });
+        }
+        return;
+    }
+
     beginResetModel();
     m_sampleRows = std::move(samples);
     endResetModel();
-    if (countWillChange) {
-        emit countChanged();
-    }
+    emit countChanged();
 }

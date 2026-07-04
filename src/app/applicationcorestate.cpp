@@ -16,7 +16,7 @@ void reportStorageError(ApplicationCoreState &state, const QString &message)
     }
 
     if (auto *session = state.sessionController.currentSession()) {
-        session->lastError = message;
+        session->runtime.lastError = message;
         state.eventController.appendEvent(*session, QStringLiteral("Storage"), message);
         state.sessionsModel.notifyRefresh();
         state.sessionController.currentSessionChanged();
@@ -64,14 +64,14 @@ void refreshSubscriptionsModel(ApplicationCoreState &state)
 void refreshScriptTestSamplesModel(ApplicationCoreState &state)
 {
     auto *session = currentSession(state);
-    state.scriptTestSamplesModel.setSource(session ? &session->messageRows : nullptr);
+    state.scriptTestSamplesModel.setSource(session ? &session->runtime.messageRows : nullptr);
 }
 
 void refreshEventStreamModels(ApplicationCoreState &state)
 {
     if (auto *session = currentSession(state)) {
-        state.messagesModel.setRows(session->messageRows);
-        state.logsModel.setRows(session->logRows);
+        state.messagesModel.setRows(session->runtime.messageRows);
+        state.logsModel.setRows(session->runtime.logRows);
     }
 }
 

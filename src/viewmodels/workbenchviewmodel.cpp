@@ -4,11 +4,15 @@
 #include "controllers/mqttsessionservice.h"
 #include "controllers/sessionservice.h"
 #include "controllers/subscriptionservice.h"
+#include "domain/publishstatus.h"
 #include "domain/sessionconfig.h"
 #include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
 
 #include <QCoreApplication>
+
+#include <memory>
+#include <utility>
 
 using namespace AppUtils;
 
@@ -17,13 +21,21 @@ namespace {
 PublishDraftViewModel::Dependencies publishDraftDependencies(const WorkbenchViewModel::Dependencies &dependencies)
 {
     return {
-        dependencies.bindCurrentSessionChanged,
+        [dependencies](QObject *context, std::function<void()> handler) {
+            auto shared = std::make_shared<std::function<void()>>(std::move(handler));
+            if (dependencies.bindCurrentSessionChanged) {
+                dependencies.bindCurrentSessionChanged(context, [shared]() { (*shared)(); });
+            }
+            if (dependencies.bindSessionRuntimeStateChanged) {
+                dependencies.bindSessionRuntimeStateChanged(context, [shared]() { (*shared)(); });
+            }
+        },
         [dependencies]() {
             const auto *session = dependencies.sessionController ? dependencies.sessionController->currentSession() : nullptr;
             if (!session) {
                 return false;
             }
-            return sessionStateName(*session, session->client) == QStringLiteral("connected");
+            return sessionStateName(*session, session->runtime.client) == QStringLiteral("connected");
         },
         [dependencies](const QString &topic, const QString &payload, int format, int qos, bool retain) {
             if (dependencies.mqttController) {
@@ -53,6 +65,14 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
     if (m_dependencies.bindCurrentSessionChanged) {
         m_dependencies.bindCurrentSessionChanged(this, [this]() {
             emit currentSessionChanged();
+            emit sessionStatusChanged();
+            emit publishStatusChanged();
+        });
+    }
+    if (m_dependencies.bindSessionRuntimeStateChanged) {
+        m_dependencies.bindSessionRuntimeStateChanged(this, [this]() {
+            emit sessionStatusChanged();
+            emit publishStatusChanged();
         });
     }
     if (m_dependencies.bindMessageStreamChanged) {
@@ -92,7 +112,7 @@ QVariantMap WorkbenchViewModel::currentSession() const
     }
 
     QVariantMap row;
-    const auto *client = session->client;
+    const auto *client = session->runtime.client;
     row.insert(QStringLiteral("id"), session->id);
     row.insert(QStringLiteral("name"), session->name);
     row.insert(QStringLiteral("host"), client ? client->hostname() : QString());
@@ -117,7 +137,7 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
         return {};
     }
 
-    const auto *client = session->client;
+    const auto *client = session->runtime.client;
     const QString state = sessionStateName(*session, client);
     QString summary;
     if (state == QStringLiteral("connected")) {
@@ -126,7 +146,7 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
                       .arg(client ? client->hostname() : QString())
                       .arg(client ? client->port() : SessionConfig::kDefaultPort)
                       .arg(transportLabel(session->transport));
-        if (session->sessionRestored) {
+        if (session->runtime.sessionRestored) {
             summary.append(QCoreApplication::translate("WorkbenchViewModel", " • session restored"));
         }
     } else if (state == QStringLiteral("connecting")) {
@@ -136,8 +156,8 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
                       .arg(transportLabel(session->transport));
     } else if (state == QStringLiteral("disconnecting")) {
         summary = QCoreApplication::translate("WorkbenchViewModel", "Disconnecting from broker");
-    } else if (!session->lastError.isEmpty()) {
-        summary = session->lastError;
+    } else if (!session->runtime.lastError.isEmpty()) {
+        summary = session->runtime.lastError;
     } else {
         summary = QCoreApplication::translate("WorkbenchViewModel", "Disconnected");
     }
@@ -146,10 +166,10 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
     row.insert(QStringLiteral("state"), state);
     row.insert(QStringLiteral("connected"), state == QStringLiteral("connected"));
     row.insert(QStringLiteral("summary"), summary);
-    row.insert(QStringLiteral("lastError"), session->lastError);
-    row.insert(QStringLiteral("hasError"), !session->lastError.isEmpty());
-    row.insert(QStringLiteral("brokerInfo"), session->brokerInfo);
-    row.insert(QStringLiteral("sessionRestored"), session->sessionRestored);
+    row.insert(QStringLiteral("lastError"), session->runtime.lastError);
+    row.insert(QStringLiteral("hasError"), !session->runtime.lastError.isEmpty());
+    row.insert(QStringLiteral("brokerInfo"), session->runtime.brokerInfo);
+    row.insert(QStringLiteral("sessionRestored"), session->runtime.sessionRestored);
     row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
     row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
     return row;
@@ -158,7 +178,7 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
 QVariantMap WorkbenchViewModel::publishStatus() const
 {
     const auto *session = m_dependencies.sessionController ? m_dependencies.sessionController->currentSession() : nullptr;
-    QVariantMap status = session ? session->publishStatus : defaultPublishStatus();
+    QVariantMap status = session ? session->runtime.publishStatus.toVariantMap() : PublishStatus {}.toVariantMap();
     status.insert(
         QStringLiteral("updatedAt"),
         displayTimestamp(status.value(QStringLiteral("updatedAt")).toString()));

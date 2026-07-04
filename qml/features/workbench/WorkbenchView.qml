@@ -156,7 +156,7 @@ Item {
             root.openSessionEditorForEdit(index);
         }
 
-        function onCurrentSessionChanged() {
+        function onSessionStatusChanged() {
             root.handleConnectionStateChanged();
         }
 

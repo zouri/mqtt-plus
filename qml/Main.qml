@@ -30,36 +30,32 @@ ApplicationWindow {
     topPadding: 0
 
     function clampWindowWidth(value) {
-        const availableWidth = Screen.desktopAvailableWidth > 0
-                             ? Screen.desktopAvailableWidth
-                             : root.defaultWindowWidth
-        return Math.max(root.minimumWidth, Math.min(Math.round(value), availableWidth))
+        const availableWidth = Screen.desktopAvailableWidth > 0 ? Screen.desktopAvailableWidth : root.defaultWindowWidth;
+        return Math.max(root.minimumWidth, Math.min(Math.round(value), availableWidth));
     }
 
     function clampWindowHeight(value) {
-        const availableHeight = Screen.desktopAvailableHeight > 0
-                              ? Screen.desktopAvailableHeight
-                              : root.defaultWindowHeight
-        return Math.max(root.minimumHeight, Math.min(Math.round(value), availableHeight))
+        const availableHeight = Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : root.defaultWindowHeight;
+        return Math.max(root.minimumHeight, Math.min(Math.round(value), availableHeight));
     }
 
     function persistWindowGeometry() {
         if (!root.windowGeometryReady || root.visibility !== Window.Windowed) {
-            return
+            return;
         }
 
-        root.settingsViewModel.saveWindowGeometry(root.width, root.height)
+        root.settingsViewModel.saveWindowGeometry(root.width, root.height);
     }
 
     function restoreWindowGeometry() {
-        root.width = root.clampWindowWidth(root.settingsViewModel.windowWidth)
-        root.height = root.clampWindowHeight(root.settingsViewModel.windowHeight)
-        root.windowGeometryReady = true
+        root.width = root.clampWindowWidth(root.settingsViewModel.windowWidth);
+        root.height = root.clampWindowHeight(root.settingsViewModel.windowHeight);
+        root.windowGeometryReady = true;
 
         if (root.settingsViewModel.windowMaximized) {
-            Qt.callLater(function() {
-                root.showMaximized()
-            })
+            Qt.callLater(function () {
+                root.showMaximized();
+            });
         }
     }
 
@@ -68,18 +64,18 @@ ApplicationWindow {
     onHeightChanged: windowGeometrySaveTimer.restart()
     onVisibilityChanged: {
         if (!root.windowGeometryReady) {
-            return
+            return;
         }
 
-        root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized
+        root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized;
         if (root.visibility === Window.Windowed) {
-            windowGeometrySaveTimer.restart()
+            windowGeometrySaveTimer.restart();
         }
     }
-    onClosing: function() {
-        windowGeometrySaveTimer.stop()
-        root.persistWindowGeometry()
-        root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized
+    onClosing: function () {
+        windowGeometrySaveTimer.stop();
+        root.persistWindowGeometry();
+        root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized;
     }
 
     Timer {
@@ -208,18 +204,13 @@ ApplicationWindow {
                         toolTipText: qsTr("Settings")
                         onClicked: root.navigationViewModel.currentView = "settings"
                     }
-
                 }
             }
 
             StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                currentIndex: root.currentAppView === "logs"
-                              ? 1
-                              : (root.currentAppView === "scripts"
-                                 ? 2
-                                 : (root.currentAppView === "settings" ? 3 : 0))
+                currentIndex: root.currentAppView === "logs" ? 1 : (root.currentAppView === "scripts" ? 2 : (root.currentAppView === "settings" ? 3 : 0))
 
                 WorkbenchView {
                     id: workbenchPage
@@ -249,5 +240,4 @@ ApplicationWindow {
             }
         }
     }
-
 }

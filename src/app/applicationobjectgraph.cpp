@@ -10,14 +10,18 @@ namespace {
 
 WorkbenchViewModel::Dependencies workbenchDependencies(ApplicationCoreState &state)
 {
+    // Keep QML bound to ViewModels only. Controllers emit domain/runtime
+    // signals, this object graph adapts them to ViewModel notifications, and
+    // QML consumes those through Q_PROPERTY bindings or Connections blocks.
     return {
         [&state](QObject *context, std::function<void()> handler) {
             QObject::connect(&state.sessionController, &SessionService::currentSessionIndexChanged, context, std::move(handler));
         },
         [&state](QObject *context, std::function<void()> handler) {
-            auto shared = std::make_shared<std::function<void()>>(std::move(handler));
-            QObject::connect(&state.sessionController, &SessionService::currentSessionChanged, context, [shared]() { (*shared)(); });
-            QObject::connect(&state.mqttController, &MqttSessionService::sessionStateChanged, context, [shared]() { (*shared)(); });
+            QObject::connect(&state.sessionController, &SessionService::currentSessionChanged, context, std::move(handler));
+        },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.mqttController, &MqttSessionService::sessionStateChanged, context, std::move(handler));
         },
         [&state](QObject *context, std::function<void()> handler) {
             QObject::connect(&state.eventController, &EventHistoryService::messageStreamChanged, context, std::move(handler));
@@ -133,7 +137,7 @@ SettingsViewModel::Dependencies settingsDependencies(ApplicationCoreState &state
         [&state]() {
             state.scriptTestSamplesModel.setSource(
                 state.sessionController.currentSession()
-                    ? &state.sessionController.currentSession()->messageRows
+                    ? &state.sessionController.currentSession()->runtime.messageRows
                     : nullptr);
         },
         [&state]() {

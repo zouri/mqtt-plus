@@ -84,7 +84,7 @@ namespace SessionSettingsStore {
 
 QVariantMap configFromState(const SessionState &session)
 {
-    const auto *client = session.client;
+    const auto *client = session.runtime.client;
     QVariantMap config = baseSessionConfig(
         session.name,
         client ? client->hostname() : QString(),
@@ -138,7 +138,7 @@ LoadedSession readSession(
         entry.scriptId = scriptExists(scriptId) ? scriptId : QString();
         entry.paused = row.value(QStringLiteral("paused"), false).toBool();
         session.subscriptions.append(entry);
-        session.subscriptionFormats.insert(topic, entry.format);
+        session.runtime.subscriptionFormats.insert(topic, entry.format);
     }
 
     loaded.config = baseSessionConfig(
@@ -176,7 +176,7 @@ bool writeSessions(QSettings &settings, const QVector<SessionState> &sessions, Q
     settings.beginWriteArray(QStringLiteral("sessions"), sessions.size());
     for (int i = 0; i < sessions.size(); ++i) {
         const auto &session = sessions.at(i);
-        const QMqttClient *client = session.client;
+        const QMqttClient *client = session.runtime.client;
         settings.setArrayIndex(i);
         settings.setValue(QStringLiteral("id"), session.id);
         settings.setValue(QStringLiteral("name"), session.name);

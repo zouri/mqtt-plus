@@ -57,9 +57,19 @@ void SubscriptionListModelTest::refreshRebuildsScriptNameCache()
     model.setSource(sessions.currentSession());
     QCOMPARE(model.rowAt(0).value(QStringLiteral("scriptName")).toString(), QStringLiteral("Decoder"));
 
+    QSignalSpy dataSpy(&model, &SubscriptionListModel::dataChanged);
+    QSignalSpy resetSpy(&model, &SubscriptionListModel::modelReset);
+    QSignalSpy countSpy(&model, &SubscriptionListModel::countChanged);
+
     scriptName = QStringLiteral("Pretty Decoder");
     model.setSource(sessions.currentSession());
+
     QCOMPARE(model.rowAt(0).value(QStringLiteral("scriptName")).toString(), QStringLiteral("Pretty Decoder"));
+    QCOMPARE(resetSpy.count(), 0);
+    QCOMPARE(countSpy.count(), 0);
+    QCOMPARE(dataSpy.count(), 1);
+    QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 0);
+    QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 0);
 }
 
 QTEST_MAIN(SubscriptionListModelTest)

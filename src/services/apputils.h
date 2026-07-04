@@ -9,7 +9,6 @@
 #include <QMqttSubscription>
 #include <QSslKey>
 #include <QString>
-#include <QVariantMap>
 #include <QVector>
 
 namespace AppUtils {
@@ -36,7 +35,6 @@ QString subscriptionDisplayState(
     const SubscriptionEntry &entry,
     const QMqttClient *client);
 QString sessionStateName(const SessionState &session, const QMqttClient *client);
-QVariantMap defaultPublishStatus();
 void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs);
 int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs);
 
