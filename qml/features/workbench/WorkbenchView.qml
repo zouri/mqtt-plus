@@ -238,7 +238,7 @@ Item {
                 }
             }
 
-            SessionActivityPanel {
+            SessionMessagePanel {
                 id: sessionActivityPanel
                 ui: root.ui
                 viewModel: root.viewModel
