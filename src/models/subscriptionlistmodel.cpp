@@ -52,6 +52,8 @@ QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
         return sub.scriptId;
     case ScriptNameRole:
         return row < m_scriptNameCache.size() ? m_scriptNameCache.at(row) : QString();
+    case ColorRole:
+        return sub.color;
     case PausedRole:
         return sub.paused;
     case StateRole:
@@ -76,6 +78,7 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
         {FormatNameRole, "formatName"},
         {ScriptIdRole, "scriptId"},
         {ScriptNameRole, "scriptName"},
+        {ColorRole, "topicColor"},
         {PausedRole, "paused"},
         {StateRole, "subscriptionState"},
         {LastErrorRole, "lastError"},
@@ -177,6 +180,7 @@ void SubscriptionListModel::rebuildCache()
                 FormatNameRole,
                 ScriptIdRole,
                 ScriptNameRole,
+                ColorRole,
                 PausedRole,
                 StateRole,
                 LastErrorRole,
@@ -199,6 +203,7 @@ QVariantMap SubscriptionListModel::rowToMap(const SubscriptionEntry &sub, int ro
     map.insert(QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(sub.format)));
     map.insert(QStringLiteral("scriptId"), sub.scriptId);
     map.insert(QStringLiteral("scriptName"), scriptName);
+    map.insert(QStringLiteral("color"), sub.color);
     map.insert(QStringLiteral("paused"), sub.paused);
     map.insert(QStringLiteral("state"), sub.runtimeState);
     map.insert(QStringLiteral("lastError"), sub.lastError);

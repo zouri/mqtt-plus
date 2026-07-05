@@ -34,6 +34,7 @@ QHash<int, QByteArray> EventStreamModel::roleNames() const
         {PayloadFormatRole, "payloadFormat"},
         {PayloadSizeRole, "payloadSize"},
         {TopicRole, "topic"},
+        {TopicColorRole, "topicColor"},
         {TestPayloadRole, "testPayload"},
         {TestFormatRole, "testFormat"},
         {TestFormatNameRole, "testFormatName"},
@@ -69,6 +70,7 @@ void EventStreamModel::setRows(const QVariantList &rows)
                               PayloadFormatRole,
                               PayloadSizeRole,
                               TopicRole,
+                              TopicColorRole,
                               TestPayloadRole,
                               TestFormatRole,
                               TestFormatNameRole});
@@ -165,6 +167,8 @@ QVariant EventStreamModel::roleValue(const QVariantMap &row, int role) const
         return row.value(QStringLiteral("payloadSize"));
     case TopicRole:
         return row.value(QStringLiteral("topic"));
+    case TopicColorRole:
+        return row.value(QStringLiteral("topicColor"), QString());
     case TestPayloadRole:
         return row.value(QStringLiteral("testPayload"), QString());
     case TestFormatRole:

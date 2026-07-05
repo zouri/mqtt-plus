@@ -8,10 +8,34 @@
 #include "services/payload/payloadcodec.h"
 
 #include <QDateTime>
+#include <QRegularExpression>
 
 #include <algorithm>
 
 using namespace AppUtils;
+
+namespace {
+QString sanitizeTopicColor(const QString &color)
+{
+    const QString trimmed = color.trimmed();
+    if (trimmed.isEmpty()) {
+        return {};
+    }
+
+    static const QRegularExpression hexColorPattern(QStringLiteral("^#[0-9A-Fa-f]{6}$"));
+    return hexColorPattern.match(trimmed).hasMatch() ? trimmed.toUpper() : QString();
+}
+
+void reloadCurrentMessagesIfNeeded(
+    EventHistoryService *eventController,
+    const SubscriptionService::Dependencies &dependencies,
+    const SessionState *session)
+{
+    if (eventController && session && dependencies.currentSessionState && session == dependencies.currentSessionState()) {
+        eventController->reloadCurrentSessionHistory();
+    }
+}
+}
 
 SubscriptionService::SubscriptionService(QObject *parent)
     : QObject(parent)
@@ -29,6 +53,7 @@ bool SubscriptionService::upsertCurrentSubscription(
     int qos,
     int format,
     const QString &scriptId,
+    const QString &color,
     const QString &alias)
 {
     auto *session = m_dependencies.currentSessionState();
@@ -49,7 +74,9 @@ bool SubscriptionService::upsertCurrentSubscription(
 
     SubscriptionEntry *entry = subscriptionByTopic(session, filter);
     const QString sanitizedScriptId = (*m_dependencies.scriptController).scriptById(scriptId) ? scriptId : QString();
+    const QString sanitizedColor = sanitizeTopicColor(color);
     const QString displayAlias = alias.trimmed();
+    bool shouldReloadMessages = false;
     if (!entry) {
         SubscriptionEntry subscription;
         subscription.topic = filter;
@@ -57,13 +84,17 @@ bool SubscriptionService::upsertCurrentSubscription(
         subscription.requestedQos = SessionConfig::sanitizeQos(qos);
         subscription.format = format;
         subscription.scriptId = sanitizedScriptId;
+        subscription.color = sanitizedColor;
         session->subscriptions.append(subscription);
         entry = &session->subscriptions.last();
+        shouldReloadMessages = !sanitizedColor.isEmpty();
     } else {
+        shouldReloadMessages = entry->color != sanitizedColor;
         entry->alias = displayAlias;
         entry->requestedQos = SessionConfig::sanitizeQos(qos);
         entry->format = format;
         entry->scriptId = sanitizedScriptId;
+        entry->color = sanitizedColor;
         entry->paused = false;
         entry->lastError.clear();
     }
@@ -79,6 +110,9 @@ bool SubscriptionService::upsertCurrentSubscription(
         m_dependencies.refreshSubscriptionsModel();
     }
     emit subscriptionsChanged();
+    if (shouldReloadMessages) {
+        reloadCurrentMessagesIfNeeded(m_dependencies.eventController, m_dependencies, session);
+    }
     return saved;
 }
 
@@ -86,7 +120,8 @@ bool SubscriptionService::updateCurrentSubscription(
     const QString &topic,
     const QString &newTopic,
     const QString &alias,
-    const QString &scriptId)
+    const QString &scriptId,
+    const QString &color)
 {
     auto *session = m_dependencies.currentSessionState();
     if (!session) {
@@ -119,9 +154,14 @@ bool SubscriptionService::updateCurrentSubscription(
     }
 
     const QString sanitizedScriptId = (*m_dependencies.scriptController).scriptById(scriptId) ? scriptId : QString();
+    const QString sanitizedColor = sanitizeTopicColor(color);
     const QString displayAlias = alias.trimmed();
     const bool topicChanged = entry->topic != filter;
-    if (!topicChanged && entry->alias == displayAlias && entry->scriptId == sanitizedScriptId) {
+    const bool colorChanged = entry->color != sanitizedColor;
+    if (!topicChanged
+        && !colorChanged
+        && entry->alias == displayAlias
+        && entry->scriptId == sanitizedScriptId) {
         return true;
     }
 
@@ -144,6 +184,7 @@ bool SubscriptionService::updateCurrentSubscription(
 
     entry->alias = displayAlias;
     entry->scriptId = sanitizedScriptId;
+    entry->color = sanitizedColor;
 
     auto *client = session->runtime.client;
     if (topicChanged && !entry->paused && client && client->state() == QMqttClient::Connected) {
@@ -155,6 +196,9 @@ bool SubscriptionService::updateCurrentSubscription(
         m_dependencies.refreshSubscriptionsModel();
     }
     emit subscriptionsChanged();
+    if (topicChanged || colorChanged) {
+        reloadCurrentMessagesIfNeeded(m_dependencies.eventController, m_dependencies, session);
+    }
     return saved;
 }
 

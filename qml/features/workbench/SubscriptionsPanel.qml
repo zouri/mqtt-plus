@@ -81,12 +81,12 @@ AppPanel {
                     control.subscriptionContextTopic,
                     control.subscriptionContextDisplayName);
             }
-        }
-
-        onAboutToHide: Qt.callLater(function() {
             control.subscriptionContextIndex = -1;
             control.subscriptionContextTopic = "";
             control.subscriptionContextDisplayName = "";
+        }
+
+        onAboutToHide: Qt.callLater(function() {
             subscriptionActionVisualResetTimer.restart();
         })
     }
@@ -219,6 +219,7 @@ AppPanel {
                 required property string formatName
                 required property string scriptId
                 required property string scriptName
+                required property string topicColor
                 required property bool paused
                 required property string subscriptionState
                 required property string lastError
@@ -249,6 +250,17 @@ AppPanel {
                     }
                 }
 
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.RightButton
+                    onClicked: mouse => {
+                        if (mouse.button === Qt.RightButton) {
+                            subscriptionDelegate.forceActiveFocus();
+                            subscriptionDelegate.openSubscriptionContextMenu();
+                        }
+                    }
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 10
@@ -262,7 +274,9 @@ AppPanel {
                             Layout.preferredWidth: 7
                             Layout.preferredHeight: 7
                             radius: 4
-                            color: control.ui.stateColor(subscriptionDelegate.subscriptionState)
+                            color: subscriptionDelegate.topicColor.length > 0
+                                   ? subscriptionDelegate.topicColor
+                                   : control.ui.stateColor(subscriptionDelegate.subscriptionState)
                         }
 
                         Label {
@@ -367,17 +381,6 @@ AppPanel {
                         color: control.ui.themePalette.errorText
                         font.pixelSize: 11
                         elide: Label.ElideRight
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    acceptedButtons: Qt.RightButton
-                    onClicked: mouse => {
-                        if (mouse.button === Qt.RightButton) {
-                            subscriptionDelegate.forceActiveFocus();
-                            subscriptionDelegate.openSubscriptionContextMenu();
-                        }
                     }
                 }
             }

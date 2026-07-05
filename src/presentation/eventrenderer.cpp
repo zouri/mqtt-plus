@@ -31,6 +31,26 @@ QString payloadStatusText(const QString &state, qint64 size, const QString &hash
     }
     return QString();
 }
+
+QString resolveTopicColor(const QHash<QString, QString> &subscriptionColors, const QString &topic)
+{
+    QString color;
+    QString bestFilter;
+    int bestScore = -1;
+    for (auto it = subscriptionColors.cbegin(); it != subscriptionColors.cend(); ++it) {
+        if (it.value().isEmpty() || !PayloadCodec::topicFilterMatches(it.key(), topic)) {
+            continue;
+        }
+
+        const int score = topicSpecificityScore(it.key());
+        if (score > bestScore || (score == bestScore && (bestFilter.isEmpty() || it.key() < bestFilter))) {
+            bestScore = score;
+            bestFilter = it.key();
+            color = it.value();
+        }
+    }
+    return color;
+}
 }
 
 namespace EventRenderer {
@@ -98,6 +118,7 @@ QVariantMap launchDividerRow(const QString &launchTimestamp)
     dividerRow.insert(QStringLiteral("payload"), QString());
     dividerRow.insert(QStringLiteral("payloadFormat"), QString());
     dividerRow.insert(QStringLiteral("payloadSize"), 0);
+    dividerRow.insert(QStringLiteral("topicColor"), QString());
     return dividerRow;
 }
 
@@ -113,10 +134,14 @@ QVariantMap eventRow(qint64 historyId, const QString &timestamp, const QString &
     row.insert(QStringLiteral("payload"), message);
     row.insert(QStringLiteral("payloadFormat"), QStringLiteral("Event"));
     row.insert(QStringLiteral("payloadSize"), 0);
+    row.insert(QStringLiteral("topicColor"), QString());
     return row;
 }
 
-QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &subscriptionFormats)
+QVariantMap renderHistoryRow(
+    const QVariantMap &row,
+    const QHash<QString, int> &subscriptionFormats,
+    const QHash<QString, QString> &subscriptionColors)
 {
     const QString kind = row.value(QStringLiteral("entry_type"), QStringLiteral("message")).toString();
     const QString timestamp = row.value(QStringLiteral("timestamp")).toString();
@@ -134,6 +159,7 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
         rendered.insert(QStringLiteral("payload"), QString());
         rendered.insert(QStringLiteral("payloadFormat"), QString());
         rendered.insert(QStringLiteral("payloadSize"), 0);
+        rendered.insert(QStringLiteral("topicColor"), QString());
         return rendered;
     }
 
@@ -143,6 +169,7 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
         rendered.insert(QStringLiteral("payload"), row.value(QStringLiteral("payload")).toString());
         rendered.insert(QStringLiteral("payloadFormat"), QStringLiteral("Event"));
         rendered.insert(QStringLiteral("payloadSize"), 0);
+        rendered.insert(QStringLiteral("topicColor"), QString());
         return rendered;
     }
 
@@ -200,6 +227,10 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
     rendered.insert(QStringLiteral("kind"), QStringLiteral("message"));
     rendered.insert(QStringLiteral("title"), topic);
     rendered.insert(QStringLiteral("payload"), renderedPayload);
+    const QString explicitTopicColor = row.value(QStringLiteral("topic_color")).toString();
+    rendered.insert(
+        QStringLiteral("topicColor"),
+        explicitTopicColor.isEmpty() ? resolveTopicColor(subscriptionColors, topic) : explicitTopicColor);
     rendered.insert(
         QStringLiteral("payloadFormat"),
         !scriptError.isEmpty()
@@ -225,6 +256,7 @@ QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &
 QVariantList loadHistoryRows(
     const QVariantList &rows,
     const QHash<QString, int> &subscriptionFormats,
+    const QHash<QString, QString> &subscriptionColors,
     const QString &launchTimestamp,
     bool includeLaunchDivider)
 {
@@ -239,7 +271,7 @@ QVariantList loadHistoryRows(
             continue;
         }
 
-        const QVariantMap renderedRow = renderHistoryRow(row, subscriptionFormats);
+        const QVariantMap renderedRow = renderHistoryRow(row, subscriptionFormats, subscriptionColors);
         if (row.value(QStringLiteral("timestamp")).toString() < launchTimestamp) {
             previousRows.append(renderedRow);
         } else {

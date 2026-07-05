@@ -118,6 +118,55 @@ Dialog {
 
         RowLayout {
             Layout.fillWidth: true
+            spacing: 8
+
+            Label {
+                text: qsTr("Color")
+                color: root.ui.textMuted
+                font.pixelSize: 12
+            }
+
+            Repeater {
+                model: root.editor.colorOptions
+
+                delegate: ToolButton {
+                    id: colorButton
+
+                    required property int index
+                    required property string modelData
+                    readonly property bool selected: root.editor.color === colorButton.modelData
+
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    padding: 0
+                    text: colorButton.modelData.length === 0 ? "-" : ""
+                    font.pixelSize: 13
+                    font.bold: true
+                    Accessible.name: colorButton.modelData.length === 0
+                                     ? qsTr("No topic color")
+                                     : qsTr("Topic color %1").arg(colorButton.index)
+                    onClicked: root.editor.color = colorButton.modelData
+
+                    background: Rectangle {
+                        radius: 13
+                        color: colorButton.modelData.length > 0
+                               ? colorButton.modelData
+                               : root.ui.themePalette.innerPanelBg
+                        border.width: colorButton.selected ? 2 : 1
+                        border.color: colorButton.selected
+                                      ? root.ui.themePalette.selectedBorder
+                                      : root.ui.themePalette.innerPanelBorder
+                    }
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
 
             Item {
                 Layout.fillWidth: true

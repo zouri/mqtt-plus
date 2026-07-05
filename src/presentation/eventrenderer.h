@@ -11,10 +11,14 @@ bool containsRowsBeforeLaunch(const QVariantList &rows, const QString &launchTim
 bool startsWithCurrentLaunchRows(const QVariantList &rows, const QString &launchTimestamp);
 QVariantMap launchDividerRow(const QString &launchTimestamp);
 QVariantMap eventRow(qint64 historyId, const QString &timestamp, const QString &channel, const QString &message);
-QVariantMap renderHistoryRow(const QVariantMap &row, const QHash<QString, int> &subscriptionFormats);
+QVariantMap renderHistoryRow(
+    const QVariantMap &row,
+    const QHash<QString, int> &subscriptionFormats,
+    const QHash<QString, QString> &subscriptionColors = {});
 QVariantList loadHistoryRows(
     const QVariantList &rows,
     const QHash<QString, int> &subscriptionFormats,
+    const QHash<QString, QString> &subscriptionColors,
     const QString &launchTimestamp,
     bool includeLaunchDivider);
 }

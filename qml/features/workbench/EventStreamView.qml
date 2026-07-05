@@ -279,10 +279,10 @@ Item {
             ListView {
                 id: eventList
                 anchors.fill: parent
-                anchors.leftMargin: 12
+                anchors.leftMargin: 8
                 anchors.rightMargin: 12
                 clip: true
-                spacing: 4
+                spacing: 2
                 model: root.streamModel
                 reuseItems: true
                 property bool shouldFollowOutput: true
@@ -351,7 +351,7 @@ Item {
                     }
                 }
 
-                delegate: Rectangle {
+                delegate: Item {
                     id: eventDelegate
                     required property string kind
                     required property string timestamp
@@ -360,26 +360,51 @@ Item {
                     required property string payload
                     required property string payloadFormat
                     required property int payloadSize
+                    required property string topicColor
                     required property string testPayload
                     required property int testFormat
+                    readonly property bool isDivider: eventDelegate.kind === "divider"
+                    readonly property bool isMessage: eventDelegate.kind === "message"
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
+                    readonly property int timelineInset: 6
+                    readonly property int bubbleLeft: eventDelegate.timelineInset + 14
+                    readonly property int bubbleMaxWidth: 760
+                    readonly property int bubbleWidth: Math.max(220,
+                                                                 Math.min(eventDelegate.width - eventDelegate.bubbleLeft - 8,
+                                                                          eventDelegate.bubbleMaxWidth))
                     width: ListView.view.width
-                    radius: root.ui.innerRadius
-                    color: eventDelegate.kind === "divider"
-                           ? "transparent"
-                           : root.ui.themePalette.itemBg
-                    border.color: eventDelegate.kind === "event"
-                                  ? root.ui.themePalette.eventBorder
-                                  : (eventDelegate.kind === "divider"
-                                     ? "transparent"
-                                     : root.ui.themePalette.innerPanelBorder)
-                    implicitHeight: eventDelegate.kind === "divider"
-                                    ? dividerRow.implicitHeight + 6
-                                    : rowBody.implicitHeight + 14
+                    implicitHeight: eventDelegate.isDivider
+                                    ? dividerRow.implicitHeight + 14
+                                    : bubble.implicitHeight + 12
+
+                    Rectangle {
+                        visible: !eventDelegate.isDivider
+                        x: eventDelegate.timelineInset + 3
+                        y: 0
+                        width: 1
+                        height: parent.height
+                        color: root.ui.themePalette.dividerLine
+                    }
+
+                    Rectangle {
+                        visible: !eventDelegate.isDivider
+                        x: eventDelegate.timelineInset - 2
+                        y: bubble.y + 16
+                        width: 10
+                        height: 10
+                        radius: 5
+                        color: eventDelegate.topicColor.length > 0
+                               ? eventDelegate.topicColor
+                               : (eventDelegate.isMessage
+                                  ? root.ui.themePalette.selectedBorder
+                                  : root.ui.themePalette.warningText)
+                        border.width: 2
+                        border.color: root.ui.themePalette.windowBg
+                    }
 
                     RowLayout {
                         id: dividerRow
-                        visible: eventDelegate.kind === "divider"
+                        visible: eventDelegate.isDivider
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 0
@@ -399,115 +424,135 @@ Item {
                         }
                     }
 
-                    Column {
-                        id: rowBody
-                        visible: eventDelegate.kind !== "divider"
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.margins: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 5
+                    Rectangle {
+                        id: bubble
+                        visible: !eventDelegate.isDivider
+                        x: eventDelegate.bubbleLeft
+                        y: 6
+                        width: eventDelegate.bubbleWidth
+                        implicitHeight: rowBody.implicitHeight + 18
+                        radius: 8
+                        color: eventDelegate.isMessage
+                               ? root.ui.themePalette.itemBg
+                               : root.ui.themePalette.innerPanelBg
+                        border.color: eventDelegate.topicColor.length > 0
+                                      ? eventDelegate.topicColor
+                                      : (eventDelegate.isMessage
+                                         ? root.ui.themePalette.eventBorder
+                                         : root.ui.themePalette.innerPanelBorder)
 
-                        RowLayout {
-                            width: parent.width
-                            spacing: 6
+                        Column {
+                            id: rowBody
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.margins: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 7
 
-                            Label {
-                                text: eventDelegate.timestamp
-                                color: root.ui.themePalette.timestampText
-                                font.pixelSize: 11
-                            }
+                            RowLayout {
+                                width: parent.width
+                                spacing: 6
 
-                            Label {
-                                Layout.fillWidth: true
-                                text: eventDelegate.title
-                                color: eventDelegate.kind === "event"
-                                       ? root.ui.themePalette.eventTitle
-                                       : root.ui.themePalette.messageTitle
-                                font.pixelSize: 12
-                                font.bold: true
-                                elide: Label.ElideRight
-                            }
+                                Label {
+                                    text: eventDelegate.timestamp
+                                    color: root.ui.themePalette.timestampText
+                                    font.pixelSize: 11
+                                }
 
-                            AppBadge {
-                                ui: root.ui
-                                visible: eventDelegate.kind === "message"
-                                label: eventDelegate.payloadSizeLabel
-                                badgeRadius: 7
-                                badgeBorder: root.ui.themePalette.eventBorder
-                                horizontalPadding: 6
-                                verticalPadding: 3
-                                strong: false
-                            }
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: eventDelegate.title
+                                    color: eventDelegate.kind === "event"
+                                           ? root.ui.themePalette.eventTitle
+                                           : root.ui.themePalette.messageTitle
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                    elide: Label.ElideRight
+                                }
 
-                            AppBadge {
-                                ui: root.ui
-                                visible: eventDelegate.payloadFormat.length > 0
-                                label: eventDelegate.payloadFormat
-                                badgeRadius: 7
-                                badgeBorder: root.ui.themePalette.eventBorder
-                                horizontalPadding: 6
-                                verticalPadding: 3
-                            }
+                                AppBadge {
+                                    ui: root.ui
+                                    visible: eventDelegate.isMessage
+                                    label: eventDelegate.payloadSizeLabel
+                                    badgeRadius: 7
+                                    badgeBorder: root.ui.themePalette.eventBorder
+                                    horizontalPadding: 6
+                                    verticalPadding: 3
+                                    strong: false
+                                }
 
-                            AppIconButton {
-                                ui: root.ui
-                                visible: eventDelegate.kind === "message"
-                                symbol: "T"
-                                symbolSize: 11
-                                implicitWidth: 26
-                                implicitHeight: 26
-                                cornerRadius: 6
-                                restBg: "transparent"
-                                outlineColor: "transparent"
-                                accessibleName: qsTr("Copy topic")
-                                onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
-                            }
+                                AppBadge {
+                                    ui: root.ui
+                                    visible: eventDelegate.payloadFormat.length > 0
+                                    label: eventDelegate.payloadFormat
+                                    badgeRadius: 7
+                                    badgeBorder: root.ui.themePalette.eventBorder
+                                    horizontalPadding: 6
+                                    verticalPadding: 3
+                                    maximumLabelWidth: 160
+                                }
 
-                            AppIconButton {
-                                ui: root.ui
-                                visible: eventDelegate.kind === "message"
-                                symbol: "P"
-                                symbolSize: 11
-                                implicitWidth: 26
-                                implicitHeight: 26
-                                cornerRadius: 6
-                                restBg: "transparent"
-                                outlineColor: "transparent"
-                                accessibleName: qsTr("Copy payload")
-                                onClicked: root.viewModel.copyMessagePayload(eventDelegate.payload, eventDelegate.testPayload)
-                            }
+                                AppIconButton {
+                                    ui: root.ui
+                                    visible: eventDelegate.isMessage
+                                    symbol: "T"
+                                    symbolSize: 11
+                                    implicitWidth: 24
+                                    implicitHeight: 24
+                                    cornerRadius: 6
+                                    restBg: "transparent"
+                                    outlineColor: "transparent"
+                                    accessibleName: qsTr("Copy topic")
+                                    onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
+                                }
 
-                            AppIconButton {
-                                ui: root.ui
-                                visible: eventDelegate.kind === "message"
-                                iconSource: root.ui.materialIcon("send")
-                                implicitWidth: 26
-                                implicitHeight: 26
-                                iconSize: 12
-                                cornerRadius: 6
-                                restBg: "transparent"
-                                outlineColor: "transparent"
-                                accessibleName: qsTr("Use this message in publisher")
-                                onClicked: {
-                                    root.publisher.useMessageAsDraft(
-                                                eventDelegate.topic,
-                                                eventDelegate.payload,
-                                                eventDelegate.testPayload,
-                                                eventDelegate.testFormat)
-                                    root.publishDraftRevealRequested()
+                                AppIconButton {
+                                    ui: root.ui
+                                    visible: eventDelegate.isMessage
+                                    symbol: "P"
+                                    symbolSize: 11
+                                    implicitWidth: 24
+                                    implicitHeight: 24
+                                    cornerRadius: 6
+                                    restBg: "transparent"
+                                    outlineColor: "transparent"
+                                    accessibleName: qsTr("Copy payload")
+                                    onClicked: root.viewModel.copyMessagePayload(eventDelegate.payload, eventDelegate.testPayload)
+                                }
+
+                                AppIconButton {
+                                    ui: root.ui
+                                    visible: eventDelegate.isMessage
+                                    iconSource: root.ui.materialIcon("send")
+                                    implicitWidth: 24
+                                    implicitHeight: 24
+                                    iconSize: 12
+                                    cornerRadius: 6
+                                    restBg: "transparent"
+                                    outlineColor: "transparent"
+                                    accessibleName: qsTr("Use this message in publisher")
+                                    onClicked: {
+                                        root.publisher.useMessageAsDraft(
+                                                    eventDelegate.topic,
+                                                    eventDelegate.payload,
+                                                    eventDelegate.testPayload,
+                                                    eventDelegate.testFormat)
+                                        root.publishDraftRevealRequested()
+                                    }
                                 }
                             }
-                        }
 
-                        Text {
-                            text: eventDelegate.payload
-                            width: parent.width
-                            color: root.ui.textStrong
-                            font.family: eventDelegate.kind === "message" ? "Menlo" : root.fontFamily
-                            font.pixelSize: 13
-                            textFormat: Text.PlainText
-                            wrapMode: Text.WrapAnywhere
+                            Text {
+                                id: payloadText
+                                width: parent.width
+                                text: eventDelegate.payload
+                                color: root.ui.textStrong
+                                font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily
+                                font.pixelSize: 13
+                                lineHeight: 1.18
+                                textFormat: Text.PlainText
+                                wrapMode: Text.WrapAnywhere
+                            }
                         }
                     }
                 }
