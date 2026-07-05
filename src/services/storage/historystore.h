@@ -30,7 +30,8 @@ public:
         const QString &payloadPreview = QString(),
         const QString &payloadState = QString(),
         qint64 payloadSize = -1,
-        const QString &payloadHash = QString());
+        const QString &payloadHash = QString(),
+        int payloadFormat = -1);
     QStringList flushPendingMessages();
     int pendingMessageCount() const;
     qint64 appendEvent(
@@ -65,6 +66,7 @@ private:
         QString payloadState;
         qint64 payloadSize = 0;
         QString payloadHash;
+        int payloadFormat = -1;
     };
 
     bool initialize(const QString &dataPath);
