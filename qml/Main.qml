@@ -113,7 +113,7 @@ ApplicationWindow {
             spacing: 0
 
             Rectangle {
-                Layout.preferredWidth: 56
+                Layout.preferredWidth: 52
                 Layout.fillHeight: true
                 color: appUi.themePalette.sidebarBg
 
@@ -127,11 +127,11 @@ ApplicationWindow {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
-                    anchors.topMargin: 16
-                    anchors.bottomMargin: 16
-                    spacing: 10
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    anchors.topMargin: 10
+                    anchors.bottomMargin: 10
+                    spacing: 6
 
                     AppIconButton {
                         ui: appUi
@@ -139,7 +139,7 @@ ApplicationWindow {
                         Layout.preferredHeight: 40
                         cornerRadius: 13
                         iconSource: appUi.materialIcon("workbench")
-                        iconSize: 21
+                        iconSize: 22
                         restBg: "transparent"
                         hoverBg: appUi.themePalette.selectedBg
                         outlineColor: "transparent"
@@ -156,7 +156,7 @@ ApplicationWindow {
                         Layout.preferredHeight: 40
                         cornerRadius: 13
                         iconSource: appUi.materialIcon("logs")
-                        iconSize: 20
+                        iconSize: 22
                         restBg: "transparent"
                         hoverBg: appUi.themePalette.selectedBg
                         outlineColor: "transparent"
@@ -173,7 +173,7 @@ ApplicationWindow {
                         Layout.preferredHeight: 40
                         cornerRadius: 13
                         iconSource: appUi.materialIcon("script-development")
-                        iconSize: 20
+                        iconSize: 22
                         restBg: "transparent"
                         hoverBg: appUi.themePalette.selectedBg
                         outlineColor: "transparent"
@@ -194,7 +194,7 @@ ApplicationWindow {
                         Layout.preferredHeight: 40
                         cornerRadius: 13
                         iconSource: appUi.materialIcon("settings")
-                        iconSize: 20
+                        iconSize: 22
                         restBg: "transparent"
                         hoverBg: appUi.themePalette.selectedBg
                         outlineColor: "transparent"
