@@ -44,6 +44,7 @@ QVariantList subscriptionsToVariantList(const QVector<SubscriptionEntry> &subscr
         row.insert(QStringLiteral("qos"), entry.requestedQos);
         row.insert(QStringLiteral("format"), entry.format);
         row.insert(QStringLiteral("scriptId"), entry.scriptId);
+        row.insert(QStringLiteral("color"), entry.color);
         row.insert(QStringLiteral("paused"), entry.paused);
         rows.append(row);
     }
@@ -136,6 +137,7 @@ LoadedSession readSession(
         entry.format = row.value(QStringLiteral("format"), 0).toInt();
         const QString scriptId = row.value(QStringLiteral("scriptId")).toString();
         entry.scriptId = scriptExists(scriptId) ? scriptId : QString();
+        entry.color = row.value(QStringLiteral("color")).toString().trimmed();
         entry.paused = row.value(QStringLiteral("paused"), false).toBool();
         session.subscriptions.append(entry);
         session.runtime.subscriptionFormats.insert(topic, entry.format);

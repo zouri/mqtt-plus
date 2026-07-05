@@ -14,6 +14,21 @@ QString SubscriptionEditorViewModel::alias() const { return m_alias; }
 int SubscriptionEditorViewModel::qos() const { return m_qos; }
 int SubscriptionEditorViewModel::format() const { return m_format; }
 QString SubscriptionEditorViewModel::scriptId() const { return m_scriptId; }
+QString SubscriptionEditorViewModel::color() const { return m_color; }
+QStringList SubscriptionEditorViewModel::colorOptions() const
+{
+    return {
+        QString(),
+        QStringLiteral("#0071E3"),
+        QStringLiteral("#34C759"),
+        QStringLiteral("#FF9500"),
+        QStringLiteral("#AF52DE"),
+        QStringLiteral("#FF2D55"),
+        QStringLiteral("#5AC8FA"),
+        QStringLiteral("#5856D6"),
+        QStringLiteral("#8E8E93"),
+    };
+}
 int SubscriptionEditorViewModel::scriptIndex() const { return m_scriptIndex; }
 QStringList SubscriptionEditorViewModel::scriptOptionIds() const { return m_scriptOptionIds; }
 QStringList SubscriptionEditorViewModel::scriptOptionNames() const { return m_scriptOptionNames; }
@@ -71,6 +86,16 @@ void SubscriptionEditorViewModel::setScriptId(const QString &scriptId)
     updateScriptIndex();
 }
 
+void SubscriptionEditorViewModel::setColor(const QString &color)
+{
+    const QString normalized = color.trimmed();
+    if (m_color == normalized) {
+        return;
+    }
+    m_color = normalized;
+    emit colorChanged();
+}
+
 void SubscriptionEditorViewModel::setScriptIndex(int index)
 {
     const int lastIndex = std::max(0, static_cast<int>(m_scriptOptionIds.size()) - 1);
@@ -92,6 +117,7 @@ void SubscriptionEditorViewModel::openForCreate()
     setQos(0);
     setFormat(0);
     setScriptId(QString());
+    setColor(QString());
 }
 
 void SubscriptionEditorViewModel::openForEdit(const QVariantMap &subscription)
@@ -103,6 +129,7 @@ void SubscriptionEditorViewModel::openForEdit(const QVariantMap &subscription)
     setQos(subscription.value(QStringLiteral("requestedQos")).toInt());
     setFormat(subscription.value(QStringLiteral("format")).toInt());
     setScriptId(subscription.value(QStringLiteral("scriptId")).toString());
+    setColor(subscription.value(QStringLiteral("color")).toString());
 }
 
 void SubscriptionEditorViewModel::setScriptOptions(const QVariantList &scripts)
@@ -140,6 +167,7 @@ QVariantMap SubscriptionEditorViewModel::submission() const
     result.insert(QStringLiteral("qos"), m_qos);
     result.insert(QStringLiteral("format"), m_format);
     result.insert(QStringLiteral("scriptId"), m_scriptId);
+    result.insert(QStringLiteral("color"), m_color);
     return result;
 }
 

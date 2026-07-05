@@ -19,6 +19,7 @@ public:
         PayloadFormatRole,
         PayloadSizeRole,
         TopicRole,
+        TopicColorRole,
         TestPayloadRole,
         TestFormatRole,
         TestFormatNameRole,

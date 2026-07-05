@@ -114,6 +114,17 @@ PayloadStoragePlan makePayloadStoragePlan(const QString &topic, const QByteArray
 
     return plan;
 }
+
+QHash<QString, QString> subscriptionColors(const SessionState &session)
+{
+    QHash<QString, QString> colors;
+    for (const auto &subscription : session.subscriptions) {
+        if (!subscription.color.isEmpty()) {
+            colors.insert(subscription.topic, subscription.color);
+        }
+    }
+    return colors;
+}
 }
 
 EventHistoryService::EventHistoryService(QObject *parent)
@@ -192,6 +203,7 @@ int EventHistoryService::loadOlderCurrentSessionMessages()
     QVariantList rows = EventRenderer::loadHistoryRows(
         (*m_dependencies.historyStore).loadMessagesBefore(session->id, session->runtime.oldestLoadedMessageId, pageSize),
         session->runtime.subscriptionFormats,
+        subscriptionColors(*session),
         (*m_dependencies.launchTimestamp),
         false);
     if (rows.isEmpty()) {
@@ -231,6 +243,7 @@ int EventHistoryService::loadOlderCurrentSessionLogs()
     QVariantList rows = EventRenderer::loadHistoryRows(
         (*m_dependencies.historyStore).loadLogsBefore(session->id, session->runtime.oldestLoadedLogId, pageSize),
         session->runtime.subscriptionFormats,
+        {},
         (*m_dependencies.launchTimestamp),
         false);
     if (rows.isEmpty()) {
@@ -486,7 +499,12 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     historyRow.insert(QStringLiteral("parse_error"), parseError);
     historyRow.insert(QStringLiteral("script_id"), scriptId);
     historyRow.insert(QStringLiteral("script_name"), scriptDisplayName);
-    appendRenderedMessageRow(*session, EventRenderer::renderHistoryRow(historyRow, session->runtime.subscriptionFormats));
+    if (displaySubscription && !displaySubscription->color.isEmpty()) {
+        historyRow.insert(QStringLiteral("topic_color"), displaySubscription->color);
+    }
+    appendRenderedMessageRow(
+        *session,
+        EventRenderer::renderHistoryRow(historyRow, session->runtime.subscriptionFormats, subscriptionColors(*session)));
 }
 
 void EventHistoryService::trimVisibleMessageRows(SessionState &session)
@@ -527,6 +545,7 @@ void EventHistoryService::reloadCurrentSessionHistory()
     session->runtime.messageRows = EventRenderer::loadHistoryRows(
         messageRows,
         session->runtime.subscriptionFormats,
+        subscriptionColors(*session),
         (*m_dependencies.launchTimestamp),
         true);
     session->runtime.oldestLoadedMessageId = EventRenderer::firstHistoryId(session->runtime.messageRows);
@@ -537,6 +556,7 @@ void EventHistoryService::reloadCurrentSessionHistory()
     session->runtime.logRows = EventRenderer::loadHistoryRows(
         logRows,
         session->runtime.subscriptionFormats,
+        {},
         (*m_dependencies.launchTimestamp),
         true);
     session->runtime.oldestLoadedLogId = EventRenderer::firstHistoryId(session->runtime.logRows);
