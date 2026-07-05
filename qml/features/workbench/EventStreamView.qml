@@ -19,7 +19,7 @@ Item {
     property bool showOutputControls: false
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
-    property bool followScrollPending: false
+    property string followMode: "smart"
 
     signal publishDraftRevealRequested()
 
@@ -32,19 +32,28 @@ Item {
 
         if (eventList) {
             eventList.unreadCount = 0
+            eventList.bottomAnchorActive = true
+            eventList.shouldFollowOutput = true
         }
 
         root.requestFollowScroll()
     }
 
     function noteStreamRowAppended() {
-        const shouldStickToBottom = !eventList || eventList.shouldFollowOutput
-
-        if (shouldStickToBottom && eventList) {
-            root.requestFollowScroll()
-        } else if (eventList) {
-            eventList.unreadCount += 1
+        if (!eventList) {
+            return
         }
+
+        if (root.shouldFollowNewRows()) {
+            eventList.bottomAnchorActive = true
+            eventList.shouldFollowOutput = true
+            root.requestFollowScroll()
+            return
+        }
+
+        eventList.bottomAnchorActive = false
+        eventList.shouldFollowOutput = false
+        eventList.unreadCount += 1
     }
 
     function requestFollowScroll() {
@@ -52,10 +61,18 @@ Item {
             return
         }
 
-        root.followScrollPending = true
-        if (!followScrollTimer.running) {
-            followScrollTimer.start()
+        eventList.bottomAnchorActive = true
+        if (eventList.followScrollQueued) {
+            return
         }
+
+        eventList.followScrollQueued = true
+        Qt.callLater(function() {
+            eventList.followScrollQueued = false
+            if (eventList.bottomAnchorActive) {
+                eventList.scrollToBottom()
+            }
+        })
     }
 
     function loadOlderEvents() {
@@ -64,6 +81,7 @@ Item {
         }
 
         root.loadingOlderEvents = true
+        eventList.bottomAnchorActive = false
         const previousContentHeight = eventList.contentHeight
         const previousContentY = eventList.contentY
         const insertedRows = root.viewModel.loadOlderMessages()
@@ -79,17 +97,80 @@ Item {
         })
     }
 
-    Timer {
-        id: followScrollTimer
-        interval: 16
-        repeat: false
-        onTriggered: {
-            if (!root.followScrollPending || !eventList) {
-                return
-            }
-            root.followScrollPending = false
-            eventList.scrollToBottom()
+    function followModeLabel(mode) {
+        if (mode === "always") {
+            return qsTr("Always")
         }
+        if (mode === "manual") {
+            return qsTr("Manual")
+        }
+        return qsTr("Smart")
+    }
+
+    function followModeSymbol(mode) {
+        if (mode === "always") {
+            return "A"
+        }
+        if (mode === "manual") {
+            return "M"
+        }
+        return "S"
+    }
+
+    function followModeToolTip() {
+        return qsTr("Follow mode: %1").arg(root.followModeLabel(root.followMode))
+    }
+
+    function setFollowMode(mode) {
+        if (mode !== "smart" && mode !== "always" && mode !== "manual") {
+            return
+        }
+        if (root.followMode === mode) {
+            return
+        }
+
+        root.followMode = mode
+        if (!eventList) {
+            return
+        }
+
+        if (mode === "manual") {
+            eventList.bottomAnchorActive = false
+            return
+        }
+
+        if (mode === "always") {
+            root.requestFollowScroll()
+            return
+        }
+
+        eventList.refreshFollowState()
+    }
+
+    function shouldFollowNewRows() {
+        if (root.followMode === "always") {
+            return true
+        }
+        if (root.followMode === "manual") {
+            return false
+        }
+        return eventList.shouldFollowOutput
+    }
+
+    ListModel {
+        id: followModeActions
+
+        ListElement { actionId: "smart" }
+        ListElement { actionId: "always" }
+        ListElement { actionId: "manual" }
+    }
+
+    AppPlatformMenu {
+        id: followModeMenu
+        model: followModeActions
+        actionText: actionId => root.followModeLabel(actionId)
+
+        onTriggered: actionId => root.setFollowMode(actionId)
     }
 
     ColumnLayout {
@@ -135,6 +216,21 @@ Item {
 
                 Item {
                     Layout.fillWidth: true
+                }
+
+                AppIconButton {
+                    ui: root.ui
+                    visible: root.showOutputControls
+                    symbol: root.followModeSymbol(root.followMode)
+                    symbolSize: 12
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    cornerRadius: 16
+                    restBg: root.ui.themePalette.windowBg
+                    outlineColor: root.ui.themePalette.innerPanelBorder
+                    accessibleName: root.followModeToolTip()
+                    toolTipText: root.followModeToolTip()
+                    onClicked: followModeMenu.open()
                 }
 
                 AppIconButton {
@@ -191,12 +287,14 @@ Item {
                 reuseItems: true
                 property bool shouldFollowOutput: true
                 property bool programmaticScroll: false
+                property bool bottomAnchorActive: false
+                property bool followScrollQueued: false
                 property int unreadCount: 0
 
                 function scrollToBottom() {
                     programmaticScroll = true
+                    bottomAnchorActive = true
                     unreadCount = 0
-                    forceLayout()
                     if (count > 0) {
                         positionViewAtEnd()
                     } else {
@@ -215,20 +313,37 @@ Item {
 
                     const maxContentY = Math.max(originY, contentHeight - height)
                     const distanceFromBottom = Math.max(0, maxContentY - contentY)
-                    shouldFollowOutput = count === 0 || distanceFromBottom <= 24
+                    shouldFollowOutput = root.followMode === "always" || count === 0 || distanceFromBottom <= 24
+                    if (!shouldFollowOutput) {
+                        bottomAnchorActive = false
+                    }
                     if (shouldFollowOutput) {
                         unreadCount = 0
                     }
+                }
+
+                function noteManualScrollStarted() {
+                    if (programmaticScroll) {
+                        return
+                    }
+
+                    bottomAnchorActive = false
+                    refreshFollowState()
                 }
 
                 ScrollBar.vertical: ScrollBar {
                     policy: ScrollBar.AsNeeded
                 }
 
-                onMovementStarted: refreshFollowState()
+                onMovementStarted: noteManualScrollStarted()
                 onMovementEnded: refreshFollowState()
-                onFlickStarted: refreshFollowState()
+                onFlickStarted: noteManualScrollStarted()
                 onFlickEnded: refreshFollowState()
+                onContentHeightChanged: {
+                    if (bottomAnchorActive && !followScrollQueued && !root.loadingOlderEvents) {
+                        root.requestFollowScroll()
+                    }
+                }
                 onContentYChanged: {
                     refreshFollowState()
                     if (contentY <= originY + 48) {

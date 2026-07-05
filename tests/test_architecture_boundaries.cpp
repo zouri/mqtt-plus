@@ -36,6 +36,7 @@ private slots:
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
+    void eventStreamViewUsesLocalFollowScrollState();
     void workbenchViewModelUsesDirectDependencies();
     void logsViewModelUsesDirectDependencies();
     void scriptsViewModelUsesDirectDependencies();
@@ -797,6 +798,25 @@ void ArchitectureBoundariesTest::workbenchViewsUseIntentCommands()
                 qPrintable(QStringLiteral("%1 must use an intent-style WorkbenchViewModel command instead of %2").arg(it.key(), token)));
         }
     }
+}
+
+void ArchitectureBoundariesTest::eventStreamViewUsesLocalFollowScrollState()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+
+    QVERIFY2(source.contains(QStringLiteral("property string followMode: \"smart\"")),
+        "EventStreamView must keep the non-persistent follow mode local to the page");
+    QVERIFY2(source.contains(QStringLiteral("property bool bottomAnchorActive")),
+        "EventStreamView must track whether model changes should keep the list anchored to the bottom");
+    QVERIFY2(source.contains(QStringLiteral("property bool followScrollQueued")),
+        "EventStreamView must coalesce follow-scroll requests");
+    QVERIFY2(source.contains(QStringLiteral("onContentHeightChanged")),
+        "EventStreamView must re-check the bottom anchor after large delegates settle");
+    QVERIFY2(!source.contains(QStringLiteral("followScrollTimer")),
+        "EventStreamView must not add another 16ms follow-scroll timer on top of the model flush timer");
+    QVERIFY2(!source.contains(QStringLiteral("forceLayout()")),
+        "EventStreamView must not force synchronous ListView layout to follow new messages");
 }
 
 void ArchitectureBoundariesTest::workbenchViewModelUsesDirectDependencies()
