@@ -39,12 +39,14 @@ public:
         int qos,
         int format,
         const QString &scriptId,
+        const QString &color,
         const QString &alias);
     bool updateCurrentSubscription(
         const QString &topic,
         const QString &newTopic,
         const QString &alias,
-        const QString &scriptId);
+        const QString &scriptId,
+        const QString &color);
     void removeCurrentSubscription(const QString &topic);
     void setCurrentSubscriptionPaused(const QString &topic, bool paused);
 

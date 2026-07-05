@@ -26,6 +26,7 @@ public:
         FormatNameRole,
         ScriptIdRole,
         ScriptNameRole,
+        ColorRole,
         PausedRole,
         StateRole,
         LastErrorRole,

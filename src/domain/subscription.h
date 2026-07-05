@@ -13,6 +13,7 @@ struct SubscriptionEntry {
     int grantedQos = -1;
     int format = 0;
     QString scriptId;
+    QString color;
     bool paused = false;
     QString runtimeState = QStringLiteral("saved");
     QString lastError;
