@@ -192,7 +192,10 @@ QVariantMap renderHistoryRow(
         payloadPreview = row.value(QStringLiteral("payload")).toString();
     }
 
-    const PayloadFormat format = PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
+    const int storedPayloadFormat = row.value(QStringLiteral("payload_format"), -1).toInt();
+    const PayloadFormat format = storedPayloadFormat >= 0
+        ? PayloadCodec::formatFromInt(storedPayloadFormat)
+        : PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
     QString parseError;
     QString renderedPayload;
     QString decodedPayload;

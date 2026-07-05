@@ -306,7 +306,9 @@ void EventHistoryService::flushPendingVisibleMessageRows()
         return;
     }
 
-    if (rows.size() >= kMaxVisibleEventRows
+    if ((*m_dependencies.messagesModel).count() >= currentSession->runtime.messageRows.size()) {
+        (*m_dependencies.messagesModel).setRows(currentSession->runtime.messageRows);
+    } else if (rows.size() >= kMaxVisibleEventRows
             || (*m_dependencies.messagesModel).count() + rows.size() > kMaxVisibleEventRows * 2) {
         (*m_dependencies.messagesModel).setRows(currentSession->runtime.messageRows);
     } else {
@@ -505,6 +507,79 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     appendRenderedMessageRow(
         *session,
         EventRenderer::renderHistoryRow(historyRow, session->runtime.subscriptionFormats, subscriptionColors(*session)));
+}
+
+void EventHistoryService::appendPublishedMessage(
+    const QString &sessionId,
+    const QString &topic,
+    const QByteArray &payloadBytes,
+    int format)
+{
+    auto *session = m_dependencies.sessionById(sessionId);
+    if (!session) {
+        return;
+    }
+
+    const QString timestamp = timestampNow();
+    const PayloadStoragePlan payloadPlan = makePayloadStoragePlan(
+        topic,
+        payloadBytes,
+        m_dependencies.preferencesController->maxIncomingPayloadBytes());
+    if (payloadPlan.shouldReport) {
+        appendEvent(*session, QStringLiteral("Payload"), payloadPlan.reportMessage);
+    }
+
+    const qint64 historyId = (*m_dependencies.historyStore).enqueueMessage(
+        sessionId,
+        timestamp,
+        topic,
+        payloadPlan.storedBytes,
+        {},
+        {},
+        {},
+        {},
+        {},
+        payloadPlan.preview,
+        payloadPlan.state,
+        payloadPlan.originalSize,
+        payloadPlan.hash,
+        format);
+    if (historyId <= 0) {
+        reportMessageStorageError(
+            *session,
+            QStringLiteral("Cannot queue published message: %1").arg((*m_dependencies.historyStore).lastError()));
+    } else {
+        m_lastMessageStorageError.clear();
+        scheduleMessageHistoryFlush();
+    }
+
+    if (session != m_dependencies.currentSessionState()) {
+        return;
+    }
+
+    QVariantMap historyRow;
+    historyRow.insert(QStringLiteral("id"), historyId);
+    historyRow.insert(QStringLiteral("timestamp"), timestamp);
+    historyRow.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
+    historyRow.insert(QStringLiteral("topic"), topic);
+    historyRow.insert(QStringLiteral("payload"), payloadPlan.preview);
+    historyRow.insert(QStringLiteral("payload_b64"), QStringLiteral(""));
+    historyRow.insert(QStringLiteral("payload_bytes"), payloadPlan.storedBytes);
+    historyRow.insert(QStringLiteral("payload_size"), payloadPlan.originalSize);
+    historyRow.insert(QStringLiteral("payload_state"), payloadPlan.state);
+    historyRow.insert(QStringLiteral("payload_preview"), payloadPlan.preview);
+    historyRow.insert(QStringLiteral("payload_hash"), payloadPlan.hash);
+    historyRow.insert(QStringLiteral("parsed_payload"), QString());
+    historyRow.insert(QStringLiteral("parsed_format"), QString());
+    historyRow.insert(QStringLiteral("parse_error"), QString());
+    historyRow.insert(QStringLiteral("script_id"), QString());
+    historyRow.insert(QStringLiteral("script_name"), QString());
+
+    QHash<QString, int> renderFormats = session->runtime.subscriptionFormats;
+    renderFormats.insert(topic, format);
+    appendRenderedMessageRow(
+        *session,
+        EventRenderer::renderHistoryRow(historyRow, renderFormats, subscriptionColors(*session)));
 }
 
 void EventHistoryService::trimVisibleMessageRows(SessionState &session)

@@ -87,7 +87,8 @@ qint64 HistoryStore::enqueueMessage(
     const QString &payloadPreview,
     const QString &payloadState,
     qint64 payloadSize,
-    const QString &payloadHash)
+    const QString &payloadHash,
+    int payloadFormat)
 {
     if (!isReady()) {
         if (m_lastError.isEmpty()) {
@@ -127,6 +128,7 @@ qint64 HistoryStore::enqueueMessage(
         payloadState.isEmpty() ? QStringLiteral("full") : payloadState,
         payloadSize >= 0 ? payloadSize : payloadBytes.size(),
         payloadHash,
+        payloadFormat,
     });
     return reservedId;
 }
@@ -144,8 +146,8 @@ QStringList HistoryStore::flushPendingMessages()
             "INSERT INTO mqtt_messages("
             "session_id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "payload_bytes, payload_size, payload_state, payload_preview, payload_hash) "
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
+            "payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format) "
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
         m_lastError = query.lastError().text();
         return flushedSessionIds;
     }
@@ -172,6 +174,7 @@ QStringList HistoryStore::flushPendingMessages()
         query.bindValue(12, nonNullString(message.payloadState));
         query.bindValue(13, nonNullString(message.payloadPreview));
         query.bindValue(14, nonNullString(message.payloadHash));
+        query.bindValue(15, message.payloadFormat);
         if (!query.exec()) {
             m_lastError = query.lastError().text();
             m_db.rollback();
@@ -239,11 +242,11 @@ QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) con
             "SELECT id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name, "
             "CASE WHEN payload_state = 'full' THEN payload_bytes ELSE NULL END, "
-            "payload_size, payload_state, payload_preview, payload_hash "
+            "payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "FROM ("
             "    SELECT id, timestamp, topic, payload, payload_b64, "
             "    parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "    payload_bytes, payload_size, payload_state, payload_preview, payload_hash "
+            "    payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "    FROM mqtt_messages "
             "    WHERE session_id = ? "
             "    ORDER BY id DESC "
@@ -275,6 +278,7 @@ QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) con
         row.insert(QStringLiteral("payload_state"), query.value(12).toString());
         row.insert(QStringLiteral("payload_preview"), query.value(13).toString());
         row.insert(QStringLiteral("payload_hash"), query.value(14).toString());
+        row.insert(QStringLiteral("payload_format"), query.value(15).toInt());
         result.append(row);
     }
 
@@ -294,11 +298,11 @@ QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 b
             "SELECT id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name, "
             "CASE WHEN payload_state = 'full' THEN payload_bytes ELSE NULL END, "
-            "payload_size, payload_state, payload_preview, payload_hash "
+            "payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "FROM ("
             "    SELECT id, timestamp, topic, payload, payload_b64, "
             "    parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "    payload_bytes, payload_size, payload_state, payload_preview, payload_hash "
+            "    payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "    FROM mqtt_messages "
             "    WHERE session_id = ? AND id < ? "
             "    ORDER BY id DESC "
@@ -331,6 +335,7 @@ QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 b
         row.insert(QStringLiteral("payload_state"), query.value(12).toString());
         row.insert(QStringLiteral("payload_preview"), query.value(13).toString());
         row.insert(QStringLiteral("payload_hash"), query.value(14).toString());
+        row.insert(QStringLiteral("payload_format"), query.value(15).toInt());
         result.append(row);
     }
 
@@ -570,7 +575,8 @@ bool HistoryStore::initialize(const QString &dataPath)
                 "payload_size INTEGER NOT NULL DEFAULT 0, "
                 "payload_state TEXT NOT NULL DEFAULT 'full', "
                 "payload_preview TEXT NOT NULL DEFAULT '', "
-                "payload_hash TEXT NOT NULL DEFAULT '')"))) {
+                "payload_hash TEXT NOT NULL DEFAULT '', "
+                "payload_format INTEGER NOT NULL DEFAULT -1)"))) {
         m_lastError = query.lastError().text();
         return false;
     }
@@ -581,6 +587,7 @@ bool HistoryStore::initialize(const QString &dataPath)
         {QStringLiteral("payload_state"), QStringLiteral("payload_state TEXT NOT NULL DEFAULT 'full'")},
         {QStringLiteral("payload_preview"), QStringLiteral("payload_preview TEXT NOT NULL DEFAULT ''")},
         {QStringLiteral("payload_hash"), QStringLiteral("payload_hash TEXT NOT NULL DEFAULT ''")},
+        {QStringLiteral("payload_format"), QStringLiteral("payload_format INTEGER NOT NULL DEFAULT -1")},
     };
     for (const auto &column : messageColumns) {
         if (!ensureColumn(m_db, QStringLiteral("mqtt_messages"), column.first, column.second, m_lastError)) {

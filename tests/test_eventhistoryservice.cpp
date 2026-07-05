@@ -18,6 +18,11 @@ class EventHistoryServiceTest : public QObject
 
 private slots:
     void liveRowsDecodeConfiguredPayloadFormatWithoutScript();
+    void publishedRowsAppearInMessageStream();
+    void publishedRowsKeepFormatAfterHistoryReload();
+    void publishedRowsAppearWhenOutputPaused();
+    void publishedAndIncomingRowsBothRemainInMessageStream();
+    void pendingVisibleRowsDoNotDuplicateAfterModelRefresh();
     void batchedVisibleRowsEmitOneAppendSignalPerRow();
 };
 
@@ -90,6 +95,108 @@ void EventHistoryServiceTest::liveRowsDecodeConfiguredPayloadFormatWithoutScript
     QTRY_COMPARE(fixture.messages.count(), 1);
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), expectedPayload);
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("JSON"));
+}
+
+void EventHistoryServiceTest::publishedRowsAppearInMessageStream()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    const QByteArray payload = R"({"sent":true})";
+    QString decodeError;
+    const QString expectedPayload = PayloadCodec::decodeForDisplay(PayloadFormat::Json, payload, decodeError);
+    QVERIFY2(decodeError.isEmpty(), qPrintable(decodeError));
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/command"),
+        payload,
+        static_cast<int>(PayloadFormat::Json));
+
+    QTRY_COMPARE(fixture.messages.count(), 1);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("topic")).toString(), QStringLiteral("devices/command"));
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), expectedPayload);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("JSON"));
+}
+
+void EventHistoryServiceTest::publishedRowsKeepFormatAfterHistoryReload()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    const QByteArray payload = R"({"sent":true})";
+    QString decodeError;
+    const QString expectedPayload = PayloadCodec::decodeForDisplay(PayloadFormat::Json, payload, decodeError);
+    QVERIFY2(decodeError.isEmpty(), qPrintable(decodeError));
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/command"),
+        payload,
+        static_cast<int>(PayloadFormat::Json));
+    fixture.service.flushPendingMessageHistory();
+    fixture.session.runtime.messageRows.clear();
+    fixture.messages.clear();
+
+    fixture.service.reloadCurrentSessionHistory();
+
+    QCOMPARE(fixture.messages.count(), 1);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), expectedPayload);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("JSON"));
+}
+
+void EventHistoryServiceTest::publishedRowsAppearWhenOutputPaused()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.session.outputPaused = true;
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/command"),
+        QByteArrayLiteral("on"),
+        static_cast<int>(PayloadFormat::Plaintext));
+
+    QTRY_COMPARE(fixture.messages.count(), 1);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("topic")).toString(), QStringLiteral("devices/command"));
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), QStringLiteral("on"));
+}
+
+void EventHistoryServiceTest::publishedAndIncomingRowsBothRemainInMessageStream()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.addSubscription(QStringLiteral("devices/command"), static_cast<int>(PayloadFormat::Plaintext));
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/command"),
+        QByteArrayLiteral("on"),
+        static_cast<int>(PayloadFormat::Plaintext));
+    fixture.service.appendIncomingMessage(
+        fixture.session.id,
+        QStringLiteral("devices/command"),
+        QByteArrayLiteral("on"));
+
+    QTRY_COMPARE(fixture.messages.count(), 2);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("topic")).toString(), QStringLiteral("devices/command"));
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), QStringLiteral("on"));
+    QCOMPARE(fixture.messages.rowAt(1).value(QStringLiteral("topic")).toString(), QStringLiteral("devices/command"));
+    QCOMPARE(fixture.messages.rowAt(1).value(QStringLiteral("payload")).toString(), QStringLiteral("on"));
+}
+
+void EventHistoryServiceTest::pendingVisibleRowsDoNotDuplicateAfterModelRefresh()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/command"),
+        QByteArrayLiteral("on"),
+        static_cast<int>(PayloadFormat::Plaintext));
+    fixture.messages.setRows(fixture.session.runtime.messageRows);
+
+    QTRY_COMPARE(fixture.messages.count(), 1);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), QStringLiteral("on"));
 }
 
 void EventHistoryServiceTest::batchedVisibleRowsEmitOneAppendSignalPerRow()
