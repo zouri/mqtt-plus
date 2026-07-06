@@ -34,6 +34,7 @@ private slots:
     void historyStoreListQueriesDoNotProjectPayloadBlobs();
     void eventHistoryServiceThrottlesRetentionPrune();
     void messageQmlUsesTypedObjectProperties();
+    void messagePanelUsesSplitViewForComposerResize();
     void qmlUsesApplicationViewModelRootOnly();
     void translationsDoNotReferenceLegacyFacade();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
@@ -638,6 +639,27 @@ void ArchitectureBoundariesTest::messageQmlUsesTypedObjectProperties()
         "EventStreamView should not narrow qint64 history ids to a 32-bit QML int");
     QVERIFY2(source.contains(QStringLiteral("required property string historyId")),
         "EventStreamView should carry history ids across the QML boundary without 32-bit narrowing");
+}
+
+void ArchitectureBoundariesTest::messagePanelUsesSplitViewForComposerResize()
+{
+    QString panelSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SessionMessagePanel.qml"), panelSource));
+    QVERIFY2(panelSource.contains(QStringLiteral("SplitView {")),
+        "SessionMessagePanel should use SplitView between the message stream and publisher");
+    QVERIFY2(panelSource.contains(QStringLiteral("orientation: Qt.Vertical")),
+        "SessionMessagePanel should split the message stream and publisher vertically");
+    QVERIFY2(panelSource.contains(QStringLiteral("SplitView.fillHeight: true")),
+        "EventStreamView should consume the flexible side of the vertical split");
+
+    QString composerSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/PublishComposer.qml"), composerSource));
+    QVERIFY2(composerSource.contains(QStringLiteral("SplitView.preferredHeight")),
+        "PublishComposer should expose SplitView sizing instead of custom drag math");
+    QVERIFY2(!composerSource.contains(QStringLiteral("resizeComposerFromDrag")),
+        "PublishComposer should not keep a custom drag resize implementation");
+    QVERIFY2(!composerSource.contains(QStringLiteral("MouseArea")),
+        "PublishComposer should not keep a custom splitter MouseArea");
 }
 
 void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()

@@ -25,9 +25,12 @@ Item {
                                               : ""
 
     Layout.fillWidth: true
-    Layout.preferredHeight: resizeHandle.Layout.preferredHeight
-                            + (root.expanded ? root.composerHeight : root.collapsedHeight)
-    Layout.minimumHeight: Layout.preferredHeight
+    Layout.preferredHeight: root.expanded ? root.composerHeight : root.collapsedHeight
+    Layout.minimumHeight: root.expanded ? root.minComposerHeight : root.collapsedHeight
+    SplitView.fillWidth: true
+    SplitView.preferredHeight: root.expanded ? root.composerHeight : root.collapsedHeight
+    SplitView.minimumHeight: root.expanded ? root.minComposerHeight : root.collapsedHeight
+    SplitView.maximumHeight: root.expanded ? root.maxComposerHeight : root.collapsedHeight
 
     function resizeComposer(height) {
         root.composerHeight = Math.max(
@@ -35,23 +38,15 @@ Item {
                     Math.min(root.maxComposerHeight, Math.round(height)))
     }
 
-    function resizeComposerFromDrag(height) {
-        if (height <= root.minComposerHeight) {
-            root.expanded = false
-            return
-        }
-
-        root.expanded = true
-        root.resizeComposer(height)
-    }
-
-    function resizeY(mouse) {
-        return resizeMouse.mapToItem(root, mouse.x, mouse.y).y
-    }
-
     function revealDraftEditor() {
         root.expanded = true
         publishPayloadArea.forceActiveFocus()
+    }
+
+    onHeightChanged: {
+        if (root.expanded && height > 0) {
+            root.resizeComposer(height)
+        }
     }
 
     ColumnLayout {
@@ -59,53 +54,8 @@ Item {
         spacing: 0
 
         Item {
-            id: resizeHandle
             Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            Layout.minimumHeight: 1
-            property real pressY: 0
-            property int pressHeight: root.composerHeight
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                height: 1
-                color: root.ui.themePalette.separator
-                opacity: 1.0
-            }
-
-            MouseArea {
-                id: resizeMouse
-                anchors.fill: parent
-                cursorShape: Qt.SizeVerCursor
-                hoverEnabled: true
-
-                onPressed: (mouse) => {
-                    resizeHandle.pressY = root.resizeY(mouse)
-                    resizeHandle.pressHeight = root.expanded
-                            ? root.composerHeight
-                            : root.minComposerHeight
-                }
-
-                onPositionChanged: (mouse) => {
-                    if (!pressed) {
-                        return
-                    }
-
-                    const delta = root.resizeY(mouse) - resizeHandle.pressY
-                    if (!root.expanded && Math.abs(delta) > 2) {
-                        root.expanded = true
-                    }
-                    root.resizeComposerFromDrag(resizeHandle.pressHeight - delta)
-                }
-            }
-        }
-
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: root.expanded ? root.composerHeight : root.collapsedHeight
-            Layout.minimumHeight: root.expanded ? root.minComposerHeight : root.collapsedHeight
+            Layout.fillHeight: true
             clip: true
 
             Rectangle {

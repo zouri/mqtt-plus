@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../../components"
 
@@ -27,9 +28,31 @@ AppPanel {
         eventStreamView.noteStreamRowsAppended(count);
     }
 
-    ColumnLayout {
+    SplitView {
+        id: messageSplit
+
         anchors.fill: parent
-        spacing: 0
+        orientation: Qt.Vertical
+
+        handle: Item {
+            implicitWidth: messageSplit.width
+            implicitHeight: 6
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                height: 1
+                color: splitHandleHover.hovered || SplitHandle.hovered || SplitHandle.pressed
+                       ? root.ui.themePalette.selectedBorder
+                       : root.ui.themePalette.separator
+            }
+
+            HoverHandler {
+                id: splitHandleHover
+                cursorShape: Qt.SplitVCursor
+            }
+        }
 
         EventStreamView {
             id: eventStreamView
@@ -41,6 +64,8 @@ AppPanel {
             fontFamily: root.fontFamily
             title: qsTr("Messages")
             showOutputControls: true
+            SplitView.fillWidth: true
+            SplitView.fillHeight: true
             onPublishDraftRevealRequested: {
                 publishComposer.revealDraftEditor();
             }
