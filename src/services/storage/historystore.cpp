@@ -241,12 +241,12 @@ QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) con
         QStringLiteral(
             "SELECT id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "CASE WHEN payload_state = 'full' THEN payload_bytes ELSE NULL END, "
+            "NULL, "
             "payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "FROM ("
-            "    SELECT id, timestamp, topic, payload, payload_b64, "
+            "    SELECT id, timestamp, topic, payload, NULL AS payload_b64, "
             "    parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "    payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format "
+            "    payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "    FROM mqtt_messages "
             "    WHERE session_id = ? "
             "    ORDER BY id DESC "
@@ -297,12 +297,12 @@ QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 b
         QStringLiteral(
             "SELECT id, timestamp, topic, payload, payload_b64, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "CASE WHEN payload_state = 'full' THEN payload_bytes ELSE NULL END, "
+            "NULL, "
             "payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "FROM ("
-            "    SELECT id, timestamp, topic, payload, payload_b64, "
+            "    SELECT id, timestamp, topic, payload, NULL AS payload_b64, "
             "    parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "    payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format "
+            "    payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "    FROM mqtt_messages "
             "    WHERE session_id = ? AND id < ? "
             "    ORDER BY id DESC "
@@ -340,6 +340,21 @@ QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 b
     }
 
     return result;
+}
+
+QByteArray HistoryStore::loadMessagePayloadBytes(qint64 messageId) const
+{
+    if (!isReady() || messageId <= 0) {
+        return {};
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("SELECT payload_bytes FROM mqtt_messages WHERE id = ?"));
+    query.addBindValue(messageId);
+    if (!query.exec() || !query.next()) {
+        return {};
+    }
+    return query.value(0).toByteArray();
 }
 
 QVariantList HistoryStore::loadLogs(const QString &sessionId, int limit) const

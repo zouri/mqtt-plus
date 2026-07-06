@@ -43,8 +43,8 @@ Item {
         sessionActivityPanel.resetStreamPosition();
     }
 
-    function noteStreamRowAppended() {
-        sessionActivityPanel.noteStreamRowAppended();
+    function noteStreamRowsAppended(count) {
+        sessionActivityPanel.noteStreamRowsAppended(count);
     }
 
     function handleConnectionStateChanged() {
@@ -148,8 +148,8 @@ Item {
             root.resetStreamPosition();
         }
 
-        function onMessageStreamRowAppended() {
-            root.noteStreamRowAppended();
+        function onMessageStreamRowsAppended(count) {
+            root.noteStreamRowsAppended(count);
         }
 
         function onSessionEditRequested(index) {
