@@ -16,6 +16,7 @@ private slots:
     void updatesPublishDraft();
     void rejectsPublishWithoutConnectedSession();
     void forwardsSessionAndRuntimeStateNotificationsSeparately();
+    void forwardsMessageBatchNotifications();
     void ownsSubscriptionFilterState();
     void ownsPendingSubscriptionDeleteState();
     void acceptsIntentCommandsWithoutCore();
@@ -165,6 +166,23 @@ void WorkbenchViewModelTest::forwardsSessionAndRuntimeStateNotificationsSeparate
     QCOMPARE(publishSpy.size(), 2);
 }
 
+void WorkbenchViewModelTest::forwardsMessageBatchNotifications()
+{
+    std::function<void(int)> notifyMessageRows;
+    WorkbenchViewModel::Dependencies dependencies;
+    dependencies.bindMessageStreamRowsAppended = [&notifyMessageRows](QObject *, std::function<void(int)> handler) {
+        notifyMessageRows = std::move(handler);
+    };
+    WorkbenchViewModel viewModel(dependencies);
+    QSignalSpy appendSpy(&viewModel, &WorkbenchViewModel::messageStreamRowsAppended);
+
+    QVERIFY(notifyMessageRows);
+    notifyMessageRows(4);
+
+    QCOMPARE(appendSpy.size(), 1);
+    QCOMPARE(appendSpy.first().at(0).toInt(), 4);
+}
+
 void WorkbenchViewModelTest::ownsSubscriptionFilterState()
 {
     SubscriptionFilterModel filteredSubscriptions;
@@ -237,7 +255,7 @@ void WorkbenchViewModelTest::acceptsIntentCommandsWithoutCore()
     viewModel.toggleCurrentOutputPaused(false);
     viewModel.toggleCurrentSubscriptionPaused(QStringLiteral("devices/temp"), false);
     viewModel.copyMessageTopic(QStringLiteral("devices/temp"));
-    viewModel.copyMessagePayload(QStringLiteral("raw"), QStringLiteral("decoded"));
+    viewModel.copyMessagePayload(QStringLiteral("0"), QStringLiteral("raw"), QStringLiteral("decoded"), 0);
     viewModel.clearMessages();
     QCOMPARE(viewModel.loadOlderMessages(), 0);
 

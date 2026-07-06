@@ -3,6 +3,7 @@
 #include <QAbstractListModel>
 #include <QVariantList>
 #include <QVariantMap>
+#include <QVector>
 
 class EventStreamModel : public QAbstractListModel
 {
@@ -23,6 +24,7 @@ public:
         TestPayloadRole,
         TestFormatRole,
         TestFormatNameRole,
+        HistoryIdRole,
     };
     Q_ENUM(Role)
 
@@ -46,7 +48,28 @@ signals:
     void countChanged();
 
 private:
-    QVariant roleValue(const QVariantMap &row, int role) const;
+    struct EventStreamRow {
+        QVariantMap source;
+        QVariant id;
+        QString kind;
+        QString timestamp;
+        QString title;
+        QString payload;
+        QString payloadFormat;
+        int payloadSize = 0;
+        QString topic;
+        QString topicColor;
+        QString testPayload;
+        int testFormat = 0;
+        QString testFormatName;
+        qint64 historyId = 0;
 
-    QVariantList m_rows;
+        bool operator==(const EventStreamRow &other) const = default;
+    };
+
+    static EventStreamRow rowFromMap(const QVariantMap &row);
+    static QVector<EventStreamRow> rowsFromVariants(const QVariantList &rows);
+    QVariant roleValue(const EventStreamRow &row, int role) const;
+
+    QVector<EventStreamRow> m_rows;
 };

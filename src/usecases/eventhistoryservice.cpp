@@ -20,6 +20,7 @@ namespace {
 constexpr int kVisibleMessageRowsFlushIntervalMs = 16;
 constexpr int kMessageHistoryFlushIntervalMs = 250;
 constexpr int kMessageHistoryFlushBatchSize = 200;
+constexpr int kMessageRetentionPruneFlushInterval = 10;
 constexpr qint64 kPayloadPreviewBytes = 64 * 1024;
 constexpr qint64 kHardPayloadLimitBytes = 16 * 1024 * 1024;
 
@@ -32,6 +33,13 @@ struct PayloadStoragePlan {
     bool allowFullProcessing = true;
     bool shouldReport = false;
     QString reportMessage;
+};
+
+struct MessageSubscriptionMatch {
+    const SubscriptionEntry *displaySubscription = nullptr;
+    QString topicColor;
+    int payloadFormat = -1;
+    bool refreshCurrentSubscriptionFps = false;
 };
 
 QString formatByteCount(qint64 bytes)
@@ -124,6 +132,60 @@ QHash<QString, QString> subscriptionColors(const SessionState &session)
         }
     }
     return colors;
+}
+
+bool shouldPruneMessageHistory(QHash<QString, int> &flushCounts, const QString &sessionId)
+{
+    int &flushCount = flushCounts[sessionId];
+    ++flushCount;
+    if (flushCount < kMessageRetentionPruneFlushInterval) {
+        return false;
+    }
+
+    flushCount = 0;
+    return true;
+}
+
+MessageSubscriptionMatch matchSubscriptionsForMessage(
+    SessionState &session,
+    const QString &topic,
+    qint64 nowMs,
+    bool isCurrentSession)
+{
+    MessageSubscriptionMatch match;
+    int bestDisplayScore = -1;
+    QString bestDisplayFilter;
+    int bestColorScore = -1;
+    QString bestColorFilter;
+
+    for (auto &subscription : session.subscriptions) {
+        if (!PayloadCodec::topicFilterMatches(subscription.topic, topic)) {
+            continue;
+        }
+
+        subscription.recentMessageTimestampsMs.append(nowMs);
+        pruneRecentMessageTimestamps(subscription.recentMessageTimestampsMs, nowMs);
+        match.refreshCurrentSubscriptionFps = match.refreshCurrentSubscriptionFps || isCurrentSession;
+
+        const int score = topicSpecificityScore(subscription.topic);
+        if (score > bestDisplayScore
+            || (score == bestDisplayScore && (bestDisplayFilter.isEmpty() || subscription.topic < bestDisplayFilter))) {
+            bestDisplayScore = score;
+            bestDisplayFilter = subscription.topic;
+            match.displaySubscription = &subscription;
+            match.payloadFormat = subscription.format;
+        }
+
+        if (!subscription.color.isEmpty()
+            && (score > bestColorScore
+                || (score == bestColorScore && (bestColorFilter.isEmpty() || subscription.topic < bestColorFilter)))) {
+            bestColorScore = score;
+            bestColorFilter = subscription.topic;
+            match.topicColor = subscription.color;
+        }
+    }
+
+    return match;
 }
 }
 
@@ -316,8 +378,8 @@ void EventHistoryService::flushPendingVisibleMessageRows()
         (*m_dependencies.messagesModel).trimToLimit(kMaxVisibleEventRows);
     }
 
-    for (const QVariant &row : rows) {
-        emit messageAppended(row.toMap());
+    if (!rows.isEmpty()) {
+        emit messageRowsAppended(rows.size());
     }
     m_dependencies.refreshScriptTestSamplesModel();
 }
@@ -392,20 +454,11 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
 
     const QString timestamp = timestampNow();
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    bool refreshCurrentSubscriptionFps = false;
-
-    for (auto &subscription : session->subscriptions) {
-        if (!PayloadCodec::topicFilterMatches(subscription.topic, topic)) {
-            continue;
-        }
-
-        subscription.recentMessageTimestampsMs.append(nowMs);
-        pruneRecentMessageTimestamps(subscription.recentMessageTimestampsMs, nowMs);
-        refreshCurrentSubscriptionFps = refreshCurrentSubscriptionFps || session == m_dependencies.currentSessionState();
-    }
+    const bool isCurrentSession = session == m_dependencies.currentSessionState();
+    const MessageSubscriptionMatch subscriptionMatch = matchSubscriptionsForMessage(*session, topic, nowMs, isCurrentSession);
 
     if (session->outputPaused && !m_dependencies.preferencesController->saveMessagesWhenOutputPaused()) {
-        if (refreshCurrentSubscriptionFps && !(*m_dependencies.subscriptionFpsRefreshTimer).isActive()) {
+        if (subscriptionMatch.refreshCurrentSubscriptionFps && !(*m_dependencies.subscriptionFpsRefreshTimer).isActive()) {
             m_dependencies.refreshSubscriptionsModel();
             // subscriptionsChanged emitted by SubscriptionService
             (*m_dependencies.subscriptionFpsRefreshTimer).start();
@@ -413,7 +466,7 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
         return;
     }
 
-    const SubscriptionEntry *displaySubscription = (*m_dependencies.subscriptionController).bestSubscriptionForTopic(*session, topic);
+    const SubscriptionEntry *displaySubscription = subscriptionMatch.displaySubscription;
     const PayloadStoragePlan payloadPlan = makePayloadStoragePlan(
         topic,
         payloadBytes,
@@ -428,7 +481,8 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
 
     QString scriptDisplayName;
     QString decodedPayload;
-    const bool hasScript = displaySubscription && !displaySubscription->scriptId.isEmpty();
+    const bool processPayloadForVisibleOutput = !session->outputPaused;
+    const bool hasScript = processPayloadForVisibleOutput && displaySubscription && !displaySubscription->scriptId.isEmpty();
     LuaScriptResult scriptResult;
     if (hasScript && payloadPlan.allowFullProcessing) {
         scriptResult = parseIncomingPayload(
@@ -464,7 +518,8 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
         payloadPlan.preview,
         payloadPlan.state,
         payloadPlan.originalSize,
-        payloadPlan.hash);
+        payloadPlan.hash,
+        subscriptionMatch.payloadFormat);
     if (historyId <= 0) {
         reportMessageStorageError(
             *session,
@@ -474,7 +529,7 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
         scheduleMessageHistoryFlush();
     }
 
-    if (refreshCurrentSubscriptionFps && !(*m_dependencies.subscriptionFpsRefreshTimer).isActive()) {
+    if (subscriptionMatch.refreshCurrentSubscriptionFps && !(*m_dependencies.subscriptionFpsRefreshTimer).isActive()) {
         m_dependencies.refreshSubscriptionsModel();
         // FPS timer started below if needed
         (*m_dependencies.subscriptionFpsRefreshTimer).start();
@@ -501,12 +556,13 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     historyRow.insert(QStringLiteral("parse_error"), parseError);
     historyRow.insert(QStringLiteral("script_id"), scriptId);
     historyRow.insert(QStringLiteral("script_name"), scriptDisplayName);
-    if (displaySubscription && !displaySubscription->color.isEmpty()) {
-        historyRow.insert(QStringLiteral("topic_color"), displaySubscription->color);
+    historyRow.insert(QStringLiteral("payload_format"), subscriptionMatch.payloadFormat);
+    if (!subscriptionMatch.topicColor.isEmpty()) {
+        historyRow.insert(QStringLiteral("topic_color"), subscriptionMatch.topicColor);
     }
     appendRenderedMessageRow(
         *session,
-        EventRenderer::renderHistoryRow(historyRow, session->runtime.subscriptionFormats, subscriptionColors(*session)));
+        EventRenderer::renderHistoryRow(historyRow, {}, {}));
 }
 
 void EventHistoryService::appendPublishedMessage(
@@ -580,6 +636,30 @@ void EventHistoryService::appendPublishedMessage(
     appendRenderedMessageRow(
         *session,
         EventRenderer::renderHistoryRow(historyRow, renderFormats, subscriptionColors(*session)));
+}
+
+QString EventHistoryService::messagePayloadForReuse(
+    qint64 messageId,
+    const QString &fallbackPayload,
+    const QString &fallbackTestPayload,
+    int format) const
+{
+    const QString fallback = fallbackTestPayload.isEmpty() ? fallbackPayload : fallbackTestPayload;
+    if (messageId <= 0 || !m_dependencies.historyStore) {
+        return fallback;
+    }
+
+    const QByteArray payloadBytes = m_dependencies.historyStore->loadMessagePayloadBytes(messageId);
+    if (payloadBytes.isEmpty()) {
+        return fallback;
+    }
+
+    QString parseError;
+    const QString decoded = PayloadCodec::decodeForDisplay(
+        PayloadCodec::formatFromInt(format),
+        payloadBytes,
+        parseError);
+    return parseError.isEmpty() ? decoded : fallback;
 }
 
 void EventHistoryService::trimVisibleMessageRows(SessionState &session)
@@ -659,8 +739,14 @@ void EventHistoryService::flushPendingMessageHistory()
 
     if (m_dependencies.preferencesController->messageRetentionLimit() > 0) {
         for (const QString &flushedSessionId : flushedSessionIds) {
-            (*m_dependencies.historyStore).pruneMessages(flushedSessionId, m_dependencies.preferencesController->messageRetentionLimit());
+            if (shouldPruneMessageHistory(m_messageRetentionPruneFlushCounts, flushedSessionId)) {
+                (*m_dependencies.historyStore).pruneMessages(
+                    flushedSessionId,
+                    m_dependencies.preferencesController->messageRetentionLimit());
+            }
         }
+    } else {
+        m_messageRetentionPruneFlushCounts.clear();
     }
     m_lastMessageStorageError.clear();
 }

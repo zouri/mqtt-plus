@@ -23,8 +23,8 @@ AppPanel {
         eventStreamView.resetStreamPosition();
     }
 
-    function noteStreamRowAppended() {
-        eventStreamView.noteStreamRowAppended();
+    function noteStreamRowsAppended(count) {
+        eventStreamView.noteStreamRowsAppended(count);
     }
 
     ColumnLayout {

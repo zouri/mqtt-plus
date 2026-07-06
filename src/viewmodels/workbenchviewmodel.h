@@ -45,6 +45,7 @@ public:
         std::function<void(QObject *, std::function<void()>)> bindSessionRuntimeStateChanged;
         std::function<void(QObject *, std::function<void()>)> bindMessageStreamChanged;
         std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindMessageStreamRowAppended;
+        std::function<void(QObject *, std::function<void(int)>)> bindMessageStreamRowsAppended;
         std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
         SessionService *sessionController = nullptr;
         MqttSessionService *mqttController = nullptr;
@@ -90,7 +91,17 @@ public:
     Q_INVOKABLE void cancelPendingSubscriptionDelete();
     Q_INVOKABLE bool confirmPendingSubscriptionDelete();
     Q_INVOKABLE void copyMessageTopic(const QString &topic) const;
-    Q_INVOKABLE void copyMessagePayload(const QString &payload, const QString &testPayload) const;
+    Q_INVOKABLE void copyMessagePayload(
+        const QString &historyId,
+        const QString &payload,
+        const QString &testPayload,
+        int format) const;
+    Q_INVOKABLE void useMessageAsDraft(
+        const QString &historyId,
+        const QString &topic,
+        const QString &payload,
+        const QString &testPayload,
+        int format);
     Q_INVOKABLE void clearMessages();
     Q_INVOKABLE int loadOlderMessages();
 
@@ -101,12 +112,18 @@ signals:
     void publishStatusChanged();
     void messageStreamChanged();
     void messageStreamRowAppended();
+    void messageStreamRowsAppended(int count);
     void pendingSubscriptionDeleteChanged();
     void sessionEditRequested(int index);
     void subscriptionDeleteRequested(const QString &topic, const QString &displayName);
 
 private:
     ScriptLibraryModel *scriptLibrary() const;
+    QString reusableMessagePayload(
+        const QString &historyId,
+        const QString &payload,
+        const QString &testPayload,
+        int format) const;
     void refreshSubscriptionEditorScriptOptions();
     void clearPendingSubscriptionDelete();
 

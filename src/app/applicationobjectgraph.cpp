@@ -29,6 +29,9 @@ WorkbenchViewModel::Dependencies workbenchDependencies(ApplicationCoreState &sta
         [&state](QObject *context, std::function<void(const QVariantMap &)> handler) {
             QObject::connect(&state.eventController, &EventHistoryService::messageAppended, context, std::move(handler));
         },
+        [&state](QObject *context, std::function<void(int)> handler) {
+            QObject::connect(&state.eventController, &EventHistoryService::messageRowsAppended, context, std::move(handler));
+        },
         [&state](QObject *context, std::function<void()> handler) {
             QObject::connect(&state.scriptController, &ScriptService::scriptsChanged, context, std::move(handler));
         },

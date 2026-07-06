@@ -41,6 +41,7 @@ public:
         const QString &message);
     QVariantList loadMessages(const QString &sessionId, int limit) const;
     QVariantList loadMessagesBefore(const QString &sessionId, qint64 beforeId, int limit) const;
+    QByteArray loadMessagePayloadBytes(qint64 messageId) const;
     QVariantList loadLogs(const QString &sessionId, int limit) const;
     QVariantList loadLogsBefore(const QString &sessionId, qint64 beforeId, int limit) const;
     void clearMessages(const QString &sessionId);

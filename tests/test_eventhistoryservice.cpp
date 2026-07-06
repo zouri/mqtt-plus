@@ -20,10 +20,13 @@ private slots:
     void liveRowsDecodeConfiguredPayloadFormatWithoutScript();
     void publishedRowsAppearInMessageStream();
     void publishedRowsKeepFormatAfterHistoryReload();
+    void largePublishedRowsShowPreviewAfterHistoryReload();
     void publishedRowsAppearWhenOutputPaused();
+    void pausedIncomingRowsAreStoredWithoutScriptParsing();
     void publishedAndIncomingRowsBothRemainInMessageStream();
     void pendingVisibleRowsDoNotDuplicateAfterModelRefresh();
-    void batchedVisibleRowsEmitOneAppendSignalPerRow();
+    void batchedVisibleRowsEmitOneAppendSignalWithCount();
+    void reusablePayloadLoadsStoredBytesAfterHistoryRowsDropBlobs();
 };
 
 namespace {
@@ -143,6 +146,31 @@ void EventHistoryServiceTest::publishedRowsKeepFormatAfterHistoryReload()
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("JSON"));
 }
 
+void EventHistoryServiceTest::largePublishedRowsShowPreviewAfterHistoryReload()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.preferences.setMaxIncomingPayloadBytes(1024 * 1024);
+    const QByteArray payload(70 * 1024, 'x');
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/large"),
+        payload,
+        static_cast<int>(PayloadFormat::Plaintext));
+    fixture.service.flushPendingMessageHistory();
+    fixture.session.runtime.messageRows.clear();
+    fixture.messages.clear();
+
+    fixture.service.reloadCurrentSessionHistory();
+
+    QCOMPARE(fixture.messages.count(), 1);
+    const QVariantMap row = fixture.messages.rowAt(0);
+    QVERIFY2(row.value(QStringLiteral("payload")).toString().contains(QStringLiteral("Payload truncated")),
+        "Reloaded history rows without payload bytes should tell the user when a display preview is truncated");
+    QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Truncated"));
+}
+
 void EventHistoryServiceTest::publishedRowsAppearWhenOutputPaused()
 {
     Fixture fixture;
@@ -158,6 +186,60 @@ void EventHistoryServiceTest::publishedRowsAppearWhenOutputPaused()
     QTRY_COMPARE(fixture.messages.count(), 1);
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("topic")).toString(), QStringLiteral("devices/command"));
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), QStringLiteral("on"));
+}
+
+void EventHistoryServiceTest::pausedIncomingRowsAreStoredWithoutScriptParsing()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.session.outputPaused = true;
+
+    SubscriptionEntry entry;
+    entry.topic = QStringLiteral("devices/paused");
+    entry.format = static_cast<int>(PayloadFormat::Json);
+    entry.scriptId = QStringLiteral("missing-script");
+    fixture.session.subscriptions.append(entry);
+    fixture.session.runtime.subscriptionFormats.insert(entry.topic, entry.format);
+
+    fixture.service.appendIncomingMessage(
+        fixture.session.id,
+        QStringLiteral("devices/paused"),
+        QByteArrayLiteral("{\"paused\":true}"));
+    fixture.service.flushPendingMessageHistory();
+
+    QCOMPARE(fixture.messages.count(), 0);
+
+    const QVariantList rows = fixture.historyStore.loadMessages(fixture.session.id, 10);
+    QCOMPARE(rows.size(), 1);
+    const QVariantMap row = rows.first().toMap();
+    QCOMPARE(row.value(QStringLiteral("topic")).toString(), QStringLiteral("devices/paused"));
+    QCOMPARE(row.value(QStringLiteral("parse_error")).toString(), QString());
+    QCOMPARE(row.value(QStringLiteral("script_id")).toString(), QString());
+}
+
+void EventHistoryServiceTest::reusablePayloadLoadsStoredBytesAfterHistoryRowsDropBlobs()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    const QByteArray payload("complete payload, not just the rendered preview");
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/command"),
+        payload,
+        static_cast<int>(PayloadFormat::Plaintext));
+    fixture.service.flushPendingMessageHistory();
+
+    QTRY_COMPARE(fixture.messages.count(), 1);
+    const qint64 historyId = fixture.messages.rowAt(0).value(QStringLiteral("historyId")).toLongLong();
+    QVERIFY(historyId > 0);
+    QCOMPARE(
+        fixture.service.messagePayloadForReuse(
+            historyId,
+            QStringLiteral("preview only"),
+            QStringLiteral("preview only"),
+            static_cast<int>(PayloadFormat::Plaintext)),
+        QString::fromUtf8(payload));
 }
 
 void EventHistoryServiceTest::publishedAndIncomingRowsBothRemainInMessageStream()
@@ -199,19 +281,20 @@ void EventHistoryServiceTest::pendingVisibleRowsDoNotDuplicateAfterModelRefresh(
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), QStringLiteral("on"));
 }
 
-void EventHistoryServiceTest::batchedVisibleRowsEmitOneAppendSignalPerRow()
+void EventHistoryServiceTest::batchedVisibleRowsEmitOneAppendSignalWithCount()
 {
     Fixture fixture;
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
     fixture.addSubscription(QStringLiteral("devices/+"), 0);
-    QSignalSpy appendSpy(&fixture.service, &EventHistoryService::messageAppended);
+    QSignalSpy appendSpy(&fixture.service, &EventHistoryService::messageRowsAppended);
 
     fixture.service.appendIncomingMessage(fixture.session.id, QStringLiteral("devices/one"), QByteArrayLiteral("1"));
     fixture.service.appendIncomingMessage(fixture.session.id, QStringLiteral("devices/two"), QByteArrayLiteral("2"));
     fixture.service.appendIncomingMessage(fixture.session.id, QStringLiteral("devices/three"), QByteArrayLiteral("3"));
 
     QTRY_COMPARE(fixture.messages.count(), 3);
-    QCOMPARE(appendSpy.count(), 3);
+    QCOMPARE(appendSpy.count(), 1);
+    QCOMPARE(appendSpy.first().at(0).toInt(), 3);
 }
 
 QTEST_MAIN(EventHistoryServiceTest)

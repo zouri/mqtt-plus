@@ -20,7 +20,7 @@ QVariant EventStreamModel::data(const QModelIndex &index, int role) const
     if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
         return {};
     }
-    return roleValue(m_rows.at(index.row()).toMap(), role);
+    return roleValue(m_rows.at(index.row()), role);
 }
 
 QHash<int, QByteArray> EventStreamModel::roleNames() const
@@ -38,6 +38,7 @@ QHash<int, QByteArray> EventStreamModel::roleNames() const
         {TestPayloadRole, "testPayload"},
         {TestFormatRole, "testFormat"},
         {TestFormatNameRole, "testFormatName"},
+        {HistoryIdRole, "historyId"},
     };
     return roles;
 }
@@ -47,18 +48,19 @@ QVariantMap EventStreamModel::rowAt(int row) const
     if (row < 0 || row >= m_rows.size()) {
         return {};
     }
-    return m_rows.at(row).toMap();
+    return m_rows.at(row).source;
 }
 
 void EventStreamModel::setRows(const QVariantList &rows)
 {
-    if (m_rows == rows) {
+    const QVector<EventStreamRow> convertedRows = rowsFromVariants(rows);
+    if (m_rows == convertedRows) {
         return;
     }
 
-    const bool countWillChange = rows.size() != m_rows.size();
+    const bool countWillChange = convertedRows.size() != m_rows.size();
     if (!countWillChange) {
-        m_rows = rows;
+        m_rows = convertedRows;
         if (!m_rows.isEmpty()) {
             emit dataChanged(index(0, 0),
                              index(static_cast<int>(m_rows.size() - 1), 0),
@@ -73,13 +75,14 @@ void EventStreamModel::setRows(const QVariantList &rows)
                               TopicColorRole,
                               TestPayloadRole,
                               TestFormatRole,
-                              TestFormatNameRole});
+                              TestFormatNameRole,
+                              HistoryIdRole});
         }
         return;
     }
 
     beginResetModel();
-    m_rows = rows;
+    m_rows = convertedRows;
     endResetModel();
     emit countChanged();
 }
@@ -88,7 +91,7 @@ void EventStreamModel::appendRow(const QVariantMap &row)
 {
     const int insertRow = m_rows.size();
     beginInsertRows(QModelIndex(), insertRow, insertRow);
-    m_rows.append(row);
+    m_rows.append(rowFromMap(row));
     endInsertRows();
     emit countChanged();
 }
@@ -103,7 +106,7 @@ void EventStreamModel::appendRows(const QVariantList &rows)
     const int lastRow = firstRow + rows.size() - 1;
     beginInsertRows(QModelIndex(), firstRow, lastRow);
     for (const QVariant &row : rows) {
-        m_rows.append(row);
+        m_rows.append(rowFromMap(row.toMap()));
     }
     endInsertRows();
     emit countChanged();
@@ -116,9 +119,12 @@ void EventStreamModel::prependRows(const QVariantList &rows)
     }
 
     beginInsertRows(QModelIndex(), 0, rows.size() - 1);
-    for (int i = rows.size() - 1; i >= 0; --i) {
-        m_rows.prepend(rows.at(i));
+    QVector<EventStreamRow> mergedRows = rowsFromVariants(rows);
+    mergedRows.reserve(mergedRows.size() + m_rows.size());
+    for (const EventStreamRow &row : std::as_const(m_rows)) {
+        mergedRows.append(row);
     }
+    m_rows = mergedRows;
     endInsertRows();
     emit countChanged();
 }
@@ -148,33 +154,65 @@ void EventStreamModel::trimToLimit(int limit)
     emit countChanged();
 }
 
-QVariant EventStreamModel::roleValue(const QVariantMap &row, int role) const
+EventStreamModel::EventStreamRow EventStreamModel::rowFromMap(const QVariantMap &row)
+{
+    EventStreamRow streamRow;
+    streamRow.source = row;
+    streamRow.id = row.value(QStringLiteral("id"));
+    streamRow.kind = row.value(QStringLiteral("kind")).toString();
+    streamRow.timestamp = row.value(QStringLiteral("timestamp")).toString();
+    streamRow.title = row.value(QStringLiteral("title")).toString();
+    streamRow.payload = row.value(QStringLiteral("payload")).toString();
+    streamRow.payloadFormat = row.value(QStringLiteral("payloadFormat")).toString();
+    streamRow.payloadSize = row.value(QStringLiteral("payloadSize")).toInt();
+    streamRow.topic = row.value(QStringLiteral("topic")).toString();
+    streamRow.topicColor = row.value(QStringLiteral("topicColor"), QString()).toString();
+    streamRow.testPayload = row.value(QStringLiteral("testPayload"), QString()).toString();
+    streamRow.testFormat = row.value(QStringLiteral("testFormat"), 0).toInt();
+    streamRow.testFormatName = row.value(QStringLiteral("testFormatName"), QString()).toString();
+    streamRow.historyId = row.value(QStringLiteral("historyId"), 0).toLongLong();
+    return streamRow;
+}
+
+QVector<EventStreamModel::EventStreamRow> EventStreamModel::rowsFromVariants(const QVariantList &rows)
+{
+    QVector<EventStreamRow> convertedRows;
+    convertedRows.reserve(rows.size());
+    for (const QVariant &row : rows) {
+        convertedRows.append(rowFromMap(row.toMap()));
+    }
+    return convertedRows;
+}
+
+QVariant EventStreamModel::roleValue(const EventStreamRow &row, int role) const
 {
     switch (role) {
     case IdRole:
-        return row.value(QStringLiteral("id"));
+        return row.id;
     case KindRole:
-        return row.value(QStringLiteral("kind"));
+        return row.kind;
     case TimestampRole:
-        return row.value(QStringLiteral("timestamp"));
+        return row.timestamp;
     case TitleRole:
-        return row.value(QStringLiteral("title"));
+        return row.title;
     case PayloadRole:
-        return row.value(QStringLiteral("payload"));
+        return row.payload;
     case PayloadFormatRole:
-        return row.value(QStringLiteral("payloadFormat"));
+        return row.payloadFormat;
     case PayloadSizeRole:
-        return row.value(QStringLiteral("payloadSize"));
+        return row.payloadSize;
     case TopicRole:
-        return row.value(QStringLiteral("topic"));
+        return row.topic;
     case TopicColorRole:
-        return row.value(QStringLiteral("topicColor"), QString());
+        return row.topicColor;
     case TestPayloadRole:
-        return row.value(QStringLiteral("testPayload"), QString());
+        return row.testPayload;
     case TestFormatRole:
-        return row.value(QStringLiteral("testFormat"), 0);
+        return row.testFormat;
     case TestFormatNameRole:
-        return row.value(QStringLiteral("testFormatName"), QString());
+        return row.testFormatName;
+    case HistoryIdRole:
+        return QString::number(row.historyId);
     default:
         return {};
     }

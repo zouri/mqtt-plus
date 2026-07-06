@@ -85,6 +85,11 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
             emit messageStreamRowAppended();
         });
     }
+    if (m_dependencies.bindMessageStreamRowsAppended) {
+        m_dependencies.bindMessageStreamRowsAppended(this, [this](int count) {
+            emit messageStreamRowsAppended(count);
+        });
+    }
     if (m_dependencies.bindScriptLibraryChanged) {
         m_dependencies.bindScriptLibraryChanged(this, [this]() {
             refreshSubscriptionEditorScriptOptions();
@@ -368,9 +373,27 @@ void WorkbenchViewModel::copyMessageTopic(const QString &topic) const
     m_platformActions.copyTextToClipboard(topic);
 }
 
-void WorkbenchViewModel::copyMessagePayload(const QString &payload, const QString &testPayload) const
+void WorkbenchViewModel::copyMessagePayload(
+    const QString &historyId,
+    const QString &payload,
+    const QString &testPayload,
+    int format) const
 {
-    m_platformActions.copyTextToClipboard(testPayload.isEmpty() ? payload : testPayload);
+    m_platformActions.copyTextToClipboard(reusableMessagePayload(historyId, payload, testPayload, format));
+}
+
+void WorkbenchViewModel::useMessageAsDraft(
+    const QString &historyId,
+    const QString &topic,
+    const QString &payload,
+    const QString &testPayload,
+    int format)
+{
+    m_publisher.useMessageAsDraft(
+        topic,
+        reusableMessagePayload(historyId, payload, testPayload, format),
+        QString(),
+        format);
 }
 
 void WorkbenchViewModel::clearMessages()
@@ -388,6 +411,24 @@ int WorkbenchViewModel::loadOlderMessages()
 ScriptLibraryModel *WorkbenchViewModel::scriptLibrary() const
 {
     return m_dependencies.scripts;
+}
+
+QString WorkbenchViewModel::reusableMessagePayload(
+    const QString &historyId,
+    const QString &payload,
+    const QString &testPayload,
+    int format) const
+{
+    if (!m_dependencies.eventController) {
+        return testPayload.isEmpty() ? payload : testPayload;
+    }
+    bool ok = false;
+    const qint64 parsedHistoryId = historyId.toLongLong(&ok);
+    return m_dependencies.eventController->messagePayloadForReuse(
+        ok ? parsedHistoryId : 0,
+        payload,
+        testPayload,
+        format);
 }
 
 void WorkbenchViewModel::clearPendingSubscriptionDelete()

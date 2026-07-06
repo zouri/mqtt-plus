@@ -10,7 +10,7 @@ Item {
 
     required property var viewModel
     required property var publisher
-    required property var streamModel
+    required property QtObject streamModel
     required property var session
     required property var ui
     required property string fontFamily
@@ -39,7 +39,7 @@ Item {
         root.requestFollowScroll()
     }
 
-    function noteStreamRowAppended() {
+    function noteStreamRowsAppended(count) {
         if (!eventList) {
             return
         }
@@ -53,7 +53,7 @@ Item {
 
         eventList.bottomAnchorActive = false
         eventList.shouldFollowOutput = false
-        eventList.unreadCount += 1
+        eventList.unreadCount += Math.max(1, count)
     }
 
     function requestFollowScroll() {
@@ -363,6 +363,7 @@ Item {
                     required property string topicColor
                     required property string testPayload
                     required property int testFormat
+                    required property string historyId
                     readonly property bool isDivider: eventDelegate.kind === "divider"
                     readonly property bool isMessage: eventDelegate.kind === "message"
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
@@ -517,7 +518,11 @@ Item {
                                     restBg: "transparent"
                                     outlineColor: "transparent"
                                     accessibleName: qsTr("Copy payload")
-                                    onClicked: root.viewModel.copyMessagePayload(eventDelegate.payload, eventDelegate.testPayload)
+                                    onClicked: root.viewModel.copyMessagePayload(
+                                                   eventDelegate.historyId,
+                                                   eventDelegate.payload,
+                                                   eventDelegate.testPayload,
+                                                   eventDelegate.testFormat)
                                 }
 
                                 AppIconButton {
@@ -532,7 +537,8 @@ Item {
                                     outlineColor: "transparent"
                                     accessibleName: qsTr("Use this message in publisher")
                                     onClicked: {
-                                        root.publisher.useMessageAsDraft(
+                                        root.viewModel.useMessageAsDraft(
+                                                    eventDelegate.historyId,
                                                     eventDelegate.topic,
                                                     eventDelegate.payload,
                                                     eventDelegate.testPayload,

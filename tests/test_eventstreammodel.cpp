@@ -37,6 +37,11 @@ void EventStreamModelTest::appendRowsInsertsContiguousBatch()
     QCOMPARE(insertSpy.first().at(2).toInt(), 1);
     QCOMPARE(model.rowAt(0).value(QStringLiteral("title")).toString(), QStringLiteral("first"));
     QCOMPARE(model.rowAt(1).value(QStringLiteral("title")).toString(), QStringLiteral("second"));
+
+    model.appendRow(QVariantMap {
+        {QStringLiteral("historyId"), 42},
+    });
+    QCOMPARE(model.data(model.index(2, 0), EventStreamModel::HistoryIdRole).toLongLong(), 42);
 }
 
 void EventStreamModelTest::setRowsIgnoresUnchangedRows()
