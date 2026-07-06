@@ -83,7 +83,7 @@ QString payloadHexPreview(const QByteArray &bytes)
     if (bytes.size() > previewBytes.size()) {
         preview.append(QStringLiteral(" ..."));
     }
-    return QStringLiteral("Raw preview (hex): %1").arg(preview);
+    return preview;
 }
 
 PayloadStoragePlan makePayloadStoragePlan(const QString &topic, const QByteArray &payloadBytes, int configuredLimit)
