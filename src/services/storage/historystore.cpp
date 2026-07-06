@@ -9,7 +9,6 @@
 #include <QUuid>
 
 #include <algorithm>
-#include <utility>
 
 namespace {
 QString nonNullString(const QString &value)
@@ -17,27 +16,56 @@ QString nonNullString(const QString &value)
     return value.isNull() ? QStringLiteral("") : value;
 }
 
-bool ensureColumn(QSqlDatabase &db, const QString &table, const QString &column, const QString &definition, QString &error)
+QStringList requiredMessageColumns()
+{
+    return {
+        QStringLiteral("id"),
+        QStringLiteral("session_id"),
+        QStringLiteral("timestamp"),
+        QStringLiteral("topic"),
+        QStringLiteral("parsed_payload"),
+        QStringLiteral("parsed_format"),
+        QStringLiteral("parse_error"),
+        QStringLiteral("script_id"),
+        QStringLiteral("script_name"),
+        QStringLiteral("payload_bytes"),
+        QStringLiteral("payload_size"),
+        QStringLiteral("payload_state"),
+        QStringLiteral("payload_preview"),
+        QStringLiteral("payload_hash"),
+        QStringLiteral("payload_format"),
+    };
+}
+
+bool resetStaleMessageTable(QSqlDatabase &db, QString &error)
 {
     QSqlQuery infoQuery(db);
-    if (!infoQuery.exec(QStringLiteral("PRAGMA table_info(%1)").arg(table))) {
+    if (!infoQuery.exec(QStringLiteral("PRAGMA table_info(mqtt_messages)"))) {
         error = infoQuery.lastError().text();
         return false;
     }
 
+    QSet<QString> columns;
     while (infoQuery.next()) {
-        if (infoQuery.value(1).toString() == column) {
+        columns.insert(infoQuery.value(1).toString());
+    }
+    if (columns.isEmpty()) {
+        return true;
+    }
+
+    for (const QString &column : requiredMessageColumns()) {
+        if (!columns.contains(column)) {
+            QSqlQuery dropQuery(db);
+            if (!dropQuery.exec(QStringLiteral("DROP TABLE mqtt_messages"))) {
+                error = dropQuery.lastError().text();
+                return false;
+            }
             return true;
         }
     }
-
-    QSqlQuery alterQuery(db);
-    if (!alterQuery.exec(QStringLiteral("ALTER TABLE %1 ADD COLUMN %2").arg(table, definition))) {
-        error = alterQuery.lastError().text();
-        return false;
-    }
     return true;
 }
+
 } // namespace
 
 HistoryStore::HistoryStore()
@@ -144,10 +172,10 @@ QStringList HistoryStore::flushPendingMessages()
     if (!query.prepare(
         QStringLiteral(
             "INSERT INTO mqtt_messages("
-            "session_id, timestamp, topic, payload, payload_b64, "
+            "session_id, timestamp, topic, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name, "
             "payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format) "
-            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
         m_lastError = query.lastError().text();
         return flushedSessionIds;
     }
@@ -162,19 +190,17 @@ QStringList HistoryStore::flushPendingMessages()
         query.bindValue(0, message.sessionId);
         query.bindValue(1, message.timestamp);
         query.bindValue(2, message.topic);
-        query.bindValue(3, nonNullString(message.payloadPreview));
-        query.bindValue(4, QStringLiteral(""));
-        query.bindValue(5, nonNullString(message.parsedPayload));
-        query.bindValue(6, nonNullString(message.parsedFormat));
-        query.bindValue(7, nonNullString(message.parseError));
-        query.bindValue(8, nonNullString(message.scriptId));
-        query.bindValue(9, nonNullString(message.scriptName));
-        query.bindValue(10, message.payloadBytes);
-        query.bindValue(11, message.payloadSize);
-        query.bindValue(12, nonNullString(message.payloadState));
-        query.bindValue(13, nonNullString(message.payloadPreview));
-        query.bindValue(14, nonNullString(message.payloadHash));
-        query.bindValue(15, message.payloadFormat);
+        query.bindValue(3, nonNullString(message.parsedPayload));
+        query.bindValue(4, nonNullString(message.parsedFormat));
+        query.bindValue(5, nonNullString(message.parseError));
+        query.bindValue(6, nonNullString(message.scriptId));
+        query.bindValue(7, nonNullString(message.scriptName));
+        query.bindValue(8, message.payloadBytes);
+        query.bindValue(9, message.payloadSize);
+        query.bindValue(10, nonNullString(message.payloadState));
+        query.bindValue(11, nonNullString(message.payloadPreview));
+        query.bindValue(12, nonNullString(message.payloadHash));
+        query.bindValue(13, message.payloadFormat);
         if (!query.exec()) {
             m_lastError = query.lastError().text();
             m_db.rollback();
@@ -239,12 +265,12 @@ QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) con
     QSqlQuery query(m_db);
     query.prepare(
         QStringLiteral(
-            "SELECT id, timestamp, topic, payload, payload_b64, "
+            "SELECT id, timestamp, topic, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name, "
             "NULL, "
             "payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "FROM ("
-            "    SELECT id, timestamp, topic, payload, NULL AS payload_b64, "
+            "    SELECT id, timestamp, topic, "
             "    parsed_payload, parsed_format, parse_error, script_id, script_name, "
             "    payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "    FROM mqtt_messages "
@@ -266,19 +292,17 @@ QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) con
         row.insert(QStringLiteral("timestamp"), query.value(1).toString());
         row.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
         row.insert(QStringLiteral("topic"), query.value(2).toString());
-        row.insert(QStringLiteral("payload"), query.value(3).toString());
-        row.insert(QStringLiteral("payload_b64"), query.value(4).toString());
-        row.insert(QStringLiteral("parsed_payload"), query.value(5).toString());
-        row.insert(QStringLiteral("parsed_format"), query.value(6).toString());
-        row.insert(QStringLiteral("parse_error"), query.value(7).toString());
-        row.insert(QStringLiteral("script_id"), query.value(8).toString());
-        row.insert(QStringLiteral("script_name"), query.value(9).toString());
-        row.insert(QStringLiteral("payload_bytes"), query.value(10).toByteArray());
-        row.insert(QStringLiteral("payload_size"), query.value(11).toLongLong());
-        row.insert(QStringLiteral("payload_state"), query.value(12).toString());
-        row.insert(QStringLiteral("payload_preview"), query.value(13).toString());
-        row.insert(QStringLiteral("payload_hash"), query.value(14).toString());
-        row.insert(QStringLiteral("payload_format"), query.value(15).toInt());
+        row.insert(QStringLiteral("parsed_payload"), query.value(3).toString());
+        row.insert(QStringLiteral("parsed_format"), query.value(4).toString());
+        row.insert(QStringLiteral("parse_error"), query.value(5).toString());
+        row.insert(QStringLiteral("script_id"), query.value(6).toString());
+        row.insert(QStringLiteral("script_name"), query.value(7).toString());
+        row.insert(QStringLiteral("payload_bytes"), query.value(8).toByteArray());
+        row.insert(QStringLiteral("payload_size"), query.value(9).toLongLong());
+        row.insert(QStringLiteral("payload_state"), query.value(10).toString());
+        row.insert(QStringLiteral("payload_preview"), query.value(11).toString());
+        row.insert(QStringLiteral("payload_hash"), query.value(12).toString());
+        row.insert(QStringLiteral("payload_format"), query.value(13).toInt());
         result.append(row);
     }
 
@@ -295,12 +319,12 @@ QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 b
     QSqlQuery query(m_db);
     query.prepare(
         QStringLiteral(
-            "SELECT id, timestamp, topic, payload, payload_b64, "
+            "SELECT id, timestamp, topic, "
             "parsed_payload, parsed_format, parse_error, script_id, script_name, "
             "NULL, "
             "payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "FROM ("
-            "    SELECT id, timestamp, topic, payload, NULL AS payload_b64, "
+            "    SELECT id, timestamp, topic, "
             "    parsed_payload, parsed_format, parse_error, script_id, script_name, "
             "    payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "    FROM mqtt_messages "
@@ -323,19 +347,17 @@ QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 b
         row.insert(QStringLiteral("timestamp"), query.value(1).toString());
         row.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
         row.insert(QStringLiteral("topic"), query.value(2).toString());
-        row.insert(QStringLiteral("payload"), query.value(3).toString());
-        row.insert(QStringLiteral("payload_b64"), query.value(4).toString());
-        row.insert(QStringLiteral("parsed_payload"), query.value(5).toString());
-        row.insert(QStringLiteral("parsed_format"), query.value(6).toString());
-        row.insert(QStringLiteral("parse_error"), query.value(7).toString());
-        row.insert(QStringLiteral("script_id"), query.value(8).toString());
-        row.insert(QStringLiteral("script_name"), query.value(9).toString());
-        row.insert(QStringLiteral("payload_bytes"), query.value(10).toByteArray());
-        row.insert(QStringLiteral("payload_size"), query.value(11).toLongLong());
-        row.insert(QStringLiteral("payload_state"), query.value(12).toString());
-        row.insert(QStringLiteral("payload_preview"), query.value(13).toString());
-        row.insert(QStringLiteral("payload_hash"), query.value(14).toString());
-        row.insert(QStringLiteral("payload_format"), query.value(15).toInt());
+        row.insert(QStringLiteral("parsed_payload"), query.value(3).toString());
+        row.insert(QStringLiteral("parsed_format"), query.value(4).toString());
+        row.insert(QStringLiteral("parse_error"), query.value(5).toString());
+        row.insert(QStringLiteral("script_id"), query.value(6).toString());
+        row.insert(QStringLiteral("script_name"), query.value(7).toString());
+        row.insert(QStringLiteral("payload_bytes"), query.value(8).toByteArray());
+        row.insert(QStringLiteral("payload_size"), query.value(9).toLongLong());
+        row.insert(QStringLiteral("payload_state"), query.value(10).toString());
+        row.insert(QStringLiteral("payload_preview"), query.value(11).toString());
+        row.insert(QStringLiteral("payload_hash"), query.value(12).toString());
+        row.insert(QStringLiteral("payload_format"), query.value(13).toInt());
         result.append(row);
     }
 
@@ -572,6 +594,10 @@ bool HistoryStore::initialize(const QString &dataPath)
 
     QSqlQuery query(m_db);
 
+    if (!resetStaleMessageTable(m_db, m_lastError)) {
+        return false;
+    }
+
     if (!query.exec(
             QStringLiteral(
                 "CREATE TABLE IF NOT EXISTS mqtt_messages ("
@@ -579,8 +605,6 @@ bool HistoryStore::initialize(const QString &dataPath)
                 "session_id TEXT NOT NULL, "
                 "timestamp TEXT NOT NULL, "
                 "topic TEXT NOT NULL, "
-                "payload TEXT NOT NULL DEFAULT '', "
-                "payload_b64 TEXT NOT NULL DEFAULT '', "
                 "parsed_payload TEXT NOT NULL DEFAULT '', "
                 "parsed_format TEXT NOT NULL DEFAULT '', "
                 "parse_error TEXT NOT NULL DEFAULT '', "
@@ -594,20 +618,6 @@ bool HistoryStore::initialize(const QString &dataPath)
                 "payload_format INTEGER NOT NULL DEFAULT -1)"))) {
         m_lastError = query.lastError().text();
         return false;
-    }
-
-    const QVector<QPair<QString, QString>> messageColumns = {
-        {QStringLiteral("payload_bytes"), QStringLiteral("payload_bytes BLOB")},
-        {QStringLiteral("payload_size"), QStringLiteral("payload_size INTEGER NOT NULL DEFAULT 0")},
-        {QStringLiteral("payload_state"), QStringLiteral("payload_state TEXT NOT NULL DEFAULT 'full'")},
-        {QStringLiteral("payload_preview"), QStringLiteral("payload_preview TEXT NOT NULL DEFAULT ''")},
-        {QStringLiteral("payload_hash"), QStringLiteral("payload_hash TEXT NOT NULL DEFAULT ''")},
-        {QStringLiteral("payload_format"), QStringLiteral("payload_format INTEGER NOT NULL DEFAULT -1")},
-    };
-    for (const auto &column : messageColumns) {
-        if (!ensureColumn(m_db, QStringLiteral("mqtt_messages"), column.first, column.second, m_lastError)) {
-            return false;
-        }
     }
 
     if (!query.exec(

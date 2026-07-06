@@ -2,6 +2,9 @@
 
 #include <QtTest/QtTest>
 
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QUuid>
 
@@ -10,12 +13,13 @@ class HistoryStoreTest : public QObject
     Q_OBJECT
 
 private slots:
-    void flushesRawPayloadWithoutNullBase64();
+    void flushesRawPayloadWithoutLegacyColumns();
+    void resetsOnlyMessageTableWhenSchemaIsStale();
     void loadMessagesUsesPreviewWithoutPayloadBytes();
     void loadsPayloadBytesByMessageId();
 };
 
-void HistoryStoreTest::flushesRawPayloadWithoutNullBase64()
+void HistoryStoreTest::flushesRawPayloadWithoutLegacyColumns()
 {
     QTemporaryDir dataDir;
     QVERIFY(dataDir.isValid());
@@ -56,9 +60,80 @@ void HistoryStoreTest::flushesRawPayloadWithoutNullBase64()
     QCOMPARE(rows.size(), 1);
 
     const QVariantMap row = rows.first().toMap();
-    QCOMPARE(row.value(QStringLiteral("payload_b64")).toString(), QStringLiteral(""));
+    QVERIFY(!row.contains(QStringLiteral("payload")));
     QCOMPARE(row.value(QStringLiteral("payload_bytes")).toByteArray(), QByteArray());
     QCOMPARE(row.value(QStringLiteral("payload_size")).toLongLong(), qint64(payload.size()));
+}
+
+void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    const QString connectionName = QStringLiteral("stale-message-schema-%1")
+                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral(
+                     "CREATE TABLE mqtt_messages ("
+                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                     "session_id TEXT NOT NULL, "
+                     "timestamp TEXT NOT NULL, "
+                     "topic TEXT NOT NULL, "
+                     "payload TEXT NOT NULL DEFAULT '', "
+                     "payload_b64 TEXT NOT NULL DEFAULT '')")),
+            qPrintable(query.lastError().text()));
+        QVERIFY2(query.exec(QStringLiteral(
+                     "INSERT INTO mqtt_messages(session_id, timestamp, topic, payload, payload_b64) "
+                     "VALUES('stale-session', '2026-07-02T15:02:20.304Z', 'devices/stale', 'old', 'b2xk')")),
+            qPrintable(query.lastError().text()));
+
+        QVERIFY2(query.exec(QStringLiteral(
+                     "CREATE TABLE event_logs ("
+                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                     "session_id TEXT NOT NULL, "
+                     "timestamp TEXT NOT NULL, "
+                     "channel TEXT NOT NULL, "
+                     "message TEXT NOT NULL DEFAULT '')")),
+            qPrintable(query.lastError().text()));
+        QVERIFY2(query.exec(QStringLiteral(
+                     "INSERT INTO event_logs(session_id, timestamp, channel, message) "
+                     "VALUES('stale-session', '2026-07-02T15:02:21.000Z', 'Network', 'kept log')")),
+            qPrintable(query.lastError().text()));
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    QVERIFY(store.loadMessages(QStringLiteral("stale-session"), 10).isEmpty());
+
+    const QVariantList logs = store.loadLogs(QStringLiteral("stale-session"), 10);
+    QCOMPARE(logs.size(), 1);
+    QCOMPARE(logs.first().toMap().value(QStringLiteral("payload")).toString(), QStringLiteral("kept log"));
+
+    const QString newSessionId = QStringLiteral("new-session");
+    const qint64 reservedId = store.enqueueMessage(
+        newSessionId,
+        QStringLiteral("2026-07-02T15:02:22.000Z"),
+        QStringLiteral("devices/current"),
+        QByteArrayLiteral("current"),
+        QString(),
+        QString(),
+        QString(),
+        QString(),
+        QString(),
+        QStringLiteral("current"),
+        QStringLiteral("full"),
+        7,
+        QStringLiteral("hash"));
+
+    QVERIFY(reservedId > 0);
+    QCOMPARE(store.flushPendingMessages(), QStringList({newSessionId}));
+    QCOMPARE(store.loadMessages(newSessionId, 10).size(), 1);
 }
 
 void HistoryStoreTest::loadMessagesUsesPreviewWithoutPayloadBytes()
