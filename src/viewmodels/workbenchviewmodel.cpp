@@ -318,6 +318,8 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
             submission.value(QStringLiteral("editTopic")).toString(),
             submission.value(QStringLiteral("topic")).toString(),
             submission.value(QStringLiteral("alias")).toString(),
+            submission.value(QStringLiteral("qos")).toInt(),
+            submission.value(QStringLiteral("format")).toInt(),
             submission.value(QStringLiteral("scriptId")).toString(),
             submission.value(QStringLiteral("color")).toString());
     }

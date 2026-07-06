@@ -368,37 +368,43 @@ Item {
                     readonly property bool isMessage: eventDelegate.kind === "message"
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
                     readonly property int timelineInset: 6
-                    readonly property int bubbleLeft: eventDelegate.timelineInset + 14
+                    readonly property int timelineX: eventDelegate.timelineInset + 3
+                    readonly property int timelineDotSize: 10
+                    readonly property int bubbleLeft: eventDelegate.timelineX + 11
+                    readonly property int timestampTop: 6
+                    readonly property int timestampBubbleGap: 5
                     readonly property int bubbleMaxWidth: 760
                     readonly property int bubbleWidth: Math.max(220,
                                                                  Math.min(eventDelegate.width - eventDelegate.bubbleLeft - 8,
                                                                           eventDelegate.bubbleMaxWidth))
+                    readonly property color timelineColor: eventDelegate.topicColor.length > 0
+                                                          ? eventDelegate.topicColor
+                                                          : (eventDelegate.isMessage
+                                                             ? root.ui.themePalette.selectedBorder
+                                                             : root.ui.themePalette.warningText)
                     width: ListView.view.width
                     implicitHeight: eventDelegate.isDivider
                                     ? dividerRow.implicitHeight + 14
-                                    : bubble.implicitHeight + 12
+                                    : timestampLabel.implicitHeight + eventDelegate.timestampBubbleGap
+                                      + bubble.implicitHeight + 12
 
                     Rectangle {
                         visible: !eventDelegate.isDivider
-                        x: eventDelegate.timelineInset + 3
+                        x: eventDelegate.timelineX
                         y: 0
                         width: 1
                         height: parent.height
-                        color: root.ui.themePalette.dividerLine
+                        color: eventDelegate.timelineColor
                     }
 
                     Rectangle {
                         visible: !eventDelegate.isDivider
-                        x: eventDelegate.timelineInset - 2
-                        y: bubble.y + 16
-                        width: 10
-                        height: 10
-                        radius: 5
-                        color: eventDelegate.topicColor.length > 0
-                               ? eventDelegate.topicColor
-                               : (eventDelegate.isMessage
-                                  ? root.ui.themePalette.selectedBorder
-                                  : root.ui.themePalette.warningText)
+                        x: eventDelegate.timelineX - Math.round(width / 2)
+                        y: timestampLabel.y + Math.round((timestampLabel.implicitHeight - height) / 2)
+                        width: eventDelegate.timelineDotSize
+                        height: eventDelegate.timelineDotSize
+                        radius: width / 2
+                        color: eventDelegate.timelineColor
                         border.width: 2
                         border.color: root.ui.themePalette.windowBg
                     }
@@ -425,13 +431,26 @@ Item {
                         }
                     }
 
+                    Label {
+                        id: timestampLabel
+                        visible: !eventDelegate.isDivider
+                        x: eventDelegate.bubbleLeft
+                        y: eventDelegate.timestampTop
+                        width: eventDelegate.bubbleWidth
+                        text: eventDelegate.timestamp
+                        color: root.ui.themePalette.timestampText
+                        font.pixelSize: 11
+                        elide: Label.ElideRight
+                    }
+
                     Rectangle {
                         id: bubble
                         visible: !eventDelegate.isDivider
                         x: eventDelegate.bubbleLeft
-                        y: 6
+                        y: timestampLabel.y + timestampLabel.implicitHeight
+                           + eventDelegate.timestampBubbleGap
                         width: eventDelegate.bubbleWidth
-                        implicitHeight: rowBody.implicitHeight + 18
+                        implicitHeight: rowBody.implicitHeight + 12
                         radius: 8
                         color: eventDelegate.isMessage
                                ? root.ui.themePalette.itemBg
@@ -446,19 +465,13 @@ Item {
                             id: rowBody
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            anchors.margins: 10
+                            anchors.margins: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 7
+                            spacing: 4
 
                             RowLayout {
                                 width: parent.width
-                                spacing: 6
-
-                                Label {
-                                    text: eventDelegate.timestamp
-                                    color: root.ui.themePalette.timestampText
-                                    font.pixelSize: 11
-                                }
+                                spacing: 5
 
                                 Label {
                                     Layout.fillWidth: true
@@ -477,8 +490,8 @@ Item {
                                     label: eventDelegate.payloadSizeLabel
                                     badgeRadius: 7
                                     badgeBorder: root.ui.themePalette.eventBorder
-                                    horizontalPadding: 6
-                                    verticalPadding: 3
+                                    horizontalPadding: 5
+                                    verticalPadding: 2
                                     strong: false
                                 }
 
@@ -488,8 +501,8 @@ Item {
                                     label: eventDelegate.payloadFormat
                                     badgeRadius: 7
                                     badgeBorder: root.ui.themePalette.eventBorder
-                                    horizontalPadding: 6
-                                    verticalPadding: 3
+                                    horizontalPadding: 5
+                                    verticalPadding: 2
                                     maximumLabelWidth: 160
                                 }
 
@@ -498,9 +511,9 @@ Item {
                                     visible: eventDelegate.isMessage
                                     symbol: "T"
                                     symbolSize: 11
-                                    implicitWidth: 24
-                                    implicitHeight: 24
-                                    cornerRadius: 6
+                                    implicitWidth: 22
+                                    implicitHeight: 22
+                                    cornerRadius: 5
                                     restBg: "transparent"
                                     outlineColor: "transparent"
                                     accessibleName: qsTr("Copy topic")
@@ -512,9 +525,9 @@ Item {
                                     visible: eventDelegate.isMessage
                                     symbol: "P"
                                     symbolSize: 11
-                                    implicitWidth: 24
-                                    implicitHeight: 24
-                                    cornerRadius: 6
+                                    implicitWidth: 22
+                                    implicitHeight: 22
+                                    cornerRadius: 5
                                     restBg: "transparent"
                                     outlineColor: "transparent"
                                     accessibleName: qsTr("Copy payload")
@@ -529,10 +542,10 @@ Item {
                                     ui: root.ui
                                     visible: eventDelegate.isMessage
                                     iconSource: root.ui.materialIcon("send")
-                                    implicitWidth: 24
-                                    implicitHeight: 24
+                                    implicitWidth: 22
+                                    implicitHeight: 22
                                     iconSize: 12
-                                    cornerRadius: 6
+                                    cornerRadius: 5
                                     restBg: "transparent"
                                     outlineColor: "transparent"
                                     accessibleName: qsTr("Use this message in publisher")
@@ -555,7 +568,7 @@ Item {
                                 color: root.ui.textStrong
                                 font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily
                                 font.pixelSize: 13
-                                lineHeight: 1.18
+                                lineHeight: 1.12
                                 textFormat: Text.PlainText
                                 wrapMode: Text.WrapAnywhere
                             }
