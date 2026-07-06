@@ -60,6 +60,7 @@ public:
         const QString &timestamp,
         QString &scriptNameOut,
         QString &decodedPayloadOut) const;
+    void appendPublishedMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes, int format);
     void appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
     void trimVisibleMessageRows(SessionState &session);
     void trimVisibleLogRows(SessionState &session);

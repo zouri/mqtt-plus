@@ -168,6 +168,7 @@ void MqttSessionService::publishCurrentSession(
         m_dependencies.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Publish rejected for %1").arg(trimmedTopic));
     } else {
         updatePublishStatus(*session, QStringLiteral("queued"), QString(), messageId);
+        (*m_dependencies.eventController).appendPublishedMessage(session->id, trimmedTopic, payloadBytes, format);
         m_dependencies.appendEvent(
             *session,
             QStringLiteral("Publish"),
