@@ -178,8 +178,8 @@ void MqttSessionService::publishCurrentSession(
                 .arg(retain ? QStringLiteral(", retain") : QString()));
     }
 
-    if (m_dependencies.refreshCurrentSessionModels) {
-        m_dependencies.refreshCurrentSessionModels();
+    if (m_dependencies.refreshModels) {
+        m_dependencies.refreshModels();
     }
     emit sessionStateChanged();
 }
@@ -294,8 +294,8 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
                 updatePublishStatus(*boundSession, QStringLiteral("sent"), QString(), messageId);
             }
         }
-        if (m_dependencies.refreshCurrentSessionModels) {
-            m_dependencies.refreshCurrentSessionModels();
+        if (m_dependencies.refreshModels) {
+            m_dependencies.refreshModels();
         }
         emit sessionStateChanged();
     });
@@ -319,8 +319,8 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
                 }
                 updatePublishStatus(*boundSession, messageStatusName(status), reason, messageId);
             }
-            if (m_dependencies.refreshCurrentSessionModels) {
-                m_dependencies.refreshCurrentSessionModels();
+            if (m_dependencies.refreshModels) {
+                m_dependencies.refreshModels();
             }
             emit sessionStateChanged();
         });
