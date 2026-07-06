@@ -5,6 +5,7 @@
 #include "services/scripting/luarunner.h"
 
 #include <QObject>
+#include <QHash>
 #include <QSet>
 #include <QTimer>
 #include <QVariantList>
@@ -62,6 +63,11 @@ public:
         QString &decodedPayloadOut) const;
     void appendPublishedMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes, int format);
     void appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
+    QString messagePayloadForReuse(
+        qint64 messageId,
+        const QString &fallbackPayload,
+        const QString &fallbackTestPayload,
+        int format) const;
     void trimVisibleMessageRows(SessionState &session);
     void trimVisibleLogRows(SessionState &session);
     void reloadCurrentSessionHistory();
@@ -71,6 +77,7 @@ signals:
     void messageStreamChanged();
     void logStreamChanged();
     void messageAppended(const QVariantMap &row);
+    void messageRowsAppended(int count);
     void logAppended(const QVariantMap &row);
 
 private:
@@ -84,6 +91,7 @@ private:
     QTimer m_visibleMessageRowsFlushTimer;
     QVariantList m_pendingVisibleMessageRows;
     QString m_pendingVisibleMessageSessionId;
+    QHash<QString, int> m_messageRetentionPruneFlushCounts;
     QSet<QString> m_reportedPayloadStorageStates;
     QString m_lastMessageStorageError;
 };

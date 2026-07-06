@@ -28,6 +28,12 @@ private slots:
     void applicationObjectGraphOwnsApplicationComposition();
     void publishStatusUsesTypedRuntimeState();
     void sessionRuntimeStateIsSeparatedFromPersistentSessionConfig();
+    void eventHistoryServiceMatchesSubscriptionsInReceivePath();
+    void eventStreamModelUsesTypedRows();
+    void eventStreamModelPrependsRowsInBatch();
+    void historyStoreListQueriesDoNotProjectPayloadBlobs();
+    void eventHistoryServiceThrottlesRetentionPrune();
+    void messageQmlUsesTypedObjectProperties();
     void qmlUsesApplicationViewModelRootOnly();
     void translationsDoNotReferenceLegacyFacade();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
@@ -559,6 +565,81 @@ void ArchitectureBoundariesTest::sessionRuntimeStateIsSeparatedFromPersistentSes
     }
 }
 
+void ArchitectureBoundariesTest::eventHistoryServiceMatchesSubscriptionsInReceivePath()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.cpp"), source));
+    QVERIFY2(source.contains(QStringLiteral("MessageSubscriptionMatch")),
+        "EventHistoryService should use a local receive-path match result for incoming messages");
+    QVERIFY2(!source.contains(QStringLiteral("bestSubscriptionForTopic(*session, topic)")),
+        "Incoming message processing must not scan subscriptions once for FPS and again for display selection");
+}
+
+void ArchitectureBoundariesTest::eventStreamModelUsesTypedRows()
+{
+    QString header;
+    QVERIFY(readSourceFile(QStringLiteral("src/models/eventstreammodel.h"), header));
+    QVERIFY2(header.contains(QStringLiteral("struct EventStreamRow")),
+        "EventStreamModel should keep a typed row cache for hot role reads");
+    QVERIFY2(!header.contains(QStringLiteral("QVariantList m_rows")),
+        "EventStreamModel should not store hot list-model rows as raw QVariantList");
+}
+
+void ArchitectureBoundariesTest::eventStreamModelPrependsRowsInBatch()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("src/models/eventstreammodel.cpp"), source));
+    QVERIFY2(!source.contains(QStringLiteral("m_rows.prepend")),
+        "EventStreamModel::prependRows must insert the incoming batch in one container operation");
+}
+
+void ArchitectureBoundariesTest::historyStoreListQueriesDoNotProjectPayloadBlobs()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("src/services/storage/historystore.cpp"), source));
+
+    const int listQueryIndex = source.indexOf(QStringLiteral("QVariantList HistoryStore::loadMessages("));
+    const int olderQueryIndex = source.indexOf(QStringLiteral("QVariantList HistoryStore::loadMessagesBefore("));
+    const int payloadLookupIndex = source.indexOf(QStringLiteral("QByteArray HistoryStore::loadMessagePayloadBytes("));
+    QVERIFY(listQueryIndex >= 0);
+    QVERIFY(olderQueryIndex > listQueryIndex);
+    QVERIFY(payloadLookupIndex > olderQueryIndex);
+
+    const QString loadMessagesBody = source.mid(listQueryIndex, olderQueryIndex - listQueryIndex);
+    const QString loadMessagesBeforeBody = source.mid(olderQueryIndex, payloadLookupIndex - olderQueryIndex);
+    QVERIFY2(!loadMessagesBody.contains(QStringLiteral("    payload_bytes")),
+        "History message list queries must not project payload_bytes blobs");
+    QVERIFY2(!loadMessagesBeforeBody.contains(QStringLiteral("    payload_bytes")),
+        "Older message list queries must not project payload_bytes blobs");
+}
+
+void ArchitectureBoundariesTest::eventHistoryServiceThrottlesRetentionPrune()
+{
+    QString header;
+    QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.h"), header));
+    QVERIFY2(header.contains(QStringLiteral("m_messageRetentionPruneFlushCounts")),
+        "EventHistoryService should track retention prune cadence per session");
+
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.cpp"), source));
+    QVERIFY2(source.contains(QStringLiteral("shouldPruneMessageHistory")),
+        "EventHistoryService should decide whether a flush should trigger retention pruning");
+}
+
+void ArchitectureBoundariesTest::messageQmlUsesTypedObjectProperties()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+    QVERIFY2(source.contains(QStringLiteral("required property QtObject streamModel")),
+        "EventStreamView should type its model dependency as a QObject instead of a dynamic var");
+    QVERIFY2(!source.contains(QStringLiteral("required property var streamModel")),
+        "EventStreamView should not keep the message model dependency as a dynamic var");
+    QVERIFY2(!source.contains(QStringLiteral("required property int historyId")),
+        "EventStreamView should not narrow qint64 history ids to a 32-bit QML int");
+    QVERIFY2(source.contains(QStringLiteral("required property string historyId")),
+        "EventStreamView should carry history ids across the QML boundary without 32-bit narrowing");
+}
+
 void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()
 {
     const QStringList qmlFiles {
@@ -567,7 +648,7 @@ void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()
         QStringLiteral("qml/features/workbench/SessionSidebar.qml"),
         QStringLiteral("qml/features/workbench/SessionOverviewPanel.qml"),
         QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"),
-        QStringLiteral("qml/features/workbench/SessionActivityPanel.qml"),
+        QStringLiteral("qml/features/workbench/SessionMessagePanel.qml"),
         QStringLiteral("qml/features/workbench/EventStreamView.qml"),
         QStringLiteral("qml/features/workbench/PublishComposer.qml"),
         QStringLiteral("qml/features/workbench/SessionEditorDialog.qml"),
@@ -773,7 +854,7 @@ void ArchitectureBoundariesTest::workbenchViewsUseIntentCommands()
             },
         },
         {
-            QStringLiteral("qml/features/workbench/SessionActivityPanel.qml"),
+            QStringLiteral("qml/features/workbench/SessionMessagePanel.qml"),
             {
                 QStringLiteral("loadOlderRows"),
                 QStringLiteral("clearRows"),
