@@ -509,28 +509,32 @@ Item {
                                 AppIconButton {
                                     ui: root.ui
                                     visible: eventDelegate.isMessage
-                                    symbol: "T"
-                                    symbolSize: 11
+                                    iconSource: root.ui.materialIcon("topic")
                                     implicitWidth: 22
                                     implicitHeight: 22
+                                    iconSize: 12
                                     cornerRadius: 5
                                     restBg: "transparent"
                                     outlineColor: "transparent"
                                     accessibleName: qsTr("Copy topic")
+                                    toolTipText: qsTr("Copy topic")
+                                    toolTipPosition: AppToolTip.Position.Top
                                     onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
                                 }
 
                                 AppIconButton {
                                     ui: root.ui
                                     visible: eventDelegate.isMessage
-                                    symbol: "P"
-                                    symbolSize: 11
+                                    iconSource: root.ui.materialIcon("content-copy")
                                     implicitWidth: 22
                                     implicitHeight: 22
+                                    iconSize: 12
                                     cornerRadius: 5
                                     restBg: "transparent"
                                     outlineColor: "transparent"
                                     accessibleName: qsTr("Copy payload")
+                                    toolTipText: qsTr("Copy payload")
+                                    toolTipPosition: AppToolTip.Position.Top
                                     onClicked: root.viewModel.copyMessagePayload(
                                                    eventDelegate.historyId,
                                                    eventDelegate.payload,
@@ -541,14 +545,16 @@ Item {
                                 AppIconButton {
                                     ui: root.ui
                                     visible: eventDelegate.isMessage
-                                    iconSource: root.ui.materialIcon("send")
+                                    iconSource: root.ui.materialIcon("edit")
                                     implicitWidth: 22
                                     implicitHeight: 22
                                     iconSize: 12
                                     cornerRadius: 5
                                     restBg: "transparent"
                                     outlineColor: "transparent"
-                                    accessibleName: qsTr("Use this message in publisher")
+                                    accessibleName: qsTr("Use as publish draft")
+                                    toolTipText: qsTr("Use as publish draft")
+                                    toolTipPosition: AppToolTip.Position.Top
                                     onClicked: {
                                         root.viewModel.useMessageAsDraft(
                                                     eventDelegate.historyId,

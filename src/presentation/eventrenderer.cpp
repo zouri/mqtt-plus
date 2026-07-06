@@ -16,22 +16,6 @@ bool isStartupDividerTitle(const QString &title)
     return title == startupDividerLabel() || title == QStringLiteral("Current launch");
 }
 
-QString payloadStatusText(const QString &state, qint64 size, const QString &hash)
-{
-    if (state == QStringLiteral("skipped")) {
-        return hash.isEmpty()
-            ? QStringLiteral("Payload skipped: %1 bytes were not stored.").arg(size)
-            : QStringLiteral("Payload skipped: %1 bytes were not stored. SHA-256: %2").arg(size).arg(hash);
-    }
-    if (state == QStringLiteral("truncated")) {
-        return QStringLiteral("Payload truncated for display: original size %1 bytes.").arg(size);
-    }
-    if (state == QStringLiteral("raw_only")) {
-        return QStringLiteral("Payload stored as raw bytes: %1 bytes.").arg(size);
-    }
-    return QString();
-}
-
 QString resolveTopicColor(const QHash<QString, QString> &subscriptionColors, const QString &topic)
 {
     QString color;
@@ -211,22 +195,10 @@ QVariantMap renderHistoryRow(
             decodedPayload = payloadPreview;
             renderedPayload = payloadPreview;
         }
-        if (renderedPayloadIsPreviewOnly) {
-            renderedPayload = QStringLiteral("%1\nPayload preview: original size %2 bytes.")
-                .arg(renderedPayload)
-                .arg(payloadSize);
-        }
     } else {
-        renderedPayload = payloadPreview;
-        const QString statusText = payloadStatusText(
-            payloadState,
-            payloadSize,
-            row.value(QStringLiteral("payload_hash")).toString());
-        if (!statusText.isEmpty()) {
-            renderedPayload = renderedPayload.isEmpty()
-                ? statusText
-                : QStringLiteral("%1\n%2").arg(renderedPayload, statusText);
-        }
+        renderedPayload = payloadState == QStringLiteral("skipped")
+            ? QString()
+            : payloadPreview;
     }
 
     const QString scriptError = row.value(QStringLiteral("parse_error")).toString();
@@ -256,7 +228,7 @@ QVariantMap renderHistoryRow(
                     : (payloadState == QStringLiteral("truncated")
                         ? QStringLiteral("Truncated")
                         : (payloadState == QStringLiteral("raw_only")
-                            ? QStringLiteral("Raw bytes")
+                            ? QStringLiteral("%1 · raw").arg(PayloadCodec::formatName(format))
                             : PayloadCodec::formatName(format)))))));
     rendered.insert(QStringLiteral("payloadSize"), payloadSize);
     rendered.insert(
