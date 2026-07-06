@@ -45,6 +45,8 @@ public:
         const QString &topic,
         const QString &newTopic,
         const QString &alias,
+        int qos,
+        int format,
         const QString &scriptId,
         const QString &color);
     void removeCurrentSubscription(const QString &topic);

@@ -120,6 +120,8 @@ bool SubscriptionService::updateCurrentSubscription(
     const QString &topic,
     const QString &newTopic,
     const QString &alias,
+    int qos,
+    int format,
     const QString &scriptId,
     const QString &color)
 {
@@ -156,38 +158,52 @@ bool SubscriptionService::updateCurrentSubscription(
     const QString sanitizedScriptId = (*m_dependencies.scriptController).scriptById(scriptId) ? scriptId : QString();
     const QString sanitizedColor = sanitizeTopicColor(color);
     const QString displayAlias = alias.trimmed();
+    const int sanitizedQos = SessionConfig::sanitizeQos(qos);
+    const int sanitizedFormat = (std::max)(0, format);
     const bool topicChanged = entry->topic != filter;
     const bool colorChanged = entry->color != sanitizedColor;
+    const bool qosChanged = entry->requestedQos != sanitizedQos;
+    const bool formatChanged = entry->format != sanitizedFormat;
     if (!topicChanged
         && !colorChanged
         && entry->alias == displayAlias
+        && entry->requestedQos == sanitizedQos
+        && entry->format == sanitizedFormat
         && entry->scriptId == sanitizedScriptId) {
         return true;
     }
 
-    if (topicChanged) {
+    const bool shouldResubscribe = topicChanged || qosChanged;
+    auto *client = session->runtime.client;
+    if (shouldResubscribe) {
         if (entry->runtimeSubscription) {
             entry->runtimeSubscription->unsubscribe();
             entry->runtimeSubscription.clear();
-        } else if (auto *client = session->runtime.client; client && client->state() == QMqttClient::Connected) {
+        } else if (client && client->state() == QMqttClient::Connected) {
             client->unsubscribe(QMqttTopicFilter(entry->topic));
         }
+    }
 
+    if (topicChanged) {
         session->runtime.subscriptionFormats.remove(entry->topic);
         entry->topic = filter;
+        entry->recentMessageTimestampsMs.clear();
+    }
+
+    if (shouldResubscribe) {
         entry->grantedQos = -1;
         entry->runtimeState = entry->paused ? QStringLiteral("paused") : QStringLiteral("saved");
         entry->lastError.clear();
-        entry->recentMessageTimestampsMs.clear();
-        session->runtime.subscriptionFormats.insert(filter, entry->format);
     }
 
     entry->alias = displayAlias;
+    entry->requestedQos = sanitizedQos;
+    entry->format = sanitizedFormat;
     entry->scriptId = sanitizedScriptId;
     entry->color = sanitizedColor;
+    session->runtime.subscriptionFormats.insert(entry->topic, entry->format);
 
-    auto *client = session->runtime.client;
-    if (topicChanged && !entry->paused && client && client->state() == QMqttClient::Connected) {
+    if (shouldResubscribe && !entry->paused && client && client->state() == QMqttClient::Connected) {
         ensureSubscriptionActive(*session, *entry, true);
     }
 
@@ -196,7 +212,7 @@ bool SubscriptionService::updateCurrentSubscription(
         m_dependencies.refreshSubscriptionsModel();
     }
     emit subscriptionsChanged();
-    if (topicChanged || colorChanged) {
+    if (topicChanged || colorChanged || formatChanged) {
         reloadCurrentMessagesIfNeeded(m_dependencies.eventController, m_dependencies, session);
     }
     return saved;

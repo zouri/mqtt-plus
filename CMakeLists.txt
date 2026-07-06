@@ -265,6 +265,11 @@ if(BUILD_TESTING)
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
+    add_mqtt_plus_qt_test(test_subscriptionservice
+        tests/test_subscriptionservice.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
     add_mqtt_plus_qt_test(test_scripteditorviewmodel
         tests/test_scripteditorviewmodel.cpp
         src/viewmodels/scripteditorviewmodel.cpp

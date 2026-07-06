@@ -92,7 +92,6 @@ Dialog {
                 Layout.fillWidth: true
                 model: [qsTr("QoS 0"), qsTr("QoS 1")]
                 currentIndex: root.editor.qos
-                enabled: !root.editor.editMode
                 onActivated: root.editor.qos = currentIndex
             }
 
@@ -102,7 +101,6 @@ Dialog {
                 Layout.fillWidth: true
                 model: root.viewModel.payloadFormats
                 currentIndex: root.editor.format
-                enabled: !root.editor.editMode
                 onActivated: root.editor.format = currentIndex
             }
         }
