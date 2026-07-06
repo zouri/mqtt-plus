@@ -544,8 +544,6 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     historyRow.insert(QStringLiteral("timestamp"), timestamp);
     historyRow.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
     historyRow.insert(QStringLiteral("topic"), topic);
-    historyRow.insert(QStringLiteral("payload"), payloadPlan.preview);
-    historyRow.insert(QStringLiteral("payload_b64"), QStringLiteral(""));
     historyRow.insert(QStringLiteral("payload_bytes"), payloadPlan.storedBytes);
     historyRow.insert(QStringLiteral("payload_size"), payloadPlan.originalSize);
     historyRow.insert(QStringLiteral("payload_state"), payloadPlan.state);
@@ -618,8 +616,6 @@ void EventHistoryService::appendPublishedMessage(
     historyRow.insert(QStringLiteral("timestamp"), timestamp);
     historyRow.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
     historyRow.insert(QStringLiteral("topic"), topic);
-    historyRow.insert(QStringLiteral("payload"), payloadPlan.preview);
-    historyRow.insert(QStringLiteral("payload_b64"), QStringLiteral(""));
     historyRow.insert(QStringLiteral("payload_bytes"), payloadPlan.storedBytes);
     historyRow.insert(QStringLiteral("payload_size"), payloadPlan.originalSize);
     historyRow.insert(QStringLiteral("payload_state"), payloadPlan.state);

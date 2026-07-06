@@ -173,10 +173,7 @@ QVariantMap renderHistoryRow(
         return rendered;
     }
 
-    QByteArray payloadBytes = row.value(QStringLiteral("payload_bytes")).toByteArray();
-    if (payloadBytes.isEmpty() && !row.value(QStringLiteral("payload_b64")).toString().isEmpty()) {
-        payloadBytes = QByteArray::fromBase64(row.value(QStringLiteral("payload_b64")).toString().toLatin1());
-    }
+    const QByteArray payloadBytes = row.value(QStringLiteral("payload_bytes")).toByteArray();
 
     qint64 payloadSize = row.value(QStringLiteral("payload_size")).toLongLong();
     if (payloadSize <= 0) {
@@ -188,9 +185,6 @@ QVariantMap renderHistoryRow(
         payloadState = QStringLiteral("full");
     }
     QString payloadPreview = row.value(QStringLiteral("payload_preview")).toString();
-    if (payloadPreview.isEmpty()) {
-        payloadPreview = row.value(QStringLiteral("payload")).toString();
-    }
     const bool renderingFullPayloadFromPreview = payloadState == QStringLiteral("full")
         && payloadBytes.isEmpty()
         && !payloadPreview.isEmpty();
