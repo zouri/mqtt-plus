@@ -25,21 +25,21 @@ AppPanel {
     showTopBorder: false
     showLeftBorder: false
     showRightBorder: false
-    showBottomBorder: false
+    // showBottomBorder: false
     color: control.ui.themePalette.headerBg
 
     Layout.fillWidth: true
-    Layout.minimumHeight: 108
-    Layout.preferredHeight: 118
+    Layout.minimumHeight: 82
+    Layout.preferredHeight: 86
 
     ColumnLayout {
         id: currentSessionColumn
         anchors.fill: parent
-        anchors.leftMargin: 16
-        anchors.rightMargin: 16
-        anchors.topMargin: 10
-        anchors.bottomMargin: 10
-        spacing: 8
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        anchors.topMargin: 8
+        anchors.bottomMargin: 8
+        spacing: 6
 
         RowLayout {
             Layout.fillWidth: true
@@ -56,7 +56,7 @@ AppPanel {
                     Label {
                         text: control.session.name || qsTr("No session")
                         color: control.ui.textStrong
-                        font.pixelSize: 21
+                        font.pixelSize: 18
                         font.bold: true
                         elide: Label.ElideRight
                         Layout.fillWidth: true
@@ -70,14 +70,14 @@ AppPanel {
                     Label {
                         text: qsTr("Host")
                         color: control.ui.textMuted
-                        font.pixelSize: 11
+                        font.pixelSize: 10
                     }
 
                     Label {
                         Layout.fillWidth: true
                         text: control.endpointText
                         color: control.ui.textMuted
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                         elide: Label.ElideRight
                     }
 
@@ -101,9 +101,9 @@ AppPanel {
                 enabled: control.status.state === "disconnected"
                 iconSource: control.ui.materialIcon("edit")
                 iconSize: 16
-                implicitWidth: 32
-                implicitHeight: 32
-                cornerRadius: 16
+                implicitWidth: 30
+                implicitHeight: 30
+                cornerRadius: 15
                 restBg: control.ui.themePalette.innerPanelBg
                 outlineColor: control.ui.themePalette.innerPanelBorder
                 symbolColor: control.ui.themePalette.infoText
@@ -115,9 +115,9 @@ AppPanel {
                 ui: control.ui
                 iconSource: control.connectionActionIcon
                 iconSize: 16
-                implicitWidth: 32
-                implicitHeight: 32
-                cornerRadius: 16
+                implicitWidth: 30
+                implicitHeight: 30
+                cornerRadius: 15
                 primary: !control.canDisconnect
                 danger: control.canDisconnect
                 accessibleName: control.connectionActionText
@@ -134,46 +134,47 @@ AppPanel {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: 10
 
             Repeater {
                 model: [
                     {
                         "label": qsTr("Protocol"),
-                        "value": control.session.protocolVersionName || "MQTT 5"
+                        "value": control.session.protocolVersionName || "MQTT 5",
+                        "expand": false
                     },
                     {
                         "label": qsTr("MQTT ID"),
-                        "value": control.session.clientId || "-"
+                        "value": control.session.clientId || "-",
+                        "expand": true
                     },
                     {
                         "label": qsTr("Status"),
-                        "value": control.ui.statusLabel(control.status.state || "idle")
+                        "value": control.ui.statusLabel(control.status.state || "idle"),
+                        "expand": false
                     }
                 ]
 
-                delegate: ColumnLayout {
+                delegate: RowLayout {
                     id: metricDelegate
 
                     required property var modelData
 
-                    Layout.fillWidth: true
-                    spacing: 2
+                    Layout.fillWidth: metricDelegate.modelData.expand
+                    spacing: 4
 
                     Label {
-                        Layout.fillWidth: true
                         text: metricDelegate.modelData.label
                         color: control.ui.themePalette.textSubtle
                         font.pixelSize: 10
-                        font.capitalization: Font.AllUppercase
                         elide: Label.ElideRight
                     }
 
                     Label {
-                        Layout.fillWidth: true
+                        Layout.fillWidth: metricDelegate.modelData.expand
                         text: metricDelegate.modelData.value
                         color: metricDelegate.modelData.label === qsTr("Status") ? control.ui.stateColor(control.status.state || "idle") : control.ui.textStrong
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                         font.bold: true
                         elide: Label.ElideRight
                     }

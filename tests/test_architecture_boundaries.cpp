@@ -42,6 +42,7 @@ private slots:
     void addSubscriptionDialogDoesNotBuildScriptOptions();
     void subscriptionsPanelDoesNotReadModelRowsForEditing();
     void subscriptionsPanelDoesNotOwnBusinessState();
+    void workbenchMiddlePaneUsesCompactHeaderControls();
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
@@ -847,6 +848,27 @@ void ArchitectureBoundariesTest::subscriptionsPanelDoesNotOwnBusinessState()
         QVERIFY2(!source.contains(token),
             qPrintable(QStringLiteral("SubscriptionsPanel.qml must keep %1 in WorkbenchViewModel").arg(token)));
     }
+}
+
+void ArchitectureBoundariesTest::workbenchMiddlePaneUsesCompactHeaderControls()
+{
+    QString overviewSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SessionOverviewPanel.qml"), overviewSource));
+    QVERIFY2(overviewSource.contains(QStringLiteral("Layout.preferredHeight: 86")),
+        "Session overview must use the compact two-row height");
+
+    QString subscriptionsSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), subscriptionsSource));
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("filterModeLabels")),
+        "Subscription toolbar must not expose status filter labels");
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("AppComboBox")),
+        "Subscription toolbar must not expose a status filter combo box");
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("text: qsTr(\"Subscriptions\")")),
+        "Subscription toolbar must not render a redundant title");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("property: \"filterModeIndex\"")),
+        "Subscription panel must lock the hidden status filter to All");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("Layout.preferredHeight: 46")),
+        "Subscription search and add action must share one compact toolbar row");
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()
