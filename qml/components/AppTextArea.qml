@@ -17,7 +17,7 @@ Control {
     property alias wrapMode: textArea.wrapMode
     property bool showLineNumbers: false
     property bool showFocusBorder: true
-    property int backgroundRadius: 12
+    property int backgroundRadius: 8
     property int backgroundBorderWidth: 1
     property color backgroundColor: control.ui.themePalette.fieldBg
 

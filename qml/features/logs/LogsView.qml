@@ -99,19 +99,19 @@ AppPanel {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
-            color: root.ui.themePalette.windowBg
+            Layout.preferredHeight: 48
+            color: root.ui.themePalette.headerBg
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 32
-                anchors.rightMargin: 32
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
                 spacing: 10
 
                 Label {
                     text: qsTr("Logs")
                     color: root.ui.textStrong
-                    font.pixelSize: 22
+                    font.pixelSize: 18
                     font.bold: true
                 }
 
@@ -143,8 +143,6 @@ AppPanel {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.leftMargin: 32
-                anchors.rightMargin: 32
                 height: 1
                 color: root.ui.themePalette.separator
             }
@@ -153,8 +151,8 @@ AppPanel {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 20
-            Layout.rightMargin: 24
+            Layout.leftMargin: 14
+            Layout.rightMargin: 14
             Layout.topMargin: 14
             Layout.bottomMargin: 14
             spacing: 0
@@ -169,11 +167,11 @@ AppPanel {
                 readOnly: true
                 color: root.ui.textStrong
                 placeholderText: qsTr("No logs yet.")
-                showLineNumbers: true
+                showLineNumbers: false
                 showFocusBorder: false
-                backgroundRadius: 0
-                backgroundBorderWidth: 0
-                backgroundColor: root.ui.themePalette.windowBg
+                backgroundRadius: 10
+                backgroundBorderWidth: 1
+                backgroundColor: root.ui.themePalette.innerPanelBg
                 selectByMouse: true
                 wrapMode: TextEdit.WrapAnywhere
                 font.family: "Menlo"

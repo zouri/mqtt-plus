@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Effects
 import QtQuick.Layouts
 import "../../components"
 
@@ -19,7 +20,11 @@ AppPanel {
     readonly property int matchingSubscriptionCount: control.subscriptionModel ? control.subscriptionModel.count : 0
     readonly property var sessionStatus: control.viewModel ? control.viewModel.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
+    showTopBorder: false
     showRightBorder: false
+    showBottomBorder: false
+    showLeftBorder: false
+    color: control.ui.themePalette.panelBg
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -64,8 +69,12 @@ AppPanel {
     ListModel {
         id: subscriptionContextActions
 
-        ListElement { actionId: "edit" }
-        ListElement { actionId: "delete" }
+        ListElement {
+            actionId: "edit"
+        }
+        ListElement {
+            actionId: "delete"
+        }
     }
 
     AppPlatformMenu {
@@ -77,40 +86,81 @@ AppPanel {
             if (actionId === "edit") {
                 control.subscriptionEditRequested(control.subscriptionContextIndex);
             } else if (actionId === "delete") {
-                control.viewModel.requestSubscriptionDelete(
-                    control.subscriptionContextTopic,
-                    control.subscriptionContextDisplayName);
+                control.viewModel.requestSubscriptionDelete(control.subscriptionContextTopic, control.subscriptionContextDisplayName);
             }
             control.subscriptionContextIndex = -1;
             control.subscriptionContextTopic = "";
             control.subscriptionContextDisplayName = "";
         }
 
-        onAboutToHide: Qt.callLater(function() {
+        onAboutToHide: Qt.callLater(function () {
             subscriptionActionVisualResetTimer.restart();
         })
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 10
-        anchors.rightMargin: 10
-        anchors.topMargin: 10
-        anchors.bottomMargin: 10
-        spacing: 8
+        spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.preferredHeight: 48
+            Layout.leftMargin: 14
+            Layout.rightMargin: 10
+            spacing: 8
+
+            Label {
+                text: qsTr("Subscriptions")
+                color: control.ui.textStrong
+                font.pixelSize: 18
+                font.bold: true
+            }
+
+            AppBadge {
+                ui: control.ui
+                label: `${control.matchingSubscriptionCount}`
+                horizontalPadding: 7
+                verticalPadding: 2
+                badgeBg: control.ui.themePalette.chipBg
+                badgeBorder: "transparent"
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            AppIconButton {
+                ui: control.ui
+                iconSource: control.ui.materialIcon("plus")
+                iconSize: 16
+                implicitWidth: 28
+                implicitHeight: 28
+                cornerRadius: 7
+                restBg: control.ui.themePalette.itemBg
+                hoverBg: control.ui.themePalette.rowHover
+                outlineColor: control.ui.themePalette.panelBorder
+                accessibleName: qsTr("Add topic")
+                toolTipText: qsTr("Add subscription")
+                toolTipPosition: AppToolTip.Position.Bottom
+                onClicked: control.subscriptionCreateRequested()
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 54
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
             spacing: 8
 
             AppTextField {
                 ui: control.ui
                 Layout.fillWidth: true
-                placeholderText: qsTr("Filter topic")
+                placeholderText: qsTr("Filter Topic")
                 text: control.subscriptionModel ? control.subscriptionModel.filterText : ""
                 onTextEdited: {
                     if (control.subscriptionModel) {
-                        control.subscriptionModel.filterText = text
+                        control.subscriptionModel.filterText = text;
                     }
                 }
             }
@@ -124,34 +174,22 @@ AppPanel {
                 currentIndex: control.subscriptionModel ? control.subscriptionModel.filterModeIndex : 0
                 onActivated: index => {
                     if (control.subscriptionModel) {
-                        control.subscriptionModel.filterModeIndex = index
+                        control.subscriptionModel.filterModeIndex = index;
                     }
                 }
-            }
-
-            AppIconButton {
-                ui: control.ui
-                iconSource: control.ui.materialIcon("plus")
-                iconSize: 16
-                implicitWidth: 34
-                implicitHeight: 34
-                cornerRadius: 17
-                restBg: control.ui.themePalette.windowBg
-                outlineColor: control.ui.themePalette.innerPanelBorder
-                accessibleName: qsTr("Add topic")
-                toolTipText: qsTr("Add subscription")
-                toolTipPosition: AppToolTip.Position.Bottom
-                onClicked: control.subscriptionCreateRequested()
             }
         }
 
         Rectangle {
             visible: control.matchingSubscriptionCount === 0
             Layout.fillWidth: true
+            Layout.leftMargin: 8
+            Layout.rightMargin: 8
+            Layout.topMargin: 8
             Layout.preferredHeight: emptySubscriptionColumn.implicitHeight + 18
             radius: control.ui.innerRadius
             color: control.ui.themePalette.innerPanelBg
-            border.color: control.ui.themePalette.innerPanelBorder
+            border.width: 0
 
             ColumnLayout {
                 id: emptySubscriptionColumn
@@ -199,6 +237,7 @@ AppPanel {
             id: subscriptionList
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.margins: 8
             clip: true
             spacing: 7
             model: control.subscriptionModel
@@ -230,17 +269,22 @@ AppPanel {
                 radius: control.ui.innerRadius
                 color: control.ui.themePalette.itemBg
                 border.color: subscriptionDelegate.lastError.length > 0 ? control.ui.themePalette.errorText : control.ui.themePalette.innerPanelBorder
-                implicitHeight: subscriptionDelegate.lastError.length > 0 ? 88 : 70
+                border.width: subscriptionDelegate.paused ? 0 : 1
+                implicitHeight: subscriptionDelegate.lastError.length > 0 ? 84 : 66
                 activeFocusOnTab: true
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
+                layer.enabled: !subscriptionDelegate.paused
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowBlur: 0.22
+                    shadowColor: control.ui.isDarkTheme ? "#70000000" : "#18000000"
+                    shadowHorizontalOffset: 0
+                    shadowVerticalOffset: 2
+                }
 
                 function openSubscriptionContextMenu() {
-                    control.openSubscriptionContextMenu(
-                        subscriptionDelegate.index,
-                        subscriptionDelegate.topic,
-                        subscriptionDelegate.displayName,
-                        subscriptionDelegate.menuVisualKey);
+                    control.openSubscriptionContextMenu(subscriptionDelegate.index, subscriptionDelegate.topic, subscriptionDelegate.displayName, subscriptionDelegate.menuVisualKey);
                 }
 
                 Keys.onPressed: event => {
@@ -264,7 +308,7 @@ AppPanel {
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 10
-                    spacing: 6
+                    spacing: 5
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -274,15 +318,14 @@ AppPanel {
                             Layout.preferredWidth: 7
                             Layout.preferredHeight: 7
                             radius: 4
-                            color: subscriptionDelegate.topicColor.length > 0
-                                   ? subscriptionDelegate.topicColor
-                                   : control.ui.stateColor(subscriptionDelegate.subscriptionState)
+                            color: subscriptionDelegate.topicColor.length > 0 ? subscriptionDelegate.topicColor : control.ui.stateColor(subscriptionDelegate.subscriptionState)
+                            opacity: subscriptionDelegate.paused ? 0.5 : 1.0
                         }
 
                         Label {
                             Layout.fillWidth: true
                             text: subscriptionDelegate.displayName
-                            color: control.ui.textStrong
+                            color: subscriptionDelegate.paused ? control.ui.textMuted : control.ui.textStrong
                             font.pixelSize: 13
                             font.bold: true
                             elide: Label.ElideRight
@@ -293,9 +336,9 @@ AppPanel {
                             visible: subscriptionDelegate.scriptName.length === 0
                             label: subscriptionDelegate.formatName
                             Layout.maximumWidth: 92
-                            badgeRadius: 8
-                            horizontalPadding: 8
-                            verticalPadding: 4
+                            badgeRadius: 6
+                            horizontalPadding: 6
+                            verticalPadding: 2
                             maximumLabelWidth: 76
                         }
 
@@ -304,9 +347,9 @@ AppPanel {
                             visible: subscriptionDelegate.scriptName.length > 0
                             label: subscriptionDelegate.scriptName
                             Layout.maximumWidth: 108
-                            badgeRadius: 8
-                            horizontalPadding: 8
-                            verticalPadding: 4
+                            badgeRadius: 6
+                            horizontalPadding: 6
+                            verticalPadding: 2
                             maximumLabelWidth: 92
                             strong: false
                         }
@@ -335,16 +378,26 @@ AppPanel {
                                 id: subscriptionPauseButton
                                 ui: control.ui
                                 iconSource: control.ui.materialIcon(subscriptionDelegate.paused ? "play" : "pause")
-                                implicitWidth: 28
-                                implicitHeight: 28
+                                implicitWidth: 24
+                                implicitHeight: 24
                                 iconSize: 13
-                                cornerRadius: 14
-                                restBg: control.ui.themePalette.itemBg
-                                outlineColor: control.ui.themePalette.innerPanelBorder
+                                cornerRadius: 6
+                                restBg: subscriptionDelegate.paused ? control.ui.themePalette.selectedBg : "transparent"
+                                hoverBg: subscriptionDelegate.paused ? control.ui.themePalette.buttonPrimaryHoverBg : "transparent"
+                                pressedBg: subscriptionDelegate.paused ? control.ui.themePalette.buttonPrimaryPressedBg : "transparent"
+                                outlineColor: "transparent"
+                                symbolColor: subscriptionDelegate.paused
+                                             ? (subscriptionPauseButton.hovered || subscriptionPauseButton.down
+                                                ? control.ui.themePalette.buttonPrimaryText
+                                                : control.ui.themePalette.infoText)
+                                             : (subscriptionPauseButton.hovered || subscriptionPauseButton.forceActive
+                                                ? control.ui.themePalette.infoText
+                                                : control.ui.textMuted)
 
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::pause`
                                 accessibleName: subscriptionDelegate.paused ? qsTr("Resume topic") : qsTr("Pause topic")
+                                toolTipText: subscriptionPauseButton.accessibleName
 
                                 onClicked: {
                                     control.subscriptionActionVisualKey = visualKey;
@@ -357,15 +410,19 @@ AppPanel {
                                 id: subscriptionMenuButton
                                 ui: control.ui
                                 iconSource: control.ui.materialIcon("more-horiz")
-                                implicitWidth: 28
-                                implicitHeight: 28
+                                implicitWidth: 24
+                                implicitHeight: 24
                                 iconSize: 16
-                                cornerRadius: 14
-                                restBg: control.ui.themePalette.itemBg
-                                outlineColor: control.ui.themePalette.innerPanelBorder
+                                cornerRadius: 12
+                                restBg: "transparent"
+                                hoverBg: "transparent"
+                                pressedBg: "transparent"
+                                outlineColor: "transparent"
+                                symbolColor: subscriptionMenuButton.hovered || subscriptionMenuButton.forceActive ? control.ui.themePalette.infoText : control.ui.textMuted
 
                                 forceActive: control.subscriptionActionVisualKey === subscriptionDelegate.menuVisualKey
                                 accessibleName: qsTr("More actions")
+                                toolTipText: subscriptionMenuButton.accessibleName
 
                                 onClicked: {
                                     subscriptionDelegate.openSubscriptionContextMenu();
@@ -395,10 +452,47 @@ AppPanel {
         focus: true
         standardButtons: Dialog.NoButton
         anchors.centerIn: Overlay.overlay
+        transformOrigin: Popup.Center
         width: Math.min(340, Overlay.overlay.width - 32)
 
-        Overlay.modal: Rectangle {
-            color: control.ui.themePalette.dialogOverlay
+        enter: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: 200
+                easing.type: Easing.OutCubic
+            }
+
+            NumberAnimation {
+                property: "scale"
+                from: 0.92
+                to: 1
+                duration: 200
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        exit: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 1
+                to: 0
+                duration: 160
+                easing.type: Easing.InCubic
+            }
+
+            NumberAnimation {
+                property: "scale"
+                from: 1
+                to: 0.96
+                duration: 160
+                easing.type: Easing.InCubic
+            }
+        }
+
+        Overlay.modal: AppDialogOverlay {
+            ui: control.ui
         }
 
         header: Item {

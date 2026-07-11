@@ -12,6 +12,7 @@ Item {
     required property var publisher
     required property QtObject streamModel
     required property var session
+    required property var status
     required property var ui
     required property string fontFamily
     required property string title
@@ -20,6 +21,8 @@ Item {
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
     property string followMode: "smart"
+    readonly property bool connected: root.status.state === "connected"
+    readonly property color surfaceBg: root.ui.themePalette.panelBg
 
     signal publishDraftRevealRequested()
 
@@ -34,6 +37,7 @@ Item {
             eventList.unreadCount = 0
             eventList.bottomAnchorActive = true
             eventList.shouldFollowOutput = true
+            eventList.userScrollActive = false
         }
 
         root.requestFollowScroll()
@@ -98,34 +102,35 @@ Item {
     }
 
     function followModeLabel(mode) {
-        if (mode === "always") {
-            return qsTr("Always")
-        }
         if (mode === "manual") {
             return qsTr("Manual")
         }
         return qsTr("Smart")
     }
 
-    function followModeSymbol(mode) {
-        if (mode === "always") {
-            return "A"
+    function nextFollowMode(mode) {
+        if (mode === "smart") {
+            return "manual"
         }
-        if (mode === "manual") {
-            return "M"
-        }
-        return "S"
+        return "smart"
     }
 
     function followModeToolTip() {
-        return qsTr("Follow mode: %1").arg(root.followModeLabel(root.followMode))
+        const activeMode = eventList && eventList.shouldFollowOutput ? "smart" : "manual"
+        return qsTr("Follow mode: %1").arg(root.followModeLabel(activeMode))
+    }
+
+    function compactTimestamp(value) {
+        const text = String(value || "")
+        const spaceIndex = text.lastIndexOf(" ")
+        if (spaceIndex >= 0 && spaceIndex + 1 < text.length) {
+            return text.slice(spaceIndex + 1)
+        }
+        return text
     }
 
     function setFollowMode(mode) {
-        if (mode !== "smart" && mode !== "always" && mode !== "manual") {
-            return
-        }
-        if (root.followMode === mode) {
+        if (mode !== "smart" && mode !== "manual") {
             return
         }
 
@@ -136,41 +141,19 @@ Item {
 
         if (mode === "manual") {
             eventList.bottomAnchorActive = false
+            eventList.shouldFollowOutput = false
             return
         }
 
-        if (mode === "always") {
-            root.requestFollowScroll()
-            return
-        }
-
-        eventList.refreshFollowState()
+        eventList.shouldFollowOutput = true
+        root.requestFollowScroll()
     }
 
     function shouldFollowNewRows() {
-        if (root.followMode === "always") {
-            return true
-        }
         if (root.followMode === "manual") {
             return false
         }
         return eventList.shouldFollowOutput
-    }
-
-    ListModel {
-        id: followModeActions
-
-        ListElement { actionId: "smart" }
-        ListElement { actionId: "always" }
-        ListElement { actionId: "manual" }
-    }
-
-    AppPlatformMenu {
-        id: followModeMenu
-        model: followModeActions
-        actionText: actionId => root.followModeLabel(actionId)
-
-        onTriggered: actionId => root.setFollowMode(actionId)
     }
 
     ColumnLayout {
@@ -179,27 +162,19 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 52
-            color: root.ui.themePalette.windowBg
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: 1
-                color: root.ui.themePalette.separator
-            }
+            Layout.preferredHeight: 48
+            color: root.surfaceBg
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
                 spacing: 8
 
                 Label {
                     text: root.title
                     color: root.ui.textStrong
-                    font.pixelSize: 22
+                    font.pixelSize: 18
                     font.bold: true
                 }
 
@@ -219,18 +194,25 @@ Item {
                 }
 
                 AppIconButton {
+                    id: followModeButton
+
                     ui: root.ui
                     visible: root.showOutputControls
-                    symbol: root.followModeSymbol(root.followMode)
-                    symbolSize: 12
+                    checkable: true
+                    checked: eventList.shouldFollowOutput
+                    iconSource: root.ui.materialIcon("follow-mode")
+                    iconSize: 15
                     implicitWidth: 32
                     implicitHeight: 32
-                    cornerRadius: 16
-                    restBg: root.ui.themePalette.windowBg
-                    outlineColor: root.ui.themePalette.innerPanelBorder
+                    cornerRadius: 7
+                    restBg: root.ui.themePalette.itemBg
+                    hoverBg: root.ui.themePalette.selectedBg
+                    outlineColor: root.ui.themePalette.panelBorder
+                    symbolColor: followModeButton.checked ? root.ui.themePalette.infoText : root.ui.textMuted
+                    forceActive: followModeButton.checked
                     accessibleName: root.followModeToolTip()
                     toolTipText: root.followModeToolTip()
-                    onClicked: followModeMenu.open()
+                    onClicked: root.setFollowMode(eventList.shouldFollowOutput ? "manual" : "smart")
                 }
 
                 AppIconButton {
@@ -240,9 +222,9 @@ Item {
                     iconSize: 14
                     implicitWidth: 32
                     implicitHeight: 32
-                    cornerRadius: 16
-                    restBg: root.ui.themePalette.windowBg
-                    outlineColor: root.ui.themePalette.innerPanelBorder
+                    cornerRadius: 7
+                    restBg: root.ui.themePalette.itemBg
+                    outlineColor: root.ui.themePalette.panelBorder
                     accessibleName: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
                     onClicked: root.viewModel.toggleCurrentOutputPaused(root.session.outputPaused)
                 }
@@ -253,9 +235,9 @@ Item {
                     iconSize: 14
                     implicitWidth: 32
                     implicitHeight: 32
-                    cornerRadius: 16
-                    restBg: root.ui.themePalette.windowBg
-                    outlineColor: root.ui.themePalette.innerPanelBorder
+                    cornerRadius: 7
+                    restBg: root.ui.themePalette.itemBg
+                    outlineColor: root.ui.themePalette.panelBorder
                     accessibleName: qsTr("Clear history")
                     onClicked: root.viewModel.clearMessages()
                 }
@@ -279,22 +261,28 @@ Item {
             ListView {
                 id: eventList
                 anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 12
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                anchors.topMargin: 8
+                anchors.bottomMargin: 8
                 clip: true
-                spacing: 2
+                spacing: 4
                 model: root.streamModel
                 reuseItems: true
                 property bool shouldFollowOutput: true
                 property bool programmaticScroll: false
+                property bool userScrollActive: false
                 property bool bottomAnchorActive: false
                 property bool followScrollQueued: false
                 property int unreadCount: 0
 
                 function scrollToBottom() {
                     programmaticScroll = true
+                    userScrollActive = false
                     bottomAnchorActive = true
+                    shouldFollowOutput = true
                     unreadCount = 0
+                    root.followMode = "smart"
                     if (count > 0) {
                         positionViewAtEnd()
                     } else {
@@ -313,7 +301,7 @@ Item {
 
                     const maxContentY = Math.max(originY, contentHeight - height)
                     const distanceFromBottom = Math.max(0, maxContentY - contentY)
-                    shouldFollowOutput = root.followMode === "always" || count === 0 || distanceFromBottom <= 24
+                    shouldFollowOutput = count === 0 || distanceFromBottom <= 24
                     if (!shouldFollowOutput) {
                         bottomAnchorActive = false
                     }
@@ -327,7 +315,17 @@ Item {
                         return
                     }
 
+                    userScrollActive = true
                     bottomAnchorActive = false
+                    refreshFollowState()
+                }
+
+                function noteManualScrollEnded() {
+                    if (programmaticScroll) {
+                        return
+                    }
+
+                    userScrollActive = false
                     refreshFollowState()
                 }
 
@@ -336,16 +334,18 @@ Item {
                 }
 
                 onMovementStarted: noteManualScrollStarted()
-                onMovementEnded: refreshFollowState()
+                onMovementEnded: noteManualScrollEnded()
                 onFlickStarted: noteManualScrollStarted()
-                onFlickEnded: refreshFollowState()
+                onFlickEnded: noteManualScrollEnded()
                 onContentHeightChanged: {
                     if (bottomAnchorActive && !followScrollQueued && !root.loadingOlderEvents) {
                         root.requestFollowScroll()
                     }
                 }
                 onContentYChanged: {
-                    refreshFollowState()
+                    if (userScrollActive || !shouldFollowOutput) {
+                        refreshFollowState()
+                    }
                     if (contentY <= originY + 48) {
                         root.loadOlderEvents()
                     }
@@ -366,48 +366,17 @@ Item {
                     required property string historyId
                     readonly property bool isDivider: eventDelegate.kind === "divider"
                     readonly property bool isMessage: eventDelegate.kind === "message"
+                    readonly property bool isEvent: eventDelegate.kind === "event"
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
-                    readonly property int timelineInset: 6
-                    readonly property int timelineX: eventDelegate.timelineInset + 3
-                    readonly property int timelineDotSize: 10
-                    readonly property int bubbleLeft: eventDelegate.timelineX + 11
-                    readonly property int timestampTop: 6
-                    readonly property int timestampBubbleGap: 5
-                    readonly property int bubbleMaxWidth: 760
-                    readonly property int bubbleWidth: Math.max(220,
-                                                                 Math.min(eventDelegate.width - eventDelegate.bubbleLeft - 8,
-                                                                          eventDelegate.bubbleMaxWidth))
-                    readonly property color timelineColor: eventDelegate.topicColor.length > 0
-                                                          ? eventDelegate.topicColor
-                                                          : (eventDelegate.isMessage
-                                                             ? root.ui.themePalette.selectedBorder
-                                                             : root.ui.themePalette.warningText)
+                    readonly property color topicSwatchColor: eventDelegate.topicColor.length > 0
+                                                             ? eventDelegate.topicColor
+                                                             : (eventDelegate.isMessage
+                                                                ? root.ui.themePalette.selectedBorder
+                                                                : root.ui.themePalette.warningText)
                     width: ListView.view.width
                     implicitHeight: eventDelegate.isDivider
                                     ? dividerRow.implicitHeight + 14
-                                    : timestampLabel.implicitHeight + eventDelegate.timestampBubbleGap
-                                      + bubble.implicitHeight + 12
-
-                    Rectangle {
-                        visible: !eventDelegate.isDivider
-                        x: eventDelegate.timelineX
-                        y: 0
-                        width: 1
-                        height: parent.height
-                        color: eventDelegate.timelineColor
-                    }
-
-                    Rectangle {
-                        visible: !eventDelegate.isDivider
-                        x: eventDelegate.timelineX - Math.round(width / 2)
-                        y: timestampLabel.y + Math.round((timestampLabel.implicitHeight - height) / 2)
-                        width: eventDelegate.timelineDotSize
-                        height: eventDelegate.timelineDotSize
-                        radius: width / 2
-                        color: eventDelegate.timelineColor
-                        border.width: 2
-                        border.color: root.ui.themePalette.windowBg
-                    }
+                                    : messageRow.implicitHeight + 8
 
                     RowLayout {
                         id: dividerRow
@@ -431,152 +400,217 @@ Item {
                         }
                     }
 
-                    Label {
-                        id: timestampLabel
-                        visible: !eventDelegate.isDivider
-                        x: eventDelegate.bubbleLeft
-                        y: eventDelegate.timestampTop
-                        width: eventDelegate.bubbleWidth
-                        text: eventDelegate.timestamp
-                        color: root.ui.themePalette.timestampText
-                        font.pixelSize: 11
-                        elide: Label.ElideRight
-                    }
-
                     Rectangle {
-                        id: bubble
+                        id: messageRow
                         visible: !eventDelegate.isDivider
-                        x: eventDelegate.bubbleLeft
-                        y: timestampLabel.y + timestampLabel.implicitHeight
-                           + eventDelegate.timestampBubbleGap
-                        width: eventDelegate.bubbleWidth
-                        implicitHeight: rowBody.implicitHeight + 12
-                        radius: 8
-                        color: eventDelegate.isMessage
-                               ? root.ui.themePalette.itemBg
-                               : root.ui.themePalette.innerPanelBg
-                        border.color: eventDelegate.topicColor.length > 0
-                                      ? eventDelegate.topicColor
-                                      : (eventDelegate.isMessage
-                                         ? root.ui.themePalette.eventBorder
-                                         : root.ui.themePalette.innerPanelBorder)
+                        width: parent.width
+                        implicitHeight: rowBody.implicitHeight + 16
+                        radius: 10
+                        color: rowHover.hovered ? root.ui.themePalette.rowHover : "transparent"
+                        border.color: "transparent"
 
-                        Column {
+                        HoverHandler {
+                            id: rowHover
+                        }
+
+                        RowLayout {
                             id: rowBody
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            anchors.margins: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 4
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            spacing: 10
 
-                            RowLayout {
-                                width: parent.width
-                                spacing: 5
+                            Label {
+                                Layout.preferredWidth: 82
+                                text: root.compactTimestamp(eventDelegate.timestamp)
+                                color: root.ui.themePalette.timestampText
+                                font.family: "Menlo"
+                                font.pixelSize: 11
+                                elide: Label.ElideRight
+                            }
 
-                                Label {
+                            Label {
+                                Layout.preferredWidth: 14
+                                text: eventDelegate.isMessage ? "↓" : "•"
+                                color: eventDelegate.isMessage
+                                       ? root.ui.themePalette.successText
+                                       : root.ui.themePalette.warningText
+                                horizontalAlignment: Text.AlignHCenter
+                                font.pixelSize: 14
+                                font.bold: true
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                spacing: 3
+
+                                RowLayout {
                                     Layout.fillWidth: true
-                                    text: eventDelegate.title
-                                    color: eventDelegate.kind === "event"
-                                           ? root.ui.themePalette.eventTitle
-                                           : root.ui.themePalette.messageTitle
-                                    font.pixelSize: 12
-                                    font.bold: true
-                                    elide: Label.ElideRight
-                                }
+                                    spacing: 6
 
-                                AppBadge {
-                                    ui: root.ui
-                                    visible: eventDelegate.isMessage
-                                    label: eventDelegate.payloadSizeLabel
-                                    badgeRadius: 7
-                                    badgeBorder: root.ui.themePalette.eventBorder
-                                    horizontalPadding: 5
-                                    verticalPadding: 2
-                                    strong: false
-                                }
-
-                                AppBadge {
-                                    ui: root.ui
-                                    visible: eventDelegate.payloadFormat.length > 0
-                                    label: eventDelegate.payloadFormat
-                                    badgeRadius: 7
-                                    badgeBorder: root.ui.themePalette.eventBorder
-                                    horizontalPadding: 5
-                                    verticalPadding: 2
-                                    maximumLabelWidth: 160
-                                }
-
-                                AppIconButton {
-                                    ui: root.ui
-                                    visible: eventDelegate.isMessage
-                                    iconSource: root.ui.materialIcon("topic")
-                                    implicitWidth: 22
-                                    implicitHeight: 22
-                                    iconSize: 12
-                                    cornerRadius: 5
-                                    restBg: "transparent"
-                                    outlineColor: "transparent"
-                                    accessibleName: qsTr("Copy topic")
-                                    toolTipText: qsTr("Copy topic")
-                                    toolTipPosition: AppToolTip.Position.Top
-                                    onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
-                                }
-
-                                AppIconButton {
-                                    ui: root.ui
-                                    visible: eventDelegate.isMessage
-                                    iconSource: root.ui.materialIcon("content-copy")
-                                    implicitWidth: 22
-                                    implicitHeight: 22
-                                    iconSize: 12
-                                    cornerRadius: 5
-                                    restBg: "transparent"
-                                    outlineColor: "transparent"
-                                    accessibleName: qsTr("Copy payload")
-                                    toolTipText: qsTr("Copy payload")
-                                    toolTipPosition: AppToolTip.Position.Top
-                                    onClicked: root.viewModel.copyMessagePayload(
-                                                   eventDelegate.historyId,
-                                                   eventDelegate.payload,
-                                                   eventDelegate.testPayload,
-                                                   eventDelegate.testFormat)
-                                }
-
-                                AppIconButton {
-                                    ui: root.ui
-                                    visible: eventDelegate.isMessage
-                                    iconSource: root.ui.materialIcon("edit")
-                                    implicitWidth: 22
-                                    implicitHeight: 22
-                                    iconSize: 12
-                                    cornerRadius: 5
-                                    restBg: "transparent"
-                                    outlineColor: "transparent"
-                                    accessibleName: qsTr("Use as publish draft")
-                                    toolTipText: qsTr("Use as publish draft")
-                                    toolTipPosition: AppToolTip.Position.Top
-                                    onClicked: {
-                                        root.viewModel.useMessageAsDraft(
-                                                    eventDelegate.historyId,
-                                                    eventDelegate.topic,
-                                                    eventDelegate.payload,
-                                                    eventDelegate.testPayload,
-                                                    eventDelegate.testFormat)
-                                        root.publishDraftRevealRequested()
+                                    Rectangle {
+                                        Layout.preferredWidth: 8
+                                        Layout.preferredHeight: 8
+                                        radius: 2
+                                        color: eventDelegate.topicSwatchColor
                                     }
+
+                                    TextInput {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        text: eventDelegate.title
+                                        color: eventDelegate.isEvent
+                                               ? root.ui.themePalette.eventTitle
+                                               : root.ui.textStrong
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        readOnly: true
+                                        selectByMouse: true
+                                        clip: true
+                                        selectedTextColor: root.ui.themePalette.buttonPrimaryText
+                                        selectionColor: root.ui.themePalette.buttonPrimaryBg
+                                    }
+                                }
+
+                                TextEdit {
+                                    id: payloadText
+
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    Layout.preferredHeight: Math.min(implicitHeight,
+                                                                     payloadLineMetrics.lineSpacing * 4)
+                                    text: eventDelegate.payload
+                                    color: eventDelegate.isEvent ? root.ui.textMuted : root.ui.textStrong
+                                    font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily
+                                    font.pixelSize: 12
+                                    textFormat: Text.PlainText
+                                    wrapMode: TextEdit.WrapAnywhere
+                                    readOnly: true
+                                    selectByMouse: true
+                                    clip: true
+                                    selectedTextColor: root.ui.themePalette.buttonPrimaryText
+                                    selectionColor: root.ui.themePalette.buttonPrimaryBg
+
+                                    HoverHandler {
+                                        cursorShape: Qt.ArrowCursor
+                                    }
+                                }
+
+                                FontMetrics {
+                                    id: payloadLineMetrics
+
+                                    font.family: payloadText.font.family
+                                    font.pixelSize: payloadText.font.pixelSize
                                 }
                             }
 
-                            Text {
-                                id: payloadText
-                                width: parent.width
-                                text: eventDelegate.payload
-                                color: root.ui.textStrong
-                                font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily
-                                font.pixelSize: 13
-                                lineHeight: 1.12
-                                textFormat: Text.PlainText
-                                wrapMode: Text.WrapAnywhere
+                            ColumnLayout {
+                                id: messageActions
+                                visible: eventDelegate.isMessage || eventDelegate.payloadFormat.length > 0
+                                Layout.alignment: Qt.AlignRight | Qt.AlignTop
+                                Layout.preferredWidth: Math.max(metadataRow.implicitWidth,
+                                                                actionButtonRow.implicitWidth)
+                                Layout.minimumWidth: Layout.preferredWidth
+                                Layout.maximumWidth: Layout.preferredWidth
+                                spacing: 4
+
+                                RowLayout {
+                                    id: metadataRow
+                                    Layout.alignment: Qt.AlignRight
+                                    spacing: 6
+
+                                    AppBadge {
+                                        ui: root.ui
+                                        visible: eventDelegate.payloadFormat.length > 0
+                                        Layout.preferredWidth: implicitWidth
+                                        Layout.preferredHeight: implicitHeight
+                                        label: eventDelegate.payloadFormat
+                                        badgeRadius: 6
+                                        badgeBorder: root.ui.themePalette.eventBorder
+                                        horizontalPadding: 6
+                                        verticalPadding: 1
+                                        maximumLabelWidth: 160
+                                    }
+
+                                    Label {
+                                        visible: eventDelegate.isMessage
+                                        text: eventDelegate.payloadSizeLabel
+                                        color: root.ui.themePalette.textSubtle
+                                        font.family: "Menlo"
+                                        font.pixelSize: 10
+                                        horizontalAlignment: Text.AlignRight
+                                    }
+                                }
+
+                                RowLayout {
+                                    id: actionButtonRow
+                                    visible: eventDelegate.isMessage
+                                    Layout.alignment: Qt.AlignRight
+                                    spacing: 2
+
+                                    AppIconButton {
+                                        ui: root.ui
+                                        iconSource: root.ui.materialIcon("topic")
+                                        Layout.preferredWidth: 22
+                                        Layout.preferredHeight: 22
+                                        iconSize: 12
+                                        cornerRadius: 5
+                                        restBg: "transparent"
+                                        outlineColor: "transparent"
+                                        symbolColor: root.ui.themePalette.textSubtle
+                                        accessibleName: qsTr("Copy topic")
+                                        toolTipText: qsTr("Copy topic")
+                                        toolTipPosition: AppToolTip.Position.Top
+                                        onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
+                                    }
+
+                                    AppIconButton {
+                                        ui: root.ui
+                                        iconSource: root.ui.materialIcon("content-copy")
+                                        Layout.preferredWidth: 22
+                                        Layout.preferredHeight: 22
+                                        iconSize: 12
+                                        cornerRadius: 5
+                                        restBg: "transparent"
+                                        outlineColor: "transparent"
+                                        symbolColor: root.ui.themePalette.textSubtle
+                                        accessibleName: qsTr("Copy payload")
+                                        toolTipText: qsTr("Copy payload")
+                                        toolTipPosition: AppToolTip.Position.Top
+                                        onClicked: root.viewModel.copyMessagePayload(
+                                                       eventDelegate.historyId,
+                                                       eventDelegate.payload,
+                                                       eventDelegate.testPayload,
+                                                       eventDelegate.testFormat)
+                                    }
+
+                                    AppIconButton {
+                                        ui: root.ui
+                                        iconSource: root.ui.materialIcon("edit")
+                                        Layout.preferredWidth: 22
+                                        Layout.preferredHeight: 22
+                                        iconSize: 12
+                                        cornerRadius: 5
+                                        restBg: "transparent"
+                                        outlineColor: "transparent"
+                                        symbolColor: root.ui.themePalette.textSubtle
+                                        accessibleName: qsTr("Use as publish draft")
+                                        toolTipText: qsTr("Use as publish draft")
+                                        toolTipPosition: AppToolTip.Position.Top
+                                        onClicked: {
+                                            root.viewModel.useMessageAsDraft(
+                                                        eventDelegate.historyId,
+                                                        eventDelegate.topic,
+                                                        eventDelegate.payload,
+                                                        eventDelegate.testPayload,
+                                                        eventDelegate.testFormat)
+                                            root.publishDraftRevealRequested()
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -586,6 +620,7 @@ Item {
             Rectangle {
                 id: followButton
                 visible: !eventList.shouldFollowOutput
+                         && (root.connected || eventList.unreadCount > 0)
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: visible ? 14 : 8
@@ -593,7 +628,7 @@ Item {
                 height: 38
                 width: followButtonRow.implicitWidth + 26
                 color: followMouse.containsMouse || activeFocus
-                       ? root.ui.themePalette.actionHoverBg
+                       ? root.ui.themePalette.buttonPrimaryHoverBg
                        : root.ui.themePalette.followBg
                 border.color: root.ui.themePalette.followBorder
                 opacity: visible ? 0.97 : 0
@@ -654,6 +689,13 @@ Item {
                     }
 
                     Label {
+                        text: qsTr("Scroll to latest")
+                        color: root.ui.themePalette.followText
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+
+                    Label {
                         visible: eventList.unreadCount > 0
                         text: `+${eventList.unreadCount}`
                         color: root.ui.themePalette.followBadgeText
@@ -669,7 +711,7 @@ Item {
                     hoverEnabled: true
                     onClicked: {
                         followButton.forceActiveFocus()
-                        eventList.scrollToBottom()
+                        root.setFollowMode("smart")
                     }
                 }
             }

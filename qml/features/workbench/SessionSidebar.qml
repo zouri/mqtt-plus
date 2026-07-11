@@ -12,15 +12,18 @@ Rectangle {
     required property AppUi ui
     required property var viewModel
     property bool collapsed: false
+    property real visibleWidth: width
     property int sessionContextIndex: -1
     readonly property bool canDeleteSession: sessionList.count > 1
+    readonly property color sidebarBg: control.ui.themePalette.sidebarBg
+    readonly property color selectedSessionBg: control.ui.themePalette.selectedItemBg
 
     signal sessionCreateRequested
     signal sessionEditRequested(int index)
     signal collapseRequested
     signal expandRequested
 
-    color: ui.themePalette.panelBg
+    color: control.sidebarBg
     clip: true
 
     function sessionActionLabel(actionId) {
@@ -44,9 +47,15 @@ Rectangle {
     ListModel {
         id: sessionContextActions
 
-        ListElement { actionId: "edit" }
-        ListElement { actionId: "copy" }
-        ListElement { actionId: "delete" }
+        ListElement {
+            actionId: "edit"
+        }
+        ListElement {
+            actionId: "copy"
+        }
+        ListElement {
+            actionId: "delete"
+        }
     }
 
     AppPlatformMenu {
@@ -64,27 +73,30 @@ Rectangle {
             } else if (actionId === "delete") {
                 control.viewModel.requestSessionDelete(control.sessionContextIndex);
             }
-        }
 
-        onAboutToHide: Qt.callLater(function() {
             control.sessionContextIndex = -1;
-        })
+        }
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 0
         visible: !control.collapsed
-        spacing: 10
+        spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 7
+            Layout.preferredHeight: 48
+            Layout.leftMargin: 12
+            Layout.rightMargin: 8
+            spacing: 6
 
             Label {
+                Layout.fillWidth: true
                 text: qsTr("Connections")
                 color: control.ui.textStrong
-                font.pixelSize: 18
+                elide: Label.ElideRight
+                font.pixelSize: 16
                 font.bold: true
             }
 
@@ -100,15 +112,31 @@ Rectangle {
             }
 
             AppIconButton {
+                ui: control.ui
+                iconSource: control.ui.materialIcon("plus")
+                iconSize: 16
+                implicitWidth: 28
+                implicitHeight: 28
+                cornerRadius: 7
+                restBg: control.ui.themePalette.itemBg
+                hoverBg: control.ui.themePalette.rowHover
+                pressedBg: control.ui.themePalette.actionPressedBg
+                outlineColor: control.ui.themePalette.panelBorder
+                accessibleName: qsTr("New connection")
+                toolTipText: qsTr("New connection")
+                onClicked: control.sessionCreateRequested()
+            }
+
+            AppIconButton {
                 id: collapseButton
                 ui: control.ui
                 iconSource: control.ui.materialIcon("chevron-left")
                 iconSize: 18
                 implicitWidth: 24
                 implicitHeight: 24
-                cornerRadius: 12
+                cornerRadius: 7
                 restBg: "transparent"
-                hoverBg: control.ui.themePalette.windowBg
+                hoverBg: control.sidebarBg
                 pressedBg: control.ui.themePalette.actionPressedBg
                 outlineColor: collapseButton.hovered || collapseButton.down ? control.ui.themePalette.innerPanelBorder : "transparent"
                 accessibleName: qsTr("Hide connection list")
@@ -120,8 +148,9 @@ Rectangle {
             id: sessionList
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.margins: 8
             clip: true
-            spacing: 8
+            spacing: 4
             currentIndex: control.viewModel.currentSessionIndex
             model: control.viewModel.sessions
             reuseItems: true
@@ -134,27 +163,30 @@ Rectangle {
                 id: sessionDelegate
                 required property int index
                 required property string name
+                required property string host
+                required property int port
+                required property string connectionState
+                required property string protocolVersionName
+                required property string lastError
                 readonly property bool selected: index === control.viewModel.currentSessionIndex
-                readonly property bool highlighted: rowMouse.containsMouse || activeFocus
+                readonly property bool highlighted: rowHover.hovered || activeFocus
+                readonly property bool connected: sessionDelegate.connectionState === "connected"
+                readonly property string endpointText: sessionDelegate.lastError.length > 0 ? sessionDelegate.lastError : qsTr("%1:%2").arg(sessionDelegate.host || "-").arg(sessionDelegate.port)
                 width: ListView.view.width
-                height: 42
-                radius: control.ui.innerRadius
-                color: sessionDelegate.selected ? control.ui.themePalette.selectedBg : (sessionDelegate.highlighted ? control.ui.themePalette.selectedBg : control.ui.themePalette.itemBg)
-                border.color: sessionDelegate.selected
-                              ? Qt.rgba(control.ui.themePalette.selectedBorder.r, control.ui.themePalette.selectedBorder.g, control.ui.themePalette.selectedBorder.b, 0.36)
-                              : (sessionDelegate.highlighted
-                                 ? Qt.rgba(control.ui.themePalette.selectedBorder.r, control.ui.themePalette.selectedBorder.g, control.ui.themePalette.selectedBorder.b, 0.26)
-                                 : control.ui.themePalette.itemBorder)
-                border.width: 1
+                height: 54
+                radius: 10
+                opacity: sessionDelegate.connectionState === "disconnecting" ? 0.72 : 1.0
+                color: sessionDelegate.selected ? control.selectedSessionBg : (sessionDelegate.highlighted ? control.ui.themePalette.rowHover : "transparent")
+                border.color: "transparent"
+                border.width: 0
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 100
-                        easing.type: Easing.OutCubic
-                    }
+                HoverHandler {
+                    id: rowHover
+
+                    cursorShape: Qt.PointingHandCursor
                 }
 
                 function openSessionContextMenu() {
@@ -173,41 +205,64 @@ Rectangle {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 11
-                    anchors.rightMargin: 9
-                    spacing: 7
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    spacing: 10
 
                     Rectangle {
-                        Layout.preferredWidth: 3
-                        Layout.preferredHeight: 30
-                        radius: 2
-                        color: sessionDelegate.selected ? control.ui.themePalette.selectedBorder : "transparent"
+                        Layout.preferredWidth: 8
+                        Layout.preferredHeight: 8
+                        radius: 4
+                        color: sessionDelegate.lastError.length > 0 ? control.ui.themePalette.errorText : (sessionDelegate.connected ? control.ui.themePalette.successText : "#9aa4b2")
                     }
 
-                    Label {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: sessionDelegate.name
-                        color: control.ui.textStrong
-                        elide: Label.ElideRight
-                        verticalAlignment: Text.AlignVCenter
-                        font.pixelSize: 13
-                        font.bold: true
+                        spacing: 2
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 5
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: sessionDelegate.name
+                                color: sessionDelegate.selected ? control.ui.themePalette.infoText : control.ui.textStrong
+                                elide: Label.ElideRight
+                                verticalAlignment: Text.AlignVCenter
+                                font.pixelSize: 13
+                                font.bold: true
+                            }
+
+                            AppBadge {
+                                ui: control.ui
+                                visible: sessionDelegate.protocolVersionName !== "MQTT 5"
+                                label: sessionDelegate.protocolVersionName.replace("MQTT ", "")
+                                horizontalPadding: 5
+                                verticalPadding: 1
+                                badgeRadius: 5
+                                strong: true
+                            }
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: sessionDelegate.endpointText
+                            color: control.ui.themePalette.textSubtle
+                            elide: Label.ElideRight
+                            font.pixelSize: 11
+                        }
                     }
                 }
 
                 MouseArea {
                     id: rowMouse
                     anchors.fill: parent
-                    hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    cursorShape: Qt.PointingHandCursor
-
-                    onPressed: mouse => {
-                        sessionDelegate.forceActiveFocus();
-                    }
 
                     onClicked: mouse => {
                         if (mouse.button === Qt.LeftButton) {
+                            sessionDelegate.forceActiveFocus();
                             control.viewModel.currentSessionIndex = sessionDelegate.index;
                         } else if (mouse.button === Qt.RightButton) {
                             sessionDelegate.openSessionContextMenu();
@@ -218,10 +273,11 @@ Rectangle {
 
             footer: Item {
                 width: sessionList.width
-                height: 50
+                height: 0
 
                 Rectangle {
                     id: addSessionDelegate
+                    visible: false
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
@@ -336,8 +392,11 @@ Rectangle {
         readonly property bool hot: collapsedMouse.containsMouse
 
         visible: control.collapsed
-        anchors.fill: parent
-        color: collapsedBar.hot ? control.ui.themePalette.rowHover : control.ui.themePalette.panelBg
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        width: control.visibleWidth
+        color: collapsedBar.hot ? control.ui.themePalette.rowHover : control.sidebarBg
         border.color: "transparent"
         activeFocusOnTab: true
         Accessible.role: Accessible.Button

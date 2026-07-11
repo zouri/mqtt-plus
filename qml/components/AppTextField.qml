@@ -17,7 +17,7 @@ TextField {
     selectByMouse: true
 
     background: Rectangle {
-        radius: 10
+        radius: 8
         color: control.ui.themePalette.fieldBg
         border.color: control.activeFocus ? control.ui.themePalette.fieldFocusBorder : control.ui.themePalette.fieldBorder
 

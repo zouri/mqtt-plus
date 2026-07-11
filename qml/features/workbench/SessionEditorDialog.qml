@@ -13,7 +13,6 @@ Dialog {
     required property var viewModel
 
     readonly property var editor: root.viewModel.sessionEditor
-
     component FormLabel : Label {
         Layout.preferredWidth: 148
         Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
@@ -30,23 +29,13 @@ Dialog {
         font.bold: true
     }
 
-    component FormSection : Rectangle {
-        default property alias content: sectionLayout.data
+    component FormSection : GridLayout {
+        id: sectionLayout
 
         Layout.fillWidth: true
-        implicitHeight: sectionLayout.implicitHeight + 28
-        radius: root.ui.innerRadius
-        color: root.ui.themePalette.innerPanelBg
-        border.color: root.ui.themePalette.innerPanelBorder
-
-        GridLayout {
-            id: sectionLayout
-            anchors.fill: parent
-            anchors.margins: 14
-            columns: 2
-            columnSpacing: 14
-            rowSpacing: 12
-        }
+        columns: 2
+        columnSpacing: 14
+        rowSpacing: 12
     }
 
     component BrowseField : RowLayout {
@@ -106,14 +95,52 @@ Dialog {
     }
 
     modal: true
+    dim: true
     focus: true
     width: Math.min(900, Overlay.overlay ? Overlay.overlay.width - 44 : 900)
     height: Math.min(760, Overlay.overlay ? Overlay.overlay.height - 44 : 760)
     anchors.centerIn: Overlay.overlay
+    transformOrigin: Popup.Center
     standardButtons: Dialog.NoButton
 
-    Overlay.modal: Rectangle {
-        color: root.ui.themePalette.dialogOverlay
+    enter: Transition {
+        NumberAnimation {
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+
+        NumberAnimation {
+            property: "scale"
+            from: 0.92
+            to: 1
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    exit: Transition {
+        NumberAnimation {
+            property: "opacity"
+            from: 1
+            to: 0
+            duration: 160
+            easing.type: Easing.InCubic
+        }
+
+        NumberAnimation {
+            property: "scale"
+            from: 1
+            to: 0.96
+            duration: 160
+            easing.type: Easing.InCubic
+        }
+    }
+
+    Overlay.modal: AppDialogOverlay {
+        ui: root.ui
     }
 
     header: Item {

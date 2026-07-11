@@ -24,7 +24,7 @@ Button {
     }
 
     background: Rectangle {
-        radius: Math.round(height / 2)
+        radius: 8
         color: !control.enabled
                ? Qt.rgba((control.primary || control.danger) ? 0.55 : 0.5,
                          (control.primary || control.danger) ? 0.6 : 0.55,
@@ -64,7 +64,7 @@ Button {
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         font.pixelSize: control.font.pixelSize
-        font.bold: control.primary || control.danger
+        font.bold: true
     }
 
     AppToolTip {

@@ -14,10 +14,11 @@ Item {
     required property var ui
 
     property bool expanded: true
-    property int composerHeight: 220
-    readonly property int collapsedHeight: 50
-    readonly property int minComposerHeight: 180
+    property int composerHeight: 210
+    readonly property int collapsedHeight: 48
+    readonly property int minComposerHeight: 168
     readonly property int maxComposerHeight: 420
+    readonly property color surfaceBg: root.ui.themePalette.panelBg
     readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle"
                                               ? (root.publishStatus.reason && root.publishStatus.reason.length > 0
                                                  ? root.publishStatus.reason
@@ -60,21 +61,28 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                color: root.ui.themePalette.windowBg
+                color: root.surfaceBg
             }
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-                spacing: 7
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                anchors.topMargin: 8
+                anchors.bottomMargin: 14
+                spacing: 8
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 28
+                    Layout.preferredHeight: 32
                     spacing: 7
+
+                    Label {
+                        text: root.expanded ? "▾" : "▸"
+                        color: root.ui.themePalette.textSubtle
+                        font.pixelSize: 13
+                        font.bold: true
+                    }
 
                     Label {
                         text: qsTr("Publish Message")
@@ -99,10 +107,16 @@ Item {
                         Layout.fillWidth: true
                     }
 
-                    AppButton {
+                    AppIconButton {
                         ui: root.ui
-                        text: root.expanded ? qsTr("Collapse") : qsTr("Expand")
-                        minimumWidth: 74
+                        iconSource: root.ui.materialIcon(root.expanded ? "chevron-left" : "chevron-right")
+                        iconSize: 15
+                        implicitWidth: 26
+                        implicitHeight: 26
+                        cornerRadius: 7
+                        restBg: root.ui.themePalette.itemBg
+                        outlineColor: root.ui.themePalette.panelBorder
+                        accessibleName: root.expanded ? qsTr("Collapse") : qsTr("Expand")
                         onClicked: root.expanded = !root.expanded
                     }
                 }
@@ -110,19 +124,14 @@ Item {
                 RowLayout {
                     visible: root.expanded
                     Layout.fillWidth: true
-                    Layout.preferredHeight: visible ? 52 : 0
-                    spacing: 7
+                    Layout.preferredHeight: visible ? 34 : 0
+                    spacing: 6
 
                     ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 3
-
-                        Label {
-                            text: qsTr("Topic")
-                            color: root.ui.textMuted
-                            font.pixelSize: 10
-                            font.bold: true
-                        }
+                        Layout.preferredWidth: 340
+                        Layout.minimumWidth: 240
+                        Layout.maximumWidth: 380
+                        spacing: 0
 
                         AppTextField {
                             ui: root.ui
@@ -135,15 +144,8 @@ Item {
                     }
 
                     ColumnLayout {
-                        Layout.preferredWidth: 104
-                        spacing: 3
-
-                        Label {
-                            text: qsTr("QoS")
-                            color: root.ui.textMuted
-                            font.pixelSize: 10
-                            font.bold: true
-                        }
+                        Layout.preferredWidth: 88
+                        spacing: 0
 
                         AppComboBox {
                             ui: root.ui
@@ -156,15 +158,8 @@ Item {
                     }
 
                     ColumnLayout {
-                        Layout.preferredWidth: 118
-                        spacing: 3
-
-                        Label {
-                            text: qsTr("Payload format")
-                            color: root.ui.textMuted
-                            font.pixelSize: 10
-                            font.bold: true
-                        }
+                        Layout.preferredWidth: 104
+                        spacing: 0
 
                         AppComboBox {
                             ui: root.ui
@@ -177,15 +172,8 @@ Item {
                     }
 
                     ColumnLayout {
-                        Layout.preferredWidth: 78
-                        spacing: 3
-
-                        Label {
-                            text: qsTr("Retain")
-                            color: root.ui.textMuted
-                            font.pixelSize: 10
-                            font.bold: true
-                        }
+                        Layout.preferredWidth: 68
+                        spacing: 0
 
                         AppCheckBox {
                             ui: root.ui
@@ -194,6 +182,10 @@ Item {
                             checked: root.publisher.retain
                             onToggled: root.publisher.retain = checked
                         }
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
                     }
                 }
 
@@ -222,13 +214,13 @@ Item {
                         ui: root.ui
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        anchors.rightMargin: 10
-                        anchors.bottomMargin: 10
-                        implicitWidth: 34
-                        implicitHeight: 34
-                        cornerRadius: 17
+                        anchors.rightMargin: 8
+                        anchors.bottomMargin: 8
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        cornerRadius: 8
                         iconSource: root.ui.materialIcon("send")
-                        iconSize: 17
+                        iconSize: 16
                         primary: true
                         enabled: root.publisher.canPublish
                         accessibleName: qsTr("Publish message")

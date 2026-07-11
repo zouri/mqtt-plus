@@ -17,9 +17,9 @@ Rectangle {
 
     signal scriptRequested(int index)
 
-    Layout.preferredWidth: 280
-    Layout.minimumWidth: 280
-    Layout.maximumWidth: 280
+    Layout.preferredWidth: 300
+    Layout.minimumWidth: 300
+    Layout.maximumWidth: 300
     Layout.fillHeight: true
     color: root.ui.themePalette.windowBg
 
@@ -48,10 +48,7 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 22
-        anchors.rightMargin: 12
-        anchors.topMargin: 16
-        anchors.bottomMargin: 16
+        anchors.margins: 10
         spacing: 10
 
         AppTextField {
@@ -67,7 +64,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 0
+            spacing: 8
             model: root.viewModel.scripts
             reuseItems: true
 
@@ -91,7 +88,7 @@ Rectangle {
                                                           scriptDelegate.code)
 
                 width: ListView.view.width
-                implicitHeight: matchesFilter ? 80 : 0
+                implicitHeight: matchesFilter ? 82 : 0
                 visible: matchesFilter
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
@@ -102,15 +99,14 @@ Rectangle {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 8
-                    radius: 8
+                    radius: 10
                     color: scriptMouse.containsMouse || scriptDelegate.activeFocus
                            ? root.ui.rowHover
-                           : root.ui.themePalette.windowBg
+                           : root.ui.themePalette.itemBg
                     border.color: scriptDelegate.id === root.currentScriptId
                                   ? root.ui.themePalette.selectedBorder
-                                  : "transparent"
-                    border.width: scriptDelegate.id === root.currentScriptId ? 2 : 1
+                                  : root.ui.themePalette.itemBorder
+                    border.width: 1
 
                     Column {
                         anchors.fill: parent
@@ -124,15 +120,17 @@ Rectangle {
                             width: parent.width
                             text: scriptDelegate.name
                             color: root.ui.textStrong
-                            font.pixelSize: 14
+                            font.pixelSize: 13
                             font.bold: true
                             elide: Label.ElideRight
                         }
 
                         Label {
                             width: parent.width
-                            text: qsTr("Lua decoder · %1").arg(scriptDelegate.updatedAt || qsTr("Not saved"))
-                            color: root.ui.textMuted
+                            text: scriptDelegate.description.length > 0
+                                  ? scriptDelegate.description
+                                  : qsTr("Lua decoder · %1").arg(scriptDelegate.updatedAt || qsTr("Not saved"))
+                            color: root.ui.themePalette.textSubtle
                             font.pixelSize: 11
                             elide: Label.ElideRight
                         }

@@ -11,7 +11,7 @@ ToolButton {
     property url iconSource: ""
     property int symbolSize: 16
     property int iconSize: symbolSize
-    property int cornerRadius: 10
+    property int cornerRadius: 7
     property bool primary: false
     property bool danger: false
     property string accessibleName: ""
@@ -52,7 +52,7 @@ ToolButton {
     implicitWidth: 30
     implicitHeight: 30
     padding: 0
-    scale: control.down ? 0.95 : 1.0
+    scale: control.down ? 0.97 : 1.0
     text: control.symbol
     display: control.iconSource.toString().length > 0 ? AbstractButton.IconOnly : AbstractButton.TextOnly
     icon.source: control.iconSource

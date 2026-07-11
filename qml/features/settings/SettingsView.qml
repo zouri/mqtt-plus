@@ -30,22 +30,31 @@ Rectangle {
 
         Layout.fillWidth: true
         Layout.preferredHeight: sectionColumn.implicitHeight + 24
-        radius: section.ui.innerRadius
+        radius: 12
         color: section.ui.themePalette.itemBg
         border.color: section.ui.themePalette.itemBorder
 
         ColumnLayout {
             id: sectionColumn
             anchors.fill: parent
-            anchors.margins: 12
-            spacing: 6
+            spacing: 0
 
             Label {
                 Layout.fillWidth: true
+                Layout.leftMargin: 18
+                Layout.rightMargin: 18
+                Layout.topMargin: 14
+                Layout.bottomMargin: 14
                 text: section.title
                 color: section.ui.textStrong
-                font.pixelSize: 14
+                font.pixelSize: 15
                 font.bold: true
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: section.ui.themePalette.innerPanelBorder
             }
 
             ColumnLayout {
@@ -66,14 +75,14 @@ Rectangle {
         default property alias controls: controlRow.data
 
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.max(54, rowLayout.implicitHeight + 14)
+        Layout.preferredHeight: Math.max(54, rowLayout.implicitHeight + 18)
         color: "transparent"
 
         RowLayout {
             id: rowLayout
             anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
+            anchors.leftMargin: 18
+            anchors.rightMargin: 18
             spacing: 14
 
             ColumnLayout {
@@ -116,25 +125,72 @@ Rectangle {
         }
     }
 
+    component SettingSwitch: Switch {
+        id: settingSwitch
+
+        required property AppUi ui
+
+        implicitWidth: 40
+        implicitHeight: 22
+        text: ""
+
+        indicator: Rectangle {
+            implicitWidth: 40
+            implicitHeight: 22
+            radius: 11
+            color: settingSwitch.checked
+                   ? settingSwitch.ui.themePalette.buttonPrimaryBg
+                   : settingSwitch.ui.themePalette.innerPanelBorder
+
+            Rectangle {
+                x: settingSwitch.checked ? 20 : 2
+                y: 2
+                width: 18
+                height: 18
+                radius: 9
+                color: "#ffffff"
+
+                Behavior on x {
+                    NumberAnimation {
+                        duration: 150
+                        easing.type: Easing.OutCubic
+                    }
+                }
+            }
+
+            Behavior on color {
+                ColorAnimation {
+                    duration: 150
+                    easing.type: Easing.OutCubic
+                }
+            }
+        }
+
+        contentItem: Item {
+            implicitWidth: 0
+            implicitHeight: 0
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
-            color: root.ui.themePalette.windowBg
+            Layout.preferredHeight: 48
+            color: root.ui.themePalette.headerBg
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 32
-                anchors.rightMargin: 32
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
                 spacing: 10
 
                 Label {
                     text: qsTr("Settings")
                     color: root.ui.textStrong
-                    font.pixelSize: 22
+                    font.pixelSize: 18
                     font.bold: true
                 }
 
@@ -147,8 +203,6 @@ Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.leftMargin: 32
-                anchors.rightMargin: 32
                 height: 1
                 color: root.ui.themePalette.separator
             }
@@ -180,8 +234,9 @@ Rectangle {
                 SettingsSection {
                     ui: root.ui
                     title: qsTr("Appearance")
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 24
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    Layout.maximumWidth: 760
 
                     SettingRow {
                         ui: root.ui
@@ -216,8 +271,9 @@ Rectangle {
                 SettingsSection {
                     ui: root.ui
                     title: qsTr("Workbench")
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 24
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    Layout.maximumWidth: 760
 
                     SettingRow {
                         ui: root.ui
@@ -225,9 +281,8 @@ Rectangle {
                         detail: qsTr("Collapse the connection list after a connection succeeds.")
                         showDivider: false
 
-                        AppCheckBox {
+                        SettingSwitch {
                             ui: root.ui
-                            text: qsTr("Enabled")
                             checked: root.viewModel.autoCollapseConnectionListOnConnect
                             onToggled: root.viewModel.autoCollapseConnectionListOnConnect = checked
                         }
@@ -237,8 +292,9 @@ Rectangle {
                 SettingsSection {
                     ui: root.ui
                     title: qsTr("History")
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 24
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    Layout.maximumWidth: 760
 
                     SettingRow {
                         ui: root.ui
@@ -302,9 +358,8 @@ Rectangle {
                         detail: qsTr("Remove stored messages and logs when a connection is deleted.")
                         showDivider: false
 
-                        AppCheckBox {
+                        SettingSwitch {
                             ui: root.ui
-                            text: qsTr("Enabled")
                             checked: root.viewModel.deleteHistoryWithSession
                             onToggled: root.viewModel.deleteHistoryWithSession = checked
                         }
@@ -314,8 +369,9 @@ Rectangle {
                 SettingsSection {
                     ui: root.ui
                     title: qsTr("Output")
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 24
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    Layout.maximumWidth: 760
 
                     SettingRow {
                         ui: root.ui
@@ -323,9 +379,8 @@ Rectangle {
                         detail: qsTr("Keep storing incoming messages when output is paused.")
                         showDivider: false
 
-                        AppCheckBox {
+                        SettingSwitch {
                             ui: root.ui
-                            text: qsTr("Enabled")
                             checked: root.viewModel.saveMessagesWhenOutputPaused
                             onToggled: root.viewModel.saveMessagesWhenOutputPaused = checked
                         }
@@ -335,8 +390,9 @@ Rectangle {
                 SettingsSection {
                     ui: root.ui
                     title: qsTr("Cleanup")
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 24
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    Layout.maximumWidth: 760
 
                     SettingRow {
                         ui: root.ui

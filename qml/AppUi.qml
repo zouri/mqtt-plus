@@ -9,8 +9,8 @@ QtObject {
     required property bool isDarkTheme
 
     readonly property int panelRadius: 0
-    readonly property int innerRadius: 12
-    readonly property int compactControlHeight: 30
+    readonly property int innerRadius: 10
+    readonly property int compactControlHeight: 32
     readonly property int compactCheckHeight: 28
     readonly property int compactFontSize: 12
 
@@ -19,61 +19,68 @@ QtObject {
     readonly property int materialPrimary: Material.Blue
 
     readonly property var themePalette: ({
-            "windowBg": root.isDarkTheme ? "#101114" : "#fdfdff",
-            "headerBg": root.isDarkTheme ? "#1f2024" : "#fbfbfd",
-            "headerBorder": root.isDarkTheme ? "#34363c" : "#e8e8ed",
-            "sidebarBg": root.isDarkTheme ? "#1f2024" : "#fbfbfd",
-            "sidebarBorder": root.isDarkTheme ? "#34363c" : "#e8e8ed",
-            "panelBg": root.isDarkTheme ? "#18191d" : "#f5f5f7",
-            "panelBorder": root.isDarkTheme ? "#34363c" : "#e8e8ed",
-            "rowHover": root.isDarkTheme ? "#25262b" : "#fbfbfd",
-            "textStrong": root.isDarkTheme ? "#f5f5f7" : "#1d1d1f",
-            "textMuted": root.isDarkTheme ? "#a1a1a6" : "#6e6e73",
-            "selectedBg": root.isDarkTheme ? "#122b47" : "#eef6ff",
-            "selectedBorder": root.isDarkTheme ? "#2997ff" : "#0071e3",
-            "itemBg": root.isDarkTheme ? "#15161a" : "#ffffff",
-            "itemBorder": root.isDarkTheme ? "#2d2f35" : "#e1e1e6",
-            "innerPanelBg": root.isDarkTheme ? "#222328" : "#fbfbfd",
-            "innerPanelBorder": root.isDarkTheme ? "#34363c" : "#d2d2d7",
-            "separator": root.isDarkTheme ? "#34363c" : "#e8e8ed",
-            "infoText": root.isDarkTheme ? "#8cc8ff" : "#0066cc",
-            "warningText": root.isDarkTheme ? "#ffd66b" : "#946200",
-            "errorText": root.isDarkTheme ? "#ff9aa5" : "#dc2626",
-            "actionPressedBg": root.isDarkTheme ? "#34363c" : "#ececf0",
-            "actionHoverBg": root.isDarkTheme ? "#2a2b30" : "#f5f5f7",
-            "eventBorder": root.isDarkTheme ? "#3f6f9d" : "#b7d4f5",
-            "eventTitle": root.isDarkTheme ? "#ffd66b" : "#8f5a05",
-            "messageTitle": root.isDarkTheme ? "#8cc8ff" : "#0066cc",
-            "timestampText": root.isDarkTheme ? "#8e8e93" : "#86868b",
-            "chipBg": root.isDarkTheme ? "#2a2b30" : "#f5f5f7",
-            "chipText": root.isDarkTheme ? "#d1d1d6" : "#424245",
-            "followBg": root.isDarkTheme ? "#172a43" : "#edf6ff",
-            "followBorder": root.isDarkTheme ? "#2e6fb4" : "#b7d4f5",
-            "followText": root.isDarkTheme ? "#dceeff" : "#0066cc",
-            "followBadgeText": root.isDarkTheme ? "#b8dcff" : "#424245",
-            "dialogBg": root.isDarkTheme ? "#1c1c1e" : "#ffffff",
-            "dialogBorder": root.isDarkTheme ? "#34363c" : "#d2d2d7",
-            "accentPanelBg": root.isDarkTheme ? "#102943" : "#edf6ff",
-            "accentPanelBorder": root.isDarkTheme ? "#2e6fb4" : "#b7d4f5",
-            "dividerLine": root.isDarkTheme ? "#34363c" : "#e8e8ed",
-            "dividerLabelBg": root.isDarkTheme ? "#121214" : "#ffffff",
-            "buttonBg": root.isDarkTheme ? "#2a2b30" : "#f5f5f7",
-            "buttonBorder": root.isDarkTheme ? "#42444a" : "#d2d2d7",
-            "buttonHoverBg": root.isDarkTheme ? "#34363c" : "#fbfbfd",
-            "buttonPressedBg": root.isDarkTheme ? "#3f4148" : "#ececf0",
-            "buttonPrimaryBg": root.isDarkTheme ? "#0a84ff" : "#0071e3",
-            "buttonPrimaryHoverBg": root.isDarkTheme ? "#2997ff" : "#0077ed",
-            "buttonPrimaryPressedBg": root.isDarkTheme ? "#006edb" : "#0066cc",
+            "windowBg": root.isDarkTheme ? "#0f1419" : "#ffffff",
+            "navigationBg": root.isDarkTheme ? "#1a212b" : "#f2f3f5",
+            "headerBg": root.isDarkTheme ? "#1a212b" : "#ffffff",
+            "headerBorder": root.isDarkTheme ? "#2c3644" : "#dee0e3",
+            "sidebarBg": root.isDarkTheme ? "#1a212b" : "#f7f8fa",
+            "sidebarBorder": root.isDarkTheme ? "#2c3644" : "#dee0e3",
+            "panelBg": root.isDarkTheme ? "#0f1419" : "#ffffff",
+            "panelBorder": root.isDarkTheme ? "#2c3644" : "#dee0e3",
+            "rowHover": root.isDarkTheme ? "#222b38" : "#f2f3f5",
+            "textStrong": root.isDarkTheme ? "#e6edf5" : "#1f2329",
+            "textMuted": root.isDarkTheme ? "#9fb0c3" : "#646a73",
+            "textSubtle": root.isDarkTheme ? "#6b7889" : "#6f757e",
+            "selectedBg": root.isDarkTheme ? "#1c3156" : "#e8f0ff",
+            "selectedBorder": root.isDarkTheme ? "#4f8bff" : "#3370ff",
+            "selectedItemBg": root.isDarkTheme ? "#1a212b" : "#e8f0ff",
+            "selectedItemBorder": root.isDarkTheme ? "#37424f" : "#e8f0ff",
+            "itemBg": root.isDarkTheme ? "#1a212b" : "#ffffff",
+            "itemBorder": root.isDarkTheme ? "#2c3644" : "#dee0e3",
+            "innerPanelBg": root.isDarkTheme ? "#222b38" : "#f5f6f7",
+            "innerPanelBorder": root.isDarkTheme ? "#37424f" : "#dee0e3",
+            "separator": root.isDarkTheme ? "#2c3644" : "#dee0e3",
+            "infoText": root.isDarkTheme ? "#4f8bff" : "#245bdb",
+            "warningText": root.isDarkTheme ? "#fbbf24" : "#b85b00",
+            "errorText": root.isDarkTheme ? "#ff9aa5" : "#d83931",
+            "successText": root.isDarkTheme ? "#34d399" : "#2b881f",
+            "successBg": root.isDarkTheme ? "#0c3326" : "#e8f7e6",
+            "warningBg": root.isDarkTheme ? "#3a2e10" : "#fff3dc",
+            "actionPressedBg": root.isDarkTheme ? "#2c3644" : "#e5e6e8",
+            "actionHoverBg": root.isDarkTheme ? "#222b38" : "#f2f3f5",
+            "eventBorder": root.isDarkTheme ? "#37424f" : "#dee0e3",
+            "eventTitle": root.isDarkTheme ? "#fbbf24" : "#b85b00",
+            "messageTitle": root.isDarkTheme ? "#4f8bff" : "#245bdb",
+            "timestampText": root.isDarkTheme ? "#6b7889" : "#6f757e",
+            "chipBg": root.isDarkTheme ? "#1f2733" : "#f2f3f5",
+            "chipText": root.isDarkTheme ? "#9fb0c3" : "#646a73",
+            "followBg": root.isDarkTheme ? "#4f8bff" : "#3370ff",
+            "followBorder": root.isDarkTheme ? "#4f8bff" : "#3370ff",
+            "followText": "#ffffff",
+            "followBadgeText": "#ffffff",
+            "dialogBg": root.isDarkTheme ? "#1a212b" : "#ffffff",
+            "dialogBorder": root.isDarkTheme ? "#2c3644" : "#dee0e3",
+            "accentPanelBg": root.isDarkTheme ? "#1c3156" : "#e8f0ff",
+            "accentPanelBorder": root.isDarkTheme ? "#4f8bff" : "#3370ff",
+            "dividerLine": root.isDarkTheme ? "#2c3644" : "#dee0e3",
+            "dividerLabelBg": root.isDarkTheme ? "#0f1419" : "#ffffff",
+            "buttonBg": root.isDarkTheme ? "#1a212b" : "#ffffff",
+            "buttonBorder": root.isDarkTheme ? "#37424f" : "#dee0e3",
+            "buttonHoverBg": root.isDarkTheme ? "#222b38" : "#f5f6f7",
+            "buttonPressedBg": root.isDarkTheme ? "#2c3644" : "#e5e6e8",
+            "buttonPrimaryBg": root.isDarkTheme ? "#4f8bff" : "#3370ff",
+            "buttonPrimaryHoverBg": root.isDarkTheme ? "#6fa1ff" : "#4e83fd",
+            "buttonPrimaryPressedBg": root.isDarkTheme ? "#3675df" : "#245bdb",
             "buttonPrimaryText": "#ffffff",
             "buttonDangerBg": root.isDarkTheme ? "#df5669" : "#c92f46",
             "buttonDangerHoverBg": root.isDarkTheme ? "#ee6879" : "#da445b",
             "buttonDangerPressedBg": root.isDarkTheme ? "#bd3d50" : "#a82639",
             "buttonDangerText": "#fff7f8",
-            "fieldBg": root.isDarkTheme ? "#15161a" : "#ffffff",
-            "fieldBorder": root.isDarkTheme ? "#42444a" : "#d2d2d7",
-            "fieldFocusBorder": root.isDarkTheme ? "#2997ff" : "#0071e3",
-            "fieldPlaceholder": root.isDarkTheme ? "#77777d" : "#86868b",
-            "dialogOverlay": root.isDarkTheme ? "#9f081019" : "#730b1420"
+            "fieldBg": root.isDarkTheme ? "#222b38" : "#ffffff",
+            "fieldBorder": root.isDarkTheme ? "#37424f" : "#c9cdd4",
+            "fieldFocusBorder": root.isDarkTheme ? "#4f8bff" : "#3370ff",
+            "fieldPlaceholder": root.isDarkTheme ? "#6b7889" : "#6f757e",
+            "dialogOverlay": root.isDarkTheme ? "#730f1419" : "#661f2329"
         })
     readonly property color panelBg: root.themePalette.panelBg
     readonly property color panelBorder: root.themePalette.panelBorder
@@ -82,21 +89,21 @@ QtObject {
     readonly property color textMuted: root.themePalette.textMuted
 
     readonly property var stateColors: ({
-            "connected": "#49d17d",
-            "subscribed": "#49d17d",
-            "acknowledged": "#49d17d",
-            "completed": "#49d17d",
-            "connecting": "#f0bb63",
-            "pending": "#f0bb63",
-            "queued": "#f0bb63",
-            "sent": "#f0bb63",
-            "published": "#f0bb63",
-            "disconnecting": "#7f90a8",
-            "paused": "#7f90a8",
-            "saved": "#7f90a8",
-            "unsubscribed": "#7f90a8",
-            "error": "#ff8d94",
-            "failed": "#ff8d94"
+            "connected": root.isDarkTheme ? "#34d399" : "#2b881f",
+            "subscribed": root.isDarkTheme ? "#34d399" : "#2b881f",
+            "acknowledged": root.isDarkTheme ? "#34d399" : "#2b881f",
+            "completed": root.isDarkTheme ? "#34d399" : "#2b881f",
+            "connecting": root.isDarkTheme ? "#fbbf24" : "#b85b00",
+            "pending": root.isDarkTheme ? "#fbbf24" : "#b85b00",
+            "queued": root.isDarkTheme ? "#fbbf24" : "#b85b00",
+            "sent": root.isDarkTheme ? "#fbbf24" : "#b85b00",
+            "published": root.isDarkTheme ? "#fbbf24" : "#b85b00",
+            "disconnecting": root.isDarkTheme ? "#9aa4b2" : "#8f959e",
+            "paused": root.isDarkTheme ? "#9aa4b2" : "#8f959e",
+            "saved": root.isDarkTheme ? "#9aa4b2" : "#8f959e",
+            "unsubscribed": root.isDarkTheme ? "#9aa4b2" : "#8f959e",
+            "error": root.isDarkTheme ? "#f87171" : "#d83931",
+            "failed": root.isDarkTheme ? "#f87171" : "#d83931"
         })
 
     readonly property var themeModeMetaByMode: ({
@@ -115,7 +122,7 @@ QtObject {
         })
 
     function stateColor(state) {
-        return root.stateColors[state] || "#7f90a8";
+        return root.stateColors[state] || (root.isDarkTheme ? "#7f90a8" : "#6f757e");
     }
 
     function materialIcon(name) {

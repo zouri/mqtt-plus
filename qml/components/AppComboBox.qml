@@ -38,7 +38,7 @@ ComboBox {
         highlighted: control.highlightedIndex === index
 
         background: Rectangle {
-            radius: 7
+            radius: 6
             color: comboDelegate.highlighted
                    ? control.ui.themePalette.selectedBg
                    : comboDelegate.hovered
@@ -95,7 +95,7 @@ ComboBox {
     }
 
     background: Rectangle {
-        radius: 10
+        radius: 8
         color: control.ui.themePalette.fieldBg
         border.color: control.activeFocus ? control.ui.themePalette.fieldFocusBorder : control.ui.themePalette.fieldBorder
 
@@ -114,7 +114,7 @@ ComboBox {
         padding: 4
 
         background: Rectangle {
-            radius: 12
+            radius: 8
             color: control.ui.themePalette.dialogBg
             border.color: control.ui.themePalette.dialogBorder
         }

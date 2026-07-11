@@ -38,19 +38,19 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 60
-            color: control.ui.themePalette.windowBg
+            Layout.preferredHeight: 48
+            color: control.ui.themePalette.headerBg
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 32
-                anchors.rightMargin: 32
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
                 spacing: 10
 
                 Label {
                     text: qsTr("Script Manager")
                     color: control.ui.textStrong
-                    font.pixelSize: 22
+                    font.pixelSize: 18
                     font.bold: true
                 }
 
@@ -82,8 +82,6 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.leftMargin: 32
-                anchors.rightMargin: 32
                 height: 1
                 color: control.ui.themePalette.separator
             }
@@ -110,9 +108,9 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.leftMargin: 20
+                Layout.leftMargin: 24
                 Layout.rightMargin: 24
-                Layout.topMargin: 14
+                Layout.topMargin: 16
                 spacing: 12
 
                 RowLayout {
@@ -197,22 +195,21 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 62
-            color: control.ui.themePalette.windowBg
+            color: control.ui.themePalette.headerBg
 
             Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.leftMargin: 304
-                anchors.rightMargin: 32
+                anchors.leftMargin: 300
                 height: 1
                 color: control.ui.themePalette.separator
             }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 304
-                anchors.rightMargin: 32
+                anchors.leftMargin: 324
+                anchors.rightMargin: 24
                 spacing: 10
 
                 Label {
