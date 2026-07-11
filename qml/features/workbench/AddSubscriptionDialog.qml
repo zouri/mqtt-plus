@@ -11,7 +11,6 @@ Dialog {
     required property AppUi ui
     required property var viewModel
     readonly property var editor: root.viewModel.subscriptionEditor
-
     function openForCreate() {
         root.viewModel.openSubscriptionEditorForCreate()
         open()
@@ -32,13 +31,51 @@ Dialog {
     }
 
     modal: true
+    dim: true
     focus: true
     width: 420
     anchors.centerIn: Overlay.overlay
+    transformOrigin: Popup.Center
     standardButtons: Dialog.NoButton
 
-    Overlay.modal: Rectangle {
-        color: root.ui.themePalette.dialogOverlay
+    enter: Transition {
+        NumberAnimation {
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+
+        NumberAnimation {
+            property: "scale"
+            from: 0.92
+            to: 1
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    exit: Transition {
+        NumberAnimation {
+            property: "opacity"
+            from: 1
+            to: 0
+            duration: 160
+            easing.type: Easing.InCubic
+        }
+
+        NumberAnimation {
+            property: "scale"
+            from: 1
+            to: 0.96
+            duration: 160
+            easing.type: Easing.InCubic
+        }
+    }
+
+    Overlay.modal: AppDialogOverlay {
+        ui: root.ui
     }
 
     header: Item {

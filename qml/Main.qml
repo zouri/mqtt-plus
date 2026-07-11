@@ -17,7 +17,7 @@ ApplicationWindow {
     readonly property int defaultWindowWidth: 1480
     readonly property int defaultWindowHeight: 820
     readonly property int minimumWindowWidth: 1100
-    readonly property int minimumWindowHeight: 700
+    readonly property int minimumWindowHeight: 600
     property bool windowGeometryReady: false
 
     width: root.defaultWindowWidth
@@ -102,6 +102,43 @@ ApplicationWindow {
     readonly property var navigationViewModel: root.app.navigation
     readonly property var settingsViewModel: root.app.settings
     readonly property string currentAppView: root.navigationViewModel.currentView
+    readonly property int navigationRailWidth: 52
+
+    component RailButton: ToolButton {
+        id: railButton
+
+        required property AppUi ui
+        required property bool active
+        property string accessibleLabel: railButton.text
+        property url iconSource: ""
+
+        Layout.preferredWidth: 40
+        Layout.preferredHeight: 40
+        display: AbstractButton.IconOnly
+        icon.source: railButton.iconSource
+        icon.width: 22
+        icon.height: 22
+        icon.color: railButton.active ? railButton.ui.themePalette.infoText : railButton.ui.themePalette.textSubtle
+        font.pixelSize: 10
+        font.bold: true
+        palette.buttonText: railButton.active ? railButton.ui.themePalette.infoText : railButton.ui.themePalette.textSubtle
+        padding: 0
+        spacing: 0
+        Accessible.name: railButton.accessibleLabel
+        ToolTip.visible: railButton.hovered
+        ToolTip.delay: 400
+        ToolTip.text: railButton.accessibleLabel
+
+        HoverHandler {
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        background: Rectangle {
+            radius: 12
+            color: railButton.active ? railButton.ui.themePalette.selectedBg : (railButton.hovered ? railButton.ui.themePalette.rowHover : "transparent")
+            border.color: "transparent"
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -113,17 +150,10 @@ ApplicationWindow {
             spacing: 0
 
             Rectangle {
-                Layout.preferredWidth: 52
+                Layout.preferredWidth: root.navigationRailWidth
                 Layout.fillHeight: true
-                color: appUi.themePalette.sidebarBg
-
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    width: 1
-                    color: appUi.themePalette.sidebarBorder
-                }
+                z: 2
+                color: appUi.themePalette.navigationBg
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -133,75 +163,68 @@ ApplicationWindow {
                     anchors.bottomMargin: 10
                     spacing: 6
 
-                    AppIconButton {
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: 38
+                        Layout.preferredHeight: 38
+                        Layout.bottomMargin: 8
+                        radius: 11
+                        color: appUi.themePalette.buttonPrimaryBg
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: qsTr("M")
+                            color: appUi.themePalette.buttonPrimaryText
+                            font.pixelSize: 18
+                            font.bold: true
+                        }
+                    }
+
+                    RailButton {
                         ui: appUi
-                        Layout.preferredWidth: 40
-                        Layout.preferredHeight: 40
-                        cornerRadius: 13
                         iconSource: appUi.materialIcon("workbench")
-                        iconSize: 22
-                        restBg: "transparent"
-                        hoverBg: appUi.themePalette.selectedBg
-                        outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "workbench" ? appUi.themePalette.infoText : appUi.textMuted
-                        forceActive: root.currentAppView === "workbench"
-                        accessibleName: qsTr("Workbench")
-                        toolTipText: qsTr("Workbench")
+                        text: qsTr("Workbench")
+                        active: root.currentAppView === "workbench"
+                        accessibleLabel: qsTr("Workbench")
                         onClicked: root.navigationViewModel.currentView = "workbench"
                     }
 
-                    AppIconButton {
+                    RailButton {
                         ui: appUi
-                        Layout.preferredWidth: 40
-                        Layout.preferredHeight: 40
-                        cornerRadius: 13
                         iconSource: appUi.materialIcon("logs")
-                        iconSize: 22
-                        restBg: "transparent"
-                        hoverBg: appUi.themePalette.selectedBg
-                        outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "logs" ? appUi.themePalette.infoText : appUi.textMuted
-                        forceActive: root.currentAppView === "logs"
-                        accessibleName: qsTr("Logs")
-                        toolTipText: qsTr("Logs")
+                        text: qsTr("Logs")
+                        active: root.currentAppView === "logs"
+                        accessibleLabel: qsTr("Logs")
                         onClicked: root.navigationViewModel.currentView = "logs"
                     }
 
-                    AppIconButton {
+                    RailButton {
                         ui: appUi
-                        Layout.preferredWidth: 40
-                        Layout.preferredHeight: 40
-                        cornerRadius: 13
                         iconSource: appUi.materialIcon("script-development")
-                        iconSize: 22
-                        restBg: "transparent"
-                        hoverBg: appUi.themePalette.selectedBg
-                        outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "scripts" ? appUi.themePalette.infoText : appUi.textMuted
-                        forceActive: root.currentAppView === "scripts"
-                        accessibleName: qsTr("Lua scripts")
-                        toolTipText: qsTr("Lua scripts")
+                        text: qsTr("Scripts")
+                        active: root.currentAppView === "scripts"
+                        accessibleLabel: qsTr("Lua scripts")
                         onClicked: root.navigationViewModel.currentView = "scripts"
+                    }
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: 34
+                        Layout.preferredHeight: 1
+                        Layout.topMargin: 6
+                        color: appUi.themePalette.separator
                     }
 
                     Item {
                         Layout.fillHeight: true
                     }
 
-                    AppIconButton {
+                    RailButton {
                         ui: appUi
-                        Layout.preferredWidth: 40
-                        Layout.preferredHeight: 40
-                        cornerRadius: 13
                         iconSource: appUi.materialIcon("settings")
-                        iconSize: 22
-                        restBg: "transparent"
-                        hoverBg: appUi.themePalette.selectedBg
-                        outlineColor: "transparent"
-                        symbolColor: root.currentAppView === "settings" ? appUi.themePalette.infoText : appUi.textMuted
-                        forceActive: root.currentAppView === "settings"
-                        accessibleName: qsTr("Settings")
-                        toolTipText: qsTr("Settings")
+                        text: qsTr("Settings")
+                        active: root.currentAppView === "settings"
+                        accessibleLabel: qsTr("Settings")
                         onClicked: root.navigationViewModel.currentView = "settings"
                     }
                 }
@@ -210,6 +233,7 @@ ApplicationWindow {
             StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                z: 2
                 currentIndex: root.currentAppView === "logs" ? 1 : (root.currentAppView === "scripts" ? 2 : (root.currentAppView === "settings" ? 3 : 0))
 
                 WorkbenchView {
@@ -239,5 +263,14 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    Rectangle {
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        x: root.navigationRailWidth - 1
+        width: 1
+        z: 4
+        color: appUi.themePalette.sidebarBorder
     }
 }
