@@ -34,7 +34,9 @@ private slots:
     void historyStoreListQueriesDoNotProjectPayloadBlobs();
     void eventHistoryServiceThrottlesRetentionPrune();
     void messageQmlUsesTypedObjectProperties();
+    void messageRowsUseHoverHandlerForNestedControls();
     void messagePanelUsesSplitViewForComposerResize();
+    void eventStreamFollowModeUsesSingleCycleButton();
     void qmlUsesApplicationViewModelRootOnly();
     void translationsDoNotReferenceLegacyFacade();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
@@ -641,6 +643,25 @@ void ArchitectureBoundariesTest::messageQmlUsesTypedObjectProperties()
         "EventStreamView should carry history ids across the QML boundary without 32-bit narrowing");
 }
 
+void ArchitectureBoundariesTest::messageRowsUseHoverHandlerForNestedControls()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+
+    const int messageRowIndex = source.indexOf(QStringLiteral("id: messageRow"));
+    QVERIFY(messageRowIndex >= 0);
+    const int messageActionsIndex = source.indexOf(QStringLiteral("id: messageActions"), messageRowIndex);
+    QVERIFY(messageActionsIndex > messageRowIndex);
+    const QString messageRowSource = source.mid(messageRowIndex, messageActionsIndex - messageRowIndex);
+
+    QVERIFY2(messageRowSource.contains(QStringLiteral("id: rowHover")),
+        "Message row hover state must come from a row-level HoverHandler so nested text controls and action buttons keep the row highlighted");
+    QVERIFY2(messageRowSource.contains(QStringLiteral("color: rowHover.hovered ?")),
+        "Message row background must bind to the HoverHandler hover state");
+    QVERIFY2(!messageRowSource.contains(QStringLiteral("rowMouse.containsMouse")),
+        "MouseArea.containsMouse is lost when hovering nested controls inside the message row");
+}
+
 void ArchitectureBoundariesTest::messagePanelUsesSplitViewForComposerResize()
 {
     QString panelSource;
@@ -660,6 +681,49 @@ void ArchitectureBoundariesTest::messagePanelUsesSplitViewForComposerResize()
         "PublishComposer should not keep a custom drag resize implementation");
     QVERIFY2(!composerSource.contains(QStringLiteral("MouseArea")),
         "PublishComposer should not keep a custom splitter MouseArea");
+}
+
+void ArchitectureBoundariesTest::eventStreamFollowModeUsesSingleCycleButton()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+
+    QVERIFY2(source.contains(QStringLiteral("function nextFollowMode(mode)")),
+        "EventStreamView should expose the follow-mode cycle in one helper");
+    QVERIFY2(source.contains(QStringLiteral("id: followModeButton")),
+        "Follow mode should be represented by one toolbar button");
+    QVERIFY2(source.contains(QStringLiteral("iconSource: root.ui.materialIcon(\"follow-mode\")")),
+        "Follow mode button should use one shared follow icon");
+    QVERIFY2(source.contains(QStringLiteral("checkable: true")),
+        "Follow mode button should expose smart follow as a pressed/toggled state");
+    QVERIFY2(source.contains(QStringLiteral("checked: eventList.shouldFollowOutput")),
+        "Follow mode button pressed state must reflect the actual follow state");
+    QVERIFY2(source.contains(QStringLiteral("forceActive: followModeButton.checked")),
+        "Follow mode button should visually keep the pressed state while smart follow is active");
+    QVERIFY2(source.contains(QStringLiteral("onClicked: root.setFollowMode(eventList.shouldFollowOutput ? \"manual\" : \"smart\")")),
+        "Follow mode button should toggle from the actual follow state");
+    QVERIFY2(source.contains(QStringLiteral("eventList.shouldFollowOutput = false")),
+        "Manual follow mode must clear the actual follow state");
+    QVERIFY2(source.contains(QStringLiteral("eventList.shouldFollowOutput = true")),
+        "Scrolling to latest or enabling smart follow must restore the actual follow state");
+    QVERIFY2(source.contains(QStringLiteral("root.setFollowMode(\"smart\")")),
+        "Clicking the scroll-to-latest affordance must reactivate smart follow");
+    QVERIFY2(source.contains(QStringLiteral("if (mode === \"smart\")")),
+        "Follow mode cycling should start from smart");
+    QVERIFY2(source.contains(QStringLiteral("return \"manual\"")),
+        "Follow mode cycling should move from smart to manual");
+    QVERIFY2(!source.contains(QStringLiteral("mode === \"always\"")),
+        "Follow mode should no longer expose the removed always mode");
+    QVERIFY2(!source.contains(QStringLiteral("follow-always")),
+        "Follow mode should no longer reference an always icon");
+    QVERIFY2(!source.contains(QStringLiteral("follow-smart")),
+        "Follow mode should no longer use a separate smart icon");
+    QVERIFY2(!source.contains(QStringLiteral("follow-manual")),
+        "Follow mode should no longer use a separate manual icon");
+    QVERIFY2(!source.contains(QStringLiteral("model: [\"smart\", \"always\", \"manual\"]")),
+        "Follow mode should no longer render a three-option segmented control");
+    QVERIFY2(!source.contains(QStringLiteral("id: followModeActions")),
+        "Follow mode cycling should not keep the old menu/action model");
 }
 
 void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()

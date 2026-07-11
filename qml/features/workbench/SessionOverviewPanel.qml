@@ -15,39 +15,31 @@ AppPanel {
     signal sessionEditRequested(int index)
     signal connectionConnectRequested
 
-    readonly property bool canDisconnect: control.status.state === "connected"
-                                           || control.status.state === "connecting"
-                                           || control.status.state === "disconnecting"
-    readonly property bool isBusy: control.status.state === "connecting"
-                                   || control.status.state === "disconnecting"
+    readonly property bool canDisconnect: control.status.state === "connected" || control.status.state === "connecting" || control.status.state === "disconnecting"
+    readonly property bool isBusy: control.status.state === "connecting" || control.status.state === "disconnecting"
     readonly property bool hasError: Boolean(control.status.hasError)
     readonly property string endpointText: `${control.session.host || "-"}:${control.session.port || "-"}`
-    readonly property string connectionActionText: control.status.state === "connected"
-                                                   ? qsTr("Disconnect")
-                                                   : (control.status.state === "connecting"
-                                                      ? qsTr("Connecting...")
-                                                      : (control.hasError ? qsTr("Retry") : qsTr("Connect")))
-    readonly property url connectionActionIcon: control.status.state === "connecting"
-                                                ? control.ui.materialIcon("xmark")
-                                                : (control.canDisconnect
-                                                   ? control.ui.materialIcon("plug-off")
-                                                   : control.ui.materialIcon("plug"))
+    readonly property string connectionActionText: control.status.state === "connected" ? qsTr("Disconnect") : (control.status.state === "connecting" ? qsTr("Connecting...") : (control.hasError ? qsTr("Retry") : qsTr("Connect")))
+    readonly property url connectionActionIcon: control.status.state === "connecting" ? control.ui.materialIcon("xmark") : (control.canDisconnect ? control.ui.materialIcon("plug-off") : control.ui.materialIcon("plug"))
 
     showTopBorder: false
+    showLeftBorder: false
     showRightBorder: false
     showBottomBorder: false
+    color: control.ui.themePalette.headerBg
 
     Layout.fillWidth: true
-    Layout.minimumHeight: 70
-    Layout.preferredHeight: 96
+    Layout.minimumHeight: 108
+    Layout.preferredHeight: 118
 
     ColumnLayout {
         id: currentSessionColumn
         anchors.fill: parent
-        anchors.topMargin: 0
         anchors.leftMargin: 16
         anchors.rightMargin: 16
-        anchors.bottomMargin: 8
+        anchors.topMargin: 10
+        anchors.bottomMargin: 10
+        spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
@@ -64,12 +56,11 @@ AppPanel {
                     Label {
                         text: control.session.name || qsTr("No session")
                         color: control.ui.textStrong
-                        font.pixelSize: 24
+                        font.pixelSize: 21
                         font.bold: true
                         elide: Label.ElideRight
                         Layout.fillWidth: true
                     }
-
                 }
 
                 RowLayout {
@@ -84,11 +75,22 @@ AppPanel {
 
                     Label {
                         Layout.fillWidth: true
-                        text: qsTr("%1  (%2)").arg(control.endpointText).arg(control.session.transportLabel || "TCP")
-                        color: control.ui.textStrong
+                        text: control.endpointText
+                        color: control.ui.textMuted
                         font.pixelSize: 12
-                        font.bold: true
                         elide: Label.ElideRight
+                    }
+
+                    AppBadge {
+                        ui: control.ui
+                        visible: (control.session.transportLabel || "TCP") !== "TCP"
+                        label: control.session.transportLabel
+                        badgeBg: control.ui.themePalette.successBg
+                        badgeBorder: "transparent"
+                        badgeText: control.ui.themePalette.successText
+                        badgeRadius: 5
+                        horizontalPadding: 6
+                        verticalPadding: 1
                     }
                 }
             }
@@ -98,7 +100,7 @@ AppPanel {
                 ui: control.ui
                 enabled: control.status.state === "disconnected"
                 iconSource: control.ui.materialIcon("edit")
-                iconSize: 15
+                iconSize: 16
                 implicitWidth: 32
                 implicitHeight: 32
                 cornerRadius: 16
@@ -123,43 +125,59 @@ AppPanel {
 
                 onClicked: {
                     if (!control.canDisconnect) {
-                        control.connectionConnectRequested()
+                        control.connectionConnectRequested();
                     }
-                    control.viewModel.toggleCurrentSessionConnection()
+                    control.viewModel.toggleCurrentSessionConnection();
                 }
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 9
+            spacing: 12
 
-            Label {
-                text: qsTr("Protocol")
-                color: control.ui.textMuted
-                font.pixelSize: 11
-            }
+            Repeater {
+                model: [
+                    {
+                        "label": qsTr("Protocol"),
+                        "value": control.session.protocolVersionName || "MQTT 5"
+                    },
+                    {
+                        "label": qsTr("MQTT ID"),
+                        "value": control.session.clientId || "-"
+                    },
+                    {
+                        "label": qsTr("Status"),
+                        "value": control.ui.statusLabel(control.status.state || "idle")
+                    }
+                ]
 
-            Label {
-                text: control.session.protocolVersionName || "MQTT 5"
-                color: control.ui.textStrong
-                font.pixelSize: 12
-                font.bold: true
-            }
+                delegate: ColumnLayout {
+                    id: metricDelegate
 
-            Label {
-                text: qsTr("MQTT ID")
-                color: control.ui.textMuted
-                font.pixelSize: 11
-            }
+                    required property var modelData
 
-            Label {
-                Layout.fillWidth: true
-                text: control.session.clientId || "-"
-                color: control.ui.textStrong
-                font.pixelSize: 12
-                font.bold: true
-                elide: Label.ElideRight
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: metricDelegate.modelData.label
+                        color: control.ui.themePalette.textSubtle
+                        font.pixelSize: 10
+                        font.capitalization: Font.AllUppercase
+                        elide: Label.ElideRight
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: metricDelegate.modelData.value
+                        color: metricDelegate.modelData.label === qsTr("Status") ? control.ui.stateColor(control.status.state || "idle") : control.ui.textStrong
+                        font.pixelSize: 12
+                        font.bold: true
+                        elide: Label.ElideRight
+                    }
+                }
             }
         }
     }

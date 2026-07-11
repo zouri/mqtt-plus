@@ -17,6 +17,9 @@ AppPanel {
 
     showTopBorder: false
     showLeftBorder: false
+    showRightBorder: false
+    showBottomBorder: false
+    color: root.ui.themePalette.panelBg
     Layout.fillWidth: true
     Layout.fillHeight: true
 
@@ -43,9 +46,7 @@ AppPanel {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 height: 1
-                color: splitHandleHover.hovered || SplitHandle.hovered || SplitHandle.pressed
-                       ? root.ui.themePalette.selectedBorder
-                       : root.ui.themePalette.separator
+                color: root.ui.themePalette.separator
             }
 
             HoverHandler {
@@ -61,6 +62,7 @@ AppPanel {
             publisher: root.publisher
             streamModel: root.viewModel.messages
             session: root.session
+            status: root.status
             fontFamily: root.fontFamily
             title: qsTr("Messages")
             showOutputControls: true

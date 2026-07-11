@@ -17,10 +17,11 @@ Item {
     readonly property int collapsedConnectionPaneWidth: 32
     readonly property int connectionPaneVisualCollapseWidth: 84
     readonly property int expandedConnectionPaneWidth: 208
+    readonly property color connectionPaneEdgeColor: root.ui.themePalette.panelBorder
     property real connectionPaneWidth: root.connectionPaneCollapsed ? root.collapsedConnectionPaneWidth : root.expandedConnectionPaneWidth
-    readonly property int subscriptionPaneMinWidth: 280
+    readonly property int subscriptionPaneMinWidth: 300
     readonly property int subscriptionPaneMaxWidth: 520
-    property int subscriptionPaneWidth: root.subscriptionPaneMinWidth
+    property int subscriptionPaneWidth: 320
     property bool collapseConnectionPaneOnConnect: false
     property int trackedConnectionSessionIndex: -1
     property string trackedConnectionState: ""
@@ -60,9 +61,7 @@ Item {
         if (root.autoCollapseConnectionListOnConnect && root.collapseConnectionPaneOnConnect && state === "connected") {
             root.connectionPaneCollapsed = true;
             root.collapseConnectionPaneOnConnect = false;
-        } else if (root.autoCollapseConnectionListOnConnect
-                   && (state === "disconnecting" || state === "disconnected")
-                   && (root.trackedConnectionState === "connected" || root.trackedConnectionState === "disconnecting")) {
+        } else if (root.autoCollapseConnectionListOnConnect && (state === "disconnecting" || state === "disconnected") && (root.trackedConnectionState === "connected" || root.trackedConnectionState === "disconnecting")) {
             root.connectionPaneCollapsed = false;
             root.collapseConnectionPaneOnConnect = false;
         } else if (state === "disconnected" || state === "disconnecting") {
@@ -165,91 +164,92 @@ Item {
         }
     }
 
-    RowLayout {
-        anchors.fill: parent
-        spacing: 0
+    SessionSidebar {
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        width: root.expandedConnectionPaneWidth
+        z: 0
+        ui: root.ui
+        viewModel: root.viewModel
+        collapsed: root.connectionPaneWidth <= root.connectionPaneVisualCollapseWidth
+        visibleWidth: root.connectionPaneWidth
+        onSessionCreateRequested: root.openSessionEditorForCreate()
+        onSessionEditRequested: index => root.openSessionEditorForEdit(index)
+        onCollapseRequested: root.connectionPaneCollapsed = true
+        onExpandRequested: root.connectionPaneCollapsed = false
+    }
 
-        SessionSidebar {
-            ui: root.ui
-            viewModel: root.viewModel
-            collapsed: root.connectionPaneWidth <= root.connectionPaneVisualCollapseWidth
-            Layout.preferredWidth: root.connectionPaneWidth
-            Layout.fillHeight: true
-            onSessionCreateRequested: root.openSessionEditorForCreate()
-            onSessionEditRequested: index => root.openSessionEditorForEdit(index)
-            onCollapseRequested: root.connectionPaneCollapsed = true
-            onExpandRequested: root.connectionPaneCollapsed = false
-        }
+    SplitView {
+        id: workbenchSplit
 
-        SplitView {
-            id: workbenchSplit
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.leftMargin: root.connectionPaneWidth
+        z: 2
+        orientation: Qt.Horizontal
 
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            orientation: Qt.Horizontal
-
-            handle: Item {
-                implicitWidth: workbenchSplit.orientation === Qt.Horizontal ? 6 : workbenchSplit.width
-                implicitHeight: workbenchSplit.orientation === Qt.Horizontal ? workbenchSplit.height : 6
-
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 1
-                    color: splitHandleHover.hovered || SplitHandle.hovered || SplitHandle.pressed
-                           ? root.ui.themePalette.selectedBorder
-                           : root.ui.panelBorder
-                }
-
-                HoverHandler {
-                    id: splitHandleHover
-                    cursorShape: Qt.SplitHCursor
-                }
-            }
+        handle: Item {
+            implicitWidth: workbenchSplit.orientation === Qt.Horizontal ? 6 : workbenchSplit.width
+            implicitHeight: workbenchSplit.orientation === Qt.Horizontal ? workbenchSplit.height : 6
 
             Rectangle {
-                SplitView.preferredWidth: root.subscriptionPaneWidth
-                SplitView.minimumWidth: root.subscriptionPaneMinWidth
-                SplitView.maximumWidth: root.subscriptionPaneMaxWidth
-                SplitView.fillHeight: true
-                color: root.ui.themePalette.windowBg
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 1
+                color: root.ui.themePalette.separator
+            }
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: 0
+            HoverHandler {
+                id: splitHandleHover
+                cursorShape: Qt.SplitHCursor
+            }
+        }
 
-                    SessionOverviewPanel {
-                        ui: root.ui
-                        session: root.session
-                        status: root.status
-                        viewModel: root.viewModel
-                        onSessionEditRequested: index => root.openSessionEditorForEdit(index)
-                        onConnectionConnectRequested: root.collapseConnectionPaneOnConnect = root.autoCollapseConnectionListOnConnect
-                    }
+        Rectangle {
+            SplitView.preferredWidth: root.subscriptionPaneWidth
+            SplitView.minimumWidth: root.subscriptionPaneMinWidth
+            SplitView.maximumWidth: root.subscriptionPaneMaxWidth
+            SplitView.fillHeight: true
+            color: root.ui.themePalette.panelBg
 
-                    SubscriptionsPanel {
-                        id: subscriptionsPanel
-                        ui: root.ui
-                        viewModel: root.viewModel
-                        onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
-                        onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
-                    }
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
+
+                SessionOverviewPanel {
+                    ui: root.ui
+                    session: root.session
+                    status: root.status
+                    viewModel: root.viewModel
+                    onSessionEditRequested: index => root.openSessionEditorForEdit(index)
+                    onConnectionConnectRequested: root.collapseConnectionPaneOnConnect = root.autoCollapseConnectionListOnConnect
+                }
+
+                SubscriptionsPanel {
+                    id: subscriptionsPanel
+                    ui: root.ui
+                    viewModel: root.viewModel
+                    onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
+                    onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
                 }
             }
+        }
 
-            SessionMessagePanel {
-                id: sessionActivityPanel
-                ui: root.ui
-                viewModel: root.viewModel
-                session: root.session
-                status: root.status
-                publishStatus: root.viewModel.publishStatus
-                publisher: root.viewModel.publisher
-                fontFamily: root.fontFamily
-                SplitView.fillWidth: true
-                SplitView.fillHeight: true
-            }
+        SessionMessagePanel {
+            id: sessionActivityPanel
+            ui: root.ui
+            viewModel: root.viewModel
+            session: root.session
+            status: root.status
+            publishStatus: root.viewModel.publishStatus
+            publisher: root.viewModel.publisher
+            fontFamily: root.fontFamily
+            SplitView.fillWidth: true
+            SplitView.fillHeight: true
         }
     }
 
