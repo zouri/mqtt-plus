@@ -8,11 +8,38 @@ QtObject {
 
     required property bool isDarkTheme
 
-    readonly property int panelRadius: 0
+    readonly property int panelRadius: 10
     readonly property int innerRadius: 10
     readonly property int compactControlHeight: 32
     readonly property int compactCheckHeight: 28
     readonly property int compactFontSize: 12
+
+    // ---- Design tokens: spacing scale (4pt base) ----
+    readonly property int spaceXs: 4
+    readonly property int spaceSm: 8
+    readonly property int spaceMd: 12
+    readonly property int spaceLg: 16
+    readonly property int spaceXl: 24
+    readonly property int space2xl: 32
+
+    // ---- Design tokens: radius scale ----
+    readonly property int radiusSm: 6
+    readonly property int radiusMd: 8
+    readonly property int radiusLg: 10
+    readonly property int radiusPill: 999
+
+    // ---- Design tokens: typography scale ----
+    readonly property int textXs: 10
+    readonly property int textSm: 12
+    readonly property int textMd: 13
+    readonly property int textLg: 14
+    readonly property int textXl: 16
+    readonly property int text2xl: 18
+    readonly property int text3xl: 22
+
+    // ---- Design tokens: focus ring ----
+    readonly property color focusRingColor: root.isDarkTheme ? "#4f8bff" : "#3370ff"
+    readonly property int focusRingWidth: 2
 
     readonly property int materialTheme: root.isDarkTheme ? Material.Dark : Material.Light
     readonly property int materialAccent: Material.Blue
@@ -30,7 +57,7 @@ QtObject {
             "rowHover": root.isDarkTheme ? "#222b38" : "#f2f3f5",
             "textStrong": root.isDarkTheme ? "#e6edf5" : "#1f2329",
             "textMuted": root.isDarkTheme ? "#9fb0c3" : "#646a73",
-            "textSubtle": root.isDarkTheme ? "#6b7889" : "#6f757e",
+            "textSubtle": root.isDarkTheme ? "#8a98a8" : "#6f757e",
             "selectedBg": root.isDarkTheme ? "#1c3156" : "#e8f0ff",
             "selectedBorder": root.isDarkTheme ? "#4f8bff" : "#3370ff",
             "selectedItemBg": root.isDarkTheme ? "#1a212b" : "#e8f0ff",
@@ -41,8 +68,9 @@ QtObject {
             "innerPanelBorder": root.isDarkTheme ? "#37424f" : "#dee0e3",
             "separator": root.isDarkTheme ? "#2c3644" : "#dee0e3",
             "infoText": root.isDarkTheme ? "#4f8bff" : "#245bdb",
-            "warningText": root.isDarkTheme ? "#fbbf24" : "#b85b00",
+            "warningText": root.isDarkTheme ? "#fbbf24" : "#a85400",
             "errorText": root.isDarkTheme ? "#ff9aa5" : "#d83931",
+            "errorBg": root.isDarkTheme ? "#3a1c22" : "#fde8e8",
             "successText": root.isDarkTheme ? "#34d399" : "#2b881f",
             "successBg": root.isDarkTheme ? "#0c3326" : "#e8f7e6",
             "warningBg": root.isDarkTheme ? "#3a2e10" : "#fff3dc",
@@ -51,7 +79,7 @@ QtObject {
             "eventBorder": root.isDarkTheme ? "#37424f" : "#dee0e3",
             "eventTitle": root.isDarkTheme ? "#fbbf24" : "#b85b00",
             "messageTitle": root.isDarkTheme ? "#4f8bff" : "#245bdb",
-            "timestampText": root.isDarkTheme ? "#6b7889" : "#6f757e",
+            "timestampText": root.isDarkTheme ? "#8a98a8" : "#6f757e",
             "chipBg": root.isDarkTheme ? "#1f2733" : "#f2f3f5",
             "chipText": root.isDarkTheme ? "#9fb0c3" : "#646a73",
             "followBg": root.isDarkTheme ? "#4f8bff" : "#3370ff",
@@ -76,6 +104,8 @@ QtObject {
             "buttonDangerHoverBg": root.isDarkTheme ? "#ee6879" : "#da445b",
             "buttonDangerPressedBg": root.isDarkTheme ? "#bd3d50" : "#a82639",
             "buttonDangerText": "#fff7f8",
+            "disabledButtonBg": root.isDarkTheme ? "#2c3644" : "#e5e6e8",
+            "disabledText": root.isDarkTheme ? "#6b7889" : "#8f959e",
             "fieldBg": root.isDarkTheme ? "#222b38" : "#ffffff",
             "fieldBorder": root.isDarkTheme ? "#37424f" : "#c9cdd4",
             "fieldFocusBorder": root.isDarkTheme ? "#4f8bff" : "#3370ff",

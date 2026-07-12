@@ -11,7 +11,7 @@ Rectangle {
     property color badgeBg: control.ui.themePalette.chipBg
     property color badgeBorder: control.ui.themePalette.innerPanelBorder
     property color badgeText: control.ui.themePalette.chipText
-    property int badgeRadius: 10
+    property int badgeRadius: control.ui.radiusLg
     property int horizontalPadding: 14
     property int verticalPadding: 6
     property bool strong: true
