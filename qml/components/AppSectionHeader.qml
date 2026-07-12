@@ -10,11 +10,11 @@ RowLayout {
     required property AppUi ui
     property string title: ""
     property string meta: ""
-    property int titleSize: 16
+    property int titleSize: control.ui.textXl
     default property alias trailingContent: trailingRow.data
 
     Layout.fillWidth: true
-    spacing: 12
+    spacing: control.ui.spaceMd
 
     Label {
         text: control.title

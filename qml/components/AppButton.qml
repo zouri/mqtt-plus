@@ -24,12 +24,9 @@ Button {
     }
 
     background: Rectangle {
-        radius: 8
+        radius: control.ui.radiusMd
         color: !control.enabled
-               ? Qt.rgba((control.primary || control.danger) ? 0.55 : 0.5,
-                         (control.primary || control.danger) ? 0.6 : 0.55,
-                         (control.primary || control.danger) ? 0.7 : 0.6,
-                         control.ui.isDarkTheme ? 0.18 : 0.28)
+               ? control.ui.themePalette.disabledButtonBg
                : (control.down
                   ? (control.danger
                      ? control.ui.themePalette.buttonDangerPressedBg
@@ -41,7 +38,8 @@ Button {
                      : (control.danger
                         ? control.ui.themePalette.buttonDangerBg
                         : (control.primary ? control.ui.themePalette.buttonPrimaryBg : control.ui.themePalette.buttonBg))))
-        border.color: control.primary || control.danger ? "transparent" : control.ui.themePalette.buttonBorder
+        border.color: control.activeFocus ? control.ui.focusRingColor : (control.primary || control.danger ? "transparent" : control.ui.themePalette.buttonBorder)
+        border.width: control.activeFocus ? control.ui.focusRingWidth : 0
 
         Behavior on color {
             ColorAnimation {
@@ -54,10 +52,7 @@ Button {
     contentItem: Label {
         text: control.text
         color: !control.enabled
-               ? Qt.rgba(control.ui.isDarkTheme ? 0.82 : 0.28,
-                         control.ui.isDarkTheme ? 0.86 : 0.34,
-                         control.ui.isDarkTheme ? 0.92 : 0.42,
-                         control.ui.isDarkTheme ? 0.42 : 0.52)
+               ? control.ui.themePalette.disabledText
                : (control.danger
                   ? control.ui.themePalette.buttonDangerText
                   : (control.primary ? control.ui.themePalette.buttonPrimaryText : control.ui.textStrong))
