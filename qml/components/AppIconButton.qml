@@ -11,7 +11,7 @@ ToolButton {
     property url iconSource: ""
     property int symbolSize: 16
     property int iconSize: symbolSize
-    property int cornerRadius: 7
+    property int cornerRadius: ui.radiusMd
     property bool primary: false
     property bool danger: false
     property string accessibleName: ""
@@ -31,14 +31,8 @@ ToolButton {
     property bool forceActive: false
     property string toolTipText: ""
     property int toolTipPosition: AppToolTip.Position.Right
-    readonly property color disabledBg: Qt.rgba(control.ui.isDarkTheme ? 0.32 : 0.50,
-                                                control.ui.isDarkTheme ? 0.34 : 0.55,
-                                                control.ui.isDarkTheme ? 0.40 : 0.62,
-                                                control.ui.isDarkTheme ? 0.18 : 0.24)
-    readonly property color disabledSymbolColor: Qt.rgba(control.ui.isDarkTheme ? 0.82 : 0.28,
-                                                         control.ui.isDarkTheme ? 0.86 : 0.34,
-                                                         control.ui.isDarkTheme ? 0.92 : 0.42,
-                                                         control.ui.isDarkTheme ? 0.42 : 0.52)
+    readonly property color disabledBg: control.ui.themePalette.disabledButtonBg
+    readonly property color disabledSymbolColor: control.ui.themePalette.disabledText
     readonly property color effectiveSymbolColor: control.enabled
                                                   ? control.symbolColor
                                                   : control.disabledSymbolColor
@@ -81,7 +75,8 @@ ToolButton {
                : (control.down
                ? control.pressedBg
                : ((control.hovered || control.forceActive) ? control.hoverBg : control.effectiveRestBg))
-        border.color: control.outlineColor
+        border.color: control.activeFocus ? control.ui.focusRingColor : control.outlineColor
+        border.width: control.activeFocus ? control.ui.focusRingWidth : 0
 
         Behavior on color {
             ColorAnimation {

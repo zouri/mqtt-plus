@@ -17,6 +17,7 @@ Rectangle {
     radius: inner ? control.ui.innerRadius : control.ui.panelRadius
     color: inner ? control.ui.themePalette.innerPanelBg : control.ui.themePalette.windowBg
     border.width: 0
+    clip: true
 
     Item {
         id: panelContentItem
