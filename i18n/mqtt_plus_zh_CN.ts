@@ -784,6 +784,21 @@
         <translation>无会话</translation>
     </message>
     <message>
+        <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="23"/>
+        <source>%1: %2</source>
+        <translation>%1：%2</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="26"/>
+        <source>Client ID %1</source>
+        <translation>客户端 ID %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="178"/>
+        <source>Keep Alive %1s</source>
+        <translation>Keep Alive %1 秒</translation>
+    </message>
+    <message>
         <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="138"/>
         <source>Protocol</source>
         <translation>协议</translation>

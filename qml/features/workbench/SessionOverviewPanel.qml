@@ -15,90 +15,76 @@ AppPanel {
     signal sessionEditRequested(int index)
     signal connectionConnectRequested
 
-    readonly property bool canDisconnect: control.status.state === "connected" || control.status.state === "connecting" || control.status.state === "disconnecting"
-    readonly property bool isBusy: control.status.state === "connecting" || control.status.state === "disconnecting"
+    readonly property string statusState: control.status.state || "idle"
+    readonly property bool canDisconnect: control.statusState === "connected" || control.statusState === "connecting" || control.statusState === "disconnecting"
     readonly property bool hasError: Boolean(control.status.hasError)
+    readonly property string effectiveState: control.hasError ? "error" : control.statusState
+    readonly property color statusDotColor: control.ui.stateColor(control.effectiveState)
+    readonly property string statusToolTipText: control.hasError && control.status.lastError
+                                                    ? qsTr("%1: %2").arg(control.ui.statusLabel(control.statusState)).arg(control.status.lastError)
+                                                    : control.ui.statusLabel(control.statusState)
     readonly property string endpointText: `${control.session.host || "-"}:${control.session.port || "-"}`
-    readonly property string connectionActionText: control.status.state === "connected" ? qsTr("Disconnect") : (control.status.state === "connecting" ? qsTr("Connecting...") : (control.hasError ? qsTr("Retry") : qsTr("Connect")))
-    readonly property url connectionActionIcon: control.status.state === "connecting" ? control.ui.materialIcon("xmark") : (control.canDisconnect ? control.ui.materialIcon("plug-off") : control.ui.materialIcon("plug"))
+    readonly property string clientIdText: qsTr("Client ID %1").arg(control.session.clientId || "-")
+    readonly property string connectionActionText: control.statusState === "connected" ? qsTr("Disconnect") : (control.statusState === "connecting" ? qsTr("Connecting...") : (control.hasError ? qsTr("Retry") : qsTr("Connect")))
+    readonly property url connectionActionIcon: control.statusState === "connecting" ? control.ui.materialIcon("xmark") : (control.canDisconnect ? control.ui.materialIcon("plug-off") : control.ui.materialIcon("plug"))
 
     showTopBorder: false
     showLeftBorder: false
     showRightBorder: false
-    // showBottomBorder: false
     color: control.ui.themePalette.headerBg
 
     Layout.fillWidth: true
-    Layout.minimumHeight: 82
-    Layout.preferredHeight: 86
+    Layout.minimumHeight: 96
+    Layout.preferredHeight: 96
+    Layout.maximumHeight: 96
 
     ColumnLayout {
-        id: currentSessionColumn
         anchors.fill: parent
         anchors.leftMargin: 12
         anchors.rightMargin: 12
         anchors.topMargin: 8
         anchors.bottomMargin: 8
-        spacing: 6
+        spacing: 5
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: 9
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 3
+            Rectangle {
+                id: statusDot
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
+                Layout.preferredWidth: 9
+                Layout.preferredHeight: 9
+                radius: 5
+                color: control.statusDotColor
+                Accessible.role: Accessible.Indicator
+                Accessible.name: control.statusToolTipText
 
-                    Label {
-                        text: control.session.name || qsTr("No session")
-                        color: control.ui.textStrong
-                        font.pixelSize: 18
-                        font.bold: true
-                        elide: Label.ElideRight
-                        Layout.fillWidth: true
-                    }
+                HoverHandler {
+                    id: statusDotHover
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    Label {
-                        text: qsTr("Host")
-                        color: control.ui.textMuted
-                        font.pixelSize: 10
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: control.endpointText
-                        color: control.ui.textMuted
-                        font.pixelSize: 11
-                        elide: Label.ElideRight
-                    }
-
-                    AppBadge {
-                        ui: control.ui
-                        visible: (control.session.transportLabel || "TCP") !== "TCP"
-                        label: control.session.transportLabel
-                        badgeBg: control.ui.themePalette.successBg
-                        badgeBorder: "transparent"
-                        badgeText: control.ui.themePalette.successText
-                        badgeRadius: 5
-                        horizontalPadding: 6
-                        verticalPadding: 1
-                    }
+                AppToolTip {
+                    ui: control.ui
+                    text: control.statusToolTipText
+                    position: AppToolTip.Position.Bottom
+                    active: statusDotHover.hovered
                 }
             }
 
+            Label {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                text: control.session.name || qsTr("No session")
+                color: control.ui.textStrong
+                font.pixelSize: 15
+                font.bold: true
+                elide: Label.ElideRight
+            }
+
             AppIconButton {
-                id: editButton
                 ui: control.ui
-                enabled: control.status.state === "disconnected"
+                enabled: control.statusState === "disconnected"
                 iconSource: control.ui.materialIcon("edit")
                 iconSize: 16
                 implicitWidth: 30
@@ -134,51 +120,65 @@ AppPanel {
 
         RowLayout {
             Layout.fillWidth: true
+            spacing: 6
+
+            Label {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                text: control.endpointText
+                color: control.ui.textStrong
+                font.pixelSize: 12
+                font.bold: true
+                elide: Label.ElideRight
+            }
+
+            AppBadge {
+                ui: control.ui
+                label: control.session.transportLabel || "TCP"
+                badgeRadius: 4
+                horizontalPadding: 6
+                verticalPadding: 1
+            }
+
+            AppBadge {
+                ui: control.ui
+                label: control.session.protocolVersionName || "MQTT 5"
+                badgeRadius: 4
+                horizontalPadding: 6
+                verticalPadding: 1
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
             spacing: 10
 
-            Repeater {
-                model: [
-                    {
-                        "label": qsTr("Protocol"),
-                        "value": control.session.protocolVersionName || "MQTT 5",
-                        "expand": false
-                    },
-                    {
-                        "label": qsTr("MQTT ID"),
-                        "value": control.session.clientId || "-",
-                        "expand": true
-                    },
-                    {
-                        "label": qsTr("Status"),
-                        "value": control.ui.statusLabel(control.status.state || "idle"),
-                        "expand": false
-                    }
-                ]
+            Label {
+                id: clientIdLabel
 
-                delegate: RowLayout {
-                    id: metricDelegate
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                text: control.clientIdText
+                color: control.ui.themePalette.textSubtle
+                font.pixelSize: 10
+                elide: Label.ElideRight
 
-                    required property var modelData
-
-                    Layout.fillWidth: metricDelegate.modelData.expand
-                    spacing: 4
-
-                    Label {
-                        text: metricDelegate.modelData.label
-                        color: control.ui.themePalette.textSubtle
-                        font.pixelSize: 10
-                        elide: Label.ElideRight
-                    }
-
-                    Label {
-                        Layout.fillWidth: metricDelegate.modelData.expand
-                        text: metricDelegate.modelData.value
-                        color: metricDelegate.modelData.label === qsTr("Status") ? control.ui.stateColor(control.status.state || "idle") : control.ui.textStrong
-                        font.pixelSize: 11
-                        font.bold: true
-                        elide: Label.ElideRight
-                    }
+                HoverHandler {
+                    id: clientIdHover
                 }
+
+                AppToolTip {
+                    ui: control.ui
+                    text: control.clientIdText
+                    position: AppToolTip.Position.Top
+                    active: clientIdHover.hovered && clientIdLabel.implicitWidth > clientIdLabel.width
+                }
+            }
+
+            Label {
+                text: qsTr("Keep Alive %1s").arg(control.session.keepAliveSeconds || 30)
+                color: control.ui.themePalette.textSubtle
+                font.pixelSize: 10
             }
         }
     }
