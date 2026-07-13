@@ -3,6 +3,8 @@
 .qtcreator/
 .cache/
 .workbuddy/
+.superpowers/
+docs/
 
 CMakeUserPresets.json
 compile_commands.json
