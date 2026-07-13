@@ -152,30 +152,19 @@ AppPanel {
                 background: Rectangle {
                     radius: 8
                     color: control.ui.themePalette.innerPanelBg
-                    border.color: filterTopicField.activeFocus
-                                  ? control.ui.themePalette.fieldFocusBorder
-                                  : control.ui.themePalette.fieldBorder
-
-                    Behavior on border.color {
-                        ColorAnimation {
-                            duration: 120
-                            easing.type: Easing.OutCubic
-                        }
-                    }
+                    border.color: control.ui.themePalette.fieldBorder
                 }
             }
 
             AppIconButton {
+                id: addSubscriptionButton
                 ui: control.ui
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                primary: true
                 iconSource: control.ui.materialIcon("plus")
                 iconSize: 16
                 cornerRadius: 7
-                restBg: control.ui.themePalette.itemBg
-                hoverBg: control.ui.themePalette.rowHover
-                outlineColor: control.ui.themePalette.fieldBorder
-                symbolColor: control.ui.textMuted
                 accessibleName: qsTr("Add topic")
                 toolTipText: qsTr("Add subscription")
                 toolTipPosition: AppToolTip.Position.Bottom

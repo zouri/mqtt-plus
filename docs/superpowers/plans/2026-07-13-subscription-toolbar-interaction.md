@@ -2,23 +2,24 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the icon-only add-subscription action visually prominent and dismiss the Topic filter focus after taps elsewhere in the subscription panel.
+**Goal:** Make the icon-only add-subscription action visually prominent while keeping the Topic filter border neutral during keyboard input.
 
-**Architecture:** Keep both changes inside `SubscriptionsPanel.qml`. Reuse `AppIconButton.primary` for the emphasized action and add one passive panel-level `TapHandler` that maps tap coordinates into the filter field before clearing focus; source-boundary assertions lock down both behaviors without changing models or services.
+**Architecture:** Keep both changes inside `SubscriptionsPanel.qml`. Reuse `AppIconButton.primary` for the emphasized action and keep the filter background border bound to the neutral field-border color regardless of real keyboard focus; source-boundary assertions lock down both behaviors without changing models or services.
 
-**Tech Stack:** Qt 6.11, Qt Quick, Qt Quick Controls Basic, Qt Quick pointer handlers, Qt Test, CMake presets.
+**Tech Stack:** Qt 6.11, Qt Quick, Qt Quick Controls Basic, Qt Test, CMake presets.
 
 ## Global Constraints
 
 - The add action remains icon-only and uses a 30 px square primary button.
-- Taps inside the Topic filter preserve focus.
-- Left-button taps elsewhere inside the subscription panel clear filter focus without consuming row or toolbar actions.
+- The Topic filter keeps real keyboard focus and accepts normal text input.
+- The Topic filter border remains neutral while focused.
+- No panel-wide pointer observer is added for focus management.
 - The active Topic shadow remains static and has no per-message animation.
 - No C++ model, service, persistence, editor, message-stream, or translation changes are required.
 
 ---
 
-### Task 1: Emphasize Add And Dismiss Filter Focus
+### Task 1: Emphasize Add And Keep Filter Border Neutral
 
 **Files:**
 - Modify: `tests/test_architecture_boundaries.cpp:877-897`
@@ -26,22 +27,25 @@
 - Test: `tests/test_architecture_boundaries.cpp`
 
 **Interfaces:**
-- Consumes: `AppIconButton.primary: bool`, `TapHandler.tapped(EventPoint, MouseButton)`, `Item.mapFromItem(Item, point)`, and `Item.contains(point)`.
-- Produces: QML ids `addSubscriptionButton` and `filterFocusDismissHandler`; preserves `subscriptionCreateRequested()` and the existing filter-model binding.
+- Consumes: `AppIconButton.primary: bool` and `themePalette.fieldBorder: color`.
+- Produces: QML id `addSubscriptionButton`; preserves `subscriptionCreateRequested()` and the existing filter-model binding.
 
 - [ ] **Step 1: Add failing toolbar interaction assertions**
 
 ```cpp
-QVERIFY2(subscriptionsSource.contains(QStringLiteral("id: addSubscriptionButton")),
+const qsizetype addSubscriptionButtonStart = subscriptionsSource.indexOf(QStringLiteral("id: addSubscriptionButton"));
+QVERIFY2(addSubscriptionButtonStart >= 0,
     "Subscription toolbar must expose its primary add action");
-QVERIFY2(subscriptionsSource.contains(QStringLiteral("primary: true")),
+const QString addSubscriptionButtonSource = subscriptionsSource.mid(addSubscriptionButtonStart, 500);
+QVERIFY2(addSubscriptionButtonSource.contains(QStringLiteral("primary: true")),
     "The icon-only add action must use the primary button treatment");
-QVERIFY2(subscriptionsSource.contains(QStringLiteral("id: filterFocusDismissHandler")),
-    "Subscription panel must observe taps outside the Topic filter");
-QVERIFY2(subscriptionsSource.contains(QStringLiteral("filterTopicField.mapFromItem(control, eventPoint.position)")),
-    "Filter focus dismissal must distinguish taps inside the field");
-QVERIFY2(subscriptionsSource.contains(QStringLiteral("filterTopicField.focus = false")),
-    "Taps outside the Topic filter must release its focus");
+QVERIFY2(addSubscriptionButtonSource.contains(QStringLiteral("Layout.preferredWidth: 30"))
+        && addSubscriptionButtonSource.contains(QStringLiteral("Layout.preferredHeight: 30")),
+    "The primary add action must retain its compact 30 px square geometry");
+QVERIFY2(!subscriptionsSource.contains(QStringLiteral("filterFocusDismissHandler")),
+    "Subscription panel must not install a panel-wide pointer observer for filter focus");
+QVERIFY2(subscriptionsSource.contains(QStringLiteral("border.color: control.ui.themePalette.fieldBorder")),
+    "The Topic filter must retain a neutral border while receiving keyboard input");
 ```
 
 - [ ] **Step 2: Build and run the focused test to verify it fails**
@@ -53,27 +57,21 @@ cmake --build --preset qt6.11-debug --target test_architecture_boundaries
 ./build/qt6.11-debug/test_architecture_boundaries workbenchMiddlePaneUsesCompactHeaderControls
 ```
 
-Expected: FAIL because the add button has no stable id or primary treatment and the panel has no focus-dismiss handler.
+Expected: FAIL because the add button has no stable id or primary treatment and the filter border still changes with `activeFocus`.
 
-- [ ] **Step 3: Add the passive outside-tap handler**
+- [ ] **Step 3: Keep the filter border neutral**
 
-Insert at `SubscriptionsPanel.qml` root scope:
+Replace the active-focus border binding in the filter background:
 
 ```qml
-TapHandler {
-    id: filterFocusDismissHandler
-    acceptedButtons: Qt.LeftButton
-
-    onTapped: eventPoint => {
-        const filterPoint = filterTopicField.mapFromItem(control, eventPoint.position);
-        if (!filterTopicField.contains(filterPoint)) {
-            filterTopicField.focus = false;
-        }
-    }
+background: Rectangle {
+    radius: 8
+    color: control.ui.themePalette.innerPanelBg
+    border.color: control.ui.themePalette.fieldBorder
 }
 ```
 
-The handler uses the default passive tap recognition and does not add an exclusive `MouseArea` over the panel.
+Do not add a `TapHandler`, `PointHandler`, or `MouseArea` for focus dismissal. The text field keeps its actual keyboard focus and caret.
 
 - [ ] **Step 4: Apply the primary add-button treatment**
 
@@ -119,7 +117,7 @@ cmake --build --preset qt6.11-debug
 ctest --test-dir build/qt6.11-debug --output-on-failure
 ```
 
-Expected: build succeeds and all 19 registered tests pass. In the application, verify the primary add icon in light and dark themes, then click the filter, type text, click an idle row, and confirm the focus border disappears while row actions still work.
+Expected: build succeeds and all 19 registered tests pass. In the application, verify the primary add icon in light and dark themes, then click the filter, type text, and confirm the border remains neutral while input still works.
 
 - [ ] **Step 7: Commit**
 
