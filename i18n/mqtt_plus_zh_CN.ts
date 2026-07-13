@@ -1263,9 +1263,14 @@
         <translation>暂停</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="226"/>
-        <source>QoS %1 · %2/s</source>
-        <translation>QoS %1 · %2/s</translation>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="267"/>
+        <source>%1/s</source>
+        <translation>%1/s</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="279"/>
+        <source>Paused, %1</source>
+        <translation>已暂停，%1</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="141"/>
