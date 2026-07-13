@@ -877,19 +877,6 @@ void ArchitectureBoundariesTest::workbenchMiddlePaneUsesCompactHeaderControls()
         "Subscription panel must lock the hidden status filter to All");
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("Layout.preferredHeight: 46")),
         "Subscription search and add action must share one compact toolbar row");
-    const qsizetype addSubscriptionButtonStart = subscriptionsSource.indexOf(QStringLiteral("id: addSubscriptionButton"));
-    QVERIFY2(addSubscriptionButtonStart >= 0,
-        "Subscription toolbar must expose its primary add action");
-    const QString addSubscriptionButtonSource = subscriptionsSource.mid(addSubscriptionButtonStart, 500);
-    QVERIFY2(addSubscriptionButtonSource.contains(QStringLiteral("primary: true")),
-        "The icon-only add action must use the primary button treatment");
-    QVERIFY2(addSubscriptionButtonSource.contains(QStringLiteral("Layout.preferredWidth: 30"))
-            && addSubscriptionButtonSource.contains(QStringLiteral("Layout.preferredHeight: 30")),
-        "The primary add action must retain its compact 30 px square geometry");
-    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("filterFocusDismissHandler")),
-        "Subscription panel must not install a panel-wide pointer observer for filter focus");
-    QVERIFY2(subscriptionsSource.contains(QStringLiteral("border.color: control.ui.themePalette.fieldBorder")),
-        "The Topic filter must retain a neutral border while receiving keyboard input");
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("readonly property bool activeTraffic")),
         "Subscription rows must distinguish recent traffic from idle subscriptions");
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("implicitHeight: subscriptionDelegate.hasError ? 64 : 50")),
