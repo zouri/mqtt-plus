@@ -34,7 +34,7 @@ The Topic filter keeps its existing geometry; the add-subscription action is emp
 
 The add-subscription action remains an icon-only button so the Topic filter keeps most of the available width. It uses a 30 px square primary-color background, a high-contrast plus icon, and the existing accessible name and tooltip. This gives the primary management action a clear visual priority without adding a permanent text label.
 
-The Topic filter releases focus after a left-button tap anywhere else inside the subscription panel. Taps inside the filter keep focus. The outside-tap observer remains passive so subscription rows, pause and menu buttons, scrolling, and context-menu behavior continue to receive their existing pointer events.
+The Topic filter keeps its real keyboard focus and text caret so typing remains normal, but its border stays neutral instead of changing to a focus accent. No panel-wide pointer observer is installed and no outside-tap focus management is required.
 
 ## Activity State
 
@@ -98,4 +98,4 @@ No C++ model or telemetry changes are required.
 - Verify that rate updates do not resize or shift the action controls.
 - Verify pause, resume, context menu, edit, and delete behavior.
 - Verify the primary add button remains legible in light and dark themes.
-- Verify tapping outside the Topic filter removes its focus without swallowing row or toolbar actions.
+- Verify the Topic filter accepts keyboard input without changing to an accent focus border.
