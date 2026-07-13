@@ -854,8 +854,16 @@ void ArchitectureBoundariesTest::workbenchMiddlePaneUsesCompactHeaderControls()
 {
     QString overviewSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SessionOverviewPanel.qml"), overviewSource));
-    QVERIFY2(overviewSource.contains(QStringLiteral("Layout.preferredHeight: 86")),
-        "Session overview must use the compact two-row height");
+    QVERIFY2(overviewSource.contains(QStringLiteral("Layout.preferredHeight: 96")),
+        "Session overview must leave the subscription list as the primary content area");
+    QVERIFY2(overviewSource.contains(QStringLiteral("id: statusDot")),
+        "Session overview must expose connection state through a compact color dot");
+    QVERIFY2(overviewSource.contains(QStringLiteral("statusToolTipText")),
+        "Session overview must keep connection details available in a tooltip");
+    QVERIFY2(overviewSource.contains(QStringLiteral("Accessible.name: control.statusToolTipText")),
+        "The color-only connection state must have an accessible name");
+    QVERIFY2(!overviewSource.contains(QStringLiteral("\"label\": qsTr(\"Status\")")),
+        "Session overview must not render a visible connection-state label");
 
     QString subscriptionsSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), subscriptionsSource));
