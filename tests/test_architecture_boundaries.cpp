@@ -877,6 +877,22 @@ void ArchitectureBoundariesTest::workbenchMiddlePaneUsesCompactHeaderControls()
         "Subscription panel must lock the hidden status filter to All");
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("Layout.preferredHeight: 46")),
         "Subscription search and add action must share one compact toolbar row");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("readonly property bool activeTraffic")),
+        "Subscription rows must distinguish recent traffic from idle subscriptions");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("implicitHeight: subscriptionDelegate.hasError ? 64 : 50")),
+        "Subscription rows must use the compact management height");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("layer.enabled: subscriptionDelegate.activeTraffic")),
+        "Only rows with recent traffic may render the elevated shadow");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("readonly property string rateText")),
+        "Subscription rows must keep a stable live-rate value");
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("required property int requestedQos")),
+        "Subscription rows must not consume QoS for permanent display");
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("required property string formatName")),
+        "Subscription rows must not duplicate payload format from the message stream");
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("required property string scriptName")),
+        "Subscription rows must not render script metadata as a badge");
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("SequentialAnimation")),
+        "Subscription activity feedback must not use a looping breathing animation");
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()

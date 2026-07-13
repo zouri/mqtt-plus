@@ -242,7 +242,7 @@ AppPanel {
             Layout.fillHeight: true
             Layout.margins: 8
             clip: true
-            spacing: 7
+            spacing: 4
             model: control.subscriptionModel
             reuseItems: true
 
@@ -256,34 +256,57 @@ AppPanel {
                 required property string topic
                 required property string alias
                 required property string displayName
-                required property int requestedQos
-                required property int format
-                required property string formatName
-                required property string scriptId
-                required property string scriptName
                 required property string topicColor
                 required property bool paused
-                required property string subscriptionState
                 required property string lastError
                 required property real topicFps
-                readonly property string metaText: qsTr("QoS %1 · %2/s").arg(subscriptionDelegate.requestedQos).arg(Number(subscriptionDelegate.topicFps || 0).toFixed(1))
+                readonly property bool hasError: subscriptionDelegate.lastError.length > 0
+                readonly property bool activeTraffic: subscriptionDelegate.topicFps > 0
+                                                      && !subscriptionDelegate.paused
+                                                      && !subscriptionDelegate.hasError
+                readonly property string rateText: qsTr("%1/s").arg(subscriptionDelegate.topicFps > 0
+                                                                     ? Number(subscriptionDelegate.topicFps).toFixed(1)
+                                                                     : "0")
+                readonly property string secondaryTopic: subscriptionDelegate.alias.length > 0
+                                                         ? subscriptionDelegate.topic
+                                                         : ""
+                readonly property color topicSwatchColor: subscriptionDelegate.topicColor.length > 0
+                                                          ? subscriptionDelegate.topicColor
+                                                          : control.ui.themePalette.selectedBorder
+                readonly property string accessibleDescription: subscriptionDelegate.hasError
+                                                                ? subscriptionDelegate.lastError
+                                                                : (subscriptionDelegate.paused
+                                                                   ? qsTr("Paused, %1").arg(subscriptionDelegate.rateText)
+                                                                   : subscriptionDelegate.rateText)
                 readonly property string menuVisualKey: `${subscriptionDelegate.topic}::menu`
                 width: ListView.view.width
-                radius: control.ui.innerRadius
-                color: control.ui.themePalette.itemBg
-                border.color: subscriptionDelegate.lastError.length > 0 ? control.ui.themePalette.errorText : control.ui.themePalette.innerPanelBorder
-                border.width: subscriptionDelegate.paused ? 0 : 1
-                implicitHeight: subscriptionDelegate.lastError.length > 0 ? 84 : 66
+                implicitHeight: subscriptionDelegate.hasError ? 64 : 50
+                radius: 6
+                color: subscriptionDelegate.paused
+                       ? control.ui.themePalette.innerPanelBg
+                       : (subscriptionRowHover.hovered
+                          ? control.ui.themePalette.rowHover
+                          : control.ui.themePalette.itemBg)
+                border.color: subscriptionDelegate.hasError
+                              ? control.ui.themePalette.errorText
+                              : (subscriptionDelegate.activeTraffic
+                                 ? control.ui.themePalette.selectedBorder
+                                 : control.ui.themePalette.innerPanelBorder)
+                border.width: 1
                 activeFocusOnTab: true
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
-                layer.enabled: !subscriptionDelegate.paused
+                Accessible.description: subscriptionDelegate.accessibleDescription
+                layer.enabled: subscriptionDelegate.activeTraffic
                 layer.effect: MultiEffect {
                     shadowEnabled: true
-                    shadowBlur: 0.22
-                    shadowColor: control.ui.isDarkTheme ? "#70000000" : "#18000000"
+                    shadowBlur: 0.34
+                    shadowColor: Qt.rgba(subscriptionDelegate.topicSwatchColor.r,
+                                         subscriptionDelegate.topicSwatchColor.g,
+                                         subscriptionDelegate.topicSwatchColor.b,
+                                         control.ui.isDarkTheme ? 0.42 : 0.24)
                     shadowHorizontalOffset: 0
-                    shadowVerticalOffset: 2
+                    shadowVerticalOffset: 3
                 }
 
                 function openSubscriptionContextMenu() {
@@ -308,10 +331,17 @@ AppPanel {
                     }
                 }
 
+                HoverHandler {
+                    id: subscriptionRowHover
+                }
+
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 5
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 6
+                    anchors.topMargin: 6
+                    anchors.bottomMargin: 6
+                    spacing: 3
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -320,58 +350,45 @@ AppPanel {
                         Rectangle {
                             Layout.preferredWidth: 7
                             Layout.preferredHeight: 7
-                            radius: 4
-                            color: subscriptionDelegate.topicColor.length > 0 ? subscriptionDelegate.topicColor : control.ui.stateColor(subscriptionDelegate.subscriptionState)
+                            radius: 2
+                            color: subscriptionDelegate.topicSwatchColor
                             opacity: subscriptionDelegate.paused ? 0.5 : 1.0
                         }
 
-                        Label {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            text: subscriptionDelegate.displayName
-                            color: subscriptionDelegate.paused ? control.ui.textMuted : control.ui.textStrong
-                            font.pixelSize: 13
-                            font.bold: true
-                            elide: Label.ElideRight
-                        }
+                            Layout.minimumWidth: 0
+                            spacing: 1
 
-                        AppBadge {
-                            ui: control.ui
-                            visible: subscriptionDelegate.scriptName.length === 0
-                            label: subscriptionDelegate.formatName
-                            Layout.maximumWidth: 92
-                            badgeRadius: 6
-                            horizontalPadding: 6
-                            verticalPadding: 2
-                            maximumLabelWidth: 76
-                        }
+                            Label {
+                                Layout.fillWidth: true
+                                text: subscriptionDelegate.displayName
+                                color: subscriptionDelegate.paused ? control.ui.textMuted : control.ui.textStrong
+                                font.pixelSize: 12
+                                font.bold: true
+                                elide: Label.ElideRight
+                            }
 
-                        AppBadge {
-                            ui: control.ui
-                            visible: subscriptionDelegate.scriptName.length > 0
-                            label: subscriptionDelegate.scriptName
-                            Layout.maximumWidth: 108
-                            badgeRadius: 6
-                            horizontalPadding: 6
-                            verticalPadding: 2
-                            maximumLabelWidth: 92
-                            strong: false
+                            Label {
+                                visible: subscriptionDelegate.secondaryTopic.length > 0
+                                Layout.fillWidth: true
+                                text: subscriptionDelegate.secondaryTopic
+                                color: control.ui.themePalette.textSubtle
+                                font.pixelSize: 10
+                                elide: Label.ElideRight
+                            }
                         }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
 
                         Label {
-                            text: subscriptionDelegate.metaText
-                            color: control.ui.textMuted
-                            font.pixelSize: 12
-                            elide: Label.ElideRight
-                            Layout.fillWidth: true
-                        }
-
-                        Item {
-                            Layout.preferredWidth: 4
+                            Layout.preferredWidth: 48
+                            Layout.minimumWidth: 48
+                            Layout.maximumWidth: 48
+                            text: subscriptionDelegate.rateText
+                            color: subscriptionDelegate.activeTraffic ? control.ui.textStrong : control.ui.textMuted
+                            font.family: "Menlo"
+                            font.pixelSize: 10
+                            font.bold: subscriptionDelegate.activeTraffic
+                            horizontalAlignment: Text.AlignRight
                         }
 
                         RowLayout {
@@ -380,9 +397,9 @@ AppPanel {
                             AppIconButton {
                                 id: subscriptionPauseButton
                                 ui: control.ui
+                                Layout.preferredWidth: 24
+                                Layout.preferredHeight: 24
                                 iconSource: control.ui.materialIcon(subscriptionDelegate.paused ? "play" : "pause")
-                                implicitWidth: 24
-                                implicitHeight: 24
                                 iconSize: 13
                                 cornerRadius: 6
                                 restBg: subscriptionDelegate.paused ? control.ui.themePalette.selectedBg : "transparent"
@@ -412,9 +429,9 @@ AppPanel {
                             AppIconButton {
                                 id: subscriptionMenuButton
                                 ui: control.ui
+                                Layout.preferredWidth: 24
+                                Layout.preferredHeight: 24
                                 iconSource: control.ui.materialIcon("more-horiz")
-                                implicitWidth: 24
-                                implicitHeight: 24
                                 iconSize: 16
                                 cornerRadius: 12
                                 restBg: "transparent"
@@ -435,11 +452,11 @@ AppPanel {
                     }
 
                     Label {
-                        visible: subscriptionDelegate.lastError.length > 0
+                        visible: subscriptionDelegate.hasError
                         Layout.fillWidth: true
                         text: subscriptionDelegate.lastError
                         color: control.ui.themePalette.errorText
-                        font.pixelSize: 11
+                        font.pixelSize: 10
                         elide: Label.ElideRight
                     }
                 }
