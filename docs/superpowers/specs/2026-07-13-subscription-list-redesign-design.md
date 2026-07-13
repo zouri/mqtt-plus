@@ -28,7 +28,13 @@ The list retains individual rounded subscription items but increases density.
 - The message rate is right-aligned in a stable-width monospace column.
 - Pause or resume and more-actions buttons remain visible because this is a management surface.
 
-The search and add-subscription toolbar remains unchanged.
+The Topic filter keeps its existing geometry; the add-subscription action is emphasized as described below.
+
+## Toolbar Interaction
+
+The add-subscription action remains an icon-only button so the Topic filter keeps most of the available width. It uses a 30 px square primary-color background, a high-contrast plus icon, and the existing accessible name and tooltip. This gives the primary management action a clear visual priority without adding a permanent text label.
+
+The Topic filter releases focus after a left-button tap anywhere else inside the subscription panel. Taps inside the filter keep focus. The outside-tap observer remains passive so subscription rows, pause and menu buttons, scrolling, and context-menu behavior continue to receive their existing pointer events.
 
 ## Activity State
 
@@ -41,6 +47,8 @@ A row is actively receiving when all of these conditions are true:
 An active row uses a stable emphasized border, a static elevated shadow, and stronger rate text. It does not pulse, breathe, shimmer, or loop any animation. Entering or leaving the active state may use the existing short color transition, but there is no continuous motion.
 
 An enabled row with a zero rate remains visually static. This avoids presenting “subscribed” as “currently receiving.”
+
+The shadow is static and is not restarted by individual messages. `topicFps` only controls whether the effect layer is enabled, so high message frequency does not create a per-message animation workload.
 
 ## Topic Color And Status
 
@@ -89,3 +97,5 @@ No C++ model or telemetry changes are required.
 - Verify that the row shadow is static and appears only while the recent rate is non-zero.
 - Verify that rate updates do not resize or shift the action controls.
 - Verify pause, resume, context menu, edit, and delete behavior.
+- Verify the primary add button remains legible in light and dark themes.
+- Verify tapping outside the Topic filter removes its focus without swallowing row or toolbar actions.
