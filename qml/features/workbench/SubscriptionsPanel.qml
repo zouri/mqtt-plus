@@ -290,7 +290,7 @@ AppPanel {
                 border.color: subscriptionDelegate.hasError
                               ? control.ui.themePalette.errorText
                               : (subscriptionDelegate.activeTraffic
-                                 ? control.ui.themePalette.selectedBorder
+                                 ? subscriptionDelegate.topicSwatchColor
                                  : control.ui.themePalette.innerPanelBorder)
                 border.width: 1
                 activeFocusOnTab: true

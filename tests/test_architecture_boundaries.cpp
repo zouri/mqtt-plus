@@ -883,6 +883,8 @@ void ArchitectureBoundariesTest::workbenchMiddlePaneUsesCompactHeaderControls()
         "Subscription rows must use the compact management height");
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("layer.enabled: subscriptionDelegate.activeTraffic")),
         "Only rows with recent traffic may render the elevated shadow");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("? subscriptionDelegate.topicSwatchColor")),
+        "Active subscription borders must match their configured Topic color");
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("readonly property string rateText")),
         "Subscription rows must keep a stable live-rate value");
     QVERIFY2(!subscriptionsSource.contains(QStringLiteral("required property int requestedQos")),
