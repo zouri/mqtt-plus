@@ -14,6 +14,7 @@
 #include "usecases/sessionservice.h"
 #include "usecases/subscriptionservice.h"
 #include "models/eventstreammodel.h"
+#include "models/messagefiltermodel.h"
 #include "models/scriptlibrarymodel.h"
 #include "models/scripttestsamplesmodel.h"
 #include "models/sessionlistmodel.h"
@@ -40,6 +41,7 @@ struct ApplicationCoreState
     SubscriptionListModel subscriptionsModel;
     SubscriptionFilterModel filteredSubscriptionsModel;
     EventStreamModel messagesModel;
+    MessageFilterModel filteredMessagesModel;
     EventStreamModel logsModel;
     ScriptLibraryModel scriptsModel;
     ScriptTestSamplesModel scriptTestSamplesModel;

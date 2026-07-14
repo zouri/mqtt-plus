@@ -11,6 +11,7 @@
 
 #include <QCoreApplication>
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -95,12 +96,18 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
             refreshSubscriptionEditorScriptOptions();
         });
     }
+    if (m_dependencies.bindSubscriptionsChanged) {
+        m_dependencies.bindSubscriptionsChanged(this, [this]() {
+            emit subscriptionsStateChanged();
+        });
+    }
     refreshSubscriptionEditorScriptOptions();
 }
 
 SessionListModel *WorkbenchViewModel::sessions() const { return m_dependencies.sessions; }
 SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return m_dependencies.filteredSubscriptions; }
 EventStreamModel *WorkbenchViewModel::messages() const { return m_dependencies.messages; }
+MessageFilterModel *WorkbenchViewModel::filteredMessages() const { return m_dependencies.filteredMessages; }
 PublishDraftViewModel *WorkbenchViewModel::publisher() { return &m_publisher; }
 SessionEditorViewModel *WorkbenchViewModel::sessionEditor() { return &m_sessionEditor; }
 SubscriptionEditorViewModel *WorkbenchViewModel::subscriptionEditor() { return &m_subscriptionEditor; }
@@ -193,6 +200,19 @@ QVariantMap WorkbenchViewModel::publishStatus() const
 QStringList WorkbenchViewModel::payloadFormats() const { return PayloadCodec::formatNames(); }
 QString WorkbenchViewModel::pendingSubscriptionDeleteTopic() const { return m_pendingSubscriptionDeleteTopic; }
 QString WorkbenchViewModel::pendingSubscriptionDeleteDisplayName() const { return m_pendingSubscriptionDeleteDisplayName; }
+bool WorkbenchViewModel::allSubscriptionsPaused() const
+{
+    const auto *session = m_dependencies.sessionController
+        ? m_dependencies.sessionController->currentSession()
+        : nullptr;
+    if (!session || session->subscriptions.isEmpty()) {
+        return false;
+    }
+    return std::all_of(
+        session->subscriptions.cbegin(),
+        session->subscriptions.cend(),
+        [](const SubscriptionEntry &entry) { return entry.paused; });
+}
 
 void WorkbenchViewModel::setCurrentSessionIndex(int index)
 {
@@ -408,6 +428,59 @@ void WorkbenchViewModel::clearMessages()
 int WorkbenchViewModel::loadOlderMessages()
 {
     return m_dependencies.eventController ? m_dependencies.eventController->loadOlderCurrentSessionMessages() : 0;
+}
+
+void WorkbenchViewModel::setMessageTopicFilter(const QString &topic)
+{
+    if (!m_dependencies.filteredMessages) {
+        return;
+    }
+    const QString trimmed = topic.trimmed();
+    m_dependencies.filteredMessages->setSelectedTopics(
+        trimmed.isEmpty() ? QStringList {} : QStringList {trimmed});
+}
+
+void WorkbenchViewModel::addMessageTopicFilter(const QString &topic)
+{
+    if (!m_dependencies.filteredMessages) {
+        return;
+    }
+    const QString trimmed = topic.trimmed();
+    if (trimmed.isEmpty()) {
+        return;
+    }
+    QStringList topics = m_dependencies.filteredMessages->selectedTopics();
+    if (!topics.contains(trimmed)) {
+        topics.append(trimmed);
+        m_dependencies.filteredMessages->setSelectedTopics(topics);
+    }
+}
+
+void WorkbenchViewModel::clearMessageFilters()
+{
+    if (!m_dependencies.filteredMessages) {
+        return;
+    }
+    m_dependencies.filteredMessages->setFilterText({});
+    m_dependencies.filteredMessages->setSelectedTopics({});
+    m_dependencies.filteredMessages->setDirection(QStringLiteral("all"));
+}
+
+QVariantMap WorkbenchViewModel::messageDetails(const QString &historyId) const
+{
+    bool ok = false;
+    const qint64 id = historyId.toLongLong(&ok);
+    if (!ok || id <= 0 || !m_dependencies.eventController) {
+        return {};
+    }
+    return m_dependencies.eventController->messageDetails(id);
+}
+
+void WorkbenchViewModel::setAllCurrentSubscriptionsPaused(bool paused)
+{
+    if (m_dependencies.subscriptionController) {
+        m_dependencies.subscriptionController->setAllCurrentSubscriptionsPaused(paused);
+    }
 }
 
 ScriptLibraryModel *WorkbenchViewModel::scriptLibrary() const

@@ -51,6 +51,7 @@ public:
         const QString &color);
     void removeCurrentSubscription(const QString &topic);
     void setCurrentSubscriptionPaused(const QString &topic, bool paused);
+    void setAllCurrentSubscriptionsPaused(bool paused);
 
     SubscriptionEntry *subscriptionByTopic(SessionState *session, const QString &topic);
     const SubscriptionEntry *subscriptionByTopic(const SessionState *session, const QString &topic) const;
