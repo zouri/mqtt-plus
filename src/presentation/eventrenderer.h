@@ -14,11 +14,13 @@ QVariantMap eventRow(qint64 historyId, const QString &timestamp, const QString &
 QVariantMap renderHistoryRow(
     const QVariantMap &row,
     const QHash<QString, int> &subscriptionFormats,
-    const QHash<QString, QString> &subscriptionColors = {});
+    const QHash<QString, QString> &subscriptionColors = {},
+    const QHash<QString, QString> &subscriptionAliases = {});
 QVariantList loadHistoryRows(
     const QVariantList &rows,
     const QHash<QString, int> &subscriptionFormats,
     const QHash<QString, QString> &subscriptionColors,
+    const QHash<QString, QString> &subscriptionAliases,
     const QString &launchTimestamp,
     bool includeLaunchDivider);
 }

@@ -11,6 +11,7 @@ private slots:
     void setRowsIgnoresUnchangedRows();
     void setRowsUpdatesRowsWithoutResetWhenCountIsStable();
     void trimToLimitRemovesOldestRows();
+    void exposesCanonicalMessageMetadata();
 };
 
 void EventStreamModelTest::appendRowsInsertsContiguousBatch()
@@ -118,6 +119,28 @@ void EventStreamModelTest::trimToLimitRemovesOldestRows()
     QCOMPARE(removeSpy.first().at(2).toInt(), 0);
     QCOMPARE(model.rowAt(0).value(QStringLiteral("id")).toInt(), 2);
     QCOMPARE(model.rowAt(1).value(QStringLiteral("id")).toInt(), 3);
+}
+
+void EventStreamModelTest::exposesCanonicalMessageMetadata()
+{
+    EventStreamModel model;
+    model.appendRow(QVariantMap {
+        {QStringLiteral("direction"), QStringLiteral("outgoing")},
+        {QStringLiteral("alias"), QStringLiteral("Living room light")},
+        {QStringLiteral("qos"), 1},
+        {QStringLiteral("retain"), true},
+        {QStringLiteral("retainKnown"), true},
+        {QStringLiteral("parsedPayload"), QStringLiteral("on")},
+        {QStringLiteral("payloadState"), QStringLiteral("full")},
+        {QStringLiteral("payloadHash"), QStringLiteral("abc")},
+    });
+
+    QCOMPARE(model.data(model.index(0, 0), EventStreamModel::DirectionRole).toString(), QStringLiteral("outgoing"));
+    QCOMPARE(model.data(model.index(0, 0), EventStreamModel::AliasRole).toString(), QStringLiteral("Living room light"));
+    QCOMPARE(model.data(model.index(0, 0), EventStreamModel::QosRole).toInt(), 1);
+    QCOMPARE(model.data(model.index(0, 0), EventStreamModel::RetainRole).toBool(), true);
+    QCOMPARE(model.data(model.index(0, 0), EventStreamModel::RetainKnownRole).toBool(), true);
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("parsedPayload")).toString(), QStringLiteral("on"));
 }
 
 QTEST_MAIN(EventStreamModelTest)

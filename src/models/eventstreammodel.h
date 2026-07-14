@@ -25,6 +25,14 @@ public:
         TestFormatRole,
         TestFormatNameRole,
         HistoryIdRole,
+        DirectionRole,
+        AliasRole,
+        QosRole,
+        RetainRole,
+        RetainKnownRole,
+        ParsedPayloadRole,
+        PayloadStateRole,
+        PayloadHashRole,
     };
     Q_ENUM(Role)
 
@@ -63,6 +71,14 @@ private:
         int testFormat = 0;
         QString testFormatName;
         qint64 historyId = 0;
+        QString direction;
+        QString alias;
+        int qos = -1;
+        bool retain = false;
+        bool retainKnown = false;
+        QString parsedPayload;
+        QString payloadState;
+        QString payloadHash;
 
         bool operator==(const EventStreamRow &other) const = default;
     };

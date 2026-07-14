@@ -61,13 +61,20 @@ public:
         const QString &timestamp,
         QString &scriptNameOut,
         QString &decodedPayloadOut) const;
-    void appendPublishedMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes, int format);
+    void appendPublishedMessage(
+        const QString &sessionId,
+        const QString &topic,
+        const QByteArray &payloadBytes,
+        int format,
+        int qos = -1,
+        bool retain = false);
     void appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
     QString messagePayloadForReuse(
         qint64 messageId,
         const QString &fallbackPayload,
         const QString &fallbackTestPayload,
         int format) const;
+    QVariantMap messageDetails(qint64 messageId) const;
     void trimVisibleMessageRows(SessionState &session);
     void trimVisibleLogRows(SessionState &session);
     void reloadCurrentSessionHistory();

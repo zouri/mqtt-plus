@@ -8,6 +8,7 @@
 #include "presentation/eventrenderer.h"
 #include "services/payload/payloadcodec.h"
 #include "services/storage/historystore.h"
+#include "domain/messagerecord.h"
 
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -132,6 +133,42 @@ QHash<QString, QString> subscriptionColors(const SessionState &session)
         }
     }
     return colors;
+}
+
+QHash<QString, QString> subscriptionAliases(const SessionState &session)
+{
+    QHash<QString, QString> aliases;
+    for (const auto &subscription : session.subscriptions) {
+        if (!subscription.alias.isEmpty()) {
+            aliases.insert(subscription.topic, subscription.alias);
+        }
+    }
+    return aliases;
+}
+
+QVariantMap messageRecordRow(const MessageRecord &record)
+{
+    QVariantMap row;
+    row.insert(QStringLiteral("id"), record.id);
+    row.insert(QStringLiteral("timestamp"), record.timestamp);
+    row.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
+    row.insert(QStringLiteral("direction"), messageDirectionName(record.direction));
+    row.insert(QStringLiteral("topic"), record.topic);
+    row.insert(QStringLiteral("qos"), record.qos);
+    row.insert(QStringLiteral("retain"), record.retain);
+    row.insert(QStringLiteral("retain_known"), record.retainKnown);
+    row.insert(QStringLiteral("payload_bytes"), record.payloadBytes);
+    row.insert(QStringLiteral("payload_size"), record.payloadSize);
+    row.insert(QStringLiteral("payload_state"), record.payloadState);
+    row.insert(QStringLiteral("payload_preview"), record.payloadPreview);
+    row.insert(QStringLiteral("payload_hash"), record.payloadHash);
+    row.insert(QStringLiteral("payload_format"), record.payloadFormat);
+    row.insert(QStringLiteral("parsed_payload"), record.parsedPayload);
+    row.insert(QStringLiteral("parsed_format"), record.parsedFormat);
+    row.insert(QStringLiteral("parse_error"), record.parseError);
+    row.insert(QStringLiteral("script_id"), record.scriptId);
+    row.insert(QStringLiteral("script_name"), record.scriptName);
+    return row;
 }
 
 bool shouldPruneMessageHistory(QHash<QString, int> &flushCounts, const QString &sessionId)
@@ -266,6 +303,7 @@ int EventHistoryService::loadOlderCurrentSessionMessages()
         (*m_dependencies.historyStore).loadMessagesBefore(session->id, session->runtime.oldestLoadedMessageId, pageSize),
         session->runtime.subscriptionFormats,
         subscriptionColors(*session),
+        subscriptionAliases(*session),
         (*m_dependencies.launchTimestamp),
         false);
     if (rows.isEmpty()) {
@@ -305,6 +343,7 @@ int EventHistoryService::loadOlderCurrentSessionLogs()
     QVariantList rows = EventRenderer::loadHistoryRows(
         (*m_dependencies.historyStore).loadLogsBefore(session->id, session->runtime.oldestLoadedLogId, pageSize),
         session->runtime.subscriptionFormats,
+        {},
         {},
         (*m_dependencies.launchTimestamp),
         false);
@@ -505,21 +544,24 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
         ? scriptResult.error
         : QString();
 
-    const qint64 historyId = (*m_dependencies.historyStore).enqueueMessage(
-        sessionId,
-        timestamp,
-        topic,
-        payloadPlan.storedBytes,
-        hasScript && scriptResult.success ? scriptResult.output : QString(),
-        parsedFormat,
-        parseError,
-        scriptId,
-        scriptDisplayName,
-        payloadPlan.preview,
-        payloadPlan.state,
-        payloadPlan.originalSize,
-        payloadPlan.hash,
-        subscriptionMatch.payloadFormat);
+    MessageRecord record;
+    record.sessionId = sessionId;
+    record.timestamp = timestamp;
+    record.direction = MessageDirection::Incoming;
+    record.topic = topic;
+    record.payloadBytes = payloadPlan.storedBytes;
+    record.parsedPayload = hasScript && scriptResult.success ? scriptResult.output : QString();
+    record.parsedFormat = parsedFormat;
+    record.parseError = parseError;
+    record.scriptId = scriptId;
+    record.scriptName = scriptDisplayName;
+    record.payloadPreview = payloadPlan.preview;
+    record.payloadState = payloadPlan.state;
+    record.payloadSize = payloadPlan.originalSize;
+    record.payloadHash = payloadPlan.hash;
+    record.payloadFormat = subscriptionMatch.payloadFormat;
+    const qint64 historyId = (*m_dependencies.historyStore).enqueueMessage(record);
+    record.id = historyId;
     if (historyId <= 0) {
         reportMessageStorageError(
             *session,
@@ -539,35 +581,26 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
         return;
     }
 
-    QVariantMap historyRow;
-    historyRow.insert(QStringLiteral("id"), historyId);
-    historyRow.insert(QStringLiteral("timestamp"), timestamp);
-    historyRow.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
-    historyRow.insert(QStringLiteral("topic"), topic);
-    historyRow.insert(QStringLiteral("payload_bytes"), payloadPlan.storedBytes);
-    historyRow.insert(QStringLiteral("payload_size"), payloadPlan.originalSize);
-    historyRow.insert(QStringLiteral("payload_state"), payloadPlan.state);
-    historyRow.insert(QStringLiteral("payload_preview"), payloadPlan.preview);
-    historyRow.insert(QStringLiteral("payload_hash"), payloadPlan.hash);
-    historyRow.insert(QStringLiteral("parsed_payload"), hasScript && scriptResult.success ? scriptResult.output : QString());
-    historyRow.insert(QStringLiteral("parsed_format"), parsedFormat);
-    historyRow.insert(QStringLiteral("parse_error"), parseError);
-    historyRow.insert(QStringLiteral("script_id"), scriptId);
-    historyRow.insert(QStringLiteral("script_name"), scriptDisplayName);
-    historyRow.insert(QStringLiteral("payload_format"), subscriptionMatch.payloadFormat);
+    QVariantMap historyRow = messageRecordRow(record);
     if (!subscriptionMatch.topicColor.isEmpty()) {
         historyRow.insert(QStringLiteral("topic_color"), subscriptionMatch.topicColor);
     }
     appendRenderedMessageRow(
         *session,
-        EventRenderer::renderHistoryRow(historyRow, {}, {}));
+        EventRenderer::renderHistoryRow(
+            historyRow,
+            session->runtime.subscriptionFormats,
+            subscriptionColors(*session),
+            subscriptionAliases(*session)));
 }
 
 void EventHistoryService::appendPublishedMessage(
     const QString &sessionId,
     const QString &topic,
     const QByteArray &payloadBytes,
-    int format)
+    int format,
+    int qos,
+    bool retain)
 {
     auto *session = m_dependencies.sessionById(sessionId);
     if (!session) {
@@ -583,21 +616,22 @@ void EventHistoryService::appendPublishedMessage(
         appendEvent(*session, QStringLiteral("Payload"), payloadPlan.reportMessage);
     }
 
-    const qint64 historyId = (*m_dependencies.historyStore).enqueueMessage(
-        sessionId,
-        timestamp,
-        topic,
-        payloadPlan.storedBytes,
-        {},
-        {},
-        {},
-        {},
-        {},
-        payloadPlan.preview,
-        payloadPlan.state,
-        payloadPlan.originalSize,
-        payloadPlan.hash,
-        format);
+    MessageRecord record;
+    record.sessionId = sessionId;
+    record.timestamp = timestamp;
+    record.direction = MessageDirection::Outgoing;
+    record.topic = topic;
+    record.qos = qos;
+    record.retain = retain;
+    record.retainKnown = true;
+    record.payloadBytes = payloadPlan.storedBytes;
+    record.payloadPreview = payloadPlan.preview;
+    record.payloadState = payloadPlan.state;
+    record.payloadSize = payloadPlan.originalSize;
+    record.payloadHash = payloadPlan.hash;
+    record.payloadFormat = format;
+    const qint64 historyId = (*m_dependencies.historyStore).enqueueMessage(record);
+    record.id = historyId;
     if (historyId <= 0) {
         reportMessageStorageError(
             *session,
@@ -611,27 +645,17 @@ void EventHistoryService::appendPublishedMessage(
         return;
     }
 
-    QVariantMap historyRow;
-    historyRow.insert(QStringLiteral("id"), historyId);
-    historyRow.insert(QStringLiteral("timestamp"), timestamp);
-    historyRow.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
-    historyRow.insert(QStringLiteral("topic"), topic);
-    historyRow.insert(QStringLiteral("payload_bytes"), payloadPlan.storedBytes);
-    historyRow.insert(QStringLiteral("payload_size"), payloadPlan.originalSize);
-    historyRow.insert(QStringLiteral("payload_state"), payloadPlan.state);
-    historyRow.insert(QStringLiteral("payload_preview"), payloadPlan.preview);
-    historyRow.insert(QStringLiteral("payload_hash"), payloadPlan.hash);
-    historyRow.insert(QStringLiteral("parsed_payload"), QString());
-    historyRow.insert(QStringLiteral("parsed_format"), QString());
-    historyRow.insert(QStringLiteral("parse_error"), QString());
-    historyRow.insert(QStringLiteral("script_id"), QString());
-    historyRow.insert(QStringLiteral("script_name"), QString());
+    const QVariantMap historyRow = messageRecordRow(record);
 
     QHash<QString, int> renderFormats = session->runtime.subscriptionFormats;
     renderFormats.insert(topic, format);
     appendRenderedMessageRow(
         *session,
-        EventRenderer::renderHistoryRow(historyRow, renderFormats, subscriptionColors(*session)));
+        EventRenderer::renderHistoryRow(
+            historyRow,
+            renderFormats,
+            subscriptionColors(*session),
+            subscriptionAliases(*session)));
 }
 
 QString EventHistoryService::messagePayloadForReuse(
@@ -656,6 +680,54 @@ QString EventHistoryService::messagePayloadForReuse(
         payloadBytes,
         parseError);
     return parseError.isEmpty() ? decoded : fallback;
+}
+
+QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
+{
+    if (messageId <= 0 || !m_dependencies.historyStore) {
+        return {};
+    }
+
+    const QVariantMap stored = m_dependencies.historyStore->loadMessage(messageId);
+    if (stored.isEmpty()) {
+        return {};
+    }
+
+    QHash<QString, int> formats;
+    QHash<QString, QString> colors;
+    QHash<QString, QString> aliases;
+    if (const auto *session = m_dependencies.currentSessionState()) {
+        formats = session->runtime.subscriptionFormats;
+        colors = subscriptionColors(*session);
+        aliases = subscriptionAliases(*session);
+    }
+
+    QVariantMap details = EventRenderer::renderHistoryRow(stored, formats, colors, aliases);
+    const QByteArray payloadBytes = stored.value(QStringLiteral("payload_bytes")).toByteArray();
+    const qint64 payloadSize = stored.value(QStringLiteral("payload_size")).toLongLong();
+    const QString payloadState = stored.value(QStringLiteral("payload_state")).toString();
+    const bool fullPayloadAvailable = payloadState != QStringLiteral("skipped")
+        && (payloadSize == 0 || !payloadBytes.isEmpty());
+
+    QString fullPayload;
+    if (fullPayloadAvailable) {
+        QString decodeError;
+        fullPayload = PayloadCodec::decodeForDisplay(
+            PayloadCodec::formatFromInt(stored.value(QStringLiteral("payload_format"), -1).toInt()),
+            payloadBytes,
+            decodeError);
+        if (!decodeError.isEmpty()) {
+            fullPayload = stored.value(QStringLiteral("payload_preview")).toString();
+        }
+    } else {
+        fullPayload = stored.value(QStringLiteral("payload_preview")).toString();
+    }
+
+    details.insert(QStringLiteral("fullPayloadAvailable"), fullPayloadAvailable);
+    details.insert(QStringLiteral("fullPayload"), fullPayload);
+    details.insert(QStringLiteral("payloadPreview"), stored.value(QStringLiteral("payload_preview")));
+    details.insert(QStringLiteral("payloadHash"), stored.value(QStringLiteral("payload_hash")));
+    return details;
 }
 
 void EventHistoryService::trimVisibleMessageRows(SessionState &session)
@@ -697,6 +769,7 @@ void EventHistoryService::reloadCurrentSessionHistory()
         messageRows,
         session->runtime.subscriptionFormats,
         subscriptionColors(*session),
+        subscriptionAliases(*session),
         (*m_dependencies.launchTimestamp),
         true);
     session->runtime.oldestLoadedMessageId = EventRenderer::firstHistoryId(session->runtime.messageRows);
@@ -707,6 +780,7 @@ void EventHistoryService::reloadCurrentSessionHistory()
     session->runtime.logRows = EventRenderer::loadHistoryRows(
         logRows,
         session->runtime.subscriptionFormats,
+        {},
         {},
         (*m_dependencies.launchTimestamp),
         true);
