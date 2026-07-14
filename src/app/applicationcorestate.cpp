@@ -108,6 +108,7 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
     , subscriptionsModel(parent)
     , filteredSubscriptionsModel(parent)
     , messagesModel(parent)
+    , filteredMessagesModel(parent)
     , logsModel(parent)
     , scriptsModel(parent)
     , scriptTestSamplesModel(parent)
@@ -254,6 +255,7 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
         },
     });
     filteredSubscriptionsModel.setSourceModel(&subscriptionsModel);
+    filteredMessagesModel.setSourceModel(&messagesModel);
 
     QObject::connect(
         &scriptController,

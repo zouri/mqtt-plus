@@ -299,6 +299,61 @@ void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, boo
     emit subscriptionsChanged();
 }
 
+void SubscriptionService::setAllCurrentSubscriptionsPaused(bool paused)
+{
+    auto *session = m_dependencies.currentSessionState();
+    if (!session) {
+        return;
+    }
+
+    bool changed = false;
+    for (auto &entry : session->subscriptions) {
+        if (entry.paused == paused) {
+            continue;
+        }
+
+        changed = true;
+        entry.paused = paused;
+        if (paused) {
+            entry.runtimeState = QStringLiteral("paused");
+            if (entry.runtimeSubscription) {
+                entry.runtimeSubscription->unsubscribe();
+            } else if (auto *client = session->runtime.client; client && client->state() == QMqttClient::Connected) {
+                client->unsubscribe(QMqttTopicFilter(entry.topic));
+            }
+        } else {
+            entry.lastError.clear();
+            if (entry.runtimeSubscription) {
+                entry.runtimeSubscription->unsubscribe();
+                entry.runtimeSubscription.clear();
+            }
+            if (auto *client = session->runtime.client; client && client->state() == QMqttClient::Connected) {
+                ensureSubscriptionActive(*session, entry, false);
+            } else {
+                entry.runtimeState = QStringLiteral("saved");
+            }
+        }
+    }
+
+    if (!changed) {
+        return;
+    }
+
+    if (m_dependencies.eventController) {
+        m_dependencies.eventController->appendEvent(
+            *session,
+            QStringLiteral("Subscription"),
+            paused ? QStringLiteral("Paused all subscriptions") : QStringLiteral("Resumed all subscriptions"));
+    }
+    if (m_dependencies.saveSessions) {
+        m_dependencies.saveSessions();
+    }
+    if (m_dependencies.refreshSubscriptionsModel) {
+        m_dependencies.refreshSubscriptionsModel();
+    }
+    emit subscriptionsChanged();
+}
+
 SubscriptionEntry *SubscriptionService::subscriptionByTopic(SessionState *session, const QString &topic)
 {
     if (!session) {

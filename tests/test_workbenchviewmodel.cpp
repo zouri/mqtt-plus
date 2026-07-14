@@ -20,6 +20,7 @@ private slots:
     void ownsSubscriptionFilterState();
     void ownsPendingSubscriptionDeleteState();
     void acceptsIntentCommandsWithoutCore();
+    void ownsMessageFilterState();
 };
 
 void WorkbenchViewModelTest::exposesDefaultPublishDraft()
@@ -245,6 +246,27 @@ void WorkbenchViewModelTest::ownsPendingSubscriptionDeleteState()
     QCOMPARE(viewModel.pendingSubscriptionDeleteTopic(), QString());
     QCOMPARE(viewModel.pendingSubscriptionDeleteDisplayName(), QString());
     QCOMPARE(pendingSpy.size(), 4);
+}
+
+void WorkbenchViewModelTest::ownsMessageFilterState()
+{
+    MessageFilterModel filteredMessages;
+    WorkbenchViewModel::Dependencies dependencies;
+    dependencies.filteredMessages = &filteredMessages;
+    WorkbenchViewModel viewModel(dependencies);
+
+    viewModel.setMessageTopicFilter(QStringLiteral("sensors/+/temperature"));
+    QCOMPARE(
+        viewModel.filteredMessages()->selectedTopics(),
+        QStringList {QStringLiteral("sensors/+/temperature")});
+
+    viewModel.addMessageTopicFilter(QStringLiteral("home/light/set"));
+    viewModel.addMessageTopicFilter(QStringLiteral("home/light/set"));
+    QCOMPARE(viewModel.filteredMessages()->selectedTopics().size(), 2);
+
+    viewModel.clearMessageFilters();
+    QVERIFY(viewModel.filteredMessages()->selectedTopics().isEmpty());
+    QCOMPARE(viewModel.filteredMessages()->direction(), QStringLiteral("all"));
 }
 
 void WorkbenchViewModelTest::acceptsIntentCommandsWithoutCore()

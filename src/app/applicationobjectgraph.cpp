@@ -35,6 +35,9 @@ WorkbenchViewModel::Dependencies workbenchDependencies(ApplicationCoreState &sta
         [&state](QObject *context, std::function<void()> handler) {
             QObject::connect(&state.scriptController, &ScriptService::scriptsChanged, context, std::move(handler));
         },
+        [&state](QObject *context, std::function<void()> handler) {
+            QObject::connect(&state.subscriptionController, &SubscriptionService::subscriptionsChanged, context, std::move(handler));
+        },
         &state.sessionController,
         &state.mqttController,
         &state.subscriptionController,
@@ -42,6 +45,7 @@ WorkbenchViewModel::Dependencies workbenchDependencies(ApplicationCoreState &sta
         &state.sessionsModel,
         &state.filteredSubscriptionsModel,
         &state.messagesModel,
+        &state.filteredMessagesModel,
         &state.scriptsModel,
     };
 }
