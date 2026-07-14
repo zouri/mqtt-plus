@@ -134,12 +134,18 @@ void EventHistoryServiceTest::publishedRowsAppearInMessageStream()
         fixture.session.id,
         QStringLiteral("devices/command"),
         payload,
-        static_cast<int>(PayloadFormat::Json));
+        static_cast<int>(PayloadFormat::Json),
+        1,
+        true);
 
     QTRY_COMPARE(fixture.messages.count(), 1);
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("topic")).toString(), QStringLiteral("devices/command"));
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), expectedPayload);
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("JSON"));
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("direction")).toString(), QStringLiteral("outgoing"));
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("qos")).toInt(), 1);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("retain")).toBool(), true);
+    QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("retainKnown")).toBool(), true);
 }
 
 void EventHistoryServiceTest::publishedRowsKeepFormatAfterHistoryReload()

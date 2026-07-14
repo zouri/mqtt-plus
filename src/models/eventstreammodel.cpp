@@ -39,6 +39,14 @@ QHash<int, QByteArray> EventStreamModel::roleNames() const
         {TestFormatRole, "testFormat"},
         {TestFormatNameRole, "testFormatName"},
         {HistoryIdRole, "historyId"},
+        {DirectionRole, "direction"},
+        {AliasRole, "alias"},
+        {QosRole, "qos"},
+        {RetainRole, "retain"},
+        {RetainKnownRole, "retainKnown"},
+        {ParsedPayloadRole, "parsedPayload"},
+        {PayloadStateRole, "payloadState"},
+        {PayloadHashRole, "payloadHash"},
     };
     return roles;
 }
@@ -76,7 +84,15 @@ void EventStreamModel::setRows(const QVariantList &rows)
                               TestPayloadRole,
                               TestFormatRole,
                               TestFormatNameRole,
-                              HistoryIdRole});
+                              HistoryIdRole,
+                              DirectionRole,
+                              AliasRole,
+                              QosRole,
+                              RetainRole,
+                              RetainKnownRole,
+                              ParsedPayloadRole,
+                              PayloadStateRole,
+                              PayloadHashRole});
         }
         return;
     }
@@ -171,6 +187,14 @@ EventStreamModel::EventStreamRow EventStreamModel::rowFromMap(const QVariantMap 
     streamRow.testFormat = row.value(QStringLiteral("testFormat"), 0).toInt();
     streamRow.testFormatName = row.value(QStringLiteral("testFormatName"), QString()).toString();
     streamRow.historyId = row.value(QStringLiteral("historyId"), 0).toLongLong();
+    streamRow.direction = row.value(QStringLiteral("direction")).toString();
+    streamRow.alias = row.value(QStringLiteral("alias")).toString();
+    streamRow.qos = row.value(QStringLiteral("qos"), -1).toInt();
+    streamRow.retain = row.value(QStringLiteral("retain")).toBool();
+    streamRow.retainKnown = row.value(QStringLiteral("retainKnown")).toBool();
+    streamRow.parsedPayload = row.value(QStringLiteral("parsedPayload")).toString();
+    streamRow.payloadState = row.value(QStringLiteral("payloadState")).toString();
+    streamRow.payloadHash = row.value(QStringLiteral("payloadHash")).toString();
     return streamRow;
 }
 
@@ -213,6 +237,22 @@ QVariant EventStreamModel::roleValue(const EventStreamRow &row, int role) const
         return row.testFormatName;
     case HistoryIdRole:
         return QString::number(row.historyId);
+    case DirectionRole:
+        return row.direction;
+    case AliasRole:
+        return row.alias;
+    case QosRole:
+        return row.qos;
+    case RetainRole:
+        return row.retain;
+    case RetainKnownRole:
+        return row.retainKnown;
+    case ParsedPayloadRole:
+        return row.parsedPayload;
+    case PayloadStateRole:
+        return row.payloadState;
+    case PayloadHashRole:
+        return row.payloadHash;
     default:
         return {};
     }
