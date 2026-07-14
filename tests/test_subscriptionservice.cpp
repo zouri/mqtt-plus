@@ -10,6 +10,7 @@ class SubscriptionServiceTest : public QObject
 
 private slots:
     void updateCurrentSubscriptionEditsQosAndFormat();
+    void setsAllCurrentSubscriptionsPausedWithSingleRefresh();
 };
 
 void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
@@ -58,6 +59,39 @@ void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
     QCOMPARE(session.runtime.subscriptionFormats.value(QStringLiteral("devices/temp")), 2);
     QVERIFY(saved);
     QVERIFY(refreshed);
+}
+
+void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleRefresh()
+{
+    SessionState session;
+    session.subscriptions = {
+        SubscriptionEntry {.topic = QStringLiteral("devices/one")},
+        SubscriptionEntry {.topic = QStringLiteral("devices/two")},
+    };
+
+    int saveCount = 0;
+    int refreshCount = 0;
+    SubscriptionService service;
+    service.setDependencies({
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        [&session]() { return &session; },
+        {},
+        [&saveCount]() {
+            ++saveCount;
+            return true;
+        },
+        [&refreshCount]() { ++refreshCount; },
+    });
+
+    service.setAllCurrentSubscriptionsPaused(true);
+
+    QVERIFY(session.subscriptions.at(0).paused);
+    QVERIFY(session.subscriptions.at(1).paused);
+    QCOMPARE(saveCount, 1);
+    QCOMPARE(refreshCount, 1);
 }
 
 QTEST_MAIN(SubscriptionServiceTest)

@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "models/eventstreammodel.h"
+#include "models/messagefiltermodel.h"
 #include "models/scriptlibrarymodel.h"
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
@@ -27,6 +28,7 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(SessionListModel* sessions READ sessions CONSTANT)
     Q_PROPERTY(SubscriptionFilterModel* filteredSubscriptions READ filteredSubscriptions CONSTANT)
     Q_PROPERTY(EventStreamModel* messages READ messages CONSTANT)
+    Q_PROPERTY(MessageFilterModel* filteredMessages READ filteredMessages CONSTANT)
     Q_PROPERTY(PublishDraftViewModel* publisher READ publisher CONSTANT)
     Q_PROPERTY(SessionEditorViewModel* sessionEditor READ sessionEditor CONSTANT)
     Q_PROPERTY(SubscriptionEditorViewModel* subscriptionEditor READ subscriptionEditor CONSTANT)
@@ -37,6 +39,7 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(QStringList payloadFormats READ payloadFormats CONSTANT)
     Q_PROPERTY(QString pendingSubscriptionDeleteTopic READ pendingSubscriptionDeleteTopic NOTIFY pendingSubscriptionDeleteChanged)
     Q_PROPERTY(QString pendingSubscriptionDeleteDisplayName READ pendingSubscriptionDeleteDisplayName NOTIFY pendingSubscriptionDeleteChanged)
+    Q_PROPERTY(bool allSubscriptionsPaused READ allSubscriptionsPaused NOTIFY subscriptionsStateChanged)
 
 public:
     struct Dependencies {
@@ -47,6 +50,7 @@ public:
         std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindMessageStreamRowAppended;
         std::function<void(QObject *, std::function<void(int)>)> bindMessageStreamRowsAppended;
         std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
+        std::function<void(QObject *, std::function<void()>)> bindSubscriptionsChanged;
         SessionService *sessionController = nullptr;
         MqttSessionService *mqttController = nullptr;
         SubscriptionService *subscriptionController = nullptr;
@@ -54,6 +58,7 @@ public:
         SessionListModel *sessions = nullptr;
         SubscriptionFilterModel *filteredSubscriptions = nullptr;
         EventStreamModel *messages = nullptr;
+        MessageFilterModel *filteredMessages = nullptr;
         ScriptLibraryModel *scripts = nullptr;
     };
 
@@ -63,6 +68,7 @@ public:
     SessionListModel *sessions() const;
     SubscriptionFilterModel *filteredSubscriptions() const;
     EventStreamModel *messages() const;
+    MessageFilterModel *filteredMessages() const;
     PublishDraftViewModel *publisher();
     SessionEditorViewModel *sessionEditor();
     SubscriptionEditorViewModel *subscriptionEditor();
@@ -73,6 +79,7 @@ public:
     QStringList payloadFormats() const;
     QString pendingSubscriptionDeleteTopic() const;
     QString pendingSubscriptionDeleteDisplayName() const;
+    bool allSubscriptionsPaused() const;
 
     void setCurrentSessionIndex(int index);
 
@@ -104,6 +111,11 @@ public:
         int format);
     Q_INVOKABLE void clearMessages();
     Q_INVOKABLE int loadOlderMessages();
+    Q_INVOKABLE void setMessageTopicFilter(const QString &topic);
+    Q_INVOKABLE void addMessageTopicFilter(const QString &topic);
+    Q_INVOKABLE void clearMessageFilters();
+    Q_INVOKABLE QVariantMap messageDetails(const QString &historyId) const;
+    Q_INVOKABLE void setAllCurrentSubscriptionsPaused(bool paused);
 
 signals:
     void currentSessionIndexChanged();
@@ -116,6 +128,7 @@ signals:
     void pendingSubscriptionDeleteChanged();
     void sessionEditRequested(int index);
     void subscriptionDeleteRequested(const QString &topic, const QString &displayName);
+    void subscriptionsStateChanged();
 
 private:
     ScriptLibraryModel *scriptLibrary() const;
