@@ -40,6 +40,7 @@ struct ApplicationCoreState
     SessionListModel sessionsModel;
     SubscriptionListModel subscriptionsModel;
     SubscriptionFilterModel filteredSubscriptionsModel;
+    SubscriptionFilterModel messageFilterSubscriptionsModel;
     EventStreamModel messagesModel;
     MessageFilterModel filteredMessagesModel;
     EventStreamModel logsModel;

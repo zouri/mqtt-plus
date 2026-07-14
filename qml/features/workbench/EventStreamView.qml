@@ -22,11 +22,23 @@ Item {
     property bool reachedHistoryStart: false
     property string followMode: "smart"
     property string selectedHistoryId: ""
+    property var selectedMessageTrigger: null
     readonly property bool connected: root.status.state === "connected"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
+    readonly property bool compactHeader: root.width <= 520
+    readonly property var messageTopicFilterState: root.viewModel.messageTopicFilterState
+    readonly property int selectedTopicCount: Number(root.messageTopicFilterState.selectedCount || 0)
+    readonly property int selectedTopicsPausedCount: Number(root.messageTopicFilterState.pausedCount || 0)
+    readonly property string filterSummaryText: root.messageFilterSummary()
+    readonly property string receiveStateText: root.selectedTopicsPausedCount <= 0
+                                               ? ""
+                                               : (root.selectedTopicCount > 1
+                                                  ? qsTr("%1 selected Topics are paused").arg(root.selectedTopicsPausedCount)
+                                                  : qsTr("Receiving is paused"))
 
     signal publishDraftRevealRequested()
     signal messageSelected(string historyId)
+    signal messagesCleared()
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -60,6 +72,31 @@ Item {
         eventList.bottomAnchorActive = false
         eventList.shouldFollowOutput = false
         eventList.unreadCount += Math.max(1, count)
+    }
+
+    // qmllint disable missing-property
+    function messageFilterSummary() {
+        const parts = [];
+        if (root.selectedTopicCount === 1) {
+            parts.push(String(root.messageTopicFilterState.singleTopicLabel || ""));
+        } else if (root.selectedTopicCount > 1) {
+            parts.push(qsTr("%1 Topics").arg(root.selectedTopicCount));
+        }
+        if (root.streamModel.direction === "incoming") {
+            parts.push(qsTr("Received"));
+        } else if (root.streamModel.direction === "outgoing") {
+            parts.push(qsTr("Sent"));
+        }
+        return parts.length > 0 ? parts.join(" · ") : qsTr("Filter");
+    }
+    // qmllint enable missing-property
+
+    function clearMessageSelection() {
+        root.selectedHistoryId = "";
+        if (root.selectedMessageTrigger) {
+            root.selectedMessageTrigger.forceActiveFocus();
+        }
+        root.selectedMessageTrigger = null;
     }
 
     function requestFollowScroll() {
@@ -108,13 +145,6 @@ Item {
             return qsTr("Manual")
         }
         return qsTr("Smart")
-    }
-
-    function nextFollowMode(mode) {
-        if (mode === "smart") {
-            return "manual"
-        }
-        return "smart"
     }
 
     function followModeToolTip() {
@@ -182,13 +212,18 @@ Item {
 
                 AppBadge {
                     ui: root.ui
-                    label: `${eventList.count}`
+                    // qmllint disable missing-property
+                    label: root.streamModel.filterActive
+                           ? qsTr("%1/%2").arg(root.streamModel.filteredMessageCount)
+                                           .arg(root.streamModel.totalMessageCount)
+                           : String(root.streamModel.totalMessageCount)
+                    // qmllint enable missing-property
                     badgeRadius: 11
                     horizontalPadding: 7
                     verticalPadding: 3
-                    badgeBg: root.ui.themePalette.selectedBg
+                    badgeBg: root.ui.themePalette.dividerLabelBg
                     badgeBorder: "transparent"
-                    badgeText: root.ui.themePalette.infoText
+                    badgeText: root.ui.textMuted
                 }
 
                 Item {
@@ -230,25 +265,57 @@ Item {
                     }
                 }
 
-                AppIconButton {
+                Button {
                     id: messageFilterButton
 
-                    ui: root.ui
                     visible: root.showOutputControls
-                    iconSource: root.ui.materialIcon("filter")
-                    iconSize: 15
-                    implicitWidth: 32
-                    implicitHeight: 32
-                    cornerRadius: 7
-                    restBg: root.ui.themePalette.itemBg
-                    hoverBg: root.ui.themePalette.selectedBg
-                    outlineColor: root.ui.themePalette.panelBorder
                     // qmllint disable missing-property
-                    symbolColor: root.streamModel.filterActive ? root.ui.themePalette.infoText : root.ui.textMuted
-                    forceActive: root.streamModel.filterActive
+                    readonly property bool scopedFilterActive: root.selectedTopicCount > 0
+                                                                || root.streamModel.direction !== "all"
                     // qmllint enable missing-property
-                    accessibleName: qsTr("Message filters")
-                    toolTipText: qsTr("Message filters")
+                    Layout.preferredWidth: root.compactHeader
+                                           ? 32
+                                           : Math.min(156, Math.max(68, implicitContentWidth + 18))
+                    Layout.preferredHeight: 30
+                    leftPadding: root.compactHeader ? 0 : 8
+                    rightPadding: root.compactHeader ? 0 : 8
+                    spacing: root.compactHeader ? 0 : 6
+                    text: root.filterSummaryText
+                    display: root.compactHeader ? AbstractButton.IconOnly : AbstractButton.TextBesideIcon
+                    icon.source: root.ui.materialIcon("filter")
+                    icon.width: 14
+                    icon.height: 14
+                    icon.color: messageFilterButton.scopedFilterActive
+                                ? root.ui.themePalette.infoText
+                                : root.ui.textMuted
+                    font.pixelSize: 11
+                    palette.buttonText: messageFilterButton.scopedFilterActive
+                                        ? root.ui.themePalette.infoText
+                                        : root.ui.textStrong
+                    Accessible.name: qsTr("Message filters: %1").arg(root.filterSummaryText)
+
+                    background: Rectangle {
+                        radius: 8
+                        color: messageFilterButton.scopedFilterActive
+                               ? root.ui.themePalette.selectedBg
+                               : (messageFilterButton.hovered
+                                  ? root.ui.themePalette.rowHover
+                                  : root.ui.themePalette.itemBg)
+                        border.color: messageFilterButton.activeFocus
+                                      ? root.ui.focusRingColor
+                                      : (messageFilterButton.scopedFilterActive
+                                         ? root.ui.themePalette.selectedBorder
+                                         : root.ui.themePalette.panelBorder)
+                        border.width: messageFilterButton.activeFocus ? root.ui.focusRingWidth : 1
+                    }
+
+                    AppToolTip {
+                        ui: root.ui
+                        text: qsTr("Message filters")
+                        position: AppToolTip.Position.Bottom
+                        active: messageFilterButton.hovered
+                    }
+
                     onClicked: messageFilterPopover.open()
                 }
 
@@ -257,8 +324,6 @@ Item {
 
                     ui: root.ui
                     visible: root.showOutputControls
-                    checkable: true
-                    checked: eventList.shouldFollowOutput
                     iconSource: root.ui.materialIcon("follow-mode")
                     iconSize: 15
                     implicitWidth: 32
@@ -267,14 +332,16 @@ Item {
                     restBg: root.ui.themePalette.itemBg
                     hoverBg: root.ui.themePalette.selectedBg
                     outlineColor: root.ui.themePalette.panelBorder
-                    symbolColor: followModeButton.checked ? root.ui.themePalette.infoText : root.ui.textMuted
-                    forceActive: followModeButton.checked
+                    symbolColor: eventList.shouldFollowOutput ? root.ui.themePalette.infoText : root.ui.textMuted
+                    forceActive: eventList.shouldFollowOutput
                     accessibleName: root.followModeToolTip()
                     toolTipText: root.followModeToolTip()
-                    onClicked: root.setFollowMode(eventList.shouldFollowOutput ? "manual" : "smart")
+                    onClicked: root.setFollowMode("smart")
                 }
 
                 AppIconButton {
+                    id: streamMoreButton
+
                     ui: root.ui
                     visible: root.showOutputControls
                     iconSource: root.ui.materialIcon(root.session.outputPaused ? "play" : "pause")
@@ -297,9 +364,9 @@ Item {
                     cornerRadius: 7
                     restBg: root.ui.themePalette.itemBg
                     outlineColor: root.ui.themePalette.panelBorder
-                    accessibleName: qsTr("Clear message history")
-                    toolTipText: qsTr("Clear message history")
-                    onClicked: root.viewModel.clearMessages()
+                    accessibleName: qsTr("More message actions")
+                    toolTipText: qsTr("More message actions")
+                    onClicked: streamActionsMenu.open()
                 }
             }
 
@@ -308,9 +375,32 @@ Item {
 
                 ui: root.ui
                 filterModel: root.streamModel
-                subscriptionsModel: root.viewModel.filteredSubscriptions
+                subscriptionsModel: root.viewModel.messageFilterSubscriptions
+                receiveStateText: root.receiveStateText
                 x: Math.max(8, parent.width - width - 110)
                 y: parent.height - 2
+                onClosed: messageFilterButton.forceActiveFocus()
+            }
+
+            ListModel {
+                id: streamActions
+
+                ListElement { actionId: "clear-messages" }
+            }
+
+            AppPlatformMenu {
+                id: streamActionsMenu
+
+                model: streamActions
+                actionText: actionId => actionId === "clear-messages" ? qsTr("Clear message history") : ""
+                onTriggered: actionId => {
+                    if (actionId !== "clear-messages") {
+                        return;
+                    }
+                    root.viewModel.clearMessages();
+                    root.clearMessageSelection();
+                    root.messagesCleared();
+                }
             }
         }
 
@@ -456,6 +546,17 @@ Item {
                                     ? dividerRow.implicitHeight + 14
                                     : messageRow.implicitHeight + 8
 
+                    function selectMessage() {
+                        if (!eventDelegate.isMessage) {
+                            return;
+                        }
+                        messageRow.forceActiveFocus();
+                        root.setFollowMode("manual");
+                        root.selectedMessageTrigger = messageRow;
+                        root.selectedHistoryId = eventDelegate.historyId;
+                        root.messageSelected(eventDelegate.historyId);
+                    }
+
                     RowLayout {
                         id: dividerRow
                         visible: eventDelegate.isDivider
@@ -482,14 +583,35 @@ Item {
                         id: messageRow
                         visible: !eventDelegate.isDivider
                         width: parent.width
-                        implicitHeight: rowBody.implicitHeight + 16
-                        radius: 10
+                        implicitHeight: Math.max(64, rowBody.implicitHeight + 16)
+                        radius: 7
                         color: eventDelegate.historyId === root.selectedHistoryId
                                ? root.ui.themePalette.selectedBg
                                : (rowHover.hovered ? root.ui.themePalette.rowHover : "transparent")
-                        border.color: eventDelegate.historyId === root.selectedHistoryId
+                        border.color: messageRow.activeFocus
+                                      ? root.ui.focusRingColor
+                                      : (eventDelegate.historyId === root.selectedHistoryId
                                       ? root.ui.themePalette.selectedBorder
-                                      : "transparent"
+                                      : "transparent")
+                        border.width: messageRow.activeFocus ? root.ui.focusRingWidth : 1
+                        activeFocusOnTab: eventDelegate.isMessage
+                        Accessible.ignored: !eventDelegate.isMessage
+                        Accessible.role: Accessible.Button
+                        Accessible.name: eventDelegate.isMessage
+                                         ? qsTr("%1 message, %2, %3")
+                                             .arg(eventDelegate.direction === "outgoing" ? qsTr("Sent") : qsTr("Received"))
+                                             .arg(eventDelegate.topic)
+                                             .arg(root.compactTimestamp(eventDelegate.timestamp))
+                                         : ""
+
+                        Keys.onPressed: event => {
+                            if (event.key === Qt.Key_Return
+                                    || event.key === Qt.Key_Enter
+                                    || event.key === Qt.Key_Space) {
+                                eventDelegate.selectMessage();
+                                event.accepted = true;
+                            }
+                        }
 
                         HoverHandler {
                             id: rowHover
@@ -497,10 +619,7 @@ Item {
 
                         TapHandler {
                             enabled: eventDelegate.isMessage
-                            onTapped: {
-                                root.selectedHistoryId = eventDelegate.historyId;
-                                root.messageSelected(eventDelegate.historyId);
-                            }
+                            onTapped: eventDelegate.selectMessage()
                         }
 
                         RowLayout {
@@ -512,6 +631,30 @@ Item {
                             anchors.rightMargin: 10
                             spacing: 10
 
+                            Rectangle {
+                                Layout.preferredWidth: 18
+                                Layout.preferredHeight: 18
+                                radius: 5
+                                color: eventDelegate.isMessage
+                                       ? Qt.rgba(eventDelegate.topicSwatchColor.r,
+                                                 eventDelegate.topicSwatchColor.g,
+                                                 eventDelegate.topicSwatchColor.b,
+                                                 0.14)
+                                       : "transparent"
+
+                                Label {
+                                    anchors.centerIn: parent
+                                    text: eventDelegate.isMessage
+                                          ? (eventDelegate.direction === "outgoing" ? "↑" : "↓")
+                                          : "•"
+                                    color: eventDelegate.isMessage
+                                           ? eventDelegate.topicSwatchColor
+                                           : root.ui.themePalette.warningText
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+                            }
+
                             Label {
                                 Layout.preferredWidth: 82
                                 text: root.compactTimestamp(eventDelegate.timestamp)
@@ -519,21 +662,6 @@ Item {
                                 font.family: "Menlo"
                                 font.pixelSize: 11
                                 elide: Label.ElideRight
-                            }
-
-                            Label {
-                                Layout.preferredWidth: 14
-                                text: eventDelegate.isMessage
-                                      ? (eventDelegate.direction === "outgoing" ? "↑" : "↓")
-                                      : "•"
-                                color: eventDelegate.isMessage
-                                       ? (eventDelegate.direction === "outgoing"
-                                          ? root.ui.textMuted
-                                          : root.ui.themePalette.successText)
-                                       : root.ui.themePalette.warningText
-                                horizontalAlignment: Text.AlignHCenter
-                                font.pixelSize: 14
-                                font.bold: true
                             }
 
                             ColumnLayout {
@@ -545,29 +673,38 @@ Item {
                                     Layout.fillWidth: true
                                     spacing: 6
 
-                                    Rectangle {
-                                        Layout.preferredWidth: 8
-                                        Layout.preferredHeight: 8
-                                        radius: 2
-                                        color: eventDelegate.topicSwatchColor
-                                    }
-
-                                    TextInput {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        text: eventDelegate.alias.length > 0
-                                              ? `${eventDelegate.alias} · ${eventDelegate.topic}`
-                                              : eventDelegate.title
+                                    Label {
+                                        visible: eventDelegate.alias.length > 0
+                                        text: eventDelegate.alias
                                         color: eventDelegate.isEvent
                                                ? root.ui.themePalette.eventTitle
                                                : root.ui.textStrong
                                         font.pixelSize: 12
                                         font.bold: true
-                                        readOnly: true
-                                        selectByMouse: true
-                                        clip: true
-                                        selectedTextColor: root.ui.themePalette.buttonPrimaryText
-                                        selectionColor: root.ui.themePalette.buttonPrimaryBg
+                                        elide: Label.ElideRight
+                                    }
+
+                                    Label {
+                                        visible: eventDelegate.alias.length > 0
+                                        text: "·"
+                                        color: root.ui.textMuted
+                                        font.pixelSize: 11
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        text: eventDelegate.alias.length > 0
+                                              ? eventDelegate.topic
+                                              : eventDelegate.title
+                                        color: eventDelegate.alias.length > 0
+                                               ? root.ui.textMuted
+                                               : (eventDelegate.isEvent
+                                                  ? root.ui.themePalette.eventTitle
+                                                  : root.ui.textStrong)
+                                        font.pixelSize: 11
+                                        font.bold: eventDelegate.alias.length === 0
+                                        elide: Label.ElideRight
                                     }
                                 }
 
@@ -577,7 +714,7 @@ Item {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
                                     Layout.preferredHeight: Math.min(implicitHeight,
-                                                                     payloadLineMetrics.lineSpacing * 2)
+                                                                     payloadLineMetrics.lineSpacing)
                                     text: eventDelegate.payload
                                     color: eventDelegate.isEvent ? root.ui.textMuted : root.ui.textStrong
                                     font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily
@@ -607,8 +744,7 @@ Item {
                                 id: messageActions
                                 visible: eventDelegate.isMessage || eventDelegate.payloadFormat.length > 0
                                 Layout.alignment: Qt.AlignRight | Qt.AlignTop
-                                Layout.preferredWidth: Math.max(metadataRow.implicitWidth,
-                                                                actionButtonRow.implicitWidth)
+                                Layout.preferredWidth: metadataRow.implicitWidth
                                 Layout.minimumWidth: Layout.preferredWidth
                                 Layout.maximumWidth: Layout.preferredWidth
                                 spacing: 4
@@ -618,17 +754,13 @@ Item {
                                     Layout.alignment: Qt.AlignRight
                                     spacing: 6
 
-                                    AppBadge {
-                                        ui: root.ui
+                                    Label {
                                         visible: eventDelegate.payloadFormat.length > 0
-                                        Layout.preferredWidth: implicitWidth
-                                        Layout.preferredHeight: implicitHeight
-                                        label: eventDelegate.payloadFormat
-                                        badgeRadius: 6
-                                        badgeBorder: root.ui.themePalette.eventBorder
-                                        horizontalPadding: 6
-                                        verticalPadding: 1
-                                        maximumLabelWidth: 160
+                                        text: eventDelegate.payloadFormat.replace(": ", " · ")
+                                        color: root.ui.themePalette.textSubtle
+                                        font.pixelSize: 10
+                                        elide: Label.ElideRight
+                                        Layout.maximumWidth: 160
                                     }
 
                                     Label {
@@ -641,72 +773,6 @@ Item {
                                     }
                                 }
 
-                                RowLayout {
-                                    id: actionButtonRow
-                                    visible: eventDelegate.isMessage
-                                    Layout.alignment: Qt.AlignRight
-                                    spacing: 2
-
-                                    AppIconButton {
-                                        ui: root.ui
-                                        iconSource: root.ui.materialIcon("topic")
-                                        Layout.preferredWidth: 22
-                                        Layout.preferredHeight: 22
-                                        iconSize: 12
-                                        cornerRadius: 5
-                                        restBg: "transparent"
-                                        outlineColor: "transparent"
-                                        symbolColor: root.ui.themePalette.textSubtle
-                                        accessibleName: qsTr("Copy topic")
-                                        toolTipText: qsTr("Copy topic")
-                                        toolTipPosition: AppToolTip.Position.Top
-                                        onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
-                                    }
-
-                                    AppIconButton {
-                                        ui: root.ui
-                                        iconSource: root.ui.materialIcon("content-copy")
-                                        Layout.preferredWidth: 22
-                                        Layout.preferredHeight: 22
-                                        iconSize: 12
-                                        cornerRadius: 5
-                                        restBg: "transparent"
-                                        outlineColor: "transparent"
-                                        symbolColor: root.ui.themePalette.textSubtle
-                                        accessibleName: qsTr("Copy payload")
-                                        toolTipText: qsTr("Copy payload")
-                                        toolTipPosition: AppToolTip.Position.Top
-                                        onClicked: root.viewModel.copyMessagePayload(
-                                                       eventDelegate.historyId,
-                                                       eventDelegate.payload,
-                                                       eventDelegate.testPayload,
-                                                       eventDelegate.testFormat)
-                                    }
-
-                                    AppIconButton {
-                                        ui: root.ui
-                                        iconSource: root.ui.materialIcon("edit")
-                                        Layout.preferredWidth: 22
-                                        Layout.preferredHeight: 22
-                                        iconSize: 12
-                                        cornerRadius: 5
-                                        restBg: "transparent"
-                                        outlineColor: "transparent"
-                                        symbolColor: root.ui.themePalette.textSubtle
-                                        accessibleName: qsTr("Use as publish draft")
-                                        toolTipText: qsTr("Use as publish draft")
-                                        toolTipPosition: AppToolTip.Position.Top
-                                        onClicked: {
-                                            root.viewModel.useMessageAsDraft(
-                                                        eventDelegate.historyId,
-                                                        eventDelegate.topic,
-                                                        eventDelegate.payload,
-                                                        eventDelegate.testPayload,
-                                                        eventDelegate.testFormat)
-                                            root.publishDraftRevealRequested()
-                                        }
-                                    }
-                                }
                             }
                         }
                     }

@@ -68,6 +68,7 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
             emit currentSessionChanged();
             emit sessionStatusChanged();
             emit publishStatusChanged();
+            emit messageTopicFilterStateChanged();
         });
     }
     if (m_dependencies.bindSessionRuntimeStateChanged) {
@@ -99,13 +100,22 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
     if (m_dependencies.bindSubscriptionsChanged) {
         m_dependencies.bindSubscriptionsChanged(this, [this]() {
             emit subscriptionsStateChanged();
+            emit messageTopicFilterStateChanged();
         });
+    }
+    if (m_dependencies.filteredMessages) {
+        connect(
+            m_dependencies.filteredMessages,
+            &MessageFilterModel::selectedTopicsChanged,
+            this,
+            &WorkbenchViewModel::messageTopicFilterStateChanged);
     }
     refreshSubscriptionEditorScriptOptions();
 }
 
 SessionListModel *WorkbenchViewModel::sessions() const { return m_dependencies.sessions; }
 SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return m_dependencies.filteredSubscriptions; }
+SubscriptionFilterModel *WorkbenchViewModel::messageFilterSubscriptions() const { return m_dependencies.messageFilterSubscriptions; }
 EventStreamModel *WorkbenchViewModel::messages() const { return m_dependencies.messages; }
 MessageFilterModel *WorkbenchViewModel::filteredMessages() const { return m_dependencies.filteredMessages; }
 PublishDraftViewModel *WorkbenchViewModel::publisher() { return &m_publisher; }
@@ -212,6 +222,41 @@ bool WorkbenchViewModel::allSubscriptionsPaused() const
         session->subscriptions.cbegin(),
         session->subscriptions.cend(),
         [](const SubscriptionEntry &entry) { return entry.paused; });
+}
+
+QVariantMap WorkbenchViewModel::messageTopicFilterState() const
+{
+    const QStringList selectedTopics = m_dependencies.filteredMessages
+        ? m_dependencies.filteredMessages->selectedTopics()
+        : QStringList {};
+    int pausedCount = 0;
+    QString singleTopicLabel;
+
+    for (const QString &selectedTopic : selectedTopics) {
+        QString displayName = selectedTopic;
+        bool paused = false;
+        if (m_dependencies.messageFilterSubscriptions) {
+            for (int row = 0; row < m_dependencies.messageFilterSubscriptions->count(); ++row) {
+                const QVariantMap subscription = m_dependencies.messageFilterSubscriptions->rowAt(row);
+                if (subscription.value(QStringLiteral("topic")).toString() != selectedTopic) {
+                    continue;
+                }
+                displayName = subscription.value(QStringLiteral("displayName")).toString();
+                paused = subscription.value(QStringLiteral("paused")).toBool();
+                break;
+            }
+        }
+        pausedCount += paused ? 1 : 0;
+        if (selectedTopics.size() == 1) {
+            singleTopicLabel = displayName;
+        }
+    }
+
+    return {
+        {QStringLiteral("selectedCount"), selectedTopics.size()},
+        {QStringLiteral("pausedCount"), pausedCount},
+        {QStringLiteral("singleTopicLabel"), singleTopicLabel},
+    };
 }
 
 void WorkbenchViewModel::setCurrentSessionIndex(int index)

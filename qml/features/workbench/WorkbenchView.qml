@@ -17,11 +17,26 @@ Item {
     readonly property int collapsedConnectionPaneWidth: 34
     readonly property int connectionPaneVisualCollapseWidth: 84
     readonly property int expandedConnectionPaneWidth: 208
+    readonly property int compactConnectionPaneWidth: 188
     readonly property color connectionPaneEdgeColor: root.ui.themePalette.panelBorder
-    property real connectionPaneWidth: root.connectionPaneCollapsed ? root.collapsedConnectionPaneWidth : root.expandedConnectionPaneWidth
+    readonly property bool compactPaneWidths: root.width <= 1208
+    readonly property bool connectionPaneAutoHidden: root.width <= 988
+    readonly property bool subscriptionPaneAutoHidden: root.width <= 708
+    readonly property int effectiveExpandedConnectionPaneWidth: root.compactPaneWidths
+                                                                ? root.compactConnectionPaneWidth
+                                                                : root.expandedConnectionPaneWidth
+    property real connectionPaneWidth: root.connectionPaneAutoHidden
+                                       ? 0
+                                       : (root.connectionPaneCollapsed
+                                          ? root.collapsedConnectionPaneWidth
+                                          : root.effectiveExpandedConnectionPaneWidth)
     readonly property int subscriptionPaneMinWidth: 300
     readonly property int subscriptionPaneMaxWidth: 520
     property int subscriptionPaneWidth: 320
+    readonly property int compactSubscriptionPaneWidth: 286
+    readonly property int effectiveSubscriptionPaneWidth: root.compactPaneWidths
+                                                          ? root.compactSubscriptionPaneWidth
+                                                          : root.subscriptionPaneWidth
     property bool collapseConnectionPaneOnConnect: false
     property int trackedConnectionSessionIndex: -1
     property string trackedConnectionState: ""
@@ -168,11 +183,12 @@ Item {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        width: root.expandedConnectionPaneWidth
+        width: root.effectiveExpandedConnectionPaneWidth
         z: 0
         ui: root.ui
         viewModel: root.viewModel
         collapsed: root.connectionPaneWidth <= root.connectionPaneVisualCollapseWidth
+        visible: !root.connectionPaneAutoHidden
         visibleWidth: root.connectionPaneWidth
         onSessionCreateRequested: root.openSessionEditorForCreate()
         onSessionEditRequested: index => root.openSessionEditorForEdit(index)
@@ -210,9 +226,10 @@ Item {
         }
 
         Rectangle {
-            SplitView.preferredWidth: root.subscriptionPaneWidth
-            SplitView.minimumWidth: root.subscriptionPaneMinWidth
-            SplitView.maximumWidth: root.subscriptionPaneMaxWidth
+            visible: !root.subscriptionPaneAutoHidden
+            SplitView.preferredWidth: visible ? root.effectiveSubscriptionPaneWidth : 0
+            SplitView.minimumWidth: visible ? (root.compactPaneWidths ? 276 : root.subscriptionPaneMinWidth) : 0
+            SplitView.maximumWidth: visible ? root.subscriptionPaneMaxWidth : 0
             SplitView.fillHeight: true
             color: root.ui.themePalette.panelBg
 

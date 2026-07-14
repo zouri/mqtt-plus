@@ -107,6 +107,7 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
     , sessionsModel(parent)
     , subscriptionsModel(parent)
     , filteredSubscriptionsModel(parent)
+    , messageFilterSubscriptionsModel(parent)
     , messagesModel(parent)
     , filteredMessagesModel(parent)
     , logsModel(parent)
@@ -255,6 +256,7 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
         },
     });
     filteredSubscriptionsModel.setSourceModel(&subscriptionsModel);
+    messageFilterSubscriptionsModel.setSourceModel(&subscriptionsModel);
     filteredMessagesModel.setSourceModel(&messagesModel);
 
     QObject::connect(
