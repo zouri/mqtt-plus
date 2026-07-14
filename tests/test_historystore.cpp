@@ -1,4 +1,5 @@
 #include "services/storage/historystore.h"
+#include "domain/messagerecord.h"
 
 #include <QtTest/QtTest>
 
@@ -17,6 +18,7 @@ private slots:
     void resetsOnlyMessageTableWhenSchemaIsStale();
     void loadMessagesUsesPreviewWithoutPayloadBytes();
     void loadsPayloadBytesByMessageId();
+    void roundTripsCanonicalOutgoingMessage();
 };
 
 void HistoryStoreTest::flushesRawPayloadWithoutLegacyColumns()
@@ -206,6 +208,40 @@ void HistoryStoreTest::loadsPayloadBytesByMessageId()
     QVERIFY(reservedId > 0);
     QCOMPARE(store.flushPendingMessages(), QStringList({sessionId}));
     QCOMPARE(store.loadMessagePayloadBytes(reservedId), payload);
+}
+
+void HistoryStoreTest::roundTripsCanonicalOutgoingMessage()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+
+    MessageRecord record;
+    record.sessionId = QStringLiteral("session-1");
+    record.timestamp = QStringLiteral("2026-07-14T10:20:30.123");
+    record.direction = MessageDirection::Outgoing;
+    record.topic = QStringLiteral("home/light/set");
+    record.qos = 1;
+    record.retain = true;
+    record.retainKnown = true;
+    record.payloadBytes = QByteArrayLiteral("{\"value\":23.7}");
+    record.payloadSize = record.payloadBytes.size();
+    record.payloadState = QStringLiteral("full");
+    record.payloadPreview = QString::fromUtf8(record.payloadBytes);
+    record.payloadFormat = 1;
+
+    const qint64 id = store.enqueueMessage(record);
+    QVERIFY(id > 0);
+    QCOMPARE(store.flushPendingMessages(), QStringList {QStringLiteral("session-1")});
+
+    const QVariantMap loaded = store.loadMessage(id);
+    QCOMPARE(loaded.value(QStringLiteral("direction")).toString(), QStringLiteral("outgoing"));
+    QCOMPARE(loaded.value(QStringLiteral("qos")).toInt(), 1);
+    QCOMPARE(loaded.value(QStringLiteral("retain")).toBool(), true);
+    QCOMPARE(loaded.value(QStringLiteral("retain_known")).toBool(), true);
+    QCOMPARE(loaded.value(QStringLiteral("payload_bytes")).toByteArray(), record.payloadBytes);
 }
 
 QTEST_MAIN(HistoryStoreTest)
