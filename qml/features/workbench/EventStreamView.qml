@@ -21,10 +21,12 @@ Item {
     property bool loadingOlderEvents: false
     property bool reachedHistoryStart: false
     property string followMode: "smart"
+    property string selectedHistoryId: ""
     readonly property bool connected: root.status.state === "connected"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
 
     signal publishDraftRevealRequested()
+    signal messageSelected(string historyId)
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -174,7 +176,7 @@ Item {
                 Label {
                     text: root.title
                     color: root.ui.textStrong
-                    font.pixelSize: 18
+                    font.pixelSize: 16
                     font.bold: true
                 }
 
@@ -191,6 +193,63 @@ Item {
 
                 Item {
                     Layout.fillWidth: true
+                }
+
+                AppTextField {
+                    id: messageSearchField
+
+                    ui: root.ui
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 220
+                    Layout.minimumWidth: 100
+                    Layout.preferredHeight: 30
+                    leftPadding: 32
+                    placeholderText: qsTr("Search messages")
+                    // qmllint disable missing-property
+                    text: root.streamModel.filterText
+                    onTextEdited: root.streamModel.filterText = text
+                    // qmllint enable missing-property
+
+                    AppIconButton {
+                        ui: root.ui
+                        anchors.left: parent.left
+                        anchors.leftMargin: 3
+                        anchors.verticalCenter: parent.verticalCenter
+                        implicitWidth: 24
+                        implicitHeight: 24
+                        iconSource: root.ui.materialIcon("search")
+                        iconSize: 14
+                        restBg: "transparent"
+                        hoverBg: "transparent"
+                        pressedBg: "transparent"
+                        outlineColor: "transparent"
+                        symbolColor: root.ui.textMuted
+                        activeFocusOnTab: false
+                        Accessible.ignored: true
+                        onClicked: messageSearchField.forceActiveFocus()
+                    }
+                }
+
+                AppIconButton {
+                    id: messageFilterButton
+
+                    ui: root.ui
+                    visible: root.showOutputControls
+                    iconSource: root.ui.materialIcon("filter")
+                    iconSize: 15
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    cornerRadius: 7
+                    restBg: root.ui.themePalette.itemBg
+                    hoverBg: root.ui.themePalette.selectedBg
+                    outlineColor: root.ui.themePalette.panelBorder
+                    // qmllint disable missing-property
+                    symbolColor: root.streamModel.filterActive ? root.ui.themePalette.infoText : root.ui.textMuted
+                    forceActive: root.streamModel.filterActive
+                    // qmllint enable missing-property
+                    accessibleName: qsTr("Message filters")
+                    toolTipText: qsTr("Message filters")
+                    onClicked: messageFilterPopover.open()
                 }
 
                 AppIconButton {
@@ -231,16 +290,27 @@ Item {
 
                 AppIconButton {
                     ui: root.ui
-                    iconSource: root.ui.materialIcon("delete")
+                    iconSource: root.ui.materialIcon("more-horiz")
                     iconSize: 14
                     implicitWidth: 32
                     implicitHeight: 32
                     cornerRadius: 7
                     restBg: root.ui.themePalette.itemBg
                     outlineColor: root.ui.themePalette.panelBorder
-                    accessibleName: qsTr("Clear history")
+                    accessibleName: qsTr("Clear message history")
+                    toolTipText: qsTr("Clear message history")
                     onClicked: root.viewModel.clearMessages()
                 }
+            }
+
+            MessageFilterPopover {
+                id: messageFilterPopover
+
+                ui: root.ui
+                filterModel: root.streamModel
+                subscriptionsModel: root.viewModel.filteredSubscriptions
+                x: Math.max(8, parent.width - width - 110)
+                y: parent.height - 2
             }
         }
 
@@ -364,6 +434,14 @@ Item {
                     required property string testPayload
                     required property int testFormat
                     required property string historyId
+                    required property string direction
+                    required property string alias
+                    required property int qos
+                    required property bool retain
+                    required property bool retainKnown
+                    required property string parsedPayload
+                    required property string payloadState
+                    required property string payloadHash
                     readonly property bool isDivider: eventDelegate.kind === "divider"
                     readonly property bool isMessage: eventDelegate.kind === "message"
                     readonly property bool isEvent: eventDelegate.kind === "event"
@@ -406,11 +484,23 @@ Item {
                         width: parent.width
                         implicitHeight: rowBody.implicitHeight + 16
                         radius: 10
-                        color: rowHover.hovered ? root.ui.themePalette.rowHover : "transparent"
-                        border.color: "transparent"
+                        color: eventDelegate.historyId === root.selectedHistoryId
+                               ? root.ui.themePalette.selectedBg
+                               : (rowHover.hovered ? root.ui.themePalette.rowHover : "transparent")
+                        border.color: eventDelegate.historyId === root.selectedHistoryId
+                                      ? root.ui.themePalette.selectedBorder
+                                      : "transparent"
 
                         HoverHandler {
                             id: rowHover
+                        }
+
+                        TapHandler {
+                            enabled: eventDelegate.isMessage
+                            onTapped: {
+                                root.selectedHistoryId = eventDelegate.historyId;
+                                root.messageSelected(eventDelegate.historyId);
+                            }
                         }
 
                         RowLayout {
@@ -433,9 +523,13 @@ Item {
 
                             Label {
                                 Layout.preferredWidth: 14
-                                text: eventDelegate.isMessage ? "↓" : "•"
+                                text: eventDelegate.isMessage
+                                      ? (eventDelegate.direction === "outgoing" ? "↑" : "↓")
+                                      : "•"
                                 color: eventDelegate.isMessage
-                                       ? root.ui.themePalette.successText
+                                       ? (eventDelegate.direction === "outgoing"
+                                          ? root.ui.textMuted
+                                          : root.ui.themePalette.successText)
                                        : root.ui.themePalette.warningText
                                 horizontalAlignment: Text.AlignHCenter
                                 font.pixelSize: 14
@@ -461,7 +555,9 @@ Item {
                                     TextInput {
                                         Layout.fillWidth: true
                                         Layout.minimumWidth: 0
-                                        text: eventDelegate.title
+                                        text: eventDelegate.alias.length > 0
+                                              ? `${eventDelegate.alias} · ${eventDelegate.topic}`
+                                              : eventDelegate.title
                                         color: eventDelegate.isEvent
                                                ? root.ui.themePalette.eventTitle
                                                : root.ui.textStrong
@@ -481,7 +577,7 @@ Item {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
                                     Layout.preferredHeight: Math.min(implicitHeight,
-                                                                     payloadLineMetrics.lineSpacing * 4)
+                                                                     payloadLineMetrics.lineSpacing * 2)
                                     text: eventDelegate.payload
                                     color: eventDelegate.isEvent ? root.ui.textMuted : root.ui.textStrong
                                     font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily

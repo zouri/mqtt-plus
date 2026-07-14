@@ -43,6 +43,8 @@ private slots:
     void subscriptionsPanelDoesNotReadModelRowsForEditing();
     void subscriptionsPanelDoesNotOwnBusinessState();
     void workbenchMiddlePaneUsesCompactHeaderControls();
+    void subscriptionRowsKeepCompactActionGroup();
+    void workbenchUsesReferenceMessageWorkspace();
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
@@ -657,7 +659,7 @@ void ArchitectureBoundariesTest::messageRowsUseHoverHandlerForNestedControls()
 
     QVERIFY2(messageRowSource.contains(QStringLiteral("id: rowHover")),
         "Message row hover state must come from a row-level HoverHandler so nested text controls and action buttons keep the row highlighted");
-    QVERIFY2(messageRowSource.contains(QStringLiteral("color: rowHover.hovered ?")),
+    QVERIFY2(messageRowSource.contains(QStringLiteral("rowHover.hovered ?")),
         "Message row background must bind to the HoverHandler hover state");
     QVERIFY2(!messageRowSource.contains(QStringLiteral("rowMouse.containsMouse")),
         "MouseArea.containsMouse is lost when hovering nested controls inside the message row");
@@ -879,12 +881,10 @@ void ArchitectureBoundariesTest::workbenchMiddlePaneUsesCompactHeaderControls()
         "Subscription search and add action must share one compact toolbar row");
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("readonly property bool activeTraffic")),
         "Subscription rows must distinguish recent traffic from idle subscriptions");
-    QVERIFY2(subscriptionsSource.contains(QStringLiteral("implicitHeight: subscriptionDelegate.hasError ? 64 : 50")),
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("implicitHeight: subscriptionDelegate.hasError ? 60 : 46")),
         "Subscription rows must use the compact management height");
-    QVERIFY2(subscriptionsSource.contains(QStringLiteral("layer.enabled: subscriptionDelegate.activeTraffic")),
-        "Only rows with recent traffic may render the elevated shadow");
-    QVERIFY2(subscriptionsSource.contains(QStringLiteral("? subscriptionDelegate.topicSwatchColor")),
-        "Active subscription borders must match their configured Topic color");
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("MultiEffect")),
+        "Compact subscription rows must remain flat instead of rendering card shadows");
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("readonly property string rateText")),
         "Subscription rows must keep a stable live-rate value");
     QVERIFY2(!subscriptionsSource.contains(QStringLiteral("required property int requestedQos")),
@@ -895,6 +895,44 @@ void ArchitectureBoundariesTest::workbenchMiddlePaneUsesCompactHeaderControls()
         "Subscription rows must not render script metadata as a badge");
     QVERIFY2(!subscriptionsSource.contains(QStringLiteral("SequentialAnimation")),
         "Subscription activity feedback must not use a looping breathing animation");
+}
+
+void ArchitectureBoundariesTest::subscriptionRowsKeepCompactActionGroup()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), source));
+    QVERIFY2(source.contains(QStringLiteral("id: subscriptionActionGroup")),
+        "Subscription rate and row actions must share one layout group");
+    QVERIFY2(source.contains(QStringLiteral("Layout.preferredWidth: 42")),
+        "Subscription rate must use the compact fixed width");
+    QVERIFY2(source.contains(QStringLiteral("spacing: 2")),
+        "Subscription action group must use compact spacing");
+}
+
+void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
+{
+    QString workbenchSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/WorkbenchView.qml"), workbenchSource));
+    QVERIFY(workbenchSource.contains(QStringLiteral("expandedConnectionPaneWidth: 208")));
+    QVERIFY(workbenchSource.contains(QStringLiteral("subscriptionPaneWidth: 320")));
+
+    QString subscriptionsSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), subscriptionsSource));
+    QVERIFY(subscriptionsSource.contains(QStringLiteral("signal replaceMessageTopicFilter(string topic)")));
+    QVERIFY(subscriptionsSource.contains(QStringLiteral("setAllCurrentSubscriptionsPaused")));
+
+    QString panelSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SessionMessagePanel.qml"), panelSource));
+    QVERIFY(panelSource.contains(QStringLiteral("MessageInspector")));
+    QVERIFY(panelSource.contains(QStringLiteral("streamModel: root.viewModel.filteredMessages")));
+
+    QString streamSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), streamSource));
+    QVERIFY(streamSource.contains(QStringLiteral("MessageFilterPopover")));
+
+    const QString inspectorPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR)
+        + QStringLiteral("/qml/features/workbench/MessageInspector.qml");
+    QVERIFY(QFile::exists(inspectorPath));
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()
