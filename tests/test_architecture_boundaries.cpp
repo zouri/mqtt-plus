@@ -691,30 +691,22 @@ void ArchitectureBoundariesTest::eventStreamFollowModeUsesSingleCycleButton()
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
 
-    QVERIFY2(source.contains(QStringLiteral("function nextFollowMode(mode)")),
-        "EventStreamView should expose the follow-mode cycle in one helper");
     QVERIFY2(source.contains(QStringLiteral("id: followModeButton")),
         "Follow mode should be represented by one toolbar button");
     QVERIFY2(source.contains(QStringLiteral("iconSource: root.ui.materialIcon(\"follow-mode\")")),
         "Follow mode button should use one shared follow icon");
-    QVERIFY2(source.contains(QStringLiteral("checkable: true")),
-        "Follow mode button should expose smart follow as a pressed/toggled state");
-    QVERIFY2(source.contains(QStringLiteral("checked: eventList.shouldFollowOutput")),
-        "Follow mode button pressed state must reflect the actual follow state");
-    QVERIFY2(source.contains(QStringLiteral("forceActive: followModeButton.checked")),
+    QVERIFY2(source.contains(QStringLiteral("forceActive: eventList.shouldFollowOutput")),
         "Follow mode button should visually keep the pressed state while smart follow is active");
-    QVERIFY2(source.contains(QStringLiteral("onClicked: root.setFollowMode(eventList.shouldFollowOutput ? \"manual\" : \"smart\")")),
-        "Follow mode button should toggle from the actual follow state");
+    QVERIFY2(source.contains(QStringLiteral("onClicked: root.setFollowMode(\"smart\")")),
+        "Follow mode button should restore following and scroll to the latest message");
+    QVERIFY2(!source.contains(QStringLiteral("checkable: true")),
+        "Follow mode button should not let the toolbar disable following directly");
     QVERIFY2(source.contains(QStringLiteral("eventList.shouldFollowOutput = false")),
-        "Manual follow mode must clear the actual follow state");
+        "Scrolling away or selecting a row must clear the actual follow state");
     QVERIFY2(source.contains(QStringLiteral("eventList.shouldFollowOutput = true")),
         "Scrolling to latest or enabling smart follow must restore the actual follow state");
-    QVERIFY2(source.contains(QStringLiteral("root.setFollowMode(\"smart\")")),
-        "Clicking the scroll-to-latest affordance must reactivate smart follow");
-    QVERIFY2(source.contains(QStringLiteral("if (mode === \"smart\")")),
-        "Follow mode cycling should start from smart");
-    QVERIFY2(source.contains(QStringLiteral("return \"manual\"")),
-        "Follow mode cycling should move from smart to manual");
+    QVERIFY2(!source.contains(QStringLiteral("function nextFollowMode(mode)")),
+        "The reference interaction no longer exposes a follow-mode cycle");
     QVERIFY2(!source.contains(QStringLiteral("mode === \"always\"")),
         "Follow mode should no longer expose the removed always mode");
     QVERIFY2(!source.contains(QStringLiteral("follow-always")),
@@ -929,10 +921,43 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QString streamSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), streamSource));
     QVERIFY(streamSource.contains(QStringLiteral("MessageFilterPopover")));
+    QVERIFY(streamSource.contains(QStringLiteral("filteredMessageCount")));
+    QVERIFY(streamSource.contains(QStringLiteral("totalMessageCount")));
+    QVERIFY(streamSource.contains(QStringLiteral("filterSummaryText")));
+    QVERIFY(streamSource.contains(QStringLiteral("Accessible.role: Accessible.Button")));
+    QVERIFY(streamSource.contains(QStringLiteral("Keys.onPressed")));
+    QVERIFY(streamSource.contains(QStringLiteral("streamActionsMenu.open()")));
+    QVERIFY(streamSource.contains(QStringLiteral("onClosed: messageFilterButton.forceActiveFocus()")));
+    QVERIFY(streamSource.contains(QStringLiteral("accessibleName: qsTr(\"More message actions\")")));
+    const int metadataStart = streamSource.indexOf(QStringLiteral("id: messageActions"));
+    const int metadataEnd = streamSource.indexOf(QStringLiteral("id: followButton"), metadataStart);
+    QVERIFY(metadataStart >= 0 && metadataEnd > metadataStart);
+    QVERIFY2(!streamSource.mid(metadataStart, metadataEnd - metadataStart).contains(QStringLiteral("AppBadge {")),
+        "Message format metadata should remain plain text like the reference row");
+
+    QString filterSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageFilterPopover.qml"), filterSource));
+    QVERIFY(filterSource.contains(QStringLiteral("receiveStateText")));
+    QVERIFY2(filterSource.contains(QStringLiteral("delegate: AppCheckBox")),
+        "Topic options should use the compact application checkbox instead of the platform default");
+
+    QVERIFY(workbenchSource.contains(QStringLiteral("connectionPaneAutoHidden")));
+    QVERIFY(workbenchSource.contains(QStringLiteral("subscriptionPaneAutoHidden")));
+
+    QVERIFY(panelSource.contains(QStringLiteral("function closeInspector()")));
+    QVERIFY(panelSource.contains(QStringLiteral("selectedMessageHistoryId = \"\"")));
 
     const QString inspectorPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR)
         + QStringLiteral("/qml/features/workbench/MessageInspector.qml");
     QVERIFY(QFile::exists(inspectorPath));
+
+    QString inspectorSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageInspector.qml"), inspectorSource));
+    QVERIFY(inspectorSource.contains(QStringLiteral("qsTr(\"Message Viewer\")")));
+    QVERIFY(inspectorSource.contains(QStringLiteral("id: metadataSeparator1")));
+    QVERIFY(inspectorSource.contains(QStringLiteral("component InspectorActionButton: AppButton")));
+    QVERIFY2(!inspectorSource.contains(QStringLiteral("primary: true")),
+        "Inspector actions should use the same neutral bordered weight as the reference");
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()

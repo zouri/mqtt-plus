@@ -27,6 +27,7 @@ class WorkbenchViewModel : public QObject
     Q_OBJECT
     Q_PROPERTY(SessionListModel* sessions READ sessions CONSTANT)
     Q_PROPERTY(SubscriptionFilterModel* filteredSubscriptions READ filteredSubscriptions CONSTANT)
+    Q_PROPERTY(SubscriptionFilterModel* messageFilterSubscriptions READ messageFilterSubscriptions CONSTANT)
     Q_PROPERTY(EventStreamModel* messages READ messages CONSTANT)
     Q_PROPERTY(MessageFilterModel* filteredMessages READ filteredMessages CONSTANT)
     Q_PROPERTY(PublishDraftViewModel* publisher READ publisher CONSTANT)
@@ -40,6 +41,7 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(QString pendingSubscriptionDeleteTopic READ pendingSubscriptionDeleteTopic NOTIFY pendingSubscriptionDeleteChanged)
     Q_PROPERTY(QString pendingSubscriptionDeleteDisplayName READ pendingSubscriptionDeleteDisplayName NOTIFY pendingSubscriptionDeleteChanged)
     Q_PROPERTY(bool allSubscriptionsPaused READ allSubscriptionsPaused NOTIFY subscriptionsStateChanged)
+    Q_PROPERTY(QVariantMap messageTopicFilterState READ messageTopicFilterState NOTIFY messageTopicFilterStateChanged)
 
 public:
     struct Dependencies {
@@ -57,6 +59,7 @@ public:
         EventHistoryService *eventController = nullptr;
         SessionListModel *sessions = nullptr;
         SubscriptionFilterModel *filteredSubscriptions = nullptr;
+        SubscriptionFilterModel *messageFilterSubscriptions = nullptr;
         EventStreamModel *messages = nullptr;
         MessageFilterModel *filteredMessages = nullptr;
         ScriptLibraryModel *scripts = nullptr;
@@ -67,6 +70,7 @@ public:
 
     SessionListModel *sessions() const;
     SubscriptionFilterModel *filteredSubscriptions() const;
+    SubscriptionFilterModel *messageFilterSubscriptions() const;
     EventStreamModel *messages() const;
     MessageFilterModel *filteredMessages() const;
     PublishDraftViewModel *publisher();
@@ -80,6 +84,7 @@ public:
     QString pendingSubscriptionDeleteTopic() const;
     QString pendingSubscriptionDeleteDisplayName() const;
     bool allSubscriptionsPaused() const;
+    QVariantMap messageTopicFilterState() const;
 
     void setCurrentSessionIndex(int index);
 
@@ -129,6 +134,7 @@ signals:
     void sessionEditRequested(int index);
     void subscriptionDeleteRequested(const QString &topic, const QString &displayName);
     void subscriptionsStateChanged();
+    void messageTopicFilterStateChanged();
 
 private:
     ScriptLibraryModel *scriptLibrary() const;

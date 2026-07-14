@@ -270,6 +270,38 @@
         <translation>消息筛选</translation>
     </message>
     <message>
+        <source>Message filters: %1</source>
+        <translation>消息筛选：%1</translation>
+    </message>
+    <message>
+        <source>Filter</source>
+        <translation>筛选</translation>
+    </message>
+    <message>
+        <source>%1 Topics</source>
+        <translation>%1 个主题</translation>
+    </message>
+    <message>
+        <source>Received</source>
+        <translation>接收</translation>
+    </message>
+    <message>
+        <source>Sent</source>
+        <translation>发送</translation>
+    </message>
+    <message>
+        <source>Receiving is paused</source>
+        <translation>接收已暂停</translation>
+    </message>
+    <message>
+        <source>%1 selected Topics are paused</source>
+        <translation>已选主题中有 %1 个暂停接收</translation>
+    </message>
+    <message>
+        <source>More message actions</source>
+        <translation>更多消息操作</translation>
+    </message>
+    <message>
         <source>Clear message history</source>
         <translation>清空消息历史</translation>
     </message>
@@ -1480,6 +1512,7 @@
     <name>MessageInspector</name>
     <message><source>Message inspector</source><translation>消息检查器</translation></message>
     <message><source>Message Inspector</source><translation>消息检查器</translation></message>
+    <message><source>Message Viewer</source><translation>消息查看器</translation></message>
     <message><source>Close message inspector</source><translation>关闭消息检查器</translation></message>
     <message><source>Parsed result</source><translation>解析结果</translation></message>
     <message><source>Payload preview</source><translation>Payload 预览</translation></message>

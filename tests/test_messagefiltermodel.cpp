@@ -10,6 +10,7 @@ class MessageFilterModelTest : public QObject
 private slots:
     void filtersTextTopicsAndDirection();
     void hidesDividersOnlyWhileFiltering();
+    void reportsVisibleAndTotalMessageCounts();
 };
 
 namespace {
@@ -69,6 +70,33 @@ void MessageFilterModelTest::hidesDividersOnlyWhileFiltering()
     proxy.setFilterText(QStringLiteral("light"));
     QCOMPARE(proxy.count(), 1);
     QCOMPARE(proxy.rowAt(0).value(QStringLiteral("kind")).toString(), QStringLiteral("message"));
+}
+
+void MessageFilterModelTest::reportsVisibleAndTotalMessageCounts()
+{
+    EventStreamModel source;
+    source.setRows({
+        QVariantMap {{QStringLiteral("kind"), QStringLiteral("divider")}},
+        messageRow(QStringLiteral("home/light"), QStringLiteral("Light"), QStringLiteral("off"), QStringLiteral("incoming")),
+        messageRow(QStringLiteral("home/light/set"), QString(), QStringLiteral("on"), QStringLiteral("outgoing")),
+    });
+
+    MessageFilterModel proxy;
+    proxy.setSourceModel(&source);
+    QCOMPARE(proxy.filteredMessageCount(), 2);
+    QCOMPARE(proxy.totalMessageCount(), 2);
+
+    proxy.setDirection(QStringLiteral("outgoing"));
+    QCOMPARE(proxy.filteredMessageCount(), 1);
+    QCOMPARE(proxy.totalMessageCount(), 2);
+
+    source.appendRow(messageRow(
+        QStringLiteral("home/kitchen/temp"),
+        QStringLiteral("Kitchen"),
+        QStringLiteral("23.7"),
+        QStringLiteral("outgoing")));
+    QCOMPARE(proxy.filteredMessageCount(), 2);
+    QCOMPARE(proxy.totalMessageCount(), 3);
 }
 
 QTEST_MAIN(MessageFilterModelTest)

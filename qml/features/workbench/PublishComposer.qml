@@ -66,68 +66,64 @@ Item {
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 14
-                anchors.rightMargin: 14
-                anchors.topMargin: root.expanded ? 8 : 4
-                anchors.bottomMargin: root.expanded ? 12 : 4
-                spacing: 8
+                spacing: 7
 
-                RowLayout {
+                Button {
+                    id: composerHeader
+
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 32
-                    spacing: 7
+                    Layout.preferredHeight: root.collapsedHeight
+                    leftPadding: 14
+                    rightPadding: 12
+                    Accessible.name: root.expanded ? qsTr("Collapse publish composer") : qsTr("Expand publish composer")
 
-                    TapHandler {
-                        onTapped: root.expanded = !root.expanded
+                    contentItem: RowLayout {
+                        spacing: 7
+
+                        Label {
+                            text: qsTr("Publish Message")
+                            color: root.ui.textStrong
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
+
+                        Label {
+                            visible: root.publishFeedback.length > 0
+                            text: root.publishFeedback
+                            color: root.publishStatus.state === "failed"
+                                   ? root.ui.themePalette.errorText
+                                   : root.ui.textMuted
+                            font.pixelSize: 11
+                            elide: Label.ElideRight
+                            Layout.fillWidth: true
+                        }
+
+                        Item {
+                            visible: root.publishFeedback.length === 0
+                            Layout.fillWidth: true
+                        }
+
+                        Label {
+                            text: root.expanded
+                                  ? "⌄ " + qsTr("Collapse")
+                                  : "› " + qsTr("Expand")
+                            color: root.ui.textMuted
+                            font.pixelSize: 11
+                        }
                     }
 
-                    Label {
-                        text: root.expanded ? "▾" : "▸"
-                        color: root.ui.themePalette.textSubtle
-                        font.pixelSize: 13
-                        font.bold: true
+                    background: Rectangle {
+                        color: composerHeader.hovered ? root.ui.themePalette.rowHover : "transparent"
                     }
 
-                    Label {
-                        text: qsTr("Publish Message")
-                        color: root.ui.textStrong
-                        font.pixelSize: 13
-                        font.bold: true
-                    }
-
-                    Label {
-                        visible: root.publishFeedback.length > 0
-                        text: root.publishFeedback
-                        color: root.publishStatus.state === "failed"
-                               ? root.ui.themePalette.errorText
-                               : root.ui.textMuted
-                        font.pixelSize: 11
-                        elide: Label.ElideRight
-                        Layout.fillWidth: true
-                    }
-
-                    Item {
-                        visible: root.publishFeedback.length === 0
-                        Layout.fillWidth: true
-                    }
-
-                    AppIconButton {
-                        ui: root.ui
-                        iconSource: root.ui.materialIcon(root.expanded ? "chevron-left" : "chevron-right")
-                        iconSize: 15
-                        implicitWidth: 26
-                        implicitHeight: 26
-                        cornerRadius: 7
-                        restBg: root.ui.themePalette.itemBg
-                        outlineColor: root.ui.themePalette.panelBorder
-                        accessibleName: root.expanded ? qsTr("Collapse") : qsTr("Expand")
-                        onClicked: root.expanded = !root.expanded
-                    }
+                    onClicked: root.expanded = !root.expanded
                 }
 
                 RowLayout {
                     visible: root.expanded
                     Layout.fillWidth: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 12
                     Layout.preferredHeight: visible ? 34 : 0
                     spacing: 6
 
@@ -196,6 +192,9 @@ Item {
                 Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 12
+                    Layout.bottomMargin: 12
                     visible: root.expanded
 
                     AppTextArea {
