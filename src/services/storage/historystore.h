@@ -5,7 +5,10 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QVector>
+
+#include "domain/messagerecord.h"
 
 class HistoryStore
 {
@@ -17,6 +20,7 @@ public:
     bool isReady() const;
     QString lastError() const;
 
+    qint64 enqueueMessage(const MessageRecord &message);
     qint64 enqueueMessage(
         const QString &sessionId,
         const QString &timestamp,
@@ -41,6 +45,7 @@ public:
         const QString &message);
     QVariantList loadMessages(const QString &sessionId, int limit) const;
     QVariantList loadMessagesBefore(const QString &sessionId, qint64 beforeId, int limit) const;
+    QVariantMap loadMessage(qint64 messageId) const;
     QByteArray loadMessagePayloadBytes(qint64 messageId) const;
     QVariantList loadLogs(const QString &sessionId, int limit) const;
     QVariantList loadLogsBefore(const QString &sessionId, qint64 beforeId, int limit) const;
@@ -53,28 +58,11 @@ public:
     void pruneLogs(const QString &sessionId, int keepCount);
 
 private:
-    struct PendingMessage {
-        QString sessionId;
-        QString timestamp;
-        QString topic;
-        QByteArray payloadBytes;
-        QString parsedPayload;
-        QString parsedFormat;
-        QString parseError;
-        QString scriptId;
-        QString scriptName;
-        QString payloadPreview;
-        QString payloadState;
-        qint64 payloadSize = 0;
-        QString payloadHash;
-        int payloadFormat = -1;
-    };
-
     bool initialize(const QString &dataPath);
 
     QSqlDatabase m_db;
     QString m_connectionName;
     QString m_lastError;
-    QVector<PendingMessage> m_pendingMessages;
+    QVector<MessageRecord> m_pendingMessages;
     qint64 m_nextMessageId = 0;
 };
