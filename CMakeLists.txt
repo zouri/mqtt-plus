@@ -250,6 +250,13 @@ if(BUILD_TESTING)
         src/models/eventstreammodel.cpp
     )
 
+    add_mqtt_plus_qt_test(test_messagefiltermodel
+        tests/test_messagefiltermodel.cpp
+        src/models/eventstreammodel.cpp
+        src/models/messagefiltermodel.cpp
+        src/services/payload/payloadcodec.cpp
+    )
+
     add_mqtt_plus_qt_test(test_eventhistoryservice
         tests/test_eventhistoryservice.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
