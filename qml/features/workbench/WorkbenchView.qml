@@ -14,7 +14,7 @@ Item {
     property bool connectionPaneCollapsed: false
     readonly property var session: root.viewModel.currentSession
     readonly property var status: root.viewModel.sessionStatus
-    readonly property int collapsedConnectionPaneWidth: 32
+    readonly property int collapsedConnectionPaneWidth: 34
     readonly property int connectionPaneVisualCollapseWidth: 84
     readonly property int expandedConnectionPaneWidth: 208
     readonly property color connectionPaneEdgeColor: root.ui.themePalette.panelBorder
@@ -235,6 +235,8 @@ Item {
                     viewModel: root.viewModel
                     onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
                     onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
+                    onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
+                    onAddMessageTopicFilter: topic => root.viewModel.addMessageTopicFilter(topic)
                 }
             }
         }

@@ -77,7 +77,7 @@ AppPanel {
                 Layout.minimumWidth: 0
                 text: control.session.name || qsTr("No session")
                 color: control.ui.textStrong
-                font.pixelSize: 15
+                font.pixelSize: 18
                 font.bold: true
                 elide: Label.ElideRight
             }
@@ -127,25 +127,10 @@ AppPanel {
                 Layout.minimumWidth: 0
                 text: control.endpointText
                 color: control.ui.textStrong
+                font.family: "Menlo"
                 font.pixelSize: 12
                 font.bold: true
                 elide: Label.ElideRight
-            }
-
-            AppBadge {
-                ui: control.ui
-                label: control.session.transportLabel || "TCP"
-                badgeRadius: 4
-                horizontalPadding: 6
-                verticalPadding: 1
-            }
-
-            AppBadge {
-                ui: control.ui
-                label: control.session.protocolVersionName || "MQTT 5"
-                badgeRadius: 4
-                horizontalPadding: 6
-                verticalPadding: 1
             }
         }
 
@@ -154,31 +139,15 @@ AppPanel {
             spacing: 10
 
             Label {
-                id: clientIdLabel
-
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                text: control.clientIdText
+                text: qsTr("%1 · %2 · Keep Alive %3s")
+                      .arg(control.session.protocolVersionName || "MQTT 5")
+                      .arg(control.session.transportLabel || "TCP")
+                      .arg(control.session.keepAliveSeconds || 30)
                 color: control.ui.themePalette.textSubtle
                 font.pixelSize: 10
                 elide: Label.ElideRight
-
-                HoverHandler {
-                    id: clientIdHover
-                }
-
-                AppToolTip {
-                    ui: control.ui
-                    text: control.clientIdText
-                    position: AppToolTip.Position.Top
-                    active: clientIdHover.hovered && clientIdLabel.implicitWidth > clientIdLabel.width
-                }
-            }
-
-            Label {
-                text: qsTr("Keep Alive %1s").arg(control.session.keepAliveSeconds || 30)
-                color: control.ui.themePalette.textSubtle
-                font.pixelSize: 10
             }
         }
     }

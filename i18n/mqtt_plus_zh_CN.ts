@@ -4,6 +4,18 @@
 <context>
     <name>AddSubscriptionDialog</name>
     <message>
+        <source>Color</source>
+        <translation>颜色</translation>
+    </message>
+    <message>
+        <source>No topic color</source>
+        <translation>不使用主题颜色</translation>
+    </message>
+    <message>
+        <source>Topic color %1</source>
+        <translation>主题颜色 %1</translation>
+    </message>
+    <message>
         <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="61"/>
         <source>Edit Subscription</source>
         <translation>编辑订阅</translation>
@@ -237,6 +249,34 @@
 </context>
 <context>
     <name>EventStreamView</name>
+    <message>
+        <source>Manual</source>
+        <translation>手动</translation>
+    </message>
+    <message>
+        <source>Smart</source>
+        <translation>智能</translation>
+    </message>
+    <message>
+        <source>Follow mode: %1</source>
+        <translation>跟随模式：%1</translation>
+    </message>
+    <message>
+        <source>Search messages</source>
+        <translation>搜索消息</translation>
+    </message>
+    <message>
+        <source>Message filters</source>
+        <translation>消息筛选</translation>
+    </message>
+    <message>
+        <source>Clear message history</source>
+        <translation>清空消息历史</translation>
+    </message>
+    <message>
+        <source>Use as publish draft</source>
+        <translation>用作发布草稿</translation>
+    </message>
     <message>
         <location filename="../qml/features/workbench/EventStreamView.qml" line="133"/>
         <source>Resume output</source>
@@ -779,6 +819,10 @@
 <context>
     <name>SessionOverviewPanel</name>
     <message>
+        <source>%1 · %2 · Keep Alive %3s</source>
+        <translation>%1 · %2 · Keep Alive %3 秒</translation>
+    </message>
+    <message>
         <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="65"/>
         <source>No session</source>
         <translation>无会话</translation>
@@ -882,6 +926,14 @@
 </context>
 <context>
     <name>SessionSidebar</name>
+    <message>
+        <source>%1:%2</source>
+        <translation>%1:%2</translation>
+    </message>
+    <message>
+        <source>Connection actions</source>
+        <translation>连接操作</translation>
+    </message>
     <message>
         <location filename="../qml/features/workbench/SessionSidebar.qml" line="83"/>
         <source>Connections</source>
@@ -1245,6 +1297,30 @@
 <context>
     <name>SubscriptionsPanel</name>
     <message>
+        <source>Filter this Topic</source>
+        <translation>仅筛选此主题</translation>
+    </message>
+    <message>
+        <source>Add Topic to filter</source>
+        <translation>添加主题到筛选</translation>
+    </message>
+    <message>
+        <source>Copy Topic</source>
+        <translation>复制主题</translation>
+    </message>
+    <message>
+        <source>Filter topics...</source>
+        <translation>筛选主题...</translation>
+    </message>
+    <message>
+        <source>Resume all topics</source>
+        <translation>恢复所有主题</translation>
+    </message>
+    <message>
+        <source>Pause all topics</source>
+        <translation>暂停所有主题</translation>
+    </message>
+    <message>
         <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="17"/>
         <source>All</source>
         <comment>subscription filter</comment>
@@ -1388,5 +1464,49 @@
         <source>Disconnected</source>
         <translation>已断开</translation>
     </message>
+</context>
+<context>
+    <name>MessageFilterPopover</name>
+    <message><source>Topic</source><translation>主题</translation></message>
+    <message><source>Clear all</source><translation>全部清除</translation></message>
+    <message><source>No topics</source><translation>暂无主题</translation></message>
+    <message><source>Direction</source><translation>方向</translation></message>
+    <message><source>All</source><translation>全部</translation></message>
+    <message><source>Received</source><translation>已接收</translation></message>
+    <message><source>Sent</source><translation>已发送</translation></message>
+    <message><source>Showing filtered messages</source><translation>正在显示筛选后的消息</translation></message>
+</context>
+<context>
+    <name>MessageInspector</name>
+    <message><source>Message inspector</source><translation>消息检查器</translation></message>
+    <message><source>Message Inspector</source><translation>消息检查器</translation></message>
+    <message><source>Close message inspector</source><translation>关闭消息检查器</translation></message>
+    <message><source>Parsed result</source><translation>解析结果</translation></message>
+    <message><source>Payload preview</source><translation>Payload 预览</translation></message>
+    <message><source>Payload</source><translation>Payload</translation></message>
+    <message><source>Select a message to inspect</source><translation>选择一条消息以查看详情</translation></message>
+    <message><source>The full payload was not stored. Hash: %1</source><translation>完整 Payload 未存储。哈希：%1</translation></message>
+    <message><source>Unavailable</source><translation>不可用</translation></message>
+    <message><source>Alias</source><translation>别名</translation></message>
+    <message><source>Topic</source><translation>主题</translation></message>
+    <message><source>Direction</source><translation>方向</translation></message>
+    <message><source>Sent</source><translation>已发送</translation></message>
+    <message><source>Received</source><translation>已接收</translation></message>
+    <message><source>Time</source><translation>时间</translation></message>
+    <message><source>QoS</source><translation>QoS</translation></message>
+    <message><source>Format</source><translation>格式</translation></message>
+    <message><source>Size</source><translation>大小</translation></message>
+    <message><source>%1 B</source><translation>%1 B</translation></message>
+    <message><source>Retain</source><translation>保留</translation></message>
+    <message><source>Yes</source><translation>是</translation></message>
+    <message><source>No</source><translation>否</translation></message>
+    <message><source>Copy parsed result</source><translation>复制解析结果</translation></message>
+    <message><source>Copy Payload</source><translation>复制 Payload</translation></message>
+    <message><source>Copy Topic</source><translation>复制主题</translation></message>
+    <message><source>Use as draft</source><translation>用作草稿</translation></message>
+</context>
+<context>
+    <name>SessionMessagePanel</name>
+    <message><source>Messages</source><translation>消息</translation></message>
 </context>
 </TS>

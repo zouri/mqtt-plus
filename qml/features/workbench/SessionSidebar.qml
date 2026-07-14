@@ -208,6 +208,7 @@ Rectangle {
                     anchors.leftMargin: 10
                     anchors.rightMargin: 10
                     spacing: 10
+                    z: 1
 
                     Rectangle {
                         Layout.preferredWidth: 8
@@ -252,6 +253,22 @@ Rectangle {
                             elide: Label.ElideRight
                             font.pixelSize: 11
                         }
+                    }
+
+                    AppIconButton {
+                        ui: control.ui
+                        Layout.preferredWidth: 24
+                        Layout.preferredHeight: 24
+                        visible: sessionDelegate.selected || sessionDelegate.highlighted
+                        iconSource: control.ui.materialIcon("more-horiz")
+                        iconSize: 15
+                        cornerRadius: 6
+                        restBg: "transparent"
+                        hoverBg: control.ui.themePalette.rowHover
+                        outlineColor: "transparent"
+                        symbolColor: control.ui.textMuted
+                        accessibleName: qsTr("Connection actions")
+                        onClicked: sessionDelegate.openSessionContextMenu()
                     }
                 }
 
@@ -426,24 +443,6 @@ Rectangle {
             symbolColor: collapsedBar.hot ? control.ui.themePalette.infoText : control.ui.textMuted
             accessibleName: qsTr("Show connection list")
             onClicked: control.expandRequested()
-        }
-
-        Label {
-            anchors.centerIn: parent
-            width: parent.width
-            text: qsTr("Expand").split("").join("\n")
-            color: collapsedBar.hot ? control.ui.themePalette.infoText : control.ui.textMuted
-            font.pixelSize: 10
-            horizontalAlignment: Text.AlignHCenter
-            lineHeight: 0.86
-            lineHeightMode: Text.ProportionalHeight
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: 120
-                    easing.type: Easing.OutCubic
-                }
-            }
         }
 
         MouseArea {

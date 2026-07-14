@@ -14,10 +14,10 @@ Item {
     required property var ui
 
     property bool expanded: true
-    property int composerHeight: 210
-    readonly property int collapsedHeight: 48
-    readonly property int minComposerHeight: 168
-    readonly property int maxComposerHeight: 420
+    property int composerHeight: 168
+    readonly property int collapsedHeight: 40
+    readonly property int minComposerHeight: 150
+    readonly property int maxComposerHeight: 300
     readonly property color surfaceBg: root.ui.themePalette.panelBg
     readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle"
                                               ? (root.publishStatus.reason && root.publishStatus.reason.length > 0
@@ -68,14 +68,18 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 14
                 anchors.rightMargin: 14
-                anchors.topMargin: 8
-                anchors.bottomMargin: 14
+                anchors.topMargin: root.expanded ? 8 : 4
+                anchors.bottomMargin: root.expanded ? 12 : 4
                 spacing: 8
 
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 32
                     spacing: 7
+
+                    TapHandler {
+                        onTapped: root.expanded = !root.expanded
+                    }
 
                     Label {
                         text: root.expanded ? "▾" : "▸"
