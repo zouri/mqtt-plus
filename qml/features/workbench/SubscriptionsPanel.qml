@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Effects
 import QtQuick.Layouts
 import "../../components"
 
@@ -19,6 +18,7 @@ AppPanel {
     readonly property int matchingSubscriptionCount: control.subscriptionModel ? control.subscriptionModel.count : 0
     readonly property var sessionStatus: control.viewModel ? control.viewModel.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
+    readonly property bool allSubscriptionsPaused: control.viewModel.allSubscriptionsPaused
     showTopBorder: false
     showRightBorder: false
     showBottomBorder: false
@@ -30,10 +30,21 @@ AppPanel {
 
     signal subscriptionCreateRequested
     signal subscriptionEditRequested(int index)
+    signal replaceMessageTopicFilter(string topic)
+    signal addMessageTopicFilter(string topic)
 
     function subscriptionActionLabel(actionId) {
         if (actionId === "edit") {
             return qsTr("Edit");
+        }
+        if (actionId === "filter") {
+            return qsTr("Filter this Topic");
+        }
+        if (actionId === "add-filter") {
+            return qsTr("Add Topic to filter");
+        }
+        if (actionId === "copy") {
+            return qsTr("Copy Topic");
         }
         if (actionId === "delete") {
             return qsTr("Delete");
@@ -76,6 +87,15 @@ AppPanel {
         id: subscriptionContextActions
 
         ListElement {
+            actionId: "filter"
+        }
+        ListElement {
+            actionId: "add-filter"
+        }
+        ListElement {
+            actionId: "copy"
+        }
+        ListElement {
             actionId: "edit"
         }
         ListElement {
@@ -89,7 +109,13 @@ AppPanel {
         actionText: actionId => control.subscriptionActionLabel(actionId)
 
         onTriggered: actionId => {
-            if (actionId === "edit") {
+            if (actionId === "filter") {
+                control.replaceMessageTopicFilter(control.subscriptionContextTopic);
+            } else if (actionId === "add-filter") {
+                control.addMessageTopicFilter(control.subscriptionContextTopic);
+            } else if (actionId === "copy") {
+                control.viewModel.copyMessageTopic(control.subscriptionContextTopic);
+            } else if (actionId === "edit") {
                 control.subscriptionEditRequested(control.subscriptionContextIndex);
             } else if (actionId === "delete") {
                 control.viewModel.requestSubscriptionDelete(control.subscriptionContextTopic, control.subscriptionContextDisplayName);
@@ -163,6 +189,23 @@ AppPanel {
                         }
                     }
                 }
+            }
+
+            AppIconButton {
+                ui: control.ui
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                iconSource: control.ui.materialIcon(control.allSubscriptionsPaused ? "play" : "pause")
+                iconSize: 14
+                cornerRadius: 7
+                restBg: control.allSubscriptionsPaused ? control.ui.themePalette.selectedBg : "transparent"
+                hoverBg: control.ui.themePalette.rowHover
+                outlineColor: control.allSubscriptionsPaused ? control.ui.themePalette.selectedBorder : "transparent"
+                symbolColor: control.allSubscriptionsPaused ? control.ui.themePalette.infoText : control.ui.textMuted
+                accessibleName: control.allSubscriptionsPaused ? qsTr("Resume all topics") : qsTr("Pause all topics")
+                toolTipText: accessibleName
+                toolTipPosition: AppToolTip.Position.Bottom
+                onClicked: control.viewModel.setAllCurrentSubscriptionsPaused(!control.allSubscriptionsPaused)
             }
 
             AppIconButton {
@@ -280,34 +323,21 @@ AppPanel {
                                                                    : subscriptionDelegate.rateText)
                 readonly property string menuVisualKey: `${subscriptionDelegate.topic}::menu`
                 width: ListView.view.width
-                implicitHeight: subscriptionDelegate.hasError ? 64 : 50
-                radius: 6
+                implicitHeight: subscriptionDelegate.hasError ? 60 : 46
+                radius: 7
                 color: subscriptionDelegate.paused
                        ? control.ui.themePalette.innerPanelBg
                        : (subscriptionRowHover.hovered
                           ? control.ui.themePalette.rowHover
-                          : control.ui.themePalette.itemBg)
+                          : "transparent")
                 border.color: subscriptionDelegate.hasError
                               ? control.ui.themePalette.errorText
-                              : (subscriptionDelegate.activeTraffic
-                                 ? subscriptionDelegate.topicSwatchColor
-                                 : control.ui.themePalette.innerPanelBorder)
-                border.width: 1
+                              : "transparent"
+                border.width: subscriptionDelegate.hasError ? 1 : 0
                 activeFocusOnTab: true
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
                 Accessible.description: subscriptionDelegate.accessibleDescription
-                layer.enabled: subscriptionDelegate.activeTraffic
-                layer.effect: MultiEffect {
-                    shadowEnabled: true
-                    shadowBlur: 0.34
-                    shadowColor: Qt.rgba(subscriptionDelegate.topicSwatchColor.r,
-                                         subscriptionDelegate.topicSwatchColor.g,
-                                         subscriptionDelegate.topicSwatchColor.b,
-                                         control.ui.isDarkTheme ? 0.42 : 0.24)
-                    shadowHorizontalOffset: 0
-                    shadowVerticalOffset: 3
-                }
 
                 function openSubscriptionContextMenu() {
                     control.openSubscriptionContextMenu(subscriptionDelegate.index, subscriptionDelegate.topic, subscriptionDelegate.displayName, subscriptionDelegate.menuVisualKey);
@@ -379,20 +409,21 @@ AppPanel {
                             }
                         }
 
-                        Label {
-                            Layout.preferredWidth: 48
-                            Layout.minimumWidth: 48
-                            Layout.maximumWidth: 48
-                            text: subscriptionDelegate.rateText
-                            color: subscriptionDelegate.activeTraffic ? control.ui.textStrong : control.ui.textMuted
-                            font.family: "Menlo"
-                            font.pixelSize: 10
-                            font.bold: subscriptionDelegate.activeTraffic
-                            horizontalAlignment: Text.AlignRight
-                        }
-
                         RowLayout {
-                            spacing: 1
+                            id: subscriptionActionGroup
+                            spacing: 2
+
+                            Label {
+                                Layout.preferredWidth: 42
+                                Layout.minimumWidth: 42
+                                Layout.maximumWidth: 42
+                                text: subscriptionDelegate.rateText
+                                color: subscriptionDelegate.activeTraffic ? control.ui.textStrong : control.ui.textMuted
+                                font.family: "Menlo"
+                                font.pixelSize: 10
+                                font.bold: subscriptionDelegate.activeTraffic
+                                horizontalAlignment: Text.AlignRight
+                            }
 
                             AppIconButton {
                                 id: subscriptionPauseButton

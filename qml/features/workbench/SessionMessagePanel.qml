@@ -14,6 +14,8 @@ AppPanel {
     required property var status
     required property var publishStatus
     required property string fontFamily
+    property string selectedMessageHistoryId: ""
+    property bool inspectorOpened: false
 
     showTopBorder: false
     showLeftBorder: false
@@ -60,7 +62,7 @@ AppPanel {
             ui: root.ui
             viewModel: root.viewModel
             publisher: root.publisher
-            streamModel: root.viewModel.messages
+            streamModel: root.viewModel.filteredMessages
             session: root.session
             status: root.status
             fontFamily: root.fontFamily
@@ -71,6 +73,10 @@ AppPanel {
             onPublishDraftRevealRequested: {
                 publishComposer.revealDraftEditor();
             }
+            onMessageSelected: historyId => {
+                root.selectedMessageHistoryId = historyId;
+                root.inspectorOpened = true;
+            }
         }
 
         PublishComposer {
@@ -79,6 +85,24 @@ AppPanel {
             publisher: root.publisher
             publishStatus: root.publishStatus
             status: root.status
+        }
+    }
+
+    MessageInspector {
+        id: messageInspector
+
+        ui: root.ui
+        viewModel: root.viewModel
+        historyId: root.selectedMessageHistoryId
+        opened: root.inspectorOpened
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        z: 10
+        onCloseRequested: root.inspectorOpened = false
+        onDraftUsed: {
+            publishComposer.revealDraftEditor();
+            root.inspectorOpened = false;
         }
     }
 }
