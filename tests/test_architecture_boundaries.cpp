@@ -36,6 +36,7 @@ private slots:
     void messageQmlUsesTypedObjectProperties();
     void messageRowsUseHoverHandlerForNestedControls();
     void messageRowsUseButtonTapPolicy();
+    void messageRowsDoNotNestPointerHandlingTextEdit();
     void messagePanelUsesSplitViewForComposerResize();
     void eventStreamFollowModeUsesSingleCycleButton();
     void qmlUsesApplicationViewModelRootOnly();
@@ -679,6 +680,21 @@ void ArchitectureBoundariesTest::messageRowsUseButtonTapPolicy()
 
     QVERIFY2(messageRowSource.contains(QStringLiteral("gesturePolicy: TapHandler.ReleaseWithinBounds")),
         "Message rows should use button-style release handling so a slight pointer movement does not discard the first click");
+}
+
+void ArchitectureBoundariesTest::messageRowsDoNotNestPointerHandlingTextEdit()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+
+    const int messageRowIndex = source.indexOf(QStringLiteral("id: messageRow"));
+    QVERIFY(messageRowIndex >= 0);
+    const int messageActionsIndex = source.indexOf(QStringLiteral("id: messageActions"), messageRowIndex);
+    QVERIFY(messageActionsIndex > messageRowIndex);
+    const QString messageRowSource = source.mid(messageRowIndex, messageActionsIndex - messageRowIndex);
+
+    QVERIFY2(!messageRowSource.contains(QStringLiteral("TextEdit {")),
+        "A selectable TextEdit inside a message row competes with the row TapHandler and makes switching messages depend on the click target");
 }
 
 void ArchitectureBoundariesTest::messagePanelUsesSplitViewForComposerResize()
