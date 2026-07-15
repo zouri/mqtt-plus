@@ -22,7 +22,6 @@ Item {
     property bool reachedHistoryStart: false
     property string followMode: "smart"
     property string selectedHistoryId: ""
-    property var selectedMessageTrigger: null
     readonly property bool connected: root.status.state === "connected"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
     readonly property bool compactHeader: root.width <= 520
@@ -93,10 +92,9 @@ Item {
 
     function clearMessageSelection() {
         root.selectedHistoryId = "";
-        if (root.selectedMessageTrigger) {
-            root.selectedMessageTrigger.forceActiveFocus();
+        if (eventList) {
+            eventList.forceActiveFocus();
         }
-        root.selectedMessageTrigger = null;
     }
 
     function requestFollowScroll() {
@@ -552,7 +550,6 @@ Item {
                         }
                         messageRow.forceActiveFocus();
                         root.setFollowMode("manual");
-                        root.selectedMessageTrigger = messageRow;
                         root.selectedHistoryId = eventDelegate.historyId;
                         root.messageSelected(eventDelegate.historyId);
                     }

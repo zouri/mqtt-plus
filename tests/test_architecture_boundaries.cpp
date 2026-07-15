@@ -48,6 +48,8 @@ private slots:
     void subscriptionRowsKeepCompactActionGroup();
     void workbenchUsesReferenceMessageWorkspace();
     void messageInspectorPreservesPayloadFormatting();
+    void closingMessageInspectorClearsRowSelection();
+    void messageInspectorUsesLeftEdgeShadow();
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
@@ -1019,6 +1021,40 @@ void ArchitectureBoundariesTest::messageInspectorPreservesPayloadFormatting()
     QVERIFY(parsedSection >= 0);
     QVERIFY2(payloadSection < parsedSection,
         "The original Payload section must stay first, with optional script output displayed below it");
+}
+
+void ArchitectureBoundariesTest::closingMessageInspectorClearsRowSelection()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+
+    const int clearSelection = source.indexOf(QStringLiteral("function clearMessageSelection()"));
+    const int nextFunction = source.indexOf(QStringLiteral("function requestFollowScroll()"), clearSelection);
+    QVERIFY(clearSelection >= 0);
+    QVERIFY(nextFunction > clearSelection);
+    const QString clearSelectionSource = source.mid(clearSelection, nextFunction - clearSelection);
+
+    QVERIFY2(clearSelectionSource.contains(QStringLiteral("root.selectedHistoryId = \"\"")),
+        "Closing the inspector must clear the selected message id");
+    QVERIFY2(clearSelectionSource.contains(QStringLiteral("eventList.forceActiveFocus()")),
+        "Focus should return to the message list without visually reselecting the previous row");
+    QVERIFY2(!source.contains(QStringLiteral("selectedMessageTrigger")),
+        "The closed inspector must not retain or refocus the previously selected delegate");
+}
+
+void ArchitectureBoundariesTest::messageInspectorUsesLeftEdgeShadow()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageInspector.qml"), source));
+
+    QVERIFY2(source.contains(QStringLiteral("import QtQuick.Effects")),
+        "The inspector should use the existing Qt Quick effect stack for elevation");
+    QVERIFY2(source.contains(QStringLiteral("layer.enabled: control.visible")),
+        "The inspector shadow layer should only be active while the panel is visible");
+    QVERIFY2(source.contains(QStringLiteral("shadowEnabled: true")),
+        "The inspector should render an elevation shadow");
+    QVERIFY2(source.contains(QStringLiteral("shadowHorizontalOffset: -8")),
+        "The inspector shadow should project toward the message list on its left");
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()

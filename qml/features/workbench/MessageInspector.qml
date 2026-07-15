@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Effects
 import QtQuick.Layouts
 import "../../components"
 
@@ -42,6 +43,14 @@ Rectangle {
     width: Math.min(400, parent ? parent.width * 0.88 : 400)
     color: control.ui.themePalette.panelBg
     border.color: control.ui.themePalette.panelBorder
+    layer.enabled: control.visible
+    layer.effect: MultiEffect {
+        shadowEnabled: true
+        shadowBlur: 0.48
+        shadowColor: control.ui.isDarkTheme ? "#80000000" : "#30000000"
+        shadowHorizontalOffset: -8
+        shadowVerticalOffset: 0
+    }
     transform: Translate { x: control.slideOffset }
     visible: control.opened || control.slideOffset < control.width
     activeFocusOnTab: control.opened
