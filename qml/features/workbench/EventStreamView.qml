@@ -619,6 +619,7 @@ Item {
 
                         TapHandler {
                             enabled: eventDelegate.isMessage
+                            gesturePolicy: TapHandler.ReleaseWithinBounds
                             onTapped: eventDelegate.selectMessage()
                         }
 

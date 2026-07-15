@@ -304,6 +304,7 @@ AppPanel {
                 required property string lastError
                 required property real topicFps
                 readonly property bool hasError: subscriptionDelegate.lastError.length > 0
+                readonly property bool subscriptionActive: !subscriptionDelegate.paused
                 readonly property bool activeTraffic: subscriptionDelegate.topicFps > 0
                                                       && !subscriptionDelegate.paused
                                                       && !subscriptionDelegate.hasError
@@ -325,15 +326,17 @@ AppPanel {
                 width: ListView.view.width
                 implicitHeight: subscriptionDelegate.hasError ? 60 : 46
                 radius: 7
-                color: subscriptionDelegate.paused
+                color: subscriptionDelegate.subscriptionActive
                        ? control.ui.themePalette.innerPanelBg
-                       : (subscriptionRowHover.hovered
-                          ? control.ui.themePalette.rowHover
-                          : "transparent")
+                       : (subscriptionRowHover.hovered ? control.ui.themePalette.rowHover : "transparent")
                 border.color: subscriptionDelegate.hasError
                               ? control.ui.themePalette.errorText
-                              : "transparent"
-                border.width: subscriptionDelegate.hasError ? 1 : 0
+                              : (subscriptionDelegate.subscriptionActive
+                                 ? control.ui.themePalette.panelBorder
+                                 : "transparent")
+                border.width: subscriptionDelegate.hasError
+                              ? 1
+                              : (subscriptionDelegate.subscriptionActive ? 1 : 0)
                 activeFocusOnTab: true
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
@@ -433,17 +436,17 @@ AppPanel {
                                 iconSource: control.ui.materialIcon(subscriptionDelegate.paused ? "play" : "pause")
                                 iconSize: 13
                                 cornerRadius: 6
-                                restBg: subscriptionDelegate.paused ? "transparent" : control.ui.themePalette.selectedBg
-                                hoverBg: subscriptionDelegate.paused ? control.ui.themePalette.rowHover : control.ui.themePalette.buttonPrimaryHoverBg
-                                pressedBg: subscriptionDelegate.paused ? control.ui.themePalette.actionPressedBg : control.ui.themePalette.buttonPrimaryPressedBg
-                                outlineColor: subscriptionDelegate.paused ? "transparent" : control.ui.themePalette.selectedBorder
+                                restBg: subscriptionDelegate.paused ? control.ui.themePalette.selectedBg : "transparent"
+                                hoverBg: subscriptionDelegate.paused ? control.ui.themePalette.buttonPrimaryHoverBg : "transparent"
+                                pressedBg: subscriptionDelegate.paused ? control.ui.themePalette.buttonPrimaryPressedBg : "transparent"
+                                outlineColor: "transparent"
                                 symbolColor: subscriptionDelegate.paused
-                                             ? (subscriptionPauseButton.hovered
-                                                ? control.ui.textStrong
-                                                : control.ui.textMuted)
-                                             : (subscriptionPauseButton.hovered || subscriptionPauseButton.down
+                                             ? (subscriptionPauseButton.hovered || subscriptionPauseButton.down
                                                 ? control.ui.themePalette.buttonPrimaryText
                                                 : control.ui.themePalette.infoText)
+                                             : (subscriptionPauseButton.hovered || subscriptionPauseButton.forceActive
+                                                ? control.ui.themePalette.infoText
+                                                : control.ui.textMuted)
 
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::pause`
