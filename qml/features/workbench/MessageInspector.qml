@@ -124,33 +124,6 @@ Rectangle {
                 Item { Layout.preferredHeight: 1 }
 
                 ColumnLayout {
-                    visible: String(control.details.parsedPayload || "").length > 0
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 14
-                    Layout.rightMargin: 14
-                    spacing: 6
-
-                    Label {
-                        text: qsTr("Parsed result")
-                        color: control.ui.textMuted
-                        font.pixelSize: 11
-                    }
-
-                    TextEdit {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: contentHeight
-                        text: String(control.details.parsedPayload || "")
-                        color: control.ui.textStrong
-                        font.family: "Menlo"
-                        font.pixelSize: 11
-                        textFormat: TextEdit.PlainText
-                        readOnly: true
-                        selectByMouse: true
-                        wrapMode: TextEdit.WrapAnywhere
-                    }
-                }
-
-                ColumnLayout {
                     Layout.fillWidth: true
                     Layout.leftMargin: 14
                     Layout.rightMargin: 14
@@ -185,6 +158,33 @@ Rectangle {
                         color: control.ui.themePalette.warningText
                         font.pixelSize: 11
                         wrapMode: Text.Wrap
+                    }
+                }
+
+                ColumnLayout {
+                    visible: String(control.details.parsedPayload || "").length > 0
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    spacing: 6
+
+                    Label {
+                        text: qsTr("Parsed result")
+                        color: control.ui.textMuted
+                        font.pixelSize: 11
+                    }
+
+                    TextEdit {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: contentHeight
+                        text: String(control.details.parsedPayload || "")
+                        color: control.ui.textStrong
+                        font.family: "Menlo"
+                        font.pixelSize: 11
+                        textFormat: TextEdit.PlainText
+                        readOnly: true
+                        selectByMouse: true
+                        wrapMode: TextEdit.WrapAnywhere
                     }
                 }
 
