@@ -169,7 +169,7 @@ Rectangle {
                 required property string protocolVersionName
                 required property string lastError
                 readonly property bool selected: index === control.viewModel.currentSessionIndex
-                readonly property bool highlighted: rowHover.hovered || activeFocus
+                readonly property bool highlighted: rowHover.hovered
                 readonly property bool connected: sessionDelegate.connectionState === "connected"
                 readonly property string endpointText: sessionDelegate.lastError.length > 0 ? sessionDelegate.lastError : qsTr("%1:%2").arg(sessionDelegate.host || "-").arg(sessionDelegate.port)
                 width: ListView.view.width
@@ -179,7 +179,6 @@ Rectangle {
                 color: sessionDelegate.selected ? control.selectedSessionBg : (sessionDelegate.highlighted ? control.ui.themePalette.rowHover : "transparent")
                 border.color: "transparent"
                 border.width: 0
-                activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
 
@@ -279,7 +278,6 @@ Rectangle {
 
                     onClicked: mouse => {
                         if (mouse.button === Qt.LeftButton) {
-                            sessionDelegate.forceActiveFocus();
                             control.viewModel.currentSessionIndex = sessionDelegate.index;
                         } else if (mouse.button === Qt.RightButton) {
                             sessionDelegate.openSessionContextMenu();
@@ -301,8 +299,6 @@ Rectangle {
                     height: 42
                     radius: control.ui.innerRadius
                     color: "transparent"
-                    readonly property bool focusIndicatorVisible: control.ui.showFocusIndicators && addSessionDelegate.activeFocus
-                    activeFocusOnTab: true
                     Accessible.role: Accessible.Button
                     Accessible.name: qsTr("New connection")
 
@@ -322,7 +318,7 @@ Rectangle {
 
                         ShapePath {
                             fillColor: "transparent"
-                            strokeColor: addRowMouse.containsMouse || addSessionDelegate.focusIndicatorVisible ? control.ui.themePalette.selectedBorder : control.ui.themePalette.itemBorder
+                            strokeColor: addRowMouse.containsMouse ? control.ui.themePalette.selectedBorder : control.ui.themePalette.itemBorder
                             strokeWidth: 1
                             strokeStyle: ShapePath.DashLine
                             dashPattern: [5, 4]
@@ -396,7 +392,6 @@ Rectangle {
                         acceptedButtons: Qt.LeftButton
                         cursorShape: Qt.PointingHandCursor
 
-                        onPressed: addSessionDelegate.forceActiveFocus()
                         onClicked: control.sessionCreateRequested()
                     }
                 }
@@ -416,7 +411,6 @@ Rectangle {
         width: control.visibleWidth
         color: collapsedBar.hot ? control.ui.themePalette.rowHover : control.sidebarBg
         border.color: "transparent"
-        activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: qsTr("Show connection list")
 
@@ -451,7 +445,6 @@ Rectangle {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onPressed: collapsedBar.forceActiveFocus()
             onClicked: control.expandRequested()
         }
     }

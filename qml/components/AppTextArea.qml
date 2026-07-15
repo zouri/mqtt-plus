@@ -16,7 +16,6 @@ Control {
     property alias selectByMouse: textArea.selectByMouse
     property alias wrapMode: textArea.wrapMode
     property bool showLineNumbers: false
-    property bool showFocusBorder: true
     property int backgroundRadius: 8
     property int backgroundBorderWidth: 1
     property color backgroundColor: control.ui.themePalette.fieldBg
@@ -28,8 +27,6 @@ Control {
     readonly property int lineNumberGutterWidth: control.showLineNumbers
                                                ? Math.max(42, 24 + String(control.lineCount).length * 8)
                                                : 0
-    readonly property bool focusIndicatorVisible: control.ui.showFocusIndicators && textArea.activeFocus
-
     clip: true
     font.pixelSize: 13
 
@@ -59,7 +56,7 @@ Control {
         radius: control.backgroundRadius
         color: control.backgroundColor
         border.width: control.backgroundBorderWidth
-        border.color: control.focusIndicatorVisible && control.showFocusBorder ? control.ui.themePalette.fieldFocusBorder : control.ui.themePalette.fieldBorder
+        border.color: control.ui.themePalette.fieldBorder
 
         Behavior on border.color {
             ColorAnimation {

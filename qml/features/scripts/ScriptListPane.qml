@@ -90,7 +90,6 @@ Rectangle {
                 width: ListView.view.width
                 implicitHeight: matchesFilter ? 82 : 0
                 visible: matchesFilter
-                activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Lua script %1").arg(scriptDelegate.name)
 
@@ -100,7 +99,7 @@ Rectangle {
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
                     radius: 10
-                    color: scriptMouse.containsMouse || scriptDelegate.activeFocus
+                    color: scriptMouse.containsMouse
                            ? root.ui.rowHover
                            : root.ui.themePalette.itemBg
                     border.color: scriptDelegate.id === root.currentScriptId
@@ -153,7 +152,6 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
 
                     onClicked: {
-                        scriptDelegate.forceActiveFocus()
                         root.scriptRequested(scriptDelegate.index)
                     }
                 }

@@ -170,17 +170,14 @@ AppPanel {
                     pressedBg: "transparent"
                     outlineColor: "transparent"
                     symbolColor: control.ui.textMuted
-                    activeFocusOnTab: false
+                    enabled: false
                     Accessible.ignored: true
-                    onClicked: filterTopicField.forceActiveFocus()
                 }
 
                 background: Rectangle {
                     radius: 8
                     color: control.ui.themePalette.innerPanelBg
-                    border.color: filterTopicField.focusIndicatorVisible
-                                  ? control.ui.themePalette.fieldFocusBorder
-                                  : control.ui.themePalette.fieldBorder
+                    border.color: control.ui.themePalette.fieldBorder
 
                     Behavior on border.color {
                         ColorAnimation {
@@ -337,7 +334,6 @@ AppPanel {
                 border.width: subscriptionDelegate.hasError
                               ? 1
                               : (subscriptionDelegate.subscriptionActive ? 1 : 0)
-                activeFocusOnTab: true
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
                 Accessible.description: subscriptionDelegate.accessibleDescription
@@ -358,7 +354,6 @@ AppPanel {
                     acceptedButtons: Qt.RightButton
                     onClicked: mouse => {
                         if (mouse.button === Qt.RightButton) {
-                            subscriptionDelegate.forceActiveFocus();
                             subscriptionDelegate.openSubscriptionContextMenu();
                         }
                     }

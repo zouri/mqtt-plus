@@ -37,11 +37,6 @@ QtObject {
     readonly property int text2xl: 18
     readonly property int text3xl: 22
 
-    // ---- Design tokens: focus ring ----
-    readonly property bool showFocusIndicators: false
-    readonly property color focusRingColor: root.isDarkTheme ? "#4f8bff" : "#3370ff"
-    readonly property int focusRingWidth: 2
-
     readonly property int materialTheme: root.isDarkTheme ? Material.Dark : Material.Light
     readonly property int materialAccent: Material.Blue
     readonly property int materialPrimary: Material.Blue
@@ -109,7 +104,6 @@ QtObject {
             "disabledText": root.isDarkTheme ? "#6b7889" : "#8f959e",
             "fieldBg": root.isDarkTheme ? "#222b38" : "#ffffff",
             "fieldBorder": root.isDarkTheme ? "#37424f" : "#c9cdd4",
-            "fieldFocusBorder": root.isDarkTheme ? "#4f8bff" : "#3370ff",
             "fieldPlaceholder": root.isDarkTheme ? "#6b7889" : "#6f757e",
             "dialogOverlay": root.isDarkTheme ? "#730f1419" : "#661f2329"
         })

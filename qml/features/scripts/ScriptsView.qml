@@ -18,7 +18,6 @@ Item {
 
     function newScript() {
         control.viewModel.newScript()
-        nameField.forceActiveFocus()
         nameField.selectAll()
     }
 
@@ -179,7 +178,6 @@ Item {
                         font.family: "Menlo"
                         clip: true
                         showLineNumbers: false
-                        showFocusBorder: false
                         wrapMode: TextEdit.NoWrap
                         placeholderText: qsTr("function parse(ctx)")
                         onTextChanged: {

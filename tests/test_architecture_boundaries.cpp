@@ -1,6 +1,7 @@
 #include <QtTest/QtTest>
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QMap>
 #include <QStringList>
@@ -50,7 +51,7 @@ private slots:
     void messageInspectorPreservesPayloadFormatting();
     void closingMessageInspectorClearsRowSelection();
     void messageInspectorUsesLeftEdgeShadow();
-    void qmlFocusIndicatorsCanBeDisabledGlobally();
+    void qmlDoesNotManageComponentFocus();
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
@@ -969,7 +970,6 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(streamSource.contains(QStringLiteral("Accessible.role: Accessible.Button")));
     QVERIFY(streamSource.contains(QStringLiteral("Keys.onPressed")));
     QVERIFY(streamSource.contains(QStringLiteral("streamActionsMenu.open()")));
-    QVERIFY(streamSource.contains(QStringLiteral("onClosed: messageFilterButton.forceActiveFocus()")));
     QVERIFY(streamSource.contains(QStringLiteral("accessibleName: qsTr(\"More message actions\")")));
     const int metadataStart = streamSource.indexOf(QStringLiteral("id: messageActions"));
     const int metadataEnd = streamSource.indexOf(QStringLiteral("id: followButton"), metadataStart);
@@ -1037,10 +1037,8 @@ void ArchitectureBoundariesTest::closingMessageInspectorClearsRowSelection()
 
     QVERIFY2(clearSelectionSource.contains(QStringLiteral("root.selectedHistoryId = \"\"")),
         "Closing the inspector must clear the selected message id");
-    QVERIFY2(clearSelectionSource.contains(QStringLiteral("root.forceActiveFocus()")),
-        "Focus should leave the ListView focus scope so it cannot restore the previous row's focus ring");
-    QVERIFY2(!clearSelectionSource.contains(QStringLiteral("eventList.forceActiveFocus()")),
-        "Focusing the ListView restores its remembered delegate and leaves a blue focus ring behind");
+    QVERIFY2(!clearSelectionSource.contains(QStringLiteral("forceActiveFocus()")),
+        "Closing the inspector must clear selection without moving component focus");
     QVERIFY2(!source.contains(QStringLiteral("selectedMessageTrigger")),
         "The closed inspector must not retain or refocus the previously selected delegate");
 }
@@ -1060,36 +1058,30 @@ void ArchitectureBoundariesTest::messageInspectorUsesLeftEdgeShadow()
         "The inspector shadow should project toward the message list on its left");
 }
 
-void ArchitectureBoundariesTest::qmlFocusIndicatorsCanBeDisabledGlobally()
+void ArchitectureBoundariesTest::qmlDoesNotManageComponentFocus()
 {
-    QString appUiSource;
-    QVERIFY(readSourceFile(QStringLiteral("qml/AppUi.qml"), appUiSource));
-    QVERIFY2(appUiSource.contains(QStringLiteral("readonly property bool showFocusIndicators: false")),
-        "AppUi must expose one project-wide switch that disables focus outlines without disabling focus");
-
-    const QMap<QString, int> focusIndicatorConsumers {
-        { QStringLiteral("qml/components/AppButton.qml"), 1 },
-        { QStringLiteral("qml/components/AppComboBox.qml"), 1 },
-        { QStringLiteral("qml/components/AppIconButton.qml"), 1 },
-        { QStringLiteral("qml/components/AppTextArea.qml"), 1 },
-        { QStringLiteral("qml/components/AppTextField.qml"), 1 },
-        { QStringLiteral("qml/features/workbench/EventStreamView.qml"), 2 },
-        { QStringLiteral("qml/features/workbench/SessionSidebar.qml"), 1 },
+    const QStringList forbiddenFocusTokens {
+        QStringLiteral("forceActiveFocus("),
+        QStringLiteral("activeFocus"),
+        QStringLiteral("showFocusIndicators"),
+        QStringLiteral("focusIndicatorVisible"),
+        QStringLiteral("focusRingColor"),
+        QStringLiteral("focusRingWidth"),
+        QStringLiteral("fieldFocusBorder"),
     };
 
-    for (auto it = focusIndicatorConsumers.cbegin(); it != focusIndicatorConsumers.cend(); ++it) {
-        QString source;
-        QVERIFY2(readSourceFile(it.key(), source), qPrintable(QStringLiteral("Cannot read %1").arg(it.key())));
-        QCOMPARE(source.count(QStringLiteral("showFocusIndicators &&")), it.value());
+    const QString qmlRoot = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/qml");
+    QDirIterator qmlFiles(qmlRoot, { QStringLiteral("*.qml") }, QDir::Files, QDirIterator::Subdirectories);
+    while (qmlFiles.hasNext()) {
+        const QString path = qmlFiles.next();
+        QFile file(path);
+        QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text), qPrintable(QStringLiteral("Cannot read %1").arg(path)));
+        const QString source = QString::fromUtf8(file.readAll());
+        for (const QString &token : forbiddenFocusTokens) {
+            QVERIFY2(!source.contains(token),
+                qPrintable(QStringLiteral("%1 still contains explicit focus management token '%2'").arg(path, token)));
+        }
     }
-
-    QString inspectorSource;
-    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageInspector.qml"), inspectorSource));
-    QVERIFY(inspectorSource.contains(QStringLiteral("actionButton.focusIndicatorVisible")));
-
-    QString subscriptionsSource;
-    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), subscriptionsSource));
-    QVERIFY(subscriptionsSource.contains(QStringLiteral("filterTopicField.focusIndicatorVisible")));
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()
