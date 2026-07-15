@@ -42,8 +42,6 @@ ToolButton {
                                                      control.hoverBg.b,
                                                      0)
                                            : control.restBg
-    readonly property bool focusIndicatorVisible: control.ui.showFocusIndicators && control.activeFocus
-
     implicitWidth: 30
     implicitHeight: 30
     padding: 0
@@ -76,8 +74,8 @@ ToolButton {
                : (control.down
                ? control.pressedBg
                : ((control.hovered || control.forceActive) ? control.hoverBg : control.effectiveRestBg))
-        border.color: control.focusIndicatorVisible ? control.ui.focusRingColor : control.outlineColor
-        border.width: control.focusIndicatorVisible ? control.ui.focusRingWidth : 0
+        border.color: control.outlineColor
+        border.width: 0
 
         Behavior on color {
             ColorAnimation {

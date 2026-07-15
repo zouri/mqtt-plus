@@ -41,7 +41,6 @@ Item {
 
     function revealDraftEditor() {
         root.expanded = true
-        publishPayloadArea.forceActiveFocus()
     }
 
     onHeightChanged: {

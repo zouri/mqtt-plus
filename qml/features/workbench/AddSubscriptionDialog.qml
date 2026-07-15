@@ -14,13 +14,11 @@ Dialog {
     function openForCreate() {
         root.viewModel.openSubscriptionEditorForCreate()
         open()
-        topicField.forceActiveFocus()
     }
 
     function openForEdit(index) {
         if (root.viewModel.openSubscriptionEditorForEdit(index)) {
             open()
-            aliasField.forceActiveFocus()
         }
     }
 
