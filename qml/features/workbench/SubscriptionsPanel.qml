@@ -178,7 +178,7 @@ AppPanel {
                 background: Rectangle {
                     radius: 8
                     color: control.ui.themePalette.innerPanelBg
-                    border.color: filterTopicField.activeFocus
+                    border.color: filterTopicField.focusIndicatorVisible
                                   ? control.ui.themePalette.fieldFocusBorder
                                   : control.ui.themePalette.fieldBorder
 
