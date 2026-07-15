@@ -1012,6 +1012,13 @@ void ArchitectureBoundariesTest::messageInspectorPreservesPayloadFormatting()
         "The inspector scroller must constrain content to its viewport so long payload lines can wrap");
     QVERIFY2(source.contains(QStringLiteral("width: inspectorScroll.availableWidth")),
         "The inspector content column must use the available viewport width for deterministic wrapping");
+
+    const int payloadSection = source.indexOf(QStringLiteral("qsTr(\"Payload preview\")"));
+    const int parsedSection = source.indexOf(QStringLiteral("qsTr(\"Parsed result\")"));
+    QVERIFY(payloadSection >= 0);
+    QVERIFY(parsedSection >= 0);
+    QVERIFY2(payloadSection < parsedSection,
+        "The original Payload section must stay first, with optional script output displayed below it");
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()
