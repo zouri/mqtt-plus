@@ -433,17 +433,17 @@ AppPanel {
                                 iconSource: control.ui.materialIcon(subscriptionDelegate.paused ? "play" : "pause")
                                 iconSize: 13
                                 cornerRadius: 6
-                                restBg: subscriptionDelegate.paused ? control.ui.themePalette.selectedBg : "transparent"
-                                hoverBg: subscriptionDelegate.paused ? control.ui.themePalette.buttonPrimaryHoverBg : "transparent"
-                                pressedBg: subscriptionDelegate.paused ? control.ui.themePalette.buttonPrimaryPressedBg : "transparent"
-                                outlineColor: "transparent"
+                                restBg: subscriptionDelegate.paused ? "transparent" : control.ui.themePalette.selectedBg
+                                hoverBg: subscriptionDelegate.paused ? control.ui.themePalette.rowHover : control.ui.themePalette.buttonPrimaryHoverBg
+                                pressedBg: subscriptionDelegate.paused ? control.ui.themePalette.actionPressedBg : control.ui.themePalette.buttonPrimaryPressedBg
+                                outlineColor: subscriptionDelegate.paused ? "transparent" : control.ui.themePalette.selectedBorder
                                 symbolColor: subscriptionDelegate.paused
-                                             ? (subscriptionPauseButton.hovered || subscriptionPauseButton.down
+                                             ? (subscriptionPauseButton.hovered
+                                                ? control.ui.textStrong
+                                                : control.ui.textMuted)
+                                             : (subscriptionPauseButton.hovered || subscriptionPauseButton.down
                                                 ? control.ui.themePalette.buttonPrimaryText
                                                 : control.ui.themePalette.infoText)
-                                             : (subscriptionPauseButton.hovered || subscriptionPauseButton.forceActive
-                                                ? control.ui.themePalette.infoText
-                                                : control.ui.textMuted)
 
                                 forceActive: control.subscriptionActionVisualKey === visualKey
                                 readonly property string visualKey: `${subscriptionDelegate.topic}::pause`
