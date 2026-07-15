@@ -709,7 +709,7 @@ Item {
                                     }
                                 }
 
-                                TextEdit {
+                                Label {
                                     id: payloadText
 
                                     Layout.fillWidth: true
@@ -721,16 +721,8 @@ Item {
                                     font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily
                                     font.pixelSize: 12
                                     textFormat: Text.PlainText
-                                    wrapMode: TextEdit.WrapAnywhere
-                                    readOnly: true
-                                    selectByMouse: true
+                                    wrapMode: Text.WrapAnywhere
                                     clip: true
-                                    selectedTextColor: root.ui.themePalette.buttonPrimaryText
-                                    selectionColor: root.ui.themePalette.buttonPrimaryBg
-
-                                    HoverHandler {
-                                        cursorShape: Qt.ArrowCursor
-                                    }
                                 }
 
                                 FontMetrics {
