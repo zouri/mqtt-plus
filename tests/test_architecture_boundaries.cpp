@@ -1036,8 +1036,10 @@ void ArchitectureBoundariesTest::closingMessageInspectorClearsRowSelection()
 
     QVERIFY2(clearSelectionSource.contains(QStringLiteral("root.selectedHistoryId = \"\"")),
         "Closing the inspector must clear the selected message id");
-    QVERIFY2(clearSelectionSource.contains(QStringLiteral("eventList.forceActiveFocus()")),
-        "Focus should return to the message list without visually reselecting the previous row");
+    QVERIFY2(clearSelectionSource.contains(QStringLiteral("root.forceActiveFocus()")),
+        "Focus should leave the ListView focus scope so it cannot restore the previous row's focus ring");
+    QVERIFY2(!clearSelectionSource.contains(QStringLiteral("eventList.forceActiveFocus()")),
+        "Focusing the ListView restores its remembered delegate and leaves a blue focus ring behind");
     QVERIFY2(!source.contains(QStringLiteral("selectedMessageTrigger")),
         "The closed inspector must not retain or refocus the previously selected delegate");
 }
