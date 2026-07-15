@@ -35,6 +35,7 @@ private slots:
     void eventHistoryServiceThrottlesRetentionPrune();
     void messageQmlUsesTypedObjectProperties();
     void messageRowsUseHoverHandlerForNestedControls();
+    void messageRowsUseButtonTapPolicy();
     void messagePanelUsesSplitViewForComposerResize();
     void eventStreamFollowModeUsesSingleCycleButton();
     void qmlUsesApplicationViewModelRootOnly();
@@ -665,6 +666,21 @@ void ArchitectureBoundariesTest::messageRowsUseHoverHandlerForNestedControls()
         "MouseArea.containsMouse is lost when hovering nested controls inside the message row");
 }
 
+void ArchitectureBoundariesTest::messageRowsUseButtonTapPolicy()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+
+    const int messageRowIndex = source.indexOf(QStringLiteral("id: messageRow"));
+    QVERIFY(messageRowIndex >= 0);
+    const int rowBodyIndex = source.indexOf(QStringLiteral("id: rowBody"), messageRowIndex);
+    QVERIFY(rowBodyIndex > messageRowIndex);
+    const QString messageRowSource = source.mid(messageRowIndex, rowBodyIndex - messageRowIndex);
+
+    QVERIFY2(messageRowSource.contains(QStringLiteral("gesturePolicy: TapHandler.ReleaseWithinBounds")),
+        "Message rows should use button-style release handling so a slight pointer movement does not discard the first click");
+}
+
 void ArchitectureBoundariesTest::messagePanelUsesSplitViewForComposerResize()
 {
     QString panelSource;
@@ -899,10 +915,12 @@ void ArchitectureBoundariesTest::subscriptionRowsKeepCompactActionGroup()
         "Subscription rate must use the compact fixed width");
     QVERIFY2(source.contains(QStringLiteral("spacing: 2")),
         "Subscription action group must use compact spacing");
-    QVERIFY2(source.contains(QStringLiteral("restBg: subscriptionDelegate.paused ? \"transparent\"")),
-        "An active subscription should show the state button background; a paused subscription should not");
-    QVERIFY2(source.contains(QStringLiteral("outlineColor: subscriptionDelegate.paused ? \"transparent\"")),
-        "Only an active subscription should show the state button outline");
+    QVERIFY2(source.contains(QStringLiteral("readonly property bool subscriptionActive: !subscriptionDelegate.paused")),
+        "The subscription row should derive its selected state from the active subscription state");
+    QVERIFY2(source.contains(QStringLiteral("color: subscriptionDelegate.subscriptionActive")),
+        "An active subscription row should show the selected container treatment");
+    QVERIFY2(source.contains(QStringLiteral("subscriptionDelegate.subscriptionActive ? 1 : 0")),
+        "A paused subscription row should not keep the selected container outline");
 }
 
 void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
