@@ -66,6 +66,31 @@ QVariantMap messageRowFromQuery(const QSqlQuery &query)
     return row;
 }
 
+QVariantMap messageRowFromRecord(const MessageRecord &record)
+{
+    QVariantMap row;
+    row.insert(QStringLiteral("id"), record.id);
+    row.insert(QStringLiteral("timestamp"), record.timestamp);
+    row.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
+    row.insert(QStringLiteral("direction"), messageDirectionName(record.direction));
+    row.insert(QStringLiteral("topic"), record.topic);
+    row.insert(QStringLiteral("qos"), record.qos);
+    row.insert(QStringLiteral("retain"), record.retain);
+    row.insert(QStringLiteral("retain_known"), record.retainKnown);
+    row.insert(QStringLiteral("parsed_payload"), record.parsedPayload);
+    row.insert(QStringLiteral("parsed_format"), record.parsedFormat);
+    row.insert(QStringLiteral("parse_error"), record.parseError);
+    row.insert(QStringLiteral("script_id"), record.scriptId);
+    row.insert(QStringLiteral("script_name"), record.scriptName);
+    row.insert(QStringLiteral("payload_bytes"), record.payloadBytes);
+    row.insert(QStringLiteral("payload_size"), record.payloadSize);
+    row.insert(QStringLiteral("payload_state"), record.payloadState);
+    row.insert(QStringLiteral("payload_preview"), record.payloadPreview);
+    row.insert(QStringLiteral("payload_hash"), record.payloadHash);
+    row.insert(QStringLiteral("payload_format"), record.payloadFormat);
+    return row;
+}
+
 bool resetStaleMessageTable(QSqlDatabase &db, QString &error)
 {
     QSqlQuery infoQuery(db);
@@ -382,6 +407,14 @@ QVariantMap HistoryStore::loadMessage(qint64 messageId) const
         return {};
     }
 
+    const auto pending = std::find_if(
+        m_pendingMessages.cbegin(),
+        m_pendingMessages.cend(),
+        [messageId](const MessageRecord &message) { return message.id == messageId; });
+    if (pending != m_pendingMessages.cend()) {
+        return messageRowFromRecord(*pending);
+    }
+
     QSqlQuery query(m_db);
     query.prepare(QStringLiteral(
         "SELECT id, timestamp, direction, topic, qos, retain, retain_known, "
@@ -399,6 +432,14 @@ QByteArray HistoryStore::loadMessagePayloadBytes(qint64 messageId) const
 {
     if (!isReady() || messageId <= 0) {
         return {};
+    }
+
+    const auto pending = std::find_if(
+        m_pendingMessages.cbegin(),
+        m_pendingMessages.cend(),
+        [messageId](const MessageRecord &message) { return message.id == messageId; });
+    if (pending != m_pendingMessages.cend()) {
+        return pending->payloadBytes;
     }
 
     QSqlQuery query(m_db);
