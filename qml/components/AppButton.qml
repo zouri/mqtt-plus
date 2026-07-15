@@ -12,8 +12,6 @@ Button {
     property int minimumWidth: 92
     property string toolTipText: ""
     property int toolTipPosition: AppToolTip.Position.Right
-    readonly property bool focusIndicatorVisible: control.ui.showFocusIndicators && control.activeFocus
-
     implicitHeight: control.ui.compactControlHeight
     implicitWidth: Math.max(minimumWidth, contentItem.implicitWidth + leftPadding + rightPadding)
     leftPadding: 14
@@ -39,8 +37,8 @@ Button {
                      : (control.danger
                         ? control.ui.themePalette.buttonDangerBg
                         : (control.primary ? control.ui.themePalette.buttonPrimaryBg : control.ui.themePalette.buttonBg))))
-        border.color: control.focusIndicatorVisible ? control.ui.focusRingColor : (control.primary || control.danger ? "transparent" : control.ui.themePalette.buttonBorder)
-        border.width: control.focusIndicatorVisible ? control.ui.focusRingWidth : 0
+        border.color: control.primary || control.danger ? "transparent" : control.ui.themePalette.buttonBorder
+        border.width: 0
 
         Behavior on color {
             ColorAnimation {

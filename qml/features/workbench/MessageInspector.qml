@@ -33,10 +33,8 @@ Rectangle {
                    : (actionButton.hovered
                       ? actionButton.ui.themePalette.buttonHoverBg
                       : actionButton.ui.themePalette.itemBg)
-            border.color: actionButton.focusIndicatorVisible
-                          ? actionButton.ui.focusRingColor
-                          : actionButton.ui.themePalette.panelBorder
-            border.width: actionButton.focusIndicatorVisible ? actionButton.ui.focusRingWidth : 1
+            border.color: actionButton.ui.themePalette.panelBorder
+            border.width: 1
         }
     }
 
@@ -53,7 +51,6 @@ Rectangle {
     }
     transform: Translate { x: control.slideOffset }
     visible: control.opened || control.slideOffset < control.width
-    activeFocusOnTab: control.opened
     Accessible.role: Accessible.Pane
     Accessible.name: qsTr("Message inspector")
 
@@ -61,13 +58,11 @@ Rectangle {
         control.details = historyId.length > 0 ? control.viewModel.messageDetails(historyId) : ({});
     }
 
-    onOpenedChanged: {
-        if (opened) {
-            closeInspectorButton.forceActiveFocus();
-        }
+    Shortcut {
+        sequence: StandardKey.Cancel
+        enabled: control.opened
+        onActivated: control.closeRequested()
     }
-
-    Keys.onEscapePressed: control.closeRequested()
 
     Behavior on slideOffset {
         NumberAnimation {

@@ -168,7 +168,6 @@ AppPanel {
                 color: root.ui.textStrong
                 placeholderText: qsTr("No logs yet.")
                 showLineNumbers: false
-                showFocusBorder: false
                 backgroundRadius: 10
                 backgroundBorderWidth: 1
                 backgroundColor: root.ui.themePalette.innerPanelBg

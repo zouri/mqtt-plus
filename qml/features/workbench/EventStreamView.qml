@@ -92,7 +92,6 @@ Item {
 
     function clearMessageSelection() {
         root.selectedHistoryId = "";
-        root.forceActiveFocus();
     }
 
     function requestFollowScroll() {
@@ -255,9 +254,8 @@ Item {
                         pressedBg: "transparent"
                         outlineColor: "transparent"
                         symbolColor: root.ui.textMuted
-                        activeFocusOnTab: false
+                        enabled: false
                         Accessible.ignored: true
-                        onClicked: messageSearchField.forceActiveFocus()
                     }
                 }
 
@@ -268,7 +266,6 @@ Item {
                     // qmllint disable missing-property
                     readonly property bool scopedFilterActive: root.selectedTopicCount > 0
                                                                 || root.streamModel.direction !== "all"
-                    readonly property bool focusIndicatorVisible: root.ui.showFocusIndicators && messageFilterButton.activeFocus
                     // qmllint enable missing-property
                     Layout.preferredWidth: root.compactHeader
                                            ? 32
@@ -298,12 +295,10 @@ Item {
                                : (messageFilterButton.hovered
                                   ? root.ui.themePalette.rowHover
                                   : root.ui.themePalette.itemBg)
-                        border.color: messageFilterButton.focusIndicatorVisible
-                                      ? root.ui.focusRingColor
-                                      : (messageFilterButton.scopedFilterActive
-                                         ? root.ui.themePalette.selectedBorder
-                                         : root.ui.themePalette.panelBorder)
-                        border.width: messageFilterButton.focusIndicatorVisible ? root.ui.focusRingWidth : 1
+                        border.color: messageFilterButton.scopedFilterActive
+                                      ? root.ui.themePalette.selectedBorder
+                                      : root.ui.themePalette.panelBorder
+                        border.width: 1
                     }
 
                     AppToolTip {
@@ -376,7 +371,6 @@ Item {
                 receiveStateText: root.receiveStateText
                 x: Math.max(8, parent.width - width - 110)
                 y: parent.height - 2
-                onClosed: messageFilterButton.forceActiveFocus()
             }
 
             ListModel {
@@ -547,7 +541,6 @@ Item {
                         if (!eventDelegate.isMessage) {
                             return;
                         }
-                        messageRow.forceActiveFocus();
                         root.setFollowMode("manual");
                         root.selectedHistoryId = eventDelegate.historyId;
                         root.messageSelected(eventDelegate.historyId);
@@ -577,7 +570,6 @@ Item {
 
                     Rectangle {
                         id: messageRow
-                        readonly property bool focusIndicatorVisible: root.ui.showFocusIndicators && messageRow.activeFocus
                         visible: !eventDelegate.isDivider
                         width: parent.width
                         implicitHeight: Math.max(64, rowBody.implicitHeight + 16)
@@ -585,13 +577,10 @@ Item {
                         color: eventDelegate.historyId === root.selectedHistoryId
                                ? root.ui.themePalette.selectedBg
                                : (rowHover.hovered ? root.ui.themePalette.rowHover : "transparent")
-                        border.color: messageRow.focusIndicatorVisible
-                                      ? root.ui.focusRingColor
-                                      : (eventDelegate.historyId === root.selectedHistoryId
+                        border.color: eventDelegate.historyId === root.selectedHistoryId
                                       ? root.ui.themePalette.selectedBorder
-                                      : "transparent")
-                        border.width: messageRow.focusIndicatorVisible ? root.ui.focusRingWidth : 1
-                        activeFocusOnTab: eventDelegate.isMessage
+                                      : "transparent"
+                        border.width: 1
                         Accessible.ignored: !eventDelegate.isMessage
                         Accessible.role: Accessible.Button
                         Accessible.name: eventDelegate.isMessage
@@ -779,24 +768,17 @@ Item {
                 radius: 19
                 height: 38
                 width: followButtonRow.implicitWidth + 26
-                color: followMouse.containsMouse || activeFocus
+                color: followMouse.containsMouse
                        ? root.ui.themePalette.buttonPrimaryHoverBg
                        : root.ui.themePalette.followBg
                 border.color: root.ui.themePalette.followBorder
                 opacity: visible ? 0.97 : 0
                 z: 2
                 scale: visible ? 1.0 : 0.96
-                activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: eventList.unreadCount > 0
                                  ? qsTr("Scroll to latest, %1 unread").arg(eventList.unreadCount)
                                  : qsTr("Scroll to latest")
-
-                onVisibleChanged: {
-                    if (!visible && activeFocus) {
-                        eventList.forceActiveFocus()
-                    }
-                }
 
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Return
@@ -862,7 +844,6 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     hoverEnabled: true
                     onClicked: {
-                        followButton.forceActiveFocus()
                         root.setFollowMode("smart")
                     }
                 }
