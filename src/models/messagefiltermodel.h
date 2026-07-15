@@ -12,6 +12,8 @@ class MessageFilterModel : public QSortFilterProxyModel
     Q_PROPERTY(QString direction READ direction WRITE setDirection NOTIFY directionChanged)
     Q_PROPERTY(bool filterActive READ filterActive NOTIFY filterActiveChanged)
     Q_PROPERTY(int count READ count NOTIFY countChanged)
+    Q_PROPERTY(int filteredMessageCount READ filteredMessageCount NOTIFY messageCountsChanged)
+    Q_PROPERTY(int totalMessageCount READ totalMessageCount NOTIFY messageCountsChanged)
 
 public:
     explicit MessageFilterModel(QObject *parent = nullptr);
@@ -21,6 +23,8 @@ public:
     QString direction() const;
     bool filterActive() const;
     int count() const;
+    int filteredMessageCount() const;
+    int totalMessageCount() const;
 
     void setSourceModel(QAbstractItemModel *sourceModel) override;
     void setFilterText(const QString &filterText);
@@ -35,6 +39,7 @@ signals:
     void directionChanged();
     void filterActiveChanged();
     void countChanged();
+    void messageCountsChanged();
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
@@ -42,6 +47,8 @@ protected:
 private:
     void invalidateRows(bool wasActive);
     void connectCountSignals();
+    void connectSourceSignals();
+    static int messageCount(const QAbstractItemModel *model);
     static QString normalizedDirection(const QString &direction);
 
     QString m_filterText;

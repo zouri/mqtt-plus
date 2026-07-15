@@ -33,6 +33,12 @@ AppPanel {
         eventStreamView.noteStreamRowsAppended(count);
     }
 
+    function closeInspector() {
+        root.inspectorOpened = false;
+        root.selectedMessageHistoryId = "";
+        eventStreamView.clearMessageSelection();
+    }
+
     SplitView {
         id: messageSplit
 
@@ -77,6 +83,7 @@ AppPanel {
                 root.selectedMessageHistoryId = historyId;
                 root.inspectorOpened = true;
             }
+            onMessagesCleared: root.closeInspector()
         }
 
         PublishComposer {
@@ -99,10 +106,10 @@ AppPanel {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         z: 10
-        onCloseRequested: root.inspectorOpened = false
+        onCloseRequested: root.closeInspector()
         onDraftUsed: {
             publishComposer.revealDraftEditor();
-            root.inspectorOpened = false;
+            root.closeInspector();
         }
     }
 }

@@ -44,6 +44,7 @@ WorkbenchViewModel::Dependencies workbenchDependencies(ApplicationCoreState &sta
         &state.eventController,
         &state.sessionsModel,
         &state.filteredSubscriptionsModel,
+        &state.messageFilterSubscriptionsModel,
         &state.messagesModel,
         &state.filteredMessagesModel,
         &state.scriptsModel,

@@ -11,9 +11,10 @@ Popup {
     required property AppUi ui
     required property var filterModel
     required property var subscriptionsModel
+    required property string receiveStateText
 
     width: 280
-    implicitHeight: 292
+    implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
     padding: 10
     modal: false
     focus: true
@@ -84,10 +85,11 @@ Popup {
             spacing: 2
             reuseItems: true
 
-            delegate: CheckBox {
+            delegate: AppCheckBox {
                 id: topicOption
                 required property string topic
                 required property string displayName
+                ui: control.ui
                 width: ListView.view.width
                 height: 32
                 text: displayName
@@ -154,6 +156,25 @@ Popup {
 
                     onClicked: control.filterModel.direction = modelData.value
                 }
+            }
+        }
+
+        Label {
+            visible: control.receiveStateText.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? implicitHeight : 0
+            leftPadding: 7
+            rightPadding: 7
+            topPadding: 6
+            bottomPadding: 6
+            text: control.receiveStateText
+            color: control.ui.textMuted
+            font.pixelSize: 11
+            wrapMode: Text.Wrap
+
+            background: Rectangle {
+                radius: 7
+                color: control.ui.themePalette.warningBg
             }
         }
 

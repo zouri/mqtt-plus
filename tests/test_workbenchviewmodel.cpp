@@ -1,5 +1,8 @@
 #include "viewmodels/workbenchviewmodel.h"
 
+#include "domain/session.h"
+#include "models/subscriptionlistmodel.h"
+
 #include <QtTest/QtTest>
 
 class WorkbenchViewModelTest : public QObject
@@ -21,6 +24,7 @@ private slots:
     void ownsPendingSubscriptionDeleteState();
     void acceptsIntentCommandsWithoutCore();
     void ownsMessageFilterState();
+    void exposesUnfilteredSubscriptionsAndSelectedTopicState();
 };
 
 void WorkbenchViewModelTest::exposesDefaultPublishDraft()
@@ -267,6 +271,51 @@ void WorkbenchViewModelTest::ownsMessageFilterState()
     viewModel.clearMessageFilters();
     QVERIFY(viewModel.filteredMessages()->selectedTopics().isEmpty());
     QCOMPARE(viewModel.filteredMessages()->direction(), QStringLiteral("all"));
+}
+
+void WorkbenchViewModelTest::exposesUnfilteredSubscriptionsAndSelectedTopicState()
+{
+    SessionState session;
+    SubscriptionEntry power;
+    power.topic = QStringLiteral("sensors/+/power");
+    power.alias = QStringLiteral("Power");
+    power.paused = true;
+    session.subscriptions.append(power);
+
+    SubscriptionEntry light;
+    light.topic = QStringLiteral("home/light/set");
+    light.alias = QStringLiteral("Light");
+    session.subscriptions.append(light);
+
+    SubscriptionListModel subscriptions;
+    subscriptions.setSource(&session);
+    SubscriptionFilterModel filteredSubscriptions;
+    filteredSubscriptions.setSourceModel(&subscriptions);
+    filteredSubscriptions.setFilterText(QStringLiteral("Light"));
+    SubscriptionFilterModel messageFilterSubscriptions;
+    messageFilterSubscriptions.setSourceModel(&subscriptions);
+    MessageFilterModel filteredMessages;
+
+    WorkbenchViewModel::Dependencies dependencies;
+    dependencies.filteredSubscriptions = &filteredSubscriptions;
+    dependencies.messageFilterSubscriptions = &messageFilterSubscriptions;
+    dependencies.filteredMessages = &filteredMessages;
+    WorkbenchViewModel viewModel(dependencies);
+
+    QCOMPARE(viewModel.messageFilterSubscriptions()->count(), 2);
+    QCOMPARE(viewModel.filteredSubscriptions()->count(), 1);
+
+    viewModel.setMessageTopicFilter(QStringLiteral("sensors/+/power"));
+    const QVariantMap oneTopic = viewModel.messageTopicFilterState();
+    QCOMPARE(oneTopic.value(QStringLiteral("selectedCount")).toInt(), 1);
+    QCOMPARE(oneTopic.value(QStringLiteral("pausedCount")).toInt(), 1);
+    QCOMPARE(oneTopic.value(QStringLiteral("singleTopicLabel")).toString(), QStringLiteral("Power"));
+
+    viewModel.addMessageTopicFilter(QStringLiteral("home/light/set"));
+    const QVariantMap twoTopics = viewModel.messageTopicFilterState();
+    QCOMPARE(twoTopics.value(QStringLiteral("selectedCount")).toInt(), 2);
+    QCOMPARE(twoTopics.value(QStringLiteral("pausedCount")).toInt(), 1);
+    QVERIFY(twoTopics.value(QStringLiteral("singleTopicLabel")).toString().isEmpty());
 }
 
 void WorkbenchViewModelTest::acceptsIntentCommandsWithoutCore()
