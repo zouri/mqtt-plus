@@ -47,6 +47,7 @@ private slots:
     void workbenchMiddlePaneUsesCompactHeaderControls();
     void subscriptionRowsKeepCompactActionGroup();
     void workbenchUsesReferenceMessageWorkspace();
+    void messageInspectorPreservesPayloadFormatting();
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
@@ -996,6 +997,21 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(inspectorSource.contains(QStringLiteral("component InspectorActionButton: AppButton")));
     QVERIFY2(!inspectorSource.contains(QStringLiteral("primary: true")),
         "Inspector actions should use the same neutral bordered weight as the reference");
+}
+
+void ArchitectureBoundariesTest::messageInspectorPreservesPayloadFormatting()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageInspector.qml"), source));
+
+    QVERIFY2(source.count(QStringLiteral("textFormat: TextEdit.PlainText")) >= 2,
+        "Inspector payload fields must render message data as literal text so embedded markup and newlines are preserved");
+    QVERIFY2(source.count(QStringLiteral("Layout.preferredHeight: contentHeight")) >= 2,
+        "Inspector payload fields must grow to their wrapped content height instead of clipping multiline data");
+    QVERIFY2(source.contains(QStringLiteral("contentWidth: availableWidth")),
+        "The inspector scroller must constrain content to its viewport so long payload lines can wrap");
+    QVERIFY2(source.contains(QStringLiteral("width: inspectorScroll.availableWidth")),
+        "The inspector content column must use the available viewport width for deterministic wrapping");
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()

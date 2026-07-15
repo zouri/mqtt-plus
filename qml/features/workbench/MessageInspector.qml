@@ -109,12 +109,16 @@ Rectangle {
         }
 
         ScrollView {
+            id: inspectorScroll
+
             Layout.fillWidth: true
             Layout.fillHeight: true
+            contentWidth: availableWidth
             clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             ColumnLayout {
-                width: parent.width
+                width: inspectorScroll.availableWidth
                 spacing: 14
 
                 Item { Layout.preferredHeight: 1 }
@@ -134,10 +138,12 @@ Rectangle {
 
                     TextEdit {
                         Layout.fillWidth: true
+                        Layout.preferredHeight: contentHeight
                         text: String(control.details.parsedPayload || "")
                         color: control.ui.textStrong
                         font.family: "Menlo"
                         font.pixelSize: 11
+                        textFormat: TextEdit.PlainText
                         readOnly: true
                         selectByMouse: true
                         wrapMode: TextEdit.WrapAnywhere
@@ -160,10 +166,12 @@ Rectangle {
 
                     TextEdit {
                         Layout.fillWidth: true
+                        Layout.preferredHeight: contentHeight
                         text: String(control.details.fullPayload || qsTr("Select a message to inspect"))
                         color: control.ui.textStrong
                         font.family: "Menlo"
                         font.pixelSize: 11
+                        textFormat: TextEdit.PlainText
                         readOnly: true
                         selectByMouse: true
                         wrapMode: TextEdit.WrapAnywhere
