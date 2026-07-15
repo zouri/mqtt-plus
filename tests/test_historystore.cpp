@@ -17,6 +17,7 @@ private slots:
     void flushesRawPayloadWithoutLegacyColumns();
     void resetsOnlyMessageTableWhenSchemaIsStale();
     void loadMessagesUsesPreviewWithoutPayloadBytes();
+    void loadsPendingMessageByReservedId();
     void loadsPayloadBytesByMessageId();
     void roundTripsCanonicalOutgoingMessage();
 };
@@ -176,6 +177,36 @@ void HistoryStoreTest::loadMessagesUsesPreviewWithoutPayloadBytes()
     QCOMPARE(row.value(QStringLiteral("payload_state")).toString(), QStringLiteral("full"));
     QCOMPARE(row.value(QStringLiteral("payload_size")).toLongLong(), qint64(payload.size()));
     QCOMPARE(row.value(QStringLiteral("payload_bytes")).toByteArray(), QByteArray());
+}
+
+void HistoryStoreTest::loadsPendingMessageByReservedId()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+
+    MessageRecord record;
+    record.sessionId = QStringLiteral("session-1");
+    record.timestamp = QStringLiteral("2026-07-15T14:00:00.000");
+    record.direction = MessageDirection::Incoming;
+    record.topic = QStringLiteral("devices/pending");
+    record.payloadBytes = QByteArrayLiteral("full pending payload");
+    record.payloadSize = record.payloadBytes.size();
+    record.payloadPreview = QStringLiteral("preview");
+    record.payloadFormat = 0;
+
+    const qint64 id = store.enqueueMessage(record);
+    QVERIFY(id > 0);
+    QCOMPARE(store.pendingMessageCount(), 1);
+
+    const QVariantMap loaded = store.loadMessage(id);
+    QCOMPARE(loaded.value(QStringLiteral("id")).toLongLong(), id);
+    QCOMPARE(loaded.value(QStringLiteral("topic")).toString(), record.topic);
+    QCOMPARE(loaded.value(QStringLiteral("payload_bytes")).toByteArray(), record.payloadBytes);
+    QCOMPARE(store.loadMessagePayloadBytes(id), record.payloadBytes);
+    QCOMPARE(store.pendingMessageCount(), 1);
 }
 
 void HistoryStoreTest::loadsPayloadBytesByMessageId()

@@ -23,6 +23,7 @@ private slots:
     void publishedRowsAppearInMessageStream();
     void publishedRowsKeepFormatAfterHistoryReload();
     void largePublishedRowsShowPreviewAfterHistoryReload();
+    void messageDetailsExposeFullPendingPayload();
     void previewOnlyRowsKeepPayloadBodyFreeOfStatusText();
     void skippedRowsKeepPayloadBodyEmpty();
     void publishedRowsAppearWhenOutputPaused();
@@ -195,6 +196,32 @@ void EventHistoryServiceTest::largePublishedRowsShowPreviewAfterHistoryReload()
     const QVariantMap row = fixture.messages.rowAt(0);
     QCOMPARE(row.value(QStringLiteral("payload")).toString(), QString(64 * 1024, QLatin1Char('x')));
     QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Truncated"));
+}
+
+void EventHistoryServiceTest::messageDetailsExposeFullPendingPayload()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.preferences.setMaxIncomingPayloadBytes(1024 * 1024);
+    const QByteArray payload(70 * 1024, 'x');
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/pending-large"),
+        payload,
+        static_cast<int>(PayloadFormat::Plaintext));
+
+    QCOMPARE(fixture.historyStore.pendingMessageCount(), 1);
+    QCOMPARE(fixture.session.runtime.messageRows.size(), 1);
+    const qint64 historyId = fixture.session.runtime.messageRows.constLast()
+                                 .toMap()
+                                 .value(QStringLiteral("historyId"))
+                                 .toLongLong();
+    QVERIFY(historyId > 0);
+
+    const QVariantMap details = fixture.service.messageDetails(historyId);
+    QCOMPARE(details.value(QStringLiteral("fullPayloadAvailable")).toBool(), true);
+    QCOMPARE(details.value(QStringLiteral("fullPayload")).toString(), QString::fromUtf8(payload));
 }
 
 void EventHistoryServiceTest::previewOnlyRowsKeepPayloadBodyFreeOfStatusText()
