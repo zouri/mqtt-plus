@@ -301,6 +301,7 @@ Rectangle {
                     height: 42
                     radius: control.ui.innerRadius
                     color: "transparent"
+                    readonly property bool focusIndicatorVisible: control.ui.showFocusIndicators && addSessionDelegate.activeFocus
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Button
                     Accessible.name: qsTr("New connection")
@@ -321,7 +322,7 @@ Rectangle {
 
                         ShapePath {
                             fillColor: "transparent"
-                            strokeColor: addRowMouse.containsMouse || addSessionDelegate.activeFocus ? control.ui.themePalette.selectedBorder : control.ui.themePalette.itemBorder
+                            strokeColor: addRowMouse.containsMouse || addSessionDelegate.focusIndicatorVisible ? control.ui.themePalette.selectedBorder : control.ui.themePalette.itemBorder
                             strokeWidth: 1
                             strokeStyle: ShapePath.DashLine
                             dashPattern: [5, 4]

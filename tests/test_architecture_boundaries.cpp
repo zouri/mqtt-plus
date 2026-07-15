@@ -50,6 +50,7 @@ private slots:
     void messageInspectorPreservesPayloadFormatting();
     void closingMessageInspectorClearsRowSelection();
     void messageInspectorUsesLeftEdgeShadow();
+    void qmlFocusIndicatorsCanBeDisabledGlobally();
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
@@ -1057,6 +1058,38 @@ void ArchitectureBoundariesTest::messageInspectorUsesLeftEdgeShadow()
         "The inspector should render an elevation shadow");
     QVERIFY2(source.contains(QStringLiteral("shadowHorizontalOffset: -8")),
         "The inspector shadow should project toward the message list on its left");
+}
+
+void ArchitectureBoundariesTest::qmlFocusIndicatorsCanBeDisabledGlobally()
+{
+    QString appUiSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/AppUi.qml"), appUiSource));
+    QVERIFY2(appUiSource.contains(QStringLiteral("readonly property bool showFocusIndicators: false")),
+        "AppUi must expose one project-wide switch that disables focus outlines without disabling focus");
+
+    const QMap<QString, int> focusIndicatorConsumers {
+        { QStringLiteral("qml/components/AppButton.qml"), 1 },
+        { QStringLiteral("qml/components/AppComboBox.qml"), 1 },
+        { QStringLiteral("qml/components/AppIconButton.qml"), 1 },
+        { QStringLiteral("qml/components/AppTextArea.qml"), 1 },
+        { QStringLiteral("qml/components/AppTextField.qml"), 1 },
+        { QStringLiteral("qml/features/workbench/EventStreamView.qml"), 2 },
+        { QStringLiteral("qml/features/workbench/SessionSidebar.qml"), 1 },
+    };
+
+    for (auto it = focusIndicatorConsumers.cbegin(); it != focusIndicatorConsumers.cend(); ++it) {
+        QString source;
+        QVERIFY2(readSourceFile(it.key(), source), qPrintable(QStringLiteral("Cannot read %1").arg(it.key())));
+        QCOMPARE(source.count(QStringLiteral("showFocusIndicators &&")), it.value());
+    }
+
+    QString inspectorSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageInspector.qml"), inspectorSource));
+    QVERIFY(inspectorSource.contains(QStringLiteral("actionButton.focusIndicatorVisible")));
+
+    QString subscriptionsSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), subscriptionsSource));
+    QVERIFY(subscriptionsSource.contains(QStringLiteral("filterTopicField.focusIndicatorVisible")));
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()

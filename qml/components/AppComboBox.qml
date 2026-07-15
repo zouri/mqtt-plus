@@ -7,6 +7,7 @@ ComboBox {
     id: control
 
     required property AppUi ui
+    readonly property bool focusIndicatorVisible: control.ui.showFocusIndicators && control.activeFocus
 
     implicitHeight: control.ui.compactControlHeight + 4
     font.pixelSize: control.ui.compactFontSize
@@ -97,7 +98,7 @@ ComboBox {
     background: Rectangle {
         radius: 8
         color: control.ui.themePalette.fieldBg
-        border.color: control.activeFocus ? control.ui.themePalette.fieldFocusBorder : control.ui.themePalette.fieldBorder
+        border.color: control.focusIndicatorVisible ? control.ui.themePalette.fieldFocusBorder : control.ui.themePalette.fieldBorder
 
         Behavior on border.color {
             ColorAnimation {
