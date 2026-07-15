@@ -38,6 +38,7 @@ QtObject {
     readonly property int text3xl: 22
 
     // ---- Design tokens: focus ring ----
+    readonly property bool showFocusIndicators: false
     readonly property color focusRingColor: root.isDarkTheme ? "#4f8bff" : "#3370ff"
     readonly property int focusRingWidth: 2
 

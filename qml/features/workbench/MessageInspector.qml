@@ -33,10 +33,10 @@ Rectangle {
                    : (actionButton.hovered
                       ? actionButton.ui.themePalette.buttonHoverBg
                       : actionButton.ui.themePalette.itemBg)
-            border.color: actionButton.activeFocus
+            border.color: actionButton.focusIndicatorVisible
                           ? actionButton.ui.focusRingColor
                           : actionButton.ui.themePalette.panelBorder
-            border.width: actionButton.activeFocus ? actionButton.ui.focusRingWidth : 1
+            border.width: actionButton.focusIndicatorVisible ? actionButton.ui.focusRingWidth : 1
         }
     }
 
