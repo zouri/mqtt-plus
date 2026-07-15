@@ -899,6 +899,10 @@ void ArchitectureBoundariesTest::subscriptionRowsKeepCompactActionGroup()
         "Subscription rate must use the compact fixed width");
     QVERIFY2(source.contains(QStringLiteral("spacing: 2")),
         "Subscription action group must use compact spacing");
+    QVERIFY2(source.contains(QStringLiteral("restBg: subscriptionDelegate.paused ? \"transparent\"")),
+        "An active subscription should show the state button background; a paused subscription should not");
+    QVERIFY2(source.contains(QStringLiteral("outlineColor: subscriptionDelegate.paused ? \"transparent\"")),
+        "Only an active subscription should show the state button outline");
 }
 
 void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
