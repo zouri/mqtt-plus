@@ -92,9 +92,7 @@ Item {
 
     function clearMessageSelection() {
         root.selectedHistoryId = "";
-        if (eventList) {
-            eventList.forceActiveFocus();
-        }
+        root.forceActiveFocus();
     }
 
     function requestFollowScroll() {
