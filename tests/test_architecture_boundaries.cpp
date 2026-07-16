@@ -792,6 +792,14 @@ void ArchitectureBoundariesTest::eventStreamFollowModeUsesSingleCycleButton()
         "Follow mode button should visually keep the pressed state while smart follow is active");
     QVERIFY2(source.contains(QStringLiteral("onClicked: root.setFollowMode(\"smart\")")),
         "Follow mode button should restore following and scroll to the latest message");
+    QVERIFY2(source.contains(QStringLiteral("root.viewModel.setMessageStreamFrozen(true)")),
+        "Manual mode should freeze live mutations of the rendered message model");
+    QVERIFY2(source.contains(QStringLiteral("root.viewModel.setMessageStreamFrozen(false)")),
+        "Smart mode should synchronize and resume the rendered message model");
+    QVERIFY2(source.contains(QStringLiteral("allowResume && eventList.userScrollActive")),
+        "Only an active user scroll should automatically resume at the snapshot bottom");
+    QVERIFY2(source.contains(QStringLiteral("root.viewModel.totalMessageCount")),
+        "The message badge should use the session total instead of the capped visible model count");
     QVERIFY2(!source.contains(QStringLiteral("checkable: true")),
         "Follow mode button should not let the toolbar disable following directly");
     QVERIFY2(source.contains(QStringLiteral("eventList.shouldFollowOutput = false")),
