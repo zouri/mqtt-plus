@@ -1,6 +1,7 @@
 #include "historystore.h"
 
 #include <QDir>
+#include <QHash>
 #include <QSet>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -250,7 +251,7 @@ QStringList HistoryStore::flushPendingMessages()
         return flushedSessionIds;
     }
 
-    QSet<QString> seenSessionIds;
+    QHash<QString, qint64> flushedCounts;
     for (const MessageRecord &message : std::as_const(m_pendingMessages)) {
         query.bindValue(0, message.sessionId);
         query.bindValue(1, message.timestamp);
@@ -275,9 +276,27 @@ QStringList HistoryStore::flushPendingMessages()
             m_db.rollback();
             return {};
         }
-        if (!seenSessionIds.contains(message.sessionId)) {
-            seenSessionIds.insert(message.sessionId);
+        ++flushedCounts[message.sessionId];
+        if (!flushedSessionIds.contains(message.sessionId)) {
             flushedSessionIds.append(message.sessionId);
+        }
+    }
+
+    QSqlQuery countQuery(m_db);
+    if (!countQuery.prepare(QStringLiteral(
+            "INSERT INTO mqtt_message_totals(session_id, total_count) VALUES(?, ?) "
+            "ON CONFLICT(session_id) DO UPDATE SET total_count = total_count + excluded.total_count"))) {
+        m_lastError = countQuery.lastError().text();
+        m_db.rollback();
+        return {};
+    }
+    for (auto it = flushedCounts.cbegin(); it != flushedCounts.cend(); ++it) {
+        countQuery.bindValue(0, it.key());
+        countQuery.bindValue(1, it.value());
+        if (!countQuery.exec()) {
+            m_lastError = countQuery.lastError().text();
+            m_db.rollback();
+            return {};
         }
     }
 
@@ -295,6 +314,25 @@ QStringList HistoryStore::flushPendingMessages()
 int HistoryStore::pendingMessageCount() const
 {
     return m_pendingMessages.size();
+}
+
+qint64 HistoryStore::totalMessageCount(const QString &sessionId) const
+{
+    qint64 count = std::count_if(
+        m_pendingMessages.cbegin(),
+        m_pendingMessages.cend(),
+        [&sessionId](const MessageRecord &message) { return message.sessionId == sessionId; });
+    if (!isReady()) {
+        return count;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("SELECT total_count FROM mqtt_message_totals WHERE session_id = ?"));
+    query.addBindValue(sessionId);
+    if (query.exec() && query.next()) {
+        count += query.value(0).toLongLong();
+    }
+    return count;
 }
 
 qint64 HistoryStore::appendEvent(
@@ -542,6 +580,13 @@ void HistoryStore::clearMessages(const QString &sessionId)
     query.addBindValue(sessionId);
     if (!query.exec()) {
         m_lastError = query.lastError().text();
+        return;
+    }
+
+    query.prepare(QStringLiteral("DELETE FROM mqtt_message_totals WHERE session_id = ?"));
+    query.addBindValue(sessionId);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
     }
 }
 
@@ -569,6 +614,10 @@ void HistoryStore::clearAllMessages()
 
     QSqlQuery query(m_db);
     if (!query.exec(QStringLiteral("DELETE FROM mqtt_messages"))) {
+        m_lastError = query.lastError().text();
+        return;
+    }
+    if (!query.exec(QStringLiteral("DELETE FROM mqtt_message_totals"))) {
         m_lastError = query.lastError().text();
     }
 }
@@ -700,6 +749,29 @@ bool HistoryStore::initialize(const QString &dataPath)
             QStringLiteral(
                 "CREATE INDEX IF NOT EXISTS idx_mqtt_messages_session_id_id "
                 "ON mqtt_messages(session_id, id)"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    if (!query.exec(
+            QStringLiteral(
+                "CREATE TABLE IF NOT EXISTS mqtt_message_totals ("
+                "session_id TEXT PRIMARY KEY, "
+                "total_count INTEGER NOT NULL DEFAULT 0)"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    if (!query.exec(QStringLiteral(
+            "DELETE FROM mqtt_message_totals "
+            "WHERE session_id NOT IN (SELECT DISTINCT session_id FROM mqtt_messages)"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    if (!query.exec(QStringLiteral(
+            "INSERT OR IGNORE INTO mqtt_message_totals(session_id, total_count) "
+            "SELECT session_id, COUNT(*) FROM mqtt_messages GROUP BY session_id"))) {
         m_lastError = query.lastError().text();
         return false;
     }

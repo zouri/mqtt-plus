@@ -2,6 +2,8 @@
 
 #include "domain/session.h"
 #include "models/subscriptionlistmodel.h"
+#include "usecases/eventhistoryservice.h"
+#include "usecases/sessionservice.h"
 
 #include <QtTest/QtTest>
 
@@ -20,6 +22,7 @@ private slots:
     void rejectsPublishWithoutConnectedSession();
     void forwardsSessionAndRuntimeStateNotificationsSeparately();
     void forwardsMessageBatchNotifications();
+    void exposesTotalMessageCountAndForwardsFreeze();
     void ownsSubscriptionFilterState();
     void ownsPendingSubscriptionDeleteState();
     void acceptsIntentCommandsWithoutCore();
@@ -186,6 +189,35 @@ void WorkbenchViewModelTest::forwardsMessageBatchNotifications()
 
     QCOMPARE(appendSpy.size(), 1);
     QCOMPARE(appendSpy.first().at(0).toInt(), 4);
+}
+
+void WorkbenchViewModelTest::exposesTotalMessageCountAndForwardsFreeze()
+{
+    std::function<void()> notifyTotalMessageCount;
+    SessionState session;
+    session.runtime.totalMessageCount = 1201;
+    SessionService sessions;
+    sessions.appendSession(session);
+    sessions.setCurrentIndex(0);
+    EventHistoryService history;
+
+    WorkbenchViewModel::Dependencies dependencies;
+    dependencies.bindTotalMessageCountChanged = [&notifyTotalMessageCount](QObject *, std::function<void()> handler) {
+        notifyTotalMessageCount = std::move(handler);
+    };
+    dependencies.sessionController = &sessions;
+    dependencies.eventController = &history;
+    WorkbenchViewModel viewModel(dependencies);
+    QSignalSpy totalSpy(&viewModel, &WorkbenchViewModel::totalMessageCountChanged);
+
+    QCOMPARE(viewModel.totalMessageCount(), 1201);
+    viewModel.setMessageStreamFrozen(true);
+    QVERIFY(history.messageStreamFrozen());
+
+    sessions.currentSession()->runtime.totalMessageCount = 1202;
+    notifyTotalMessageCount();
+    QCOMPARE(totalSpy.count(), 1);
+    QCOMPARE(viewModel.totalMessageCount(), 1202);
 }
 
 void WorkbenchViewModelTest::ownsSubscriptionFilterState()

@@ -20,6 +20,9 @@ private slots:
     void loadsPendingMessageByReservedId();
     void loadsPayloadBytesByMessageId();
     void roundTripsCanonicalOutgoingMessage();
+    void countsPersistedAndPendingMessagesPerSession();
+    void keepsTotalMessageCountAcrossPruneAndReopen();
+    void backfillsTotalMessageCountForExistingHistory();
 };
 
 void HistoryStoreTest::flushesRawPayloadWithoutLegacyColumns()
@@ -207,6 +210,111 @@ void HistoryStoreTest::loadsPendingMessageByReservedId()
     QCOMPARE(loaded.value(QStringLiteral("payload_bytes")).toByteArray(), record.payloadBytes);
     QCOMPARE(store.loadMessagePayloadBytes(id), record.payloadBytes);
     QCOMPARE(store.pendingMessageCount(), 1);
+}
+
+void HistoryStoreTest::countsPersistedAndPendingMessagesPerSession()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+
+    MessageRecord first;
+    first.sessionId = QStringLiteral("session-1");
+    first.timestamp = QStringLiteral("2026-07-15T16:00:00.000");
+    first.topic = QStringLiteral("devices/one");
+    first.payloadPreview = QStringLiteral("one");
+    first.payloadState = QStringLiteral("full");
+
+    MessageRecord second = first;
+    second.topic = QStringLiteral("devices/two");
+    MessageRecord other = first;
+    other.sessionId = QStringLiteral("session-2");
+
+    QVERIFY(store.enqueueMessage(first) > 0);
+    QVERIFY(store.enqueueMessage(second) > 0);
+    QVERIFY(store.enqueueMessage(other) > 0);
+    QCOMPARE(store.totalMessageCount(first.sessionId), 2);
+    QCOMPARE(store.totalMessageCount(other.sessionId), 1);
+
+    store.flushPendingMessages();
+    QCOMPARE(store.totalMessageCount(first.sessionId), 2);
+
+    store.clearMessages(first.sessionId);
+    QCOMPARE(store.totalMessageCount(first.sessionId), 0);
+    QCOMPARE(store.totalMessageCount(other.sessionId), 1);
+}
+
+void HistoryStoreTest::keepsTotalMessageCountAcrossPruneAndReopen()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+    const QString sessionId = QStringLiteral("session-1");
+
+    {
+        HistoryStore store(dataDir.path());
+        QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+
+        for (int index = 0; index < 3; ++index) {
+            MessageRecord record;
+            record.sessionId = sessionId;
+            record.timestamp = QStringLiteral("2026-07-15T18:00:0%1.000").arg(index);
+            record.topic = QStringLiteral("devices/%1").arg(index);
+            record.payloadPreview = QString::number(index);
+            record.payloadState = QStringLiteral("full");
+            QVERIFY(store.enqueueMessage(record) > 0);
+        }
+
+        store.flushPendingMessages();
+        QCOMPARE(store.totalMessageCount(sessionId), 3);
+        store.pruneMessages(sessionId, 1);
+        QCOMPARE(store.loadMessages(sessionId, 10).size(), 1);
+        QCOMPARE(store.totalMessageCount(sessionId), 3);
+    }
+
+    HistoryStore reopened(dataDir.path());
+    QVERIFY2(reopened.isReady(), qPrintable(reopened.lastError()));
+    QCOMPARE(reopened.totalMessageCount(sessionId), 3);
+    reopened.clearMessages(sessionId);
+    QCOMPARE(reopened.totalMessageCount(sessionId), 0);
+}
+
+void HistoryStoreTest::backfillsTotalMessageCountForExistingHistory()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+    const QString sessionId = QStringLiteral("session-1");
+
+    {
+        HistoryStore store(dataDir.path());
+        QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+        for (int index = 0; index < 2; ++index) {
+            MessageRecord record;
+            record.sessionId = sessionId;
+            record.timestamp = QStringLiteral("2026-07-15T18:30:0%1.000").arg(index);
+            record.topic = QStringLiteral("devices/%1").arg(index);
+            record.payloadPreview = QString::number(index);
+            record.payloadState = QStringLiteral("full");
+            QVERIFY(store.enqueueMessage(record) > 0);
+        }
+        store.flushPendingMessages();
+    }
+
+    const QString connectionName = QStringLiteral("drop-message-total-%1")
+                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral("DROP TABLE mqtt_message_totals")), qPrintable(query.lastError().text()));
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    HistoryStore migrated(dataDir.path());
+    QVERIFY2(migrated.isReady(), qPrintable(migrated.lastError()));
+    QCOMPARE(migrated.totalMessageCount(sessionId), 2);
 }
 
 void HistoryStoreTest::loadsPayloadBytesByMessageId()
