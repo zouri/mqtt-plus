@@ -106,6 +106,10 @@ public:
     Q_INVOKABLE void cancelPendingSubscriptionDelete();
     Q_INVOKABLE bool confirmPendingSubscriptionDelete();
     Q_INVOKABLE void copyMessageTopic(const QString &topic) const;
+    Q_INVOKABLE QString messagePayloadForDisplay(
+        const QString &historyId,
+        const QString &fallbackPayload,
+        int format) const;
     Q_INVOKABLE void copyMessagePayload(
         const QString &historyId,
         const QString &payload,

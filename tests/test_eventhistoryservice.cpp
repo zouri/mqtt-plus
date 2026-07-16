@@ -24,6 +24,7 @@ private slots:
     void publishedRowsKeepFormatAfterHistoryReload();
     void largePublishedRowsShowFullPayloadAfterHistoryReload();
     void messageDetailsExposeFullPendingPayload();
+    void messagePayloadDisplaySupportsSelectedFormats();
     void previewOnlyRowsKeepPayloadBodyFreeOfStatusText();
     void skippedRowsKeepPayloadBodyEmpty();
     void publishedRowsAppearWhenOutputPaused();
@@ -231,6 +232,38 @@ void EventHistoryServiceTest::messageDetailsExposeFullPendingPayload()
     const QVariantMap details = fixture.service.messageDetails(historyId);
     QCOMPARE(details.value(QStringLiteral("fullPayloadAvailable")).toBool(), true);
     QCOMPARE(details.value(QStringLiteral("fullPayload")).toString(), QString::fromUtf8(payload));
+}
+
+void EventHistoryServiceTest::messagePayloadDisplaySupportsSelectedFormats()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    const QByteArray payload("Hi");
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/display-format"),
+        payload,
+        static_cast<int>(PayloadFormat::Plaintext));
+
+    QCOMPARE(fixture.session.runtime.messageRows.size(), 1);
+    const qint64 historyId = fixture.session.runtime.messageRows.constLast()
+                                 .toMap()
+                                 .value(QStringLiteral("historyId"))
+                                 .toLongLong();
+    QVERIFY(historyId > 0);
+    QCOMPARE(
+        fixture.service.messagePayloadForDisplay(
+            historyId,
+            QStringLiteral("fallback"),
+            static_cast<int>(PayloadFormat::Plaintext)),
+        QStringLiteral("Hi"));
+    QCOMPARE(
+        fixture.service.messagePayloadForDisplay(
+            historyId,
+            QStringLiteral("fallback"),
+            static_cast<int>(PayloadFormat::Hex)),
+        QStringLiteral("48 69"));
 }
 
 void EventHistoryServiceTest::previewOnlyRowsKeepPayloadBodyFreeOfStatusText()

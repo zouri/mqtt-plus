@@ -455,6 +455,23 @@ void WorkbenchViewModel::copyMessageTopic(const QString &topic) const
     m_platformActions.copyTextToClipboard(topic);
 }
 
+QString WorkbenchViewModel::messagePayloadForDisplay(
+    const QString &historyId,
+    const QString &fallbackPayload,
+    int format) const
+{
+    if (!m_dependencies.eventController) {
+        return fallbackPayload;
+    }
+
+    bool ok = false;
+    const qint64 parsedHistoryId = historyId.toLongLong(&ok);
+    return m_dependencies.eventController->messagePayloadForDisplay(
+        ok ? parsedHistoryId : 0,
+        fallbackPayload,
+        format);
+}
+
 void WorkbenchViewModel::copyMessagePayload(
     const QString &historyId,
     const QString &payload,

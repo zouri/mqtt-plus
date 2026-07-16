@@ -31,9 +31,11 @@ AppPanel {
     showTopBorder: false
     showLeftBorder: false
     showRightBorder: false
+    radius: 0
     color: control.ui.themePalette.headerBg
 
     Layout.fillWidth: true
+    Layout.rightMargin: -3
     Layout.minimumHeight: 96
     Layout.preferredHeight: 96
     Layout.maximumHeight: 96

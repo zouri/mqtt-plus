@@ -735,6 +735,24 @@ QString EventHistoryService::messagePayloadForReuse(
     return parseError.isEmpty() ? decoded : fallback;
 }
 
+QString EventHistoryService::messagePayloadForDisplay(
+    qint64 messageId,
+    const QString &fallbackPayload,
+    int format) const
+{
+    if (messageId <= 0 || !m_dependencies.historyStore) {
+        return fallbackPayload;
+    }
+
+    const QByteArray payloadBytes = m_dependencies.historyStore->loadMessagePayloadBytes(messageId);
+    if (payloadBytes.isEmpty()) {
+        return fallbackPayload;
+    }
+
+    QString parseError;
+    return PayloadCodec::decodeForDisplay(PayloadCodec::formatFromInt(format), payloadBytes, parseError);
+}
+
 QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
 {
     if (messageId <= 0 || !m_dependencies.historyStore) {

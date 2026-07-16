@@ -75,6 +75,7 @@ public:
         const QString &fallbackPayload,
         const QString &fallbackTestPayload,
         int format) const;
+    QString messagePayloadForDisplay(qint64 messageId, const QString &fallbackPayload, int format) const;
     QVariantMap messageDetails(qint64 messageId) const;
     void trimVisibleMessageRows(SessionState &session);
     void trimVisibleLogRows(SessionState &session);

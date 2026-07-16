@@ -376,9 +376,10 @@ AppPanel {
                         spacing: 7
 
                         Rectangle {
-                            Layout.preferredWidth: 7
-                            Layout.preferredHeight: 7
-                            radius: 2
+                            Layout.preferredWidth: 6
+                            Layout.preferredHeight: 30
+                            Layout.alignment: Qt.AlignVCenter
+                            radius: 3
                             color: subscriptionDelegate.topicSwatchColor
                             opacity: subscriptionDelegate.paused ? 0.5 : 1.0
                         }
