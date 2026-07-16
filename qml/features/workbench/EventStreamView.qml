@@ -713,22 +713,12 @@ Item {
 
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
-                                    Layout.preferredHeight: Math.min(implicitHeight,
-                                                                     payloadLineMetrics.lineSpacing)
                                     text: eventDelegate.payload
                                     color: eventDelegate.isEvent ? root.ui.textMuted : root.ui.textStrong
                                     font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily
                                     font.pixelSize: 12
                                     textFormat: Text.PlainText
                                     wrapMode: Text.WrapAnywhere
-                                    clip: true
-                                }
-
-                                FontMetrics {
-                                    id: payloadLineMetrics
-
-                                    font.family: payloadText.font.family
-                                    font.pixelSize: payloadText.font.pixelSize
                                 }
                             }
 

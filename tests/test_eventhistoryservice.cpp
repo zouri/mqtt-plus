@@ -22,7 +22,7 @@ private slots:
     void rawOnlyRowsKeepPayloadBodyFreeOfStatusText();
     void publishedRowsAppearInMessageStream();
     void publishedRowsKeepFormatAfterHistoryReload();
-    void largePublishedRowsShowPreviewAfterHistoryReload();
+    void largePublishedRowsShowFullPayloadAfterHistoryReload();
     void messageDetailsExposeFullPendingPayload();
     void previewOnlyRowsKeepPayloadBodyFreeOfStatusText();
     void skippedRowsKeepPayloadBodyEmpty();
@@ -115,16 +115,20 @@ void EventHistoryServiceTest::rawOnlyRowsKeepPayloadBodyFreeOfStatusText()
     Fixture fixture;
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
     fixture.addSubscription(QStringLiteral("devices/binary"), static_cast<int>(PayloadFormat::Hex));
+    const QByteArray payload(80, '\0');
+    QString decodeError;
+    const QString expectedPayload = PayloadCodec::decodeForDisplay(PayloadFormat::Hex, payload, decodeError);
+    QVERIFY2(decodeError.isEmpty(), qPrintable(decodeError));
 
     fixture.service.appendIncomingMessage(
         fixture.session.id,
         QStringLiteral("devices/binary"),
-        QByteArray::fromHex("00017F"));
+        payload);
 
     QTRY_COMPARE(fixture.messages.count(), 1);
     const QVariantMap row = fixture.messages.rowAt(0);
-    QCOMPARE(row.value(QStringLiteral("payload")).toString(), QStringLiteral("00 01 7F"));
-    QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Hex · raw"));
+    QCOMPARE(row.value(QStringLiteral("payload")).toString(), expectedPayload);
+    QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Hex"));
 }
 
 void EventHistoryServiceTest::publishedRowsAppearInMessageStream()
@@ -179,7 +183,7 @@ void EventHistoryServiceTest::publishedRowsKeepFormatAfterHistoryReload()
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("JSON"));
 }
 
-void EventHistoryServiceTest::largePublishedRowsShowPreviewAfterHistoryReload()
+void EventHistoryServiceTest::largePublishedRowsShowFullPayloadAfterHistoryReload()
 {
     Fixture fixture;
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
@@ -199,8 +203,8 @@ void EventHistoryServiceTest::largePublishedRowsShowPreviewAfterHistoryReload()
 
     QCOMPARE(fixture.messages.count(), 1);
     const QVariantMap row = fixture.messages.rowAt(0);
-    QCOMPARE(row.value(QStringLiteral("payload")).toString(), QString(64 * 1024, QLatin1Char('x')));
-    QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Truncated"));
+    QCOMPARE(row.value(QStringLiteral("payload")).toString(), QString::fromUtf8(payload));
+    QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Plaintext"));
 }
 
 void EventHistoryServiceTest::messageDetailsExposeFullPendingPayload()

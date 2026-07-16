@@ -16,7 +16,7 @@ class HistoryStoreTest : public QObject
 private slots:
     void flushesRawPayloadWithoutLegacyColumns();
     void resetsOnlyMessageTableWhenSchemaIsStale();
-    void loadMessagesUsesPreviewWithoutPayloadBytes();
+    void loadMessagesIncludesPayloadBytes();
     void loadsPendingMessageByReservedId();
     void loadsPayloadBytesByMessageId();
     void roundTripsCanonicalOutgoingMessage();
@@ -67,7 +67,7 @@ void HistoryStoreTest::flushesRawPayloadWithoutLegacyColumns()
 
     const QVariantMap row = rows.first().toMap();
     QVERIFY(!row.contains(QStringLiteral("payload")));
-    QCOMPARE(row.value(QStringLiteral("payload_bytes")).toByteArray(), QByteArray());
+    QCOMPARE(row.value(QStringLiteral("payload_bytes")).toByteArray(), payload);
     QCOMPARE(row.value(QStringLiteral("payload_size")).toLongLong(), qint64(payload.size()));
 }
 
@@ -142,7 +142,7 @@ void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
     QCOMPARE(store.loadMessages(newSessionId, 10).size(), 1);
 }
 
-void HistoryStoreTest::loadMessagesUsesPreviewWithoutPayloadBytes()
+void HistoryStoreTest::loadMessagesIncludesPayloadBytes()
 {
     QTemporaryDir dataDir;
     QVERIFY(dataDir.isValid());
@@ -179,7 +179,7 @@ void HistoryStoreTest::loadMessagesUsesPreviewWithoutPayloadBytes()
     QCOMPARE(row.value(QStringLiteral("payload_preview")).toString(), QStringLiteral("preview only"));
     QCOMPARE(row.value(QStringLiteral("payload_state")).toString(), QStringLiteral("full"));
     QCOMPARE(row.value(QStringLiteral("payload_size")).toLongLong(), qint64(payload.size()));
-    QCOMPARE(row.value(QStringLiteral("payload_bytes")).toByteArray(), QByteArray());
+    QCOMPARE(row.value(QStringLiteral("payload_bytes")).toByteArray(), payload);
 }
 
 void HistoryStoreTest::loadsPendingMessageByReservedId()
