@@ -299,7 +299,7 @@ Rectangle {
                     SettingRow {
                         ui: root.ui
                         title: qsTr("Saved messages")
-                        detail: qsTr("Maximum MQTT messages retained per connection.")
+                        detail: qsTr("Maximum MQTT messages kept per connection. Cleanup runs when the app starts or exits.")
 
                         AppComboBox {
                             ui: root.ui

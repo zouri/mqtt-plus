@@ -5,7 +5,6 @@
 #include "services/scripting/luarunner.h"
 
 #include <QObject>
-#include <QHash>
 #include <QSet>
 #include <QTimer>
 #include <QVariantList>
@@ -98,7 +97,6 @@ private:
     QTimer m_visibleMessageRowsFlushTimer;
     QVariantList m_pendingVisibleMessageRows;
     QString m_pendingVisibleMessageSessionId;
-    QHash<QString, int> m_messageRetentionPruneFlushCounts;
     QSet<QString> m_reportedPayloadStorageStates;
     QString m_lastMessageStorageError;
 };

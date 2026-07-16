@@ -267,6 +267,12 @@ if(BUILD_TESTING)
         src/services/storage/historystore.cpp
     )
 
+    add_mqtt_plus_qt_test(test_message_retention_lifecycle
+        tests/test_message_retention_lifecycle.cpp
+        src/app/messageretentionlifecycle.cpp
+        src/services/storage/historystore.cpp
+    )
+
     add_mqtt_plus_qt_test(test_subscriptionlistmodel
         tests/test_subscriptionlistmodel.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}

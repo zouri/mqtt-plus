@@ -27,6 +27,7 @@ struct ApplicationCoreState
     explicit ApplicationCoreState(QObject *parent = nullptr);
 
     void applyExitCleanup();
+    void applyMessageRetentionLimit();
     void runStartup();
 
     QSettings settings;

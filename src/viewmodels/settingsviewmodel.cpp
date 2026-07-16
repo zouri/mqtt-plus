@@ -301,29 +301,8 @@ void SettingsViewModel::setLanguageMode(const QString &mode)
 
 void SettingsViewModel::setMessageRetentionLimit(int limit)
 {
-    if (!m_dependencies.preferencesController) {
-        return;
-    }
-
-    const int previousLimit = messageRetentionLimit();
-    m_dependencies.preferencesController->setMessageRetentionLimit(limit);
-    if (messageRetentionLimit() == previousLimit || messageRetentionLimit() <= 0) {
-        return;
-    }
-
-    if (m_dependencies.eventController) {
-        m_dependencies.eventController->flushPendingMessageHistory();
-    }
-    if (m_dependencies.historyStore && m_dependencies.sessions) {
-        for (const auto &session : *m_dependencies.sessions) {
-            m_dependencies.historyStore->pruneMessages(session.id, messageRetentionLimit());
-        }
-    }
-    if (m_dependencies.reloadCurrentSessionHistory) {
-        m_dependencies.reloadCurrentSessionHistory();
-    }
-    if (m_dependencies.emitMessageStreamChanged) {
-        m_dependencies.emitMessageStreamChanged();
+    if (m_dependencies.preferencesController) {
+        m_dependencies.preferencesController->setMessageRetentionLimit(limit);
     }
 }
 
