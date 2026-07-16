@@ -213,7 +213,11 @@ Rectangle {
                         Layout.preferredWidth: 8
                         Layout.preferredHeight: 8
                         radius: 4
-                        color: sessionDelegate.lastError.length > 0 ? control.ui.themePalette.errorText : (sessionDelegate.connected ? control.ui.themePalette.successText : "#9aa4b2")
+                        color: sessionDelegate.lastError.length > 0
+                               ? control.ui.themePalette.errorText
+                               : (sessionDelegate.connected
+                                  ? control.ui.themePalette.successText
+                                  : control.ui.stateColor("disconnected"))
                     }
 
                     ColumnLayout {
