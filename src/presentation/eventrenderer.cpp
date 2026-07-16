@@ -190,6 +190,8 @@ QVariantMap renderHistoryRow(
         payloadState = QStringLiteral("full");
     }
     QString payloadPreview = row.value(QStringLiteral("payload_preview")).toString();
+    const bool renderingStoredPayload = payloadState != QStringLiteral("skipped")
+        && (!payloadBytes.isEmpty() || payloadPreview.isEmpty());
     const bool renderingFullPayloadFromPreview = payloadState == QStringLiteral("full")
         && payloadBytes.isEmpty()
         && !payloadPreview.isEmpty();
@@ -203,7 +205,7 @@ QVariantMap renderHistoryRow(
     QString parseError;
     QString renderedPayload;
     QString decodedPayload;
-    if (payloadState == QStringLiteral("full") && (!payloadBytes.isEmpty() || payloadPreview.isEmpty())) {
+    if (renderingStoredPayload) {
         decodedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, parseError);
         renderedPayload = decodedPayload;
         if (!parseError.isEmpty()) {
@@ -255,17 +257,19 @@ QVariantMap renderHistoryRow(
             ? QStringLiteral("Lua Error")
             : (hasScriptResult ? parsedFormat : (renderedPayloadIsPreviewOnly
                     ? QStringLiteral("%1 preview").arg(PayloadCodec::formatName(format))
+                    : (renderingStoredPayload
+                    ? PayloadCodec::formatName(format)
                     : (payloadState == QStringLiteral("skipped")
                     ? QStringLiteral("Skipped")
                     : (payloadState == QStringLiteral("truncated")
                         ? QStringLiteral("Truncated")
                         : (payloadState == QStringLiteral("raw_only")
                             ? QStringLiteral("%1 · raw").arg(PayloadCodec::formatName(format))
-                            : PayloadCodec::formatName(format)))))));
+                            : PayloadCodec::formatName(format))))))));
     rendered.insert(QStringLiteral("payloadSize"), payloadSize);
     rendered.insert(
         QStringLiteral("testPayload"),
-        payloadState == QStringLiteral("full")
+        renderingStoredPayload
             ? decodedPayload
             : payloadPreview);
     rendered.insert(QStringLiteral("testFormat"), static_cast<int>(format));

@@ -123,74 +123,9 @@ Rectangle {
 
             ColumnLayout {
                 width: inspectorScroll.availableWidth
-                spacing: 14
+                spacing: 8
 
                 Item { Layout.preferredHeight: 1 }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 14
-                    Layout.rightMargin: 14
-                    spacing: 6
-
-                    Label {
-                        text: control.details.fullPayloadAvailable === false
-                              ? qsTr("Payload preview")
-                              : qsTr("Payload")
-                        color: control.ui.textMuted
-                        font.pixelSize: 11
-                    }
-
-                    TextEdit {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: contentHeight
-                        text: String(control.details.fullPayload || qsTr("Select a message to inspect"))
-                        color: control.ui.textStrong
-                        font.family: "Menlo"
-                        font.pixelSize: 11
-                        textFormat: TextEdit.PlainText
-                        readOnly: true
-                        selectByMouse: true
-                        wrapMode: TextEdit.WrapAnywhere
-                    }
-
-                    Label {
-                        visible: control.details.fullPayloadAvailable === false
-                        Layout.fillWidth: true
-                        text: qsTr("The full payload was not stored. Hash: %1")
-                                  .arg(String(control.details.payloadHash || qsTr("Unavailable")))
-                        color: control.ui.themePalette.warningText
-                        font.pixelSize: 11
-                        wrapMode: Text.Wrap
-                    }
-                }
-
-                ColumnLayout {
-                    visible: String(control.details.parsedPayload || "").length > 0
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 14
-                    Layout.rightMargin: 14
-                    spacing: 6
-
-                    Label {
-                        text: qsTr("Parsed result")
-                        color: control.ui.textMuted
-                        font.pixelSize: 11
-                    }
-
-                    TextEdit {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: contentHeight
-                        text: String(control.details.parsedPayload || "")
-                        color: control.ui.textStrong
-                        font.family: "Menlo"
-                        font.pixelSize: 11
-                        textFormat: TextEdit.PlainText
-                        readOnly: true
-                        selectByMouse: true
-                        wrapMode: TextEdit.WrapAnywhere
-                    }
-                }
 
                 GridLayout {
                     Layout.fillWidth: true
@@ -223,6 +158,93 @@ Rectangle {
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Retain"); color: control.ui.textMuted; font.pixelSize: 11 }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: control.details.retainKnown ? (control.details.retain ? qsTr("Yes") : qsTr("No")) : qsTr("Unavailable"); color: control.ui.textStrong; font.pixelSize: 11 }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    spacing: 6
+
+                    Label {
+                        text: control.details.fullPayloadAvailable === false
+                              ? qsTr("Payload preview")
+                              : qsTr("Payload")
+                        color: control.ui.textMuted
+                        font.pixelSize: 11
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.max(40, payloadBodyText.contentHeight + 20)
+                        radius: control.ui.radiusSm
+                        color: control.ui.themePalette.innerPanelBg
+                        border.color: control.ui.themePalette.fieldBorder
+                        border.width: 1
+
+                        TextEdit {
+                            id: payloadBodyText
+
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            text: String(control.details.fullPayload || qsTr("Select a message to inspect"))
+                            color: control.ui.textStrong
+                            font.family: "Menlo"
+                            font.pixelSize: 11
+                            textFormat: TextEdit.PlainText
+                            readOnly: true
+                            selectByMouse: true
+                            wrapMode: TextEdit.WrapAnywhere
+                        }
+                    }
+
+                    Label {
+                        visible: control.details.fullPayloadAvailable === false
+                        Layout.fillWidth: true
+                        text: qsTr("The full payload was not stored. Hash: %1")
+                                  .arg(String(control.details.payloadHash || qsTr("Unavailable")))
+                        color: control.ui.themePalette.warningText
+                        font.pixelSize: 11
+                        wrapMode: Text.Wrap
+                    }
+                }
+
+                ColumnLayout {
+                    visible: String(control.details.parsedPayload || "").length > 0
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    spacing: 6
+
+                    Label {
+                        text: qsTr("Parsed result")
+                        color: control.ui.textMuted
+                        font.pixelSize: 11
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.max(40, parsedResultText.contentHeight + 20)
+                        radius: control.ui.radiusSm
+                        color: control.ui.themePalette.innerPanelBg
+                        border.color: control.ui.themePalette.fieldBorder
+                        border.width: 1
+
+                        TextEdit {
+                            id: parsedResultText
+
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            text: String(control.details.parsedPayload || "")
+                            color: control.ui.textStrong
+                            font.family: "Menlo"
+                            font.pixelSize: 11
+                            textFormat: TextEdit.PlainText
+                            readOnly: true
+                            selectByMouse: true
+                            wrapMode: TextEdit.WrapAnywhere
+                        }
+                    }
                 }
 
                 Flow {
