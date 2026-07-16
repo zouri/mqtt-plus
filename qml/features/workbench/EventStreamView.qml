@@ -45,14 +45,17 @@ Item {
     function resetStreamPosition() {
         root.loadingOlderEvents = false
         root.reachedHistoryStart = false
+        root.followMode = "smart"
 
         if (eventList) {
             eventList.unreadCount = 0
             eventList.bottomAnchorActive = true
             eventList.shouldFollowOutput = true
             eventList.userScrollActive = false
+            eventList.programmaticScroll = true
         }
 
+        root.viewModel.setMessageStreamFrozen(false)
         root.requestFollowScroll()
     }
 
@@ -169,10 +172,13 @@ Item {
         if (mode === "manual") {
             eventList.bottomAnchorActive = false
             eventList.shouldFollowOutput = false
+            root.viewModel.setMessageStreamFrozen(true)
             return
         }
 
+        eventList.programmaticScroll = true
         eventList.shouldFollowOutput = true
+        root.viewModel.setMessageStreamFrozen(false)
         root.requestFollowScroll()
     }
 
@@ -210,8 +216,8 @@ Item {
                     // qmllint disable missing-property
                     label: root.streamModel.filterActive
                            ? qsTr("%1/%2").arg(root.streamModel.filteredMessageCount)
-                                           .arg(root.streamModel.totalMessageCount)
-                           : String(root.streamModel.totalMessageCount)
+                                           .arg(root.viewModel.totalMessageCount)
+                           : String(root.viewModel.totalMessageCount)
                     // qmllint enable missing-property
                     badgeRadius: 11
                     horizontalPadding: 7
@@ -445,20 +451,28 @@ Item {
                     })
                 }
 
-                function refreshFollowState() {
+                function refreshFollowState(allowResume) {
                     if (programmaticScroll) {
                         return
                     }
 
                     const maxContentY = Math.max(originY, contentHeight - height)
                     const distanceFromBottom = Math.max(0, maxContentY - contentY)
-                    shouldFollowOutput = count === 0 || distanceFromBottom <= 24
+                    const nearBottom = count === 0 || distanceFromBottom <= 24
+                    if (root.followMode === "manual") {
+                        shouldFollowOutput = false
+                        if (nearBottom && allowResume && eventList.userScrollActive) {
+                            root.setFollowMode("smart")
+                        }
+                        return
+                    }
+
+                    shouldFollowOutput = nearBottom
                     if (!shouldFollowOutput) {
-                        bottomAnchorActive = false
+                        root.setFollowMode("manual")
+                        return
                     }
-                    if (shouldFollowOutput) {
-                        unreadCount = 0
-                    }
+                    unreadCount = 0
                 }
 
                 function noteManualScrollStarted() {
@@ -468,7 +482,6 @@ Item {
 
                     userScrollActive = true
                     bottomAnchorActive = false
-                    refreshFollowState()
                 }
 
                 function noteManualScrollEnded() {
@@ -476,8 +489,8 @@ Item {
                         return
                     }
 
+                    refreshFollowState(true)
                     userScrollActive = false
-                    refreshFollowState()
                 }
 
                 ScrollBar.vertical: ScrollBar {
@@ -495,7 +508,7 @@ Item {
                 }
                 onContentYChanged: {
                     if (userScrollActive || !shouldFollowOutput) {
-                        refreshFollowState()
+                        refreshFollowState(userScrollActive)
                     }
                     if (contentY <= originY + 48) {
                         root.loadOlderEvents()

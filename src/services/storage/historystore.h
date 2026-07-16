@@ -38,6 +38,7 @@ public:
         int payloadFormat = -1);
     QStringList flushPendingMessages();
     int pendingMessageCount() const;
+    qint64 totalMessageCount(const QString &sessionId) const;
     qint64 appendEvent(
         const QString &sessionId,
         const QString &timestamp,

@@ -69,6 +69,7 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
             emit sessionStatusChanged();
             emit publishStatusChanged();
             emit messageTopicFilterStateChanged();
+            emit totalMessageCountChanged();
         });
     }
     if (m_dependencies.bindSessionRuntimeStateChanged) {
@@ -80,6 +81,12 @@ WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject
     if (m_dependencies.bindMessageStreamChanged) {
         m_dependencies.bindMessageStreamChanged(this, [this]() {
             emit messageStreamChanged();
+            emit totalMessageCountChanged();
+        });
+    }
+    if (m_dependencies.bindTotalMessageCountChanged) {
+        m_dependencies.bindTotalMessageCountChanged(this, [this]() {
+            emit totalMessageCountChanged();
         });
     }
     if (m_dependencies.bindMessageStreamRowAppended) {
@@ -257,6 +264,14 @@ QVariantMap WorkbenchViewModel::messageTopicFilterState() const
         {QStringLiteral("pausedCount"), pausedCount},
         {QStringLiteral("singleTopicLabel"), singleTopicLabel},
     };
+}
+
+qint64 WorkbenchViewModel::totalMessageCount() const
+{
+    const auto *session = m_dependencies.sessionController
+        ? m_dependencies.sessionController->currentSession()
+        : nullptr;
+    return session ? session->runtime.totalMessageCount : 0;
 }
 
 void WorkbenchViewModel::setCurrentSessionIndex(int index)
@@ -467,6 +482,13 @@ void WorkbenchViewModel::clearMessages()
 {
     if (m_dependencies.eventController) {
         m_dependencies.eventController->clearCurrentMessages();
+    }
+}
+
+void WorkbenchViewModel::setMessageStreamFrozen(bool frozen)
+{
+    if (m_dependencies.eventController) {
+        m_dependencies.eventController->setMessageStreamFrozen(frozen);
     }
 }
 

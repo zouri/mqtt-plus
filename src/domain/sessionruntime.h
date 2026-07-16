@@ -18,6 +18,7 @@ struct SessionRuntimeState {
     PublishStatus publishStatus;
     QVariantList messageRows;
     QVariantList logRows;
+    qint64 totalMessageCount = 0;
     qint64 oldestLoadedMessageId = 0;
     qint64 oldestLoadedLogId = 0;
     bool loadedAllMessageHistory = false;

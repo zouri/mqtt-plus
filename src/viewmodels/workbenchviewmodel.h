@@ -42,6 +42,7 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(QString pendingSubscriptionDeleteDisplayName READ pendingSubscriptionDeleteDisplayName NOTIFY pendingSubscriptionDeleteChanged)
     Q_PROPERTY(bool allSubscriptionsPaused READ allSubscriptionsPaused NOTIFY subscriptionsStateChanged)
     Q_PROPERTY(QVariantMap messageTopicFilterState READ messageTopicFilterState NOTIFY messageTopicFilterStateChanged)
+    Q_PROPERTY(qint64 totalMessageCount READ totalMessageCount NOTIFY totalMessageCountChanged)
 
 public:
     struct Dependencies {
@@ -49,6 +50,7 @@ public:
         std::function<void(QObject *, std::function<void()>)> bindCurrentSessionChanged;
         std::function<void(QObject *, std::function<void()>)> bindSessionRuntimeStateChanged;
         std::function<void(QObject *, std::function<void()>)> bindMessageStreamChanged;
+        std::function<void(QObject *, std::function<void()>)> bindTotalMessageCountChanged;
         std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindMessageStreamRowAppended;
         std::function<void(QObject *, std::function<void(int)>)> bindMessageStreamRowsAppended;
         std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
@@ -85,6 +87,7 @@ public:
     QString pendingSubscriptionDeleteDisplayName() const;
     bool allSubscriptionsPaused() const;
     QVariantMap messageTopicFilterState() const;
+    qint64 totalMessageCount() const;
 
     void setCurrentSessionIndex(int index);
 
@@ -115,6 +118,7 @@ public:
         const QString &testPayload,
         int format);
     Q_INVOKABLE void clearMessages();
+    Q_INVOKABLE void setMessageStreamFrozen(bool frozen);
     Q_INVOKABLE int loadOlderMessages();
     Q_INVOKABLE void setMessageTopicFilter(const QString &topic);
     Q_INVOKABLE void addMessageTopicFilter(const QString &topic);
@@ -128,6 +132,7 @@ signals:
     void sessionStatusChanged();
     void publishStatusChanged();
     void messageStreamChanged();
+    void totalMessageCountChanged();
     void messageStreamRowAppended();
     void messageStreamRowsAppended(int count);
     void pendingSubscriptionDeleteChanged();

@@ -49,6 +49,8 @@ public:
     void clearCurrentLogs();
     int loadOlderCurrentSessionMessages();
     int loadOlderCurrentSessionLogs();
+    bool messageStreamFrozen() const;
+    void setMessageStreamFrozen(bool frozen);
     void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
     void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
     void appendEvent(SessionState &session, const QString &channel, const QString &message);
@@ -81,6 +83,7 @@ public:
 
 signals:
     void messageStreamChanged();
+    void totalMessageCountChanged();
     void logStreamChanged();
     void messageAppended(const QVariantMap &row);
     void messageRowsAppended(int count);
@@ -97,6 +100,8 @@ private:
     QTimer m_visibleMessageRowsFlushTimer;
     QVariantList m_pendingVisibleMessageRows;
     QString m_pendingVisibleMessageSessionId;
+    qint64 m_frozenOldestLoadedMessageId = 0;
     QSet<QString> m_reportedPayloadStorageStates;
     QString m_lastMessageStorageError;
+    bool m_messageStreamFrozen = false;
 };
