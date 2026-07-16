@@ -31,6 +31,7 @@ private slots:
     void publishedAndIncomingRowsBothRemainInMessageStream();
     void pendingVisibleRowsDoNotDuplicateAfterModelRefresh();
     void batchedVisibleRowsEmitOneAppendSignalWithCount();
+    void runtimeFlushDoesNotApplyMessageRetentionLimit();
     void reusablePayloadLoadsStoredBytesAfterHistoryRowsDropBlobs();
 };
 
@@ -389,6 +390,27 @@ void EventHistoryServiceTest::batchedVisibleRowsEmitOneAppendSignalWithCount()
     QTRY_COMPARE(fixture.messages.count(), 3);
     QCOMPARE(appendSpy.count(), 1);
     QCOMPARE(appendSpy.first().at(0).toInt(), 3);
+}
+
+void EventHistoryServiceTest::runtimeFlushDoesNotApplyMessageRetentionLimit()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.preferences.setMessageRetentionLimit(100);
+
+    for (int batch = 0; batch < 10; ++batch) {
+        for (int index = 0; index < 15; ++index) {
+            const int messageNumber = batch * 15 + index;
+            fixture.service.appendPublishedMessage(
+                fixture.session.id,
+                QStringLiteral("devices/%1").arg(messageNumber),
+                QByteArray::number(messageNumber),
+                static_cast<int>(PayloadFormat::Plaintext));
+        }
+        fixture.service.flushPendingMessageHistory();
+    }
+
+    QCOMPARE(fixture.historyStore.loadMessages(fixture.session.id, 1000).size(), 150);
 }
 
 QTEST_MAIN(EventHistoryServiceTest)

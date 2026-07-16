@@ -1,8 +1,12 @@
 #include "usecases/preferencescontroller.h"
 #include "models/eventstreammodel.h"
+#include "services/storage/historystore.h"
+#include "usecases/eventhistoryservice.h"
 #include "viewmodels/settingsviewmodel.h"
 
 #include <QtTest/QtTest>
+
+#include <QTemporaryDir>
 
 #include <utility>
 
@@ -74,6 +78,7 @@ class SettingsOptionsViewModelTest : public QObject
 private slots:
     void exposesDefaultSettingIndexes();
     void readsSettingsThroughDependencies();
+    void messageRetentionChangeDefersCleanup();
     void writesSettingsThroughDependencies();
     void forwardsDependencySignals();
     void themeChangesEmitSignals();
@@ -118,6 +123,58 @@ void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
     QCOMPARE(settings.windowMaximized(), true);
 }
 
+void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
+{
+    FakeSettingsDeps deps;
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore historyStore(dataDir.path());
+    QVERIFY2(historyStore.isReady(), qPrintable(historyStore.lastError()));
+
+    deps.sessions.resize(1);
+    SessionState &session = deps.sessions[0];
+    session.id = QStringLiteral("session-1");
+
+    for (int index = 0; index < 1001; ++index) {
+        QVERIFY(historyStore.enqueueMessage(
+                    session.id,
+                    QString::number(index),
+                    QStringLiteral("topic"),
+                    QByteArray::number(index))
+                > 0);
+    }
+    QVERIFY(!historyStore.flushPendingMessages().isEmpty());
+    QCOMPARE(historyStore.loadMessages(session.id, 2000).size(), 1001);
+
+    EventHistoryService eventHistoryService;
+    EventHistoryService::Dependencies eventHistoryDependencies;
+    eventHistoryDependencies.historyStore = &historyStore;
+    eventHistoryDependencies.currentSessionState = [&session]() { return &session; };
+    eventHistoryService.setDependencies(eventHistoryDependencies);
+
+    QVERIFY(historyStore.enqueueMessage(
+                session.id,
+                QStringLiteral("pending"),
+                QStringLiteral("topic"),
+                QByteArrayLiteral("pending"))
+            > 0);
+    QCOMPARE(historyStore.pendingMessageCount(), 1);
+
+    SettingsViewModel::Dependencies settingsDependencies = deps.dependencies();
+    settingsDependencies.eventController = &eventHistoryService;
+    settingsDependencies.historyStore = &historyStore;
+    SettingsViewModel settings(settingsDependencies, &deps.settings);
+
+    settings.setMessageRetentionLimitIndex(0);
+
+    QCOMPARE(deps.preferencesController.messageRetentionLimit(), 1000);
+    QCOMPARE(historyStore.pendingMessageCount(), 1);
+    QCOMPARE(historyStore.loadMessages(session.id, 2000).size(), 1001);
+    QCOMPARE(deps.reloadHistoryCalls, 0);
+    QCOMPARE(deps.messageStreamChangedCalls, 0);
+}
+
 void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
 {
     FakeSettingsDeps deps;
@@ -154,9 +211,9 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     QCOMPARE(deps.preferencesController.windowMaximized(), true);
     QCOMPARE(deps.preferencesController.windowWidth(), 1600);
     QCOMPARE(deps.preferencesController.windowHeight(), 900);
-    QCOMPARE(deps.reloadHistoryCalls, 2);
+    QCOMPARE(deps.reloadHistoryCalls, 1);
     QCOMPARE(deps.refreshScriptSamplesCalls, 2);
-    QCOMPARE(deps.messageStreamChangedCalls, 3);
+    QCOMPARE(deps.messageStreamChangedCalls, 2);
     QCOMPARE(deps.logStreamChangedCalls, 3);
 }
 

@@ -12,6 +12,7 @@
 
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <QHash>
 
 #include <algorithm>
 
@@ -21,7 +22,6 @@ namespace {
 constexpr int kVisibleMessageRowsFlushIntervalMs = 16;
 constexpr int kMessageHistoryFlushIntervalMs = 250;
 constexpr int kMessageHistoryFlushBatchSize = 200;
-constexpr int kMessageRetentionPruneFlushInterval = 10;
 constexpr qint64 kPayloadPreviewBytes = 64 * 1024;
 constexpr qint64 kHardPayloadLimitBytes = 16 * 1024 * 1024;
 
@@ -169,18 +169,6 @@ QVariantMap messageRecordRow(const MessageRecord &record)
     row.insert(QStringLiteral("script_id"), record.scriptId);
     row.insert(QStringLiteral("script_name"), record.scriptName);
     return row;
-}
-
-bool shouldPruneMessageHistory(QHash<QString, int> &flushCounts, const QString &sessionId)
-{
-    int &flushCount = flushCounts[sessionId];
-    ++flushCount;
-    if (flushCount < kMessageRetentionPruneFlushInterval) {
-        return false;
-    }
-
-    flushCount = 0;
-    return true;
 }
 
 MessageSubscriptionMatch matchSubscriptionsForMessage(
@@ -807,17 +795,6 @@ void EventHistoryService::flushPendingMessageHistory()
         return;
     }
 
-    if (m_dependencies.preferencesController->messageRetentionLimit() > 0) {
-        for (const QString &flushedSessionId : flushedSessionIds) {
-            if (shouldPruneMessageHistory(m_messageRetentionPruneFlushCounts, flushedSessionId)) {
-                (*m_dependencies.historyStore).pruneMessages(
-                    flushedSessionId,
-                    m_dependencies.preferencesController->messageRetentionLimit());
-            }
-        }
-    } else {
-        m_messageRetentionPruneFlushCounts.clear();
-    }
     m_lastMessageStorageError.clear();
 }
 

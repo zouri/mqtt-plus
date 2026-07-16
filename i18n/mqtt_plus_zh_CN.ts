@@ -1189,8 +1189,8 @@
     </message>
     <message>
         <location filename="../qml/features/settings/SettingsView.qml" line="246"/>
-        <source>Maximum MQTT messages retained per connection.</source>
-        <translation>每个连接最多保留的 MQTT 消息数。</translation>
+        <source>Maximum MQTT messages kept per connection. Cleanup runs when the app starts or exits.</source>
+        <translation>每个连接最多保留的 MQTT 消息数；应用将在启动或退出时执行清理。</translation>
     </message>
     <message>
         <location filename="../qml/features/settings/SettingsView.qml" line="259"/>
