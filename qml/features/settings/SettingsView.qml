@@ -29,6 +29,7 @@ Rectangle {
         default property alias rows: sectionBody.data
 
         Layout.fillWidth: true
+        Layout.alignment: Qt.AlignHCenter
         Layout.preferredHeight: sectionColumn.implicitHeight + 24
         radius: 12
         color: section.ui.themePalette.itemBg
@@ -223,7 +224,8 @@ Rectangle {
 
             ColumnLayout {
                 id: settingsContent
-                width: settingsFlickable.width
+                width: Math.min(settingsFlickable.width, 788)
+                x: Math.round((settingsFlickable.width - width) / 2)
                 spacing: 12
 
                 Item {
