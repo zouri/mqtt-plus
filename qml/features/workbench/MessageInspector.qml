@@ -13,6 +13,8 @@ Rectangle {
     required property var viewModel
     property string historyId: ""
     property var details: ({})
+    property int payloadViewFormat: 0
+    property string displayedPayload: ""
     property bool opened: false
     property real slideOffset: opened ? 0 : width
 
@@ -56,6 +58,28 @@ Rectangle {
 
     onHistoryIdChanged: {
         control.details = historyId.length > 0 ? control.viewModel.messageDetails(historyId) : ({});
+        control.refreshDisplayedPayload();
+    }
+
+    onOpenedChanged: {
+        if (control.opened) {
+            control.payloadViewFormat = Number(control.details.testFormat || 0);
+            control.refreshDisplayedPayload();
+        }
+    }
+
+    onPayloadViewFormatChanged: control.refreshDisplayedPayload()
+
+    function refreshDisplayedPayload() {
+        const fallback = String(control.details.fullPayload || qsTr("Select a message to inspect"));
+        if (control.historyId.length === 0) {
+            control.displayedPayload = fallback;
+            return;
+        }
+        control.displayedPayload = control.viewModel.messagePayloadForDisplay(
+            control.historyId,
+            fallback,
+            control.payloadViewFormat);
     }
 
     Shortcut {
@@ -136,28 +160,28 @@ Rectangle {
                     rowSpacing: 0
 
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Alias"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.alias || qsTr("Unavailable")); color: control.ui.textStrong; elide: Label.ElideRight; font.pixelSize: 11 }
+                    Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.alias || qsTr("-")); color: String(control.details.alias || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; elide: Label.ElideRight; font.pixelSize: 11 }
                     Rectangle { id: metadataSeparator1; Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Topic"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.topic || qsTr("Unavailable")); color: control.ui.textStrong; elide: Label.ElideRight; font.family: "Menlo"; font.pixelSize: 11 }
+                    Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.topic || qsTr("-")); color: String(control.details.topic || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; elide: Label.ElideRight; font.family: "Menlo"; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Direction"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: control.details.direction === "outgoing" ? qsTr("Sent") : qsTr("Received"); color: control.ui.textStrong; font.pixelSize: 11 }
+                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: control.details.direction === "outgoing" ? qsTr("Sent") : (control.details.direction === "incoming" ? qsTr("Received") : qsTr("-")); color: control.details.direction === "outgoing" || control.details.direction === "incoming" ? control.ui.textStrong : control.ui.textMuted; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Time"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.timestamp || qsTr("Unavailable")); color: control.ui.textStrong; font.family: "Menlo"; font.pixelSize: 11 }
+                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.timestamp || qsTr("-")); color: String(control.details.timestamp || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; font.family: "Menlo"; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("QoS"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: Number(control.details.qos) >= 0 ? String(control.details.qos) : qsTr("Unavailable"); color: control.ui.textStrong; font.pixelSize: 11 }
+                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: Number(control.details.qos) >= 0 ? String(control.details.qos) : qsTr("-"); color: Number(control.details.qos) >= 0 ? control.ui.textStrong : control.ui.textMuted; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Format"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.payloadFormat || qsTr("Unavailable")); color: control.ui.textStrong; font.pixelSize: 11 }
+                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.payloadFormat || qsTr("-")); color: String(control.details.payloadFormat || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Size"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("%1 B").arg(Number(control.details.payloadSize || 0)); color: control.ui.textStrong; font.pixelSize: 11 }
+                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: control.details.payloadSize === undefined || control.details.payloadSize === null ? qsTr("-") : qsTr("%1 B").arg(Number(control.details.payloadSize)); color: control.details.payloadSize === undefined || control.details.payloadSize === null ? control.ui.textMuted : control.ui.textStrong; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Retain"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: control.details.retainKnown ? (control.details.retain ? qsTr("Yes") : qsTr("No")) : qsTr("Unavailable"); color: control.ui.textStrong; font.pixelSize: 11 }
+                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: control.details.retainKnown ? (control.details.retain ? qsTr("Yes") : qsTr("No")) : qsTr("-"); color: control.details.retainKnown ? control.ui.textStrong : control.ui.textMuted; font.pixelSize: 11 }
                 }
 
                 ColumnLayout {
@@ -166,12 +190,29 @@ Rectangle {
                     Layout.rightMargin: 14
                     spacing: 6
 
-                    Label {
-                        text: control.details.fullPayloadAvailable === false
-                              ? qsTr("Payload preview")
-                              : qsTr("Payload")
-                        color: control.ui.textMuted
-                        font.pixelSize: 11
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: control.details.fullPayloadAvailable === false
+                                  ? qsTr("Payload preview")
+                                  : qsTr("Payload")
+                            color: control.ui.textMuted
+                            font.pixelSize: 11
+                        }
+
+                        AppComboBox {
+                            ui: control.ui
+                            Layout.preferredWidth: 116
+                            Layout.preferredHeight: 28
+                            model: control.viewModel.payloadFormats
+                            currentIndex: control.payloadViewFormat
+                            font.pixelSize: 11
+                            Accessible.name: qsTr("Payload display format")
+                            onActivated: index => control.payloadViewFormat = index
+                        }
                     }
 
                     Rectangle {
@@ -187,7 +228,7 @@ Rectangle {
 
                             anchors.fill: parent
                             anchors.margins: 10
-                            text: String(control.details.fullPayload || qsTr("Select a message to inspect"))
+                            text: control.displayedPayload
                             color: control.ui.textStrong
                             font.family: "Menlo"
                             font.pixelSize: 11
@@ -263,7 +304,7 @@ Rectangle {
                     InspectorActionButton {
                         ui: control.ui
                         text: qsTr("Copy Payload")
-                        onClicked: control.viewModel.copyMessagePayload(control.historyId, String(control.details.fullPayload || ""), String(control.details.testPayload || ""), Number(control.details.testFormat || 0))
+                        onClicked: control.viewModel.copyMessagePayload("0", control.displayedPayload, "", 0)
                     }
 
                     InspectorActionButton {
