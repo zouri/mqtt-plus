@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../../components"
 
@@ -26,6 +27,13 @@ Dialog {
         if (root.viewModel.submitSubscriptionEditor()) {
             close()
         }
+    }
+
+    function openColorDialog() {
+        topicColorDialog.selectedColor = root.editor.color.length > 0
+                                         ? root.editor.color
+                                         : "#0071E3"
+        topicColorDialog.open()
     }
 
     modal: true
@@ -193,6 +201,46 @@ Dialog {
                 }
             }
 
+            ToolButton {
+                id: customColorButton
+
+                readonly property bool customColorSelected: root.editor.color.length > 0
+                                                            && root.editor.colorOptions.indexOf(root.editor.color) < 0
+
+                Layout.preferredWidth: 26
+                Layout.preferredHeight: 26
+                padding: 0
+                Accessible.name: qsTr("Choose custom topic color")
+                onClicked: root.openColorDialog()
+
+                contentItem: Label {
+                    text: customColorButton.customColorSelected ? "" : "+"
+                    color: root.ui.textStrong
+                    font.pixelSize: 16
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                background: Rectangle {
+                    radius: 13
+                    color: customColorButton.customColorSelected
+                           ? root.editor.color
+                           : root.ui.themePalette.innerPanelBg
+                    border.width: customColorButton.customColorSelected ? 2 : 1
+                    border.color: customColorButton.customColorSelected
+                                  ? root.ui.themePalette.selectedBorder
+                                  : root.ui.themePalette.innerPanelBorder
+                }
+
+                AppToolTip {
+                    ui: root.ui
+                    text: qsTr("Choose custom color")
+                    position: AppToolTip.Position.Bottom
+                    active: customColorButton.hovered
+                }
+            }
+
             Item {
                 Layout.fillWidth: true
             }
@@ -227,5 +275,12 @@ Dialog {
                 onClicked: root.submit()
             }
         }
+    }
+
+    ColorDialog {
+        id: topicColorDialog
+
+        title: qsTr("Choose topic color")
+        onAccepted: root.editor.color = String(selectedColor).toUpperCase()
     }
 }
