@@ -1,6 +1,7 @@
 #include "app/applicationcorestate.h"
 
 #include "app/applicationsessionconfigurator.h"
+#include "app/messageretentionlifecycle.h"
 #include "services/apputils.h"
 
 #include <QObject>
@@ -20,20 +21,6 @@ void reportStorageError(ApplicationCoreState &state, const QString &message)
         state.eventController.appendEvent(*session, QStringLiteral("Storage"), message);
         state.sessionsModel.notifyRefresh();
         state.sessionController.currentSessionChanged();
-    }
-}
-
-void clearExitMessages(ApplicationCoreState &state, const QString &mode)
-{
-    if (mode == QStringLiteral("all")) {
-        state.historyStore.clearAllMessages();
-        return;
-    }
-
-    if (mode == QStringLiteral("current")) {
-        if (auto *session = state.sessionController.currentSession()) {
-            state.historyStore.clearMessages(session->id);
-        }
     }
 }
 
@@ -277,9 +264,21 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
 
 void ApplicationCoreState::applyExitCleanup()
 {
-    eventController.flushPendingMessageHistory();
-    clearExitMessages(*this, preferencesController.clearMessagesOnExit());
+    const SessionState *session = sessionController.currentSession();
+    MessageRetentionLifecycle(historyStore).applyExit(
+        sessionController.sessions(),
+        preferencesController.messageRetentionLimit(),
+        preferencesController.clearMessagesOnExit(),
+        session ? session->id : QString(),
+        [this]() { eventController.flushPendingMessageHistory(); });
     clearExitLogs(*this, preferencesController.clearLogsOnExit());
+}
+
+void ApplicationCoreState::applyMessageRetentionLimit()
+{
+    MessageRetentionLifecycle(historyStore).applyRetention(
+        sessionController.sessions(),
+        preferencesController.messageRetentionLimit());
 }
 
 void ApplicationCoreState::runStartup()
@@ -292,6 +291,7 @@ void ApplicationCoreState::runStartup()
         reportStorageError(*this, errorMessage.isEmpty() ? QStringLiteral("Cannot load sessions.") : errorMessage);
     }
 
+    applyMessageRetentionLimit();
     sessionController.setCurrentIndex(0);
     refreshSessionModels(*this);
     eventController.reloadCurrentSessionHistory();

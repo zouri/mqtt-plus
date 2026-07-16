@@ -24,6 +24,7 @@ private slots:
     void applicationCoreDelegatesSessionConfiguration();
     void applicationCoreDelegatesSessionRuntimeAndPersistence();
     void applicationCoreDelegatesExitCleanup();
+    void applicationCoreAppliesMessageRetentionAtLifecycleBoundaries();
     void applicationCoreDelegatesSignalBindings();
     void applicationCoreRemovesWorkspaceDependencyComposition();
     void applicationObjectGraphOwnsApplicationComposition();
@@ -33,7 +34,7 @@ private slots:
     void eventStreamModelUsesTypedRows();
     void eventStreamModelPrependsRowsInBatch();
     void historyStoreListQueriesDoNotProjectPayloadBlobs();
-    void eventHistoryServiceThrottlesRetentionPrune();
+    void eventHistoryServiceDefersRetentionPruneToLifecycle();
     void messageQmlUsesTypedObjectProperties();
     void messageRowsUseHoverHandlerForNestedControls();
     void messageRowsUseButtonTapPolicy();
@@ -42,6 +43,7 @@ private slots:
     void eventStreamFollowModeUsesSingleCycleButton();
     void qmlUsesApplicationViewModelRootOnly();
     void translationsDoNotReferenceLegacyFacade();
+    void settingsExplainDeferredMessageRetention();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
     void subscriptionsPanelDoesNotReadModelRowsForEditing();
     void subscriptionsPanelDoesNotOwnBusinessState();
@@ -432,6 +434,53 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesExitCleanup()
         "ApplicationCoreState must flush pending history on exit");
 }
 
+void ArchitectureBoundariesTest::applicationCoreAppliesMessageRetentionAtLifecycleBoundaries()
+{
+    QString coreSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreSource));
+    QVERIFY2(coreSource.contains(QStringLiteral("void ApplicationCoreState::applyMessageRetentionLimit()")),
+        "ApplicationCoreState must own automatic message retention");
+    QVERIFY2(coreSource.contains(QStringLiteral("MessageRetentionLifecycle(historyStore).applyRetention")),
+        "ApplicationCoreState must delegate startup retention to the tested lifecycle helper");
+    QVERIFY2(coreSource.contains(QStringLiteral("MessageRetentionLifecycle(historyStore).applyExit")),
+        "ApplicationCoreState must delegate exit retention and cleanup ordering to the tested lifecycle helper");
+    QVERIFY2(coreSource.contains(QStringLiteral("preferencesController.messageRetentionLimit()")),
+        "Lifecycle retention must use the configured message limit");
+    QVERIFY2(coreSource.contains(QStringLiteral("sessionController.sessions()")),
+        "Lifecycle retention must receive every configured connection");
+    QVERIFY2(coreSource.contains(QStringLiteral("preferencesController.clearMessagesOnExit()")),
+        "Exit lifecycle must preserve the configured message cleanup policy");
+    QVERIFY2(coreSource.contains(QStringLiteral("eventController.flushPendingMessageHistory()")),
+        "Exit lifecycle must receive the pending-message flush operation");
+
+    QString lifecycleSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/messageretentionlifecycle.cpp"), lifecycleSource));
+    QVERIFY2(lifecycleSource.contains(QStringLiteral("if (limit <= 0)")),
+        "Unlimited message retention must skip automatic pruning");
+    QVERIFY2(lifecycleSource.contains(QStringLiteral("for (const SessionState &session : sessions)")),
+        "Lifecycle retention must cover every configured connection");
+    QVERIFY2(lifecycleSource.contains(QStringLiteral("m_historyStore.pruneMessages(session.id, limit)")),
+        "Lifecycle retention must prune each configured connection through HistoryStore");
+
+    const qsizetype exitStart = lifecycleSource.indexOf(QStringLiteral("void MessageRetentionLifecycle::applyExit("));
+    const qsizetype exitFlush = lifecycleSource.indexOf(QStringLiteral("flushPendingMessages();"), exitStart);
+    const qsizetype exitRetention = lifecycleSource.indexOf(QStringLiteral("applyRetention(sessions, limit);"), exitStart);
+    const qsizetype exitClear = lifecycleSource.indexOf(QStringLiteral("m_historyStore.clearAllMessages();"), exitStart);
+    QVERIFY(exitStart >= 0);
+    QVERIFY(exitFlush > exitStart);
+    QVERIFY(exitRetention > exitFlush);
+    QVERIFY(exitClear > exitRetention);
+
+    const qsizetype startupStart = coreSource.indexOf(QStringLiteral("void ApplicationCoreState::runStartup()"));
+    const qsizetype startupLoad = coreSource.indexOf(QStringLiteral("sessionRepository.loadSessions"), startupStart);
+    const qsizetype startupRetention = coreSource.indexOf(QStringLiteral("applyMessageRetentionLimit();"), startupStart);
+    const qsizetype startupReload = coreSource.indexOf(QStringLiteral("eventController.reloadCurrentSessionHistory();"), startupStart);
+    QVERIFY(startupStart >= 0);
+    QVERIFY(startupLoad > startupStart);
+    QVERIFY(startupRetention > startupLoad);
+    QVERIFY(startupReload > startupRetention);
+}
+
 void ArchitectureBoundariesTest::applicationCoreDelegatesSignalBindings()
 {
     const QString coreSourcePath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationcore.cpp");
@@ -626,17 +675,24 @@ void ArchitectureBoundariesTest::historyStoreListQueriesDoNotProjectPayloadBlobs
         "Older message list queries must not project payload_bytes blobs");
 }
 
-void ArchitectureBoundariesTest::eventHistoryServiceThrottlesRetentionPrune()
+void ArchitectureBoundariesTest::eventHistoryServiceDefersRetentionPruneToLifecycle()
 {
     QString header;
     QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.h"), header));
-    QVERIFY2(header.contains(QStringLiteral("m_messageRetentionPruneFlushCounts")),
-        "EventHistoryService should track retention prune cadence per session");
+    QVERIFY2(!header.contains(QStringLiteral("m_messageRetentionPruneFlushCounts")),
+        "EventHistoryService must not track a runtime retention-prune cadence");
 
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.cpp"), source));
-    QVERIFY2(source.contains(QStringLiteral("shouldPruneMessageHistory")),
-        "EventHistoryService should decide whether a flush should trigger retention pruning");
+    const qsizetype flushStart = source.indexOf(QStringLiteral("void EventHistoryService::flushPendingMessageHistory()"));
+    const qsizetype reportStart = source.indexOf(QStringLiteral("void EventHistoryService::reportMessageStorageError"), flushStart);
+    QVERIFY(flushStart >= 0);
+    QVERIFY(reportStart > flushStart);
+    const QString flushBody = source.mid(flushStart, reportStart - flushStart);
+    QVERIFY2(!flushBody.contains(QStringLiteral("pruneMessages")),
+        "Runtime message flushes must persist without enforcing retention");
+    QVERIFY2(!source.contains(QStringLiteral("shouldPruneMessageHistory")),
+        "Runtime retention cadence helper must be removed");
 }
 
 void ArchitectureBoundariesTest::messageQmlUsesTypedObjectProperties()
@@ -836,6 +892,23 @@ void ArchitectureBoundariesTest::translationsDoNotReferenceLegacyFacade()
         QVERIFY2(!source.contains(token),
             qPrintable(QStringLiteral("Translation file must not keep legacy facade token %1").arg(token)));
     }
+}
+
+void ArchitectureBoundariesTest::settingsExplainDeferredMessageRetention()
+{
+    QString qml;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/settings/SettingsView.qml"), qml));
+    QVERIFY2(qml.contains(QStringLiteral(
+        "Maximum MQTT messages kept per connection. Cleanup runs when the app starts or exits.")),
+        "Saved-message settings must explain deferred lifecycle cleanup");
+    QVERIFY2(qml.contains(QStringLiteral("Clear stored data immediately.")),
+        "Manual cleanup must continue to promise immediate deletion");
+
+    QString translations;
+    QVERIFY(readSourceFile(QStringLiteral("i18n/mqtt_plus_zh_CN.ts"), translations));
+    QVERIFY2(translations.contains(QStringLiteral(
+        "每个连接最多保留的 MQTT 消息数；应用将在启动或退出时执行清理。")),
+        "Simplified Chinese settings copy must explain deferred lifecycle cleanup");
 }
 
 void ArchitectureBoundariesTest::addSubscriptionDialogDoesNotBuildScriptOptions()
