@@ -235,6 +235,10 @@ Rectangle {
                             readOnly: true
                             selectByMouse: true
                             wrapMode: TextEdit.WrapAnywhere
+
+                            ContextMenu.menu: AppNativeTextMenu {
+                                editor: payloadBodyText
+                            }
                         }
                     }
 
@@ -282,6 +286,10 @@ Rectangle {
                             readOnly: true
                             selectByMouse: true
                             wrapMode: TextEdit.WrapAnywhere
+
+                            ContextMenu.menu: AppNativeTextMenu {
+                                editor: parsedResultText
+                            }
                         }
                     }
                 }
