@@ -82,6 +82,7 @@ private slots:
     void writesSettingsThroughDependencies();
     void forwardsDependencySignals();
     void themeChangesEmitSignals();
+    void themeColorPersistsAndEmitsSignal();
     void languageChangesEmitSignals();
 };
 
@@ -91,6 +92,7 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     SettingsViewModel settings(deps.dependencies(), &deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 0);
+    QCOMPARE(settings.themeColor(), QStringLiteral("mint"));
     QCOMPARE(settings.languageModeIndex(), 0);
     QCOMPARE(settings.messageRetentionLimitIndex(), 1);
     QCOMPARE(settings.logRetentionLimitIndex(), 1);
@@ -110,11 +112,13 @@ void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
     deps.preferencesController.setWindowMaximized(true);
 
     deps.settings.setValue(QStringLiteral("appearance/themeMode"), QStringLiteral("dark"));
+    deps.settings.setValue(QStringLiteral("appearance/themeColor"), QStringLiteral("violet"));
     deps.settings.setValue(QStringLiteral("appearance/languageMode"), QStringLiteral("zh_CN"));
     SettingsViewModel settings(deps.dependencies(), &deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 2);
     QCOMPARE(settings.effectiveTheme(), QStringLiteral("dark"));
+    QCOMPARE(settings.themeColor(), QStringLiteral("violet"));
     QCOMPARE(settings.languageModeIndex(), 2);
     QCOMPARE(settings.messageRetentionLimitIndex(), 2);
     QCOMPARE(settings.logRetentionLimitIndex(), 2);
@@ -181,6 +185,7 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     SettingsViewModel settings(deps.dependencies(), &deps.settings);
 
     settings.setThemeModeIndex(1);
+    settings.setThemeColor(QStringLiteral("blue"));
     settings.setLanguageModeIndex(1);
     settings.setMessageRetentionLimitIndex(0);
     settings.setLogRetentionLimitIndex(0);
@@ -198,6 +203,8 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     settings.clearAllHistory();
 
     QCOMPARE(settings.themeMode(), QStringLiteral("light"));
+    QCOMPARE(settings.themeColor(), QStringLiteral("blue"));
+    QCOMPARE(deps.settings.value(QStringLiteral("appearance/themeColor")).toString(), QStringLiteral("blue"));
     QCOMPARE(settings.languageMode(), QStringLiteral("en"));
     QCOMPARE(deps.preferencesController.messageRetentionLimit(), 1000);
     QCOMPARE(deps.preferencesController.logRetentionLimit(), 500);
@@ -246,6 +253,22 @@ void SettingsOptionsViewModelTest::themeChangesEmitSignals()
     settings.setThemeModeIndex(2);
     QCOMPARE(themeSpy.count(), 1);
     QCOMPARE(effectiveSpy.count(), 1);
+}
+
+void SettingsOptionsViewModelTest::themeColorPersistsAndEmitsSignal()
+{
+    FakeSettingsDeps deps;
+    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    QSignalSpy colorSpy(&settings, &SettingsViewModel::themeColorChanged);
+
+    settings.setThemeColor(QStringLiteral("rose"));
+    settings.setThemeColor(QStringLiteral("rose"));
+    QCOMPARE(settings.themeColor(), QStringLiteral("rose"));
+    QCOMPARE(colorSpy.count(), 1);
+
+    settings.setThemeColor(QStringLiteral("unsupported"));
+    QCOMPARE(settings.themeColor(), QStringLiteral("mint"));
+    QCOMPARE(colorSpy.count(), 2);
 }
 
 void SettingsOptionsViewModelTest::languageChangesEmitSignals()
