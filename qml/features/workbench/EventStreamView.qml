@@ -354,6 +354,8 @@ Item {
                 }
 
                 AppIconButton {
+                    id: streamActionsButton
+
                     ui: root.ui
                     iconSource: root.ui.materialIcon("more-horiz")
                     iconSize: 14
@@ -362,9 +364,10 @@ Item {
                     cornerRadius: 7
                     restBg: root.ui.themePalette.itemBg
                     outlineColor: root.ui.themePalette.panelBorder
+                    forceActive: streamActionsMenu.visible
                     accessibleName: qsTr("More message actions")
                     toolTipText: qsTr("More message actions")
-                    onClicked: streamActionsMenu.open()
+                    onClicked: streamActionsMenu.openForItem(streamActionsButton)
                 }
             }
 
@@ -385,11 +388,15 @@ Item {
                 ListElement { actionId: "clear-messages" }
             }
 
-            AppPlatformMenu {
+            AppMenu {
                 id: streamActionsMenu
 
+                ui: root.ui
+                accessibleName: qsTr("More message actions")
                 model: streamActions
                 actionText: actionId => actionId === "clear-messages" ? qsTr("Clear message history") : ""
+                actionIcon: actionId => actionId === "clear-messages" ? root.ui.materialIcon("delete") : ""
+                actionDanger: actionId => actionId === "clear-messages"
                 onTriggered: actionId => {
                     if (actionId !== "clear-messages") {
                         return;

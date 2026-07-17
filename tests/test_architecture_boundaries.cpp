@@ -55,6 +55,7 @@ private slots:
     void closingMessageInspectorClearsRowSelection();
     void messageInspectorUsesLeftEdgeShadow();
     void qmlDoesNotManageComponentFocus();
+    void qmlMenusAreApplicationRendered();
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
@@ -1082,7 +1083,7 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(streamSource.contains(QStringLiteral("filterSummaryText")));
     QVERIFY(streamSource.contains(QStringLiteral("Accessible.role: Accessible.Button")));
     QVERIFY(streamSource.contains(QStringLiteral("Keys.onPressed")));
-    QVERIFY(streamSource.contains(QStringLiteral("streamActionsMenu.open()")));
+    QVERIFY(streamSource.contains(QStringLiteral("streamActionsMenu.openForItem(streamActionsButton)")));
     QVERIFY(streamSource.contains(QStringLiteral("accessibleName: qsTr(\"More message actions\")")));
     const int metadataStart = streamSource.indexOf(QStringLiteral("id: messageActions"));
     const int metadataEnd = streamSource.indexOf(QStringLiteral("id: followButton"), metadataStart);
@@ -1194,6 +1195,41 @@ void ArchitectureBoundariesTest::qmlDoesNotManageComponentFocus()
             QVERIFY2(!source.contains(token),
                 qPrintable(QStringLiteral("%1 still contains explicit focus management token '%2'").arg(path, token)));
         }
+    }
+}
+
+void ArchitectureBoundariesTest::qmlMenusAreApplicationRendered()
+{
+    QString menuSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppMenu.qml"), menuSource));
+    QVERIFY2(menuSource.contains(QStringLiteral("import QtQuick.Controls.Basic")),
+        "Application menus must use the stable Basic control style");
+    QVERIFY2(menuSource.contains(QStringLiteral("popupType: Popup.Item")),
+        "Application menus must stay inside the QML scene instead of using native popups");
+    QVERIFY2(menuSource.contains(QStringLiteral("function openAtPoint")),
+        "Context menus must preserve the pointer position");
+    QVERIFY2(menuSource.contains(QStringLiteral("function openForItem")),
+        "More menus must anchor to their trigger item");
+    QVERIFY2(!menuSource.contains(QStringLiteral("Popup.Native")),
+        "Application menus must never opt into native rendering");
+
+    const QString removedMenuPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR)
+        + QStringLiteral("/qml/components/AppPlatformMenu.qml");
+    QVERIFY2(!QFile::exists(removedMenuPath), "The native platform menu wrapper must stay removed");
+
+    const QString qmlRoot = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/qml");
+    QDirIterator qmlFiles(qmlRoot, { QStringLiteral("*.qml") }, QDir::Files, QDirIterator::Subdirectories);
+    while (qmlFiles.hasNext()) {
+        const QString path = qmlFiles.next();
+        QFile file(path);
+        QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text), qPrintable(QStringLiteral("Cannot read %1").arg(path)));
+        const QString source = QString::fromUtf8(file.readAll());
+        QVERIFY2(!source.contains(QStringLiteral("Qt.labs.platform")),
+            qPrintable(QStringLiteral("%1 must not import native platform menus").arg(path)));
+        QVERIFY2(!source.contains(QStringLiteral("Platform.Menu")),
+            qPrintable(QStringLiteral("%1 must not create native platform menus").arg(path)));
+        QVERIFY2(!source.contains(QStringLiteral("AppPlatformMenu")),
+            qPrintable(QStringLiteral("%1 must use AppMenu instead of the removed native wrapper").arg(path)));
     }
 }
 

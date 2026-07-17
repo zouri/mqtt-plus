@@ -52,13 +52,32 @@ AppPanel {
         return "";
     }
 
-    function openSubscriptionContextMenu(index, topic, displayName, visualKey) {
+    function subscriptionActionIcon(actionId) {
+        if (actionId === "filter" || actionId === "add-filter") {
+            return control.ui.materialIcon("filter");
+        }
+        if (actionId === "copy") {
+            return control.ui.materialIcon("content-copy");
+        }
+        return control.ui.materialIcon(actionId);
+    }
+
+    function prepareSubscriptionContextMenu(index, topic, displayName, visualKey) {
         control.subscriptionContextIndex = index;
         control.subscriptionContextTopic = topic;
         control.subscriptionContextDisplayName = displayName;
         control.subscriptionActionVisualKey = visualKey;
         subscriptionActionVisualResetTimer.stop();
-        subscriptionContextMenu.open();
+    }
+
+    function openSubscriptionContextMenuAt(index, topic, displayName, visualKey, sourceItem, localX, localY) {
+        control.prepareSubscriptionContextMenu(index, topic, displayName, visualKey);
+        subscriptionContextMenu.openAtPoint(sourceItem, localX, localY);
+    }
+
+    function openSubscriptionActionsMenu(index, topic, displayName, visualKey, anchorItem) {
+        control.prepareSubscriptionContextMenu(index, topic, displayName, visualKey);
+        subscriptionContextMenu.openForItem(anchorItem);
     }
 
     Timer {
@@ -103,10 +122,16 @@ AppPanel {
         }
     }
 
-    AppPlatformMenu {
+    AppMenu {
         id: subscriptionContextMenu
+
+        ui: control.ui
+        accessibleName: qsTr("More actions")
         model: subscriptionContextActions
         actionText: actionId => control.subscriptionActionLabel(actionId)
+        actionIcon: actionId => control.subscriptionActionIcon(actionId)
+        actionDanger: actionId => actionId === "delete"
+        actionSeparatorBefore: actionId => actionId === "edit"
 
         onTriggered: actionId => {
             if (actionId === "filter") {
@@ -128,6 +153,12 @@ AppPanel {
         onAboutToHide: Qt.callLater(function () {
             subscriptionActionVisualResetTimer.restart();
         })
+
+        onClosed: {
+            control.subscriptionContextIndex = -1;
+            control.subscriptionContextTopic = "";
+            control.subscriptionContextDisplayName = "";
+        }
     }
 
     ColumnLayout {
@@ -338,13 +369,27 @@ AppPanel {
                 Accessible.name: subscriptionDelegate.displayName
                 Accessible.description: subscriptionDelegate.accessibleDescription
 
-                function openSubscriptionContextMenu() {
-                    control.openSubscriptionContextMenu(subscriptionDelegate.index, subscriptionDelegate.topic, subscriptionDelegate.displayName, subscriptionDelegate.menuVisualKey);
+                function openSubscriptionContextMenuAt(localX, localY) {
+                    control.openSubscriptionContextMenuAt(subscriptionDelegate.index,
+                                                          subscriptionDelegate.topic,
+                                                          subscriptionDelegate.displayName,
+                                                          subscriptionDelegate.menuVisualKey,
+                                                          subscriptionDelegate,
+                                                          localX,
+                                                          localY);
+                }
+
+                function openSubscriptionActionsMenu(anchorItem) {
+                    control.openSubscriptionActionsMenu(subscriptionDelegate.index,
+                                                        subscriptionDelegate.topic,
+                                                        subscriptionDelegate.displayName,
+                                                        subscriptionDelegate.menuVisualKey,
+                                                        anchorItem);
                 }
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
-                        subscriptionDelegate.openSubscriptionContextMenu();
+                        subscriptionDelegate.openSubscriptionActionsMenu(subscriptionDelegate);
                         event.accepted = true;
                     }
                 }
@@ -354,7 +399,7 @@ AppPanel {
                     acceptedButtons: Qt.RightButton
                     onClicked: mouse => {
                         if (mouse.button === Qt.RightButton) {
-                            subscriptionDelegate.openSubscriptionContextMenu();
+                            subscriptionDelegate.openSubscriptionContextMenuAt(mouse.x, mouse.y);
                         }
                     }
                 }
@@ -474,7 +519,7 @@ AppPanel {
                                 toolTipText: subscriptionMenuButton.accessibleName
 
                                 onClicked: {
-                                    subscriptionDelegate.openSubscriptionContextMenu();
+                                    subscriptionDelegate.openSubscriptionActionsMenu(subscriptionMenuButton);
                                 }
                             }
                         }
