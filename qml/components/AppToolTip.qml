@@ -22,8 +22,11 @@ ToolTip {
     property int gap: 9
     property int maxTextWidth: 280
     property bool active: false
-    readonly property bool horizontalPosition: control.position === AppToolTip.Position.Left
-                                               || control.position === AppToolTip.Position.Right
+    property point anchorScenePosition: Qt.point(0, 0)
+    readonly property var hostWindow: control.parent ? control.parent.Window.window : null
+    readonly property int effectivePosition: control.resolvePosition()
+    readonly property bool horizontalPosition: control.effectivePosition === AppToolTip.Position.Left
+                                               || control.effectivePosition === AppToolTip.Position.Right
     readonly property int arrowDepth: control.showArrow ? 7 : 0
     readonly property int arrowSpan: control.showArrow ? 12 : 0
     readonly property int bubblePaddingX: 11
@@ -35,21 +38,190 @@ ToolTip {
                                         : Qt.rgba(0, 0, 0, 0.10)
 
     function clamp(value, minimum, maximum) {
+        if (maximum < minimum) {
+            return minimum
+        }
         return Math.max(minimum, Math.min(maximum, value))
     }
 
-    function bubblePath(x, y, width, height, radius) {
+    function normalizedPosition(candidate) {
+        switch (candidate) {
+        case AppToolTip.Position.Top:
+        case AppToolTip.Position.Bottom:
+        case AppToolTip.Position.Left:
+        case AppToolTip.Position.Right:
+            return candidate
+        }
+        return AppToolTip.Position.Right
+    }
+
+    function isHorizontal(candidate) {
+        return candidate === AppToolTip.Position.Left || candidate === AppToolTip.Position.Right
+    }
+
+    function oppositePosition(candidate) {
+        switch (candidate) {
+        case AppToolTip.Position.Top:
+            return AppToolTip.Position.Bottom
+        case AppToolTip.Position.Bottom:
+            return AppToolTip.Position.Top
+        case AppToolTip.Position.Left:
+            return AppToolTip.Position.Right
+        case AppToolTip.Position.Right:
+            return AppToolTip.Position.Left
+        }
+        return AppToolTip.Position.Right
+    }
+
+    function candidateWidth(candidate) {
+        return surface.bubbleWidth + (control.isHorizontal(candidate) ? control.arrowDepth : 0)
+    }
+
+    function candidateHeight(candidate) {
+        return surface.bubbleHeight + (control.isHorizontal(candidate) ? 0 : control.arrowDepth)
+    }
+
+    function availableSpace(candidate) {
+        if (!control.parent || !control.hostWindow) {
+            return 0
+        }
+
+        switch (candidate) {
+        case AppToolTip.Position.Top:
+            return control.anchorScenePosition.y - control.margins
+        case AppToolTip.Position.Bottom:
+            return control.hostWindow.height - control.margins
+                    - control.anchorScenePosition.y - control.parent.height
+        case AppToolTip.Position.Left:
+            return control.anchorScenePosition.x - control.margins
+        case AppToolTip.Position.Right:
+            return control.hostWindow.width - control.margins
+                    - control.anchorScenePosition.x - control.parent.width
+        }
+        return 0
+    }
+
+    function requiredSpace(candidate) {
+        const extent = control.isHorizontal(candidate)
+                       ? control.candidateWidth(candidate)
+                       : control.candidateHeight(candidate)
+        return extent + control.gap
+    }
+
+    function positionFits(candidate) {
+        return control.availableSpace(candidate) >= control.requiredSpace(candidate)
+    }
+
+    // Resolve edge collisions before Popup applies its own constraint and separates the arrow from its anchor.
+    function resolvePosition() {
+        const preferred = control.normalizedPosition(control.position)
+        if (!control.parent || !control.hostWindow
+                || control.hostWindow.width <= 0 || control.hostWindow.height <= 0
+                || surface.bubbleWidth <= 0 || surface.bubbleHeight <= 0) {
+            return preferred
+        }
+
+        if (control.positionFits(preferred)) {
+            return preferred
+        }
+
+        const opposite = control.oppositePosition(preferred)
+        const candidates = control.isHorizontal(preferred)
+                           ? [AppToolTip.Position.Bottom, AppToolTip.Position.Top, opposite]
+                           : [opposite, AppToolTip.Position.Right, AppToolTip.Position.Left]
+        for (const candidate of candidates) {
+            if (control.positionFits(candidate)) {
+                return candidate
+            }
+        }
+
+        let bestPosition = preferred
+        let bestClearance = control.availableSpace(preferred) - control.requiredSpace(preferred)
+
+        for (const candidate of candidates) {
+            const clearance = control.availableSpace(candidate) - control.requiredSpace(candidate)
+            if (clearance > bestClearance) {
+                bestPosition = candidate
+                bestClearance = clearance
+            }
+        }
+        return bestPosition
+    }
+
+    function resolveX() {
+        if (!control.parent) {
+            return 0
+        }
+
+        switch (control.effectivePosition) {
+        case AppToolTip.Position.Left:
+            return -control.implicitWidth - control.gap
+        case AppToolTip.Position.Right:
+            return control.parent.width + control.gap
+        case AppToolTip.Position.Top:
+        case AppToolTip.Position.Bottom:
+            if (!control.hostWindow) {
+                return Math.round((control.parent.width - control.implicitWidth) / 2)
+            }
+
+            const desiredSceneX = control.anchorScenePosition.x
+                                  + (control.parent.width - control.implicitWidth) / 2
+            const maximumSceneX = control.hostWindow.width - control.margins - control.implicitWidth
+            return Math.round(control.clamp(desiredSceneX, control.margins, maximumSceneX)
+                              - control.anchorScenePosition.x)
+        }
+        return 0
+    }
+
+    function resolveY() {
+        if (!control.parent) {
+            return 0
+        }
+
+        switch (control.effectivePosition) {
+        case AppToolTip.Position.Top:
+            return -control.implicitHeight - control.gap
+        case AppToolTip.Position.Bottom:
+            return control.parent.height + control.gap
+        case AppToolTip.Position.Left:
+        case AppToolTip.Position.Right:
+            if (!control.hostWindow) {
+                return Math.round((control.parent.height - control.implicitHeight) / 2)
+            }
+
+            const desiredSceneY = control.anchorScenePosition.y
+                                  + (control.parent.height - control.implicitHeight) / 2
+            const maximumSceneY = control.hostWindow.height - control.margins - control.implicitHeight
+            return Math.round(control.clamp(desiredSceneY, control.margins, maximumSceneY)
+                              - control.anchorScenePosition.y)
+        }
+        return 0
+    }
+
+    function refreshAnchorPosition() {
+        if (!control.parent) {
+            control.anchorScenePosition = Qt.point(0, 0)
+            return
+        }
+        control.anchorScenePosition = control.parent.mapToItem(null, 0, 0)
+    }
+
+    function bubblePath(x, y, width, height, radius, arrowCenterX, arrowCenterY) {
         const right = x + width
         const bottom = y + height
         const depth = control.arrowDepth
         const halfSpan = control.arrowSpan / 2
-        const centerX = control.clamp(x + width / 2, x + radius + halfSpan, right - radius - halfSpan)
-        const centerY = control.clamp(y + height / 2, y + radius + halfSpan, bottom - radius - halfSpan)
+        const centerX = control.clamp(arrowCenterX,
+                                      x + radius + halfSpan,
+                                      right - radius - halfSpan)
+        const centerY = control.clamp(arrowCenterY,
+                                      y + radius + halfSpan,
+                                      bottom - radius - halfSpan)
         const hasArrow = control.showArrow && depth > 0 && halfSpan > 0
-        const topArrow = hasArrow && control.position === AppToolTip.Position.Bottom
-        const rightArrow = hasArrow && control.position === AppToolTip.Position.Left
-        const bottomArrow = hasArrow && control.position === AppToolTip.Position.Top
-        const leftArrow = hasArrow && control.position === AppToolTip.Position.Right
+        const topArrow = hasArrow && control.effectivePosition === AppToolTip.Position.Bottom
+        const rightArrow = hasArrow && control.effectivePosition === AppToolTip.Position.Left
+        const bottomArrow = hasArrow && control.effectivePosition === AppToolTip.Position.Top
+        const leftArrow = hasArrow && control.effectivePosition === AppToolTip.Position.Right
         const path = [
             `M ${x + radius} ${y}`,
             topArrow
@@ -78,38 +250,8 @@ ToolTip {
         return path.filter(part => part.length > 0).join(" ")
     }
 
-    x: {
-        if (!parent) {
-            return 0
-        }
-
-        switch (control.position) {
-        case AppToolTip.Position.Left:
-            return -implicitWidth - control.gap
-        case AppToolTip.Position.Right:
-            return parent.width + control.gap
-        case AppToolTip.Position.Top:
-        case AppToolTip.Position.Bottom:
-            return Math.round((parent.width - implicitWidth) / 2)
-        }
-        return 0
-    }
-    y: {
-        if (!parent) {
-            return 0
-        }
-
-        switch (control.position) {
-        case AppToolTip.Position.Top:
-            return -implicitHeight - control.gap
-        case AppToolTip.Position.Bottom:
-            return parent.height + control.gap
-        case AppToolTip.Position.Left:
-        case AppToolTip.Position.Right:
-            return Math.round((parent.height - implicitHeight) / 2)
-        }
-        return 0
-    }
+    x: control.resolveX()
+    y: control.resolveY()
 
     visible: control.active && control.text.length > 0
     delay: 450
@@ -118,6 +260,42 @@ ToolTip {
     margins: 10
     font.pixelSize: 12
     closePolicy: T.Popup.CloseOnEscape | T.Popup.CloseOnPressOutsideParent | T.Popup.CloseOnReleaseOutsideParent
+
+    Component.onCompleted: control.refreshAnchorPosition()
+    onAboutToShow: control.refreshAnchorPosition()
+    onPositionChanged: control.refreshAnchorPosition()
+
+    Connections {
+        target: control.parent
+
+        function onXChanged() {
+            control.refreshAnchorPosition()
+        }
+
+        function onYChanged() {
+            control.refreshAnchorPosition()
+        }
+
+        function onWidthChanged() {
+            control.refreshAnchorPosition()
+        }
+
+        function onHeightChanged() {
+            control.refreshAnchorPosition()
+        }
+    }
+
+    Connections {
+        target: control.hostWindow
+
+        function onWidthChanged() {
+            control.refreshAnchorPosition()
+        }
+
+        function onHeightChanged() {
+            control.refreshAnchorPosition()
+        }
+    }
 
     enter: Transition {
         ParallelAnimation {
@@ -152,8 +330,16 @@ ToolTip {
 
         readonly property real bubbleWidth: body.width + control.bubblePaddingX * 2
         readonly property real bubbleHeight: body.implicitHeight + control.bubblePaddingY * 2
-        readonly property real bubbleX: control.position === AppToolTip.Position.Right ? control.arrowDepth : 0
-        readonly property real bubbleY: control.position === AppToolTip.Position.Bottom ? control.arrowDepth : 0
+        readonly property real bubbleX: control.effectivePosition === AppToolTip.Position.Right
+                                        ? control.arrowDepth : 0
+        readonly property real bubbleY: control.effectivePosition === AppToolTip.Position.Bottom
+                                        ? control.arrowDepth : 0
+        readonly property real arrowCenterX: control.parent
+                                             ? control.parent.width / 2 - control.x
+                                             : surface.bubbleWidth / 2
+        readonly property real arrowCenterY: control.parent
+                                             ? control.parent.height / 2 - control.y
+                                             : surface.bubbleHeight / 2
 
         implicitWidth: surface.bubbleWidth + (control.horizontalPosition ? control.arrowDepth : 0)
         implicitHeight: surface.bubbleHeight + (control.horizontalPosition ? 0 : control.arrowDepth)
@@ -182,7 +368,9 @@ ToolTip {
                                              surface.bubbleY,
                                              surface.bubbleWidth,
                                              surface.bubbleHeight,
-                                             control.bubbleRadius)
+                                             control.bubbleRadius,
+                                             surface.arrowCenterX,
+                                             surface.arrowCenterY)
                 }
             }
         }
