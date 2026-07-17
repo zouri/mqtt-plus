@@ -20,6 +20,7 @@ class SettingsViewModel : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString effectiveTheme READ effectiveTheme NOTIFY effectiveThemeChanged)
+    Q_PROPERTY(QString themeColor READ themeColor NOTIFY themeColorChanged)
     Q_PROPERTY(QString effectiveLanguage READ effectiveLanguage NOTIFY languageChanged)
     Q_PROPERTY(bool deleteHistoryWithSession READ deleteHistoryWithSession WRITE setDeleteHistoryWithSession NOTIFY deleteHistoryWithSessionChanged)
     Q_PROPERTY(bool saveMessagesWhenOutputPaused READ saveMessagesWhenOutputPaused WRITE setSaveMessagesWhenOutputPaused NOTIFY saveMessagesWhenOutputPausedChanged)
@@ -69,6 +70,7 @@ public:
 
     QString themeMode() const;
     QString effectiveTheme() const;
+    QString themeColor() const;
     QString languageMode() const;
     QVariantList availableLanguages() const;
     QString effectiveLanguage() const;
@@ -100,6 +102,7 @@ public:
 
     Q_INVOKABLE void saveWindowGeometry(int width, int height);
     Q_INVOKABLE void setThemeModeIndex(int index);
+    Q_INVOKABLE void setThemeColor(const QString &color);
     Q_INVOKABLE void setLanguageModeIndex(int index);
     Q_INVOKABLE void setMessageRetentionLimitIndex(int index);
     Q_INVOKABLE void setLogRetentionLimitIndex(int index);
@@ -114,6 +117,7 @@ public:
 signals:
     void themeModeChanged();
     void effectiveThemeChanged();
+    void themeColorChanged();
     void languageModeChanged();
     void languageChanged();
     void messageRetentionLimitChanged();
@@ -146,6 +150,7 @@ private:
     Dependencies m_dependencies;
 
     QString m_themeMode = QStringLiteral("system");
+    QString m_themeColor = QStringLiteral("mint");
     bool m_systemDarkMode = false;
 
     QString m_languageMode = QStringLiteral("system");

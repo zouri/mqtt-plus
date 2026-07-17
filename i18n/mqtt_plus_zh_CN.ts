@@ -1153,6 +1153,34 @@
         <translation>选择界面如何跟随系统外观。</translation>
     </message>
     <message>
+        <source>Mint</source>
+        <translation>薄荷绿</translation>
+    </message>
+    <message>
+        <source>Blue</source>
+        <translation>蓝色</translation>
+    </message>
+    <message>
+        <source>Violet</source>
+        <translation>紫罗兰</translation>
+    </message>
+    <message>
+        <source>Amber</source>
+        <translation>琥珀色</translation>
+    </message>
+    <message>
+        <source>Rose</source>
+        <translation>玫瑰红</translation>
+    </message>
+    <message>
+        <source>Theme color</source>
+        <translation>主题色</translation>
+    </message>
+    <message>
+        <source>Choose the accent used for actions and selections.</source>
+        <translation>选择用于操作和选中状态的强调色。</translation>
+    </message>
+    <message>
         <location filename="../qml/features/settings/SettingsView.qml" line="202"/>
         <source>Language</source>
         <translation>语言</translation>
