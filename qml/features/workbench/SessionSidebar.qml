@@ -39,9 +39,18 @@ Rectangle {
         return "";
     }
 
-    function openSessionContextMenu(index) {
+    function prepareSessionContextMenu(index) {
         control.sessionContextIndex = index;
-        sessionContextMenu.open();
+    }
+
+    function openSessionContextMenuAt(index, sourceItem, localX, localY) {
+        control.prepareSessionContextMenu(index);
+        sessionContextMenu.openAtPoint(sourceItem, localX, localY);
+    }
+
+    function openSessionActionsMenu(index, anchorItem) {
+        control.prepareSessionContextMenu(index);
+        sessionContextMenu.openForItem(anchorItem);
     }
 
     ListModel {
@@ -58,12 +67,17 @@ Rectangle {
         }
     }
 
-    AppPlatformMenu {
+    AppMenu {
         id: sessionContextMenu
 
+        ui: control.ui
+        accessibleName: qsTr("Connection actions")
         model: sessionContextActions
         actionText: actionId => control.sessionActionLabel(actionId)
+        actionIcon: actionId => control.ui.materialIcon(actionId === "copy" ? "content-copy" : actionId)
         actionEnabled: actionId => actionId !== "delete" || control.canDeleteSession
+        actionDanger: actionId => actionId === "delete"
+        actionSeparatorBefore: actionId => actionId === "delete"
 
         onTriggered: actionId => {
             if (actionId === "edit") {
@@ -76,6 +90,8 @@ Rectangle {
 
             control.sessionContextIndex = -1;
         }
+
+        onClosed: control.sessionContextIndex = -1
     }
 
     ColumnLayout {
@@ -188,8 +204,12 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                 }
 
-                function openSessionContextMenu() {
-                    control.openSessionContextMenu(sessionDelegate.index);
+                function openSessionContextMenuAt(localX, localY) {
+                    control.openSessionContextMenuAt(sessionDelegate.index, sessionDelegate, localX, localY);
+                }
+
+                function openSessionActionsMenu(anchorItem) {
+                    control.openSessionActionsMenu(sessionDelegate.index, anchorItem);
                 }
 
                 Keys.onPressed: event => {
@@ -197,7 +217,7 @@ Rectangle {
                         control.viewModel.currentSessionIndex = sessionDelegate.index;
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
-                        sessionDelegate.openSessionContextMenu();
+                        sessionDelegate.openSessionActionsMenu(sessionDelegate);
                         event.accepted = true;
                     }
                 }
@@ -259,10 +279,15 @@ Rectangle {
                     }
 
                     AppIconButton {
+                        id: sessionMenuButton
+
                         ui: control.ui
                         Layout.preferredWidth: 24
                         Layout.preferredHeight: 24
-                        visible: sessionDelegate.selected || sessionDelegate.highlighted
+                        visible: sessionDelegate.selected
+                                 || sessionDelegate.highlighted
+                                 || (sessionContextMenu.visible
+                                     && control.sessionContextIndex === sessionDelegate.index)
                         iconSource: control.ui.materialIcon("more-horiz")
                         iconSize: 15
                         cornerRadius: 6
@@ -270,8 +295,10 @@ Rectangle {
                         hoverBg: control.ui.themePalette.rowHover
                         outlineColor: "transparent"
                         symbolColor: control.ui.textMuted
+                        forceActive: sessionContextMenu.visible
+                                     && control.sessionContextIndex === sessionDelegate.index
                         accessibleName: qsTr("Connection actions")
-                        onClicked: sessionDelegate.openSessionContextMenu()
+                        onClicked: sessionDelegate.openSessionActionsMenu(sessionMenuButton)
                     }
                 }
 
@@ -284,7 +311,7 @@ Rectangle {
                         if (mouse.button === Qt.LeftButton) {
                             control.viewModel.currentSessionIndex = sessionDelegate.index;
                         } else if (mouse.button === Qt.RightButton) {
-                            sessionDelegate.openSessionContextMenu();
+                            sessionDelegate.openSessionContextMenuAt(mouse.x, mouse.y);
                         }
                     }
                 }
