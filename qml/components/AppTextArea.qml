@@ -104,6 +104,10 @@ Control {
                 placeholderTextColor: control.ui.themePalette.fieldPlaceholder
                 selectByMouse: true
                 background: null
+
+                ContextMenu.menu: AppNativeTextMenu {
+                    editor: textArea
+                }
             }
         }
 
