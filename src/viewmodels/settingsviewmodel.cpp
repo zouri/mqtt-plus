@@ -10,6 +10,7 @@
 #include <QGuiApplication>
 #include <QLocale>
 #include <QStyleHints>
+#include <QStringList>
 #include <QVariantMap>
 
 #include <algorithm>
@@ -159,6 +160,19 @@ QString sanitizeLanguageMode(const QString &value)
     return QStringLiteral("system");
 }
 
+QString sanitizeThemeColor(const QString &value)
+{
+    static const QStringList themeColors {
+        QStringLiteral("mint"),
+        QStringLiteral("blue"),
+        QStringLiteral("violet"),
+        QStringLiteral("amber"),
+        QStringLiteral("rose"),
+    };
+    const QString color = value.trimmed().toLower();
+    return themeColors.contains(color) ? color : QStringLiteral("mint");
+}
+
 } // namespace
 
 SettingsViewModel::SettingsViewModel(QSettings *settings, QObject *parent)
@@ -174,6 +188,8 @@ SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QSettings
     if (m_settings) {
         m_themeMode = sanitizeThemeMode(
             m_settings->value(QStringLiteral("appearance/themeMode"), QStringLiteral("system")).toString());
+        m_themeColor = sanitizeThemeColor(
+            m_settings->value(QStringLiteral("appearance/themeColor"), QStringLiteral("mint")).toString());
         m_languageMode = sanitizeLanguageMode(
             m_settings->value(QStringLiteral("appearance/languageMode"), QStringLiteral("system")).toString());
     }
@@ -203,6 +219,8 @@ SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QSettings
 }
 
 QString SettingsViewModel::themeMode() const { return m_themeMode; }
+
+QString SettingsViewModel::themeColor() const { return m_themeColor; }
 
 QString SettingsViewModel::effectiveTheme() const
 {
@@ -279,6 +297,21 @@ void SettingsViewModel::setThemeMode(const QString &mode)
     if (effectiveTheme() != previousEffectiveTheme) {
         emit effectiveThemeChanged();
     }
+}
+
+void SettingsViewModel::setThemeColor(const QString &color)
+{
+    const QString sanitized = sanitizeThemeColor(color);
+    if (sanitized == m_themeColor) {
+        return;
+    }
+
+    m_themeColor = sanitized;
+    if (m_settings) {
+        m_settings->setValue(QStringLiteral("appearance/themeColor"), m_themeColor);
+        m_settings->sync();
+    }
+    emit themeColorChanged();
 }
 
 void SettingsViewModel::setLanguageMode(const QString &mode)

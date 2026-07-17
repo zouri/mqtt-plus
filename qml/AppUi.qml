@@ -7,6 +7,7 @@ QtObject {
     id: root
 
     required property bool isDarkTheme
+    required property string themeColor
 
     readonly property int panelRadius: 10
     readonly property int innerRadius: 10
@@ -38,8 +39,45 @@ QtObject {
     readonly property int text3xl: 22
 
     readonly property int materialTheme: root.isDarkTheme ? Material.Dark : Material.Light
-    readonly property color materialAccent: root.isDarkTheme ? "#35d0aa" : "#3370ff"
-    readonly property color materialPrimary: root.isDarkTheme ? "#35d0aa" : "#3370ff"
+    readonly property var themeColors: ({
+            "mint": {
+                "bright": "#35d0aa",
+                "solid": "#238b75",
+                "text": "#14725f"
+            },
+            "blue": {
+                "bright": "#6aa3ff",
+                "solid": "#356fc5",
+                "text": "#245bdb"
+            },
+            "violet": {
+                "bright": "#ad8cff",
+                "solid": "#7351c7",
+                "text": "#6541b5"
+            },
+            "amber": {
+                "bright": "#f1b86a",
+                "solid": "#a85f16",
+                "text": "#934d0b"
+            },
+            "rose": {
+                "bright": "#ff879d",
+                "solid": "#b94762",
+                "text": "#a93450"
+            }
+        })
+    readonly property var activeThemeColor: root.themeColors[root.themeColor] || root.themeColors.mint
+    readonly property color accentColor: root.isDarkTheme
+                                                  ? root.activeThemeColor.bright
+                                                  : root.activeThemeColor.text
+    readonly property color accentSolid: root.activeThemeColor.solid
+    readonly property color accentHover: Qt.lighter(root.accentSolid, 1.12)
+    readonly property color accentPressed: Qt.darker(root.accentSolid, 1.14)
+    readonly property color accentSoft: root.withAlpha(root.accentColor, root.isDarkTheme ? 0.19 : 0.10)
+    readonly property color accentSubtle: root.withAlpha(root.accentColor, root.isDarkTheme ? 0.11 : 0.08)
+    readonly property color accentMuted: root.withAlpha(root.accentColor, root.isDarkTheme ? 0.34 : 0.20)
+    readonly property color materialAccent: root.accentColor
+    readonly property color materialPrimary: root.accentColor
 
     readonly property var themePalette: ({
             "windowBg": root.isDarkTheme ? "#0b0e11" : "#ffffff",
@@ -54,16 +92,16 @@ QtObject {
             "textStrong": root.isDarkTheme ? "#f0f3f5" : "#1f2329",
             "textMuted": root.isDarkTheme ? "#a7b1ba" : "#646a73",
             "textSubtle": root.isDarkTheme ? "#7f8b95" : "#6f757e",
-            "selectedBg": root.isDarkTheme ? "#173b34" : "#e8f0ff",
-            "selectedBorder": root.isDarkTheme ? "#35d0aa" : "#3370ff",
-            "selectedItemBg": root.isDarkTheme ? "#1d2928" : "#e8f0ff",
-            "selectedItemBorder": root.isDarkTheme ? "#31544d" : "#e8f0ff",
+            "selectedBg": root.accentSoft,
+            "selectedBorder": root.accentColor,
+            "selectedItemBg": root.accentSubtle,
+            "selectedItemBorder": root.accentMuted,
             "itemBg": root.isDarkTheme ? "#171c21" : "#ffffff",
             "itemBorder": root.isDarkTheme ? "#303840" : "#dee0e3",
             "innerPanelBg": root.isDarkTheme ? "#1b2228" : "#f5f6f7",
             "innerPanelBorder": root.isDarkTheme ? "#364049" : "#dee0e3",
             "separator": root.isDarkTheme ? "#293139" : "#dee0e3",
-            "infoText": root.isDarkTheme ? "#5edbbc" : "#245bdb",
+            "infoText": root.accentColor,
             "warningText": root.isDarkTheme ? "#f1bd72" : "#a85400",
             "errorText": root.isDarkTheme ? "#ff8793" : "#d83931",
             "errorBg": root.isDarkTheme ? "#351a20" : "#fde8e8",
@@ -78,23 +116,23 @@ QtObject {
             "timestampText": root.isDarkTheme ? "#87949e" : "#6f757e",
             "chipBg": root.isDarkTheme ? "#1d2429" : "#f2f3f5",
             "chipText": root.isDarkTheme ? "#b1bbc3" : "#646a73",
-            "followBg": root.isDarkTheme ? "#269e82" : "#3370ff",
-            "followBorder": root.isDarkTheme ? "#35d0aa" : "#3370ff",
+            "followBg": root.accentSolid,
+            "followBorder": root.accentColor,
             "followText": "#ffffff",
             "followBadgeText": "#ffffff",
             "dialogBg": root.isDarkTheme ? "#171c21" : "#ffffff",
             "dialogBorder": root.isDarkTheme ? "#364049" : "#dee0e3",
-            "accentPanelBg": root.isDarkTheme ? "#173b34" : "#e8f0ff",
-            "accentPanelBorder": root.isDarkTheme ? "#35d0aa" : "#3370ff",
+            "accentPanelBg": root.accentSoft,
+            "accentPanelBorder": root.accentColor,
             "dividerLine": root.isDarkTheme ? "#303840" : "#dee0e3",
             "dividerLabelBg": root.isDarkTheme ? "#0f1317" : "#ffffff",
             "buttonBg": root.isDarkTheme ? "#1b2228" : "#ffffff",
             "buttonBorder": root.isDarkTheme ? "#364049" : "#dee0e3",
             "buttonHoverBg": root.isDarkTheme ? "#252d33" : "#f5f6f7",
             "buttonPressedBg": root.isDarkTheme ? "#303940" : "#e5e6e8",
-            "buttonPrimaryBg": root.isDarkTheme ? "#269e82" : "#3370ff",
-            "buttonPrimaryHoverBg": root.isDarkTheme ? "#2dbb99" : "#4e83fd",
-            "buttonPrimaryPressedBg": root.isDarkTheme ? "#1d7f6a" : "#245bdb",
+            "buttonPrimaryBg": root.accentSolid,
+            "buttonPrimaryHoverBg": root.accentHover,
+            "buttonPrimaryPressedBg": root.accentPressed,
             "buttonPrimaryText": root.isDarkTheme ? "#f4fffb" : "#ffffff",
             "buttonDangerBg": root.isDarkTheme ? "#c94f61" : "#c92f46",
             "buttonDangerHoverBg": root.isDarkTheme ? "#df6373" : "#da445b",
@@ -112,6 +150,10 @@ QtObject {
     readonly property color rowHover: root.themePalette.rowHover
     readonly property color textStrong: root.themePalette.textStrong
     readonly property color textMuted: root.themePalette.textMuted
+
+    function withAlpha(value, alpha) {
+        return Qt.rgba(value.r, value.g, value.b, alpha);
+    }
 
     readonly property var stateColors: ({
             "connected": root.isDarkTheme ? "#65d6a5" : "#2b881f",

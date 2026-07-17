@@ -88,6 +88,7 @@ ApplicationWindow {
     AppUi {
         id: appUi
         isDarkTheme: root.settingsViewModel.effectiveTheme === "dark"
+        themeColor: root.settingsViewModel.themeColor
     }
 
     Material.theme: appUi.materialTheme

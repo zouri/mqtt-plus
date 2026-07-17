@@ -12,6 +12,13 @@ Rectangle {
     required property var viewModel
 
     readonly property var themeLabels: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
+    readonly property var themeColorOptions: [
+        { "key": "mint", "label": qsTr("Mint"), "color": "#35d0aa" },
+        { "key": "blue", "label": qsTr("Blue"), "color": "#6aa3ff" },
+        { "key": "violet", "label": qsTr("Violet"), "color": "#ad8cff" },
+        { "key": "amber", "label": qsTr("Amber"), "color": "#f1b86a" },
+        { "key": "rose", "label": qsTr("Rose"), "color": "#ff879d" }
+    ]
     readonly property var languageLabels: [qsTr("System"), qsTr("English"), qsTr("Simplified Chinese")]
     readonly property var messageRetentionLabels: [qsTr("1,000 messages"), qsTr("5,000 messages"), qsTr("10,000 messages"), qsTr("Unlimited")]
     readonly property var logRetentionLabels: [qsTr("500 logs"), qsTr("2,000 logs"), qsTr("5,000 logs"), qsTr("Unlimited")]
@@ -173,6 +180,48 @@ Rectangle {
         }
     }
 
+    component ThemeColorButton: ToolButton {
+        id: themeColorButton
+
+        required property AppUi ui
+        required property string colorKey
+        required property color swatchColor
+        required property string accessibleLabel
+        required property bool selected
+
+        signal colorSelected(string colorKey)
+
+        implicitWidth: 30
+        implicitHeight: 30
+        padding: 0
+        display: AbstractButton.IconOnly
+        icon.source: selected ? ui.materialIcon("check") : ""
+        icon.width: 14
+        icon.height: 14
+        icon.color: "#ffffff"
+        Accessible.name: accessibleLabel
+        onClicked: colorSelected(colorKey)
+
+        HoverHandler {
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        background: Rectangle {
+            radius: 7
+            color: themeColorButton.swatchColor
+            border.color: themeColorButton.selected
+                          ? themeColorButton.ui.textStrong
+                          : themeColorButton.ui.themePalette.innerPanelBorder
+            border.width: themeColorButton.selected ? 2 : 1
+        }
+
+        AppToolTip {
+            ui: themeColorButton.ui
+            text: themeColorButton.accessibleLabel
+            active: themeColorButton.hovered
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -251,6 +300,29 @@ Rectangle {
                             model: root.themeLabels
                             currentIndex: root.viewModel.themeModeIndex
                             onActivated: (index) => root.viewModel.setThemeModeIndex(index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Theme color")
+                        detail: qsTr("Choose the accent used for actions and selections.")
+
+                        Repeater {
+                            model: root.themeColorOptions
+
+                            delegate: ThemeColorButton {
+                                required property var modelData
+
+                                ui: root.ui
+                                Layout.preferredWidth: 30
+                                Layout.preferredHeight: 30
+                                colorKey: modelData.key
+                                swatchColor: modelData.color
+                                accessibleLabel: modelData.label
+                                selected: root.viewModel.themeColor === colorKey
+                                onColorSelected: color => root.viewModel.setThemeColor(color)
+                            }
                         }
                     }
 
