@@ -15,6 +15,10 @@ TextField {
     placeholderTextColor: control.ui.themePalette.fieldPlaceholder
     selectByMouse: true
 
+    ContextMenu.menu: AppNativeTextMenu {
+        editor: control
+    }
+
     background: Rectangle {
         radius: 8
         color: control.ui.themePalette.fieldBg

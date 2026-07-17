@@ -56,6 +56,7 @@ private slots:
     void messageInspectorUsesLeftEdgeShadow();
     void qmlDoesNotManageComponentFocus();
     void qmlMenusAreApplicationRendered();
+    void textEditorsUseNativeContextMenus();
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
@@ -1231,6 +1232,62 @@ void ArchitectureBoundariesTest::qmlMenusAreApplicationRendered()
         QVERIFY2(!source.contains(QStringLiteral("AppPlatformMenu")),
             qPrintable(QStringLiteral("%1 must use AppMenu instead of the removed native wrapper").arg(path)));
     }
+}
+
+void ArchitectureBoundariesTest::textEditorsUseNativeContextMenus()
+{
+    QString nativeMenuSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppNativeTextMenu.qml"), nativeMenuSource));
+    QVERIFY2(!nativeMenuSource.contains(QStringLiteral("QtQuick.Controls.impl")),
+        "The native text menu must use only Qt's public QML API");
+    QVERIFY2(nativeMenuSource.contains(QStringLiteral("required property var editor")),
+        "The native text menu must target the text editor that opened it");
+    QVERIFY2(nativeMenuSource.contains(QStringLiteral("popupType: Popup.Native")),
+        "Text-editing context menus must be rendered by the platform");
+
+    const QStringList expectedShortcuts {
+        QStringLiteral("StandardKey.Undo"),
+        QStringLiteral("StandardKey.Redo"),
+        QStringLiteral("StandardKey.Cut"),
+        QStringLiteral("StandardKey.Copy"),
+        QStringLiteral("StandardKey.Paste"),
+        QStringLiteral("StandardKey.Delete"),
+        QStringLiteral("StandardKey.SelectAll"),
+    };
+    QCOMPARE(nativeMenuSource.count(QStringLiteral("Action {")), expectedShortcuts.size());
+    for (const QString &shortcut : expectedShortcuts) {
+        QVERIFY2(nativeMenuSource.contains(QStringLiteral("shortcut: ") + shortcut),
+            qPrintable(QStringLiteral("AppNativeTextMenu must expose %1").arg(shortcut)));
+    }
+
+    const QMap<QString, QString> sharedEditors {
+        {
+            QStringLiteral("qml/components/AppTextField.qml"),
+            QStringLiteral("editor: control"),
+        },
+        {
+            QStringLiteral("qml/components/AppTextArea.qml"),
+            QStringLiteral("editor: textArea"),
+        },
+    };
+    for (auto it = sharedEditors.cbegin(); it != sharedEditors.cend(); ++it) {
+        QString source;
+        QVERIFY2(readSourceFile(it.key(), source), qPrintable(QStringLiteral("Cannot read %1").arg(it.key())));
+        QCOMPARE(source.count(QStringLiteral("ContextMenu.menu: AppNativeTextMenu {")), 1);
+        QVERIFY2(source.contains(it.value()),
+            qPrintable(QStringLiteral("%1 must bind its native menu to the wrapped editor").arg(it.key())));
+        QVERIFY2(!source.contains(QStringLiteral("ContextMenu.onRequested:")),
+            qPrintable(QStringLiteral("%1 must not change popup type while a context request is opening").arg(it.key())));
+    }
+
+    QString inspectorSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageInspector.qml"), inspectorSource));
+    QCOMPARE(inspectorSource.count(QStringLiteral("TextEdit {")), 2);
+    QCOMPARE(inspectorSource.count(QStringLiteral("ContextMenu.menu: AppNativeTextMenu {")), 2);
+    QVERIFY2(inspectorSource.contains(QStringLiteral("editor: payloadBodyText")),
+        "The payload text editor must use the native text context menu");
+    QVERIFY2(inspectorSource.contains(QStringLiteral("editor: parsedResultText")),
+        "The parsed-result text editor must use the native text context menu");
 }
 
 void ArchitectureBoundariesTest::workbenchViewsDoNotInterpretContextMenuActions()

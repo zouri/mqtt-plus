@@ -1570,4 +1570,14 @@
     <name>SessionMessagePanel</name>
     <message><source>Messages</source><translation>消息</translation></message>
 </context>
+<context>
+    <name>AppNativeTextMenu</name>
+    <message><source>Undo</source><translation>撤销</translation></message>
+    <message><source>Redo</source><translation>重做</translation></message>
+    <message><source>Cut</source><translation>剪切</translation></message>
+    <message><source>Copy</source><translation>复制</translation></message>
+    <message><source>Paste</source><translation>粘贴</translation></message>
+    <message><source>Delete</source><translation>删除</translation></message>
+    <message><source>Select All</source><translation>全选</translation></message>
+</context>
 </TS>
