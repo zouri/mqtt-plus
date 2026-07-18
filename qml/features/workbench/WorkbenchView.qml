@@ -3,15 +3,17 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import "../../components"
 
 Item {
     id: root
 
     required property AppUi ui
     required property var viewModel
+    required property var settingsViewModel
     required property string fontFamily
     required property bool autoCollapseConnectionListOnConnect
-    property bool connectionPaneCollapsed: false
+    property bool connectionPaneCollapsed: root.settingsViewModel.connectionPaneCollapsed
     readonly property var session: root.viewModel.currentSession
     readonly property var status: root.viewModel.sessionStatus
     readonly property int collapsedConnectionPaneWidth: 34
@@ -32,7 +34,9 @@ Item {
                                           : root.effectiveExpandedConnectionPaneWidth)
     readonly property int subscriptionPaneMinWidth: 300
     readonly property int subscriptionPaneMaxWidth: 520
-    property int subscriptionPaneWidth: 320
+    property int subscriptionPaneWidth: root.settingsViewModel.subscriptionPaneWidth
+    property bool subscriptionPaneCollapsed: root.settingsViewModel.subscriptionPaneCollapsed
+    property bool layoutReady: false
     readonly property int compactSubscriptionPaneWidth: 286
     readonly property int effectiveSubscriptionPaneWidth: root.compactPaneWidths
                                                           ? root.compactSubscriptionPaneWidth
@@ -61,6 +65,38 @@ Item {
 
     function noteStreamRowsAppended(count) {
         sessionActivityPanel.noteStreamRowsAppended(count);
+    }
+
+    function focusMessageSearch() {
+        sessionActivityPanel.focusMessageSearch();
+    }
+
+    function toggleConnectionPane() {
+        if (!root.connectionPaneAutoHidden) {
+            root.connectionPaneCollapsed = !root.connectionPaneCollapsed;
+        }
+    }
+
+    function createSession() {
+        root.openSessionEditorForCreate();
+    }
+
+    function scheduleLayoutSave() {
+        if (root.layoutReady) {
+            layoutSaveTimer.restart();
+        }
+    }
+
+    function persistLayout() {
+        if (!root.layoutReady) {
+            return;
+        }
+        layoutSaveTimer.stop();
+        root.settingsViewModel.saveWorkbenchLayout(
+            root.subscriptionPaneWidth,
+            sessionActivityPanel.composerHeight,
+            root.connectionPaneCollapsed,
+            root.subscriptionPaneCollapsed);
     }
 
     function handleConnectionStateChanged() {
@@ -147,6 +183,19 @@ Item {
         root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
         root.trackedConnectionState = root.status.state || "";
         root.resetStreamPosition();
+        root.layoutReady = true;
+    }
+
+    onConnectionPaneCollapsedChanged: root.scheduleLayoutSave()
+    onSubscriptionPaneCollapsedChanged: root.scheduleLayoutSave()
+    onSubscriptionPaneWidthChanged: root.scheduleLayoutSave()
+
+    Timer {
+        id: layoutSaveTimer
+
+        interval: 250
+        repeat: false
+        onTriggered: root.persistLayout()
     }
 
     onAutoCollapseConnectionListOnConnectChanged: {
@@ -227,12 +276,17 @@ Item {
         }
 
         Rectangle {
-            visible: !root.subscriptionPaneAutoHidden
+            visible: !root.subscriptionPaneAutoHidden && !root.subscriptionPaneCollapsed
             SplitView.preferredWidth: visible ? root.effectiveSubscriptionPaneWidth : 0
             SplitView.minimumWidth: visible ? (root.compactPaneWidths ? 276 : root.subscriptionPaneMinWidth) : 0
             SplitView.maximumWidth: visible ? root.subscriptionPaneMaxWidth : 0
             SplitView.fillHeight: true
             color: root.ui.themePalette.panelBg
+            onWidthChanged: {
+                if (root.layoutReady && visible && width >= root.subscriptionPaneMinWidth) {
+                    root.subscriptionPaneWidth = Math.round(width);
+                }
+            }
 
             ColumnLayout {
                 anchors.fill: parent
@@ -255,6 +309,7 @@ Item {
                     onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
                     onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
                     onAddMessageTopicFilter: topic => root.viewModel.addMessageTopicFilter(topic)
+                    onCollapseRequested: root.subscriptionPaneCollapsed = true
                 }
             }
         }
@@ -268,9 +323,34 @@ Item {
             publishStatus: root.viewModel.publishStatus
             publisher: root.viewModel.publisher
             fontFamily: root.fontFamily
+            composerHeight: root.settingsViewModel.publishComposerHeight
+            onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
+            onComposerHeightChanged: root.scheduleLayoutSave()
             SplitView.fillWidth: true
             SplitView.fillHeight: true
         }
+    }
+
+
+    AppIconButton {
+        ui: root.ui
+        visible: root.subscriptionPaneCollapsed && !root.subscriptionPaneAutoHidden
+        anchors.left: parent.left
+        anchors.leftMargin: root.connectionPaneWidth + 8
+        anchors.top: parent.top
+        anchors.topMargin: 8
+        z: 8
+        implicitWidth: 32
+        implicitHeight: 32
+        cornerRadius: 7
+        iconSource: root.ui.materialIcon("chevron-right")
+        iconSize: 17
+        restBg: root.ui.themePalette.itemBg
+        hoverBg: root.ui.themePalette.rowHover
+        outlineColor: root.ui.themePalette.panelBorder
+        accessibleName: qsTr("Show subscription list")
+        toolTipText: qsTr("Show subscription list")
+        onClicked: root.subscriptionPaneCollapsed = false
     }
 
     Loader {

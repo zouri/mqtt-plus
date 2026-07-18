@@ -251,6 +251,7 @@ void EventHistoryService::clearCurrentMessages()
     (*m_dependencies.historyStore).clearMessages(session->id);
     session->runtime.messageRows.clear();
     session->runtime.totalMessageCount = 0;
+    session->runtime.viewedMessageCount = 0;
     emit totalMessageCountChanged();
     m_messageStreamFrozen = false;
     m_frozenOldestLoadedMessageId = 0;
@@ -617,6 +618,9 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
             QStringLiteral("Cannot queue incoming message: %1").arg((*m_dependencies.historyStore).lastError()));
     } else {
         ++session->runtime.totalMessageCount;
+        if (m_dependencies.currentSessionState && session == m_dependencies.currentSessionState()) {
+            session->runtime.viewedMessageCount = session->runtime.totalMessageCount;
+        }
         emit totalMessageCountChanged();
         m_lastMessageStorageError.clear();
         scheduleMessageHistoryFlush();
@@ -689,6 +693,9 @@ void EventHistoryService::appendPublishedMessage(
             QStringLiteral("Cannot queue published message: %1").arg((*m_dependencies.historyStore).lastError()));
     } else {
         ++session->runtime.totalMessageCount;
+        if (m_dependencies.currentSessionState && session == m_dependencies.currentSessionState()) {
+            session->runtime.viewedMessageCount = session->runtime.totalMessageCount;
+        }
         emit totalMessageCountChanged();
         m_lastMessageStorageError.clear();
         scheduleMessageHistoryFlush();
@@ -846,6 +853,7 @@ void EventHistoryService::reloadCurrentSessionHistory()
         (*m_dependencies.launchTimestamp),
         true);
     session->runtime.totalMessageCount = (*m_dependencies.historyStore).totalMessageCount(session->id);
+    session->runtime.viewedMessageCount = session->runtime.totalMessageCount;
     emit totalMessageCountChanged();
     session->runtime.oldestLoadedMessageId = EventRenderer::firstHistoryId(session->runtime.messageRows);
     session->runtime.loadedAllMessageHistory = messageRows.size() < pageSize;

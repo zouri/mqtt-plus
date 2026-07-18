@@ -125,6 +125,7 @@ public:
     Q_INVOKABLE void setMessageStreamFrozen(bool frozen);
     Q_INVOKABLE int loadOlderMessages();
     Q_INVOKABLE void setMessageTopicFilter(const QString &topic);
+    Q_INVOKABLE void setMessageSearchText(const QString &text);
     Q_INVOKABLE void addMessageTopicFilter(const QString &topic);
     Q_INVOKABLE void clearMessageFilters();
     Q_INVOKABLE QVariantMap messageDetails(const QString &historyId) const;

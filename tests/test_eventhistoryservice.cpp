@@ -22,7 +22,7 @@ private slots:
     void rawOnlyRowsKeepPayloadBodyFreeOfStatusText();
     void publishedRowsAppearInMessageStream();
     void publishedRowsKeepFormatAfterHistoryReload();
-    void largePublishedRowsShowFullPayloadAfterHistoryReload();
+    void largePublishedRowsUsePreviewUntilInspectedAfterHistoryReload();
     void messageDetailsExposeFullPendingPayload();
     void messagePayloadDisplaySupportsSelectedFormats();
     void previewOnlyRowsKeepPayloadBodyFreeOfStatusText();
@@ -184,7 +184,7 @@ void EventHistoryServiceTest::publishedRowsKeepFormatAfterHistoryReload()
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("JSON"));
 }
 
-void EventHistoryServiceTest::largePublishedRowsShowFullPayloadAfterHistoryReload()
+void EventHistoryServiceTest::largePublishedRowsUsePreviewUntilInspectedAfterHistoryReload()
 {
     Fixture fixture;
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
@@ -204,8 +204,13 @@ void EventHistoryServiceTest::largePublishedRowsShowFullPayloadAfterHistoryReloa
 
     QCOMPARE(fixture.messages.count(), 1);
     const QVariantMap row = fixture.messages.rowAt(0);
-    QCOMPARE(row.value(QStringLiteral("payload")).toString(), QString::fromUtf8(payload));
-    QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Plaintext"));
+    QCOMPARE(row.value(QStringLiteral("payload")).toString(), QString::fromUtf8(payload.left(64 * 1024)));
+    QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Truncated"));
+
+    const QVariantMap details = fixture.service.messageDetails(row.value(QStringLiteral("historyId")).toLongLong());
+    QCOMPARE(details.value(QStringLiteral("fullPayload")).toString(), QString::fromUtf8(payload));
+    QVERIFY(details.value(QStringLiteral("fullPayloadAvailable")).toBool());
+    QCOMPARE(details.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Plaintext"));
 }
 
 void EventHistoryServiceTest::messageDetailsExposeFullPendingPayload()
@@ -517,6 +522,7 @@ void EventHistoryServiceTest::totalMessageCountExceedsVisibleWindowAndResets()
 
     fixture.service.clearCurrentMessages();
     QCOMPARE(fixture.session.runtime.totalMessageCount, 0);
+    QCOMPARE(fixture.session.runtime.viewedMessageCount, 0);
     QCOMPARE(fixture.messages.count(), 0);
 }
 

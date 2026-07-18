@@ -72,6 +72,8 @@ qt_add_executable(mqtt_plus_app
 qt_add_translations(mqtt_plus_app
     TS_FILES
         i18n/mqtt_plus_zh_CN.ts
+    LUPDATE_OPTIONS
+        -no-obsolete
     RESOURCE_PREFIX
         "/i18n"
 )

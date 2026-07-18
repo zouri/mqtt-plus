@@ -50,5 +50,6 @@ struct ApplicationCoreState
     ApplicationSessionRuntime sessionRuntime;
     ApplicationSessionRepository sessionRepository;
     QTimer subscriptionFpsRefreshTimer;
+    QTimer sessionListActivityRefreshTimer;
     QString launchTimestamp;
 };

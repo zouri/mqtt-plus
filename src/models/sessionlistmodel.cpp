@@ -4,6 +4,8 @@
 #include "domain/sessionconfig.h"
 #include "services/apputils.h"
 
+#include <algorithm>
+
 using namespace AppUtils;
 
 SessionListModel::SessionListModel(QObject *parent)
@@ -57,6 +59,8 @@ QVariant SessionListModel::data(const QModelIndex &index, int role) const
         return session.runtime.brokerInfo.isEmpty() ? session.runtime.lastError : session.runtime.brokerInfo;
     case LastErrorRole:
         return session.runtime.lastError;
+    case UnreadMessageCountRole:
+        return (std::max)(qint64(0), session.runtime.totalMessageCount - session.runtime.viewedMessageCount);
     default:
         return {};
     }
@@ -78,6 +82,7 @@ QHash<int, QByteArray> SessionListModel::roleNames() const
         {ProtocolVersionNameRole, "protocolVersionName"},
         {SummaryRole, "summary"},
         {LastErrorRole, "lastError"},
+        {UnreadMessageCountRole, "unreadMessageCount"},
     };
     return roles;
 }
@@ -104,6 +109,9 @@ QVariantMap SessionListModel::rowAt(int row) const
     map.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session.protocolVersion));
     map.insert(QStringLiteral("summary"), session.runtime.brokerInfo.isEmpty() ? session.runtime.lastError : session.runtime.brokerInfo);
     map.insert(QStringLiteral("lastError"), session.runtime.lastError);
+    map.insert(
+        QStringLiteral("unreadMessageCount"),
+        (std::max)(qint64(0), session.runtime.totalMessageCount - session.runtime.viewedMessageCount));
     return map;
 }
 
@@ -145,6 +153,7 @@ void SessionListModel::notifyRefresh()
                 ProtocolVersionNameRole,
                 SummaryRole,
                 LastErrorRole,
+                UnreadMessageCountRole,
             });
     }
 }

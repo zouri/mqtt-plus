@@ -28,6 +28,10 @@ class SettingsViewModel : public QObject
     Q_PROPERTY(int windowWidth READ windowWidth NOTIFY windowWidthChanged)
     Q_PROPERTY(int windowHeight READ windowHeight NOTIFY windowHeightChanged)
     Q_PROPERTY(bool windowMaximized READ windowMaximized WRITE setWindowMaximized NOTIFY windowMaximizedChanged)
+    Q_PROPERTY(int subscriptionPaneWidth READ subscriptionPaneWidth CONSTANT)
+    Q_PROPERTY(int publishComposerHeight READ publishComposerHeight CONSTANT)
+    Q_PROPERTY(bool connectionPaneCollapsed READ connectionPaneCollapsed CONSTANT)
+    Q_PROPERTY(bool subscriptionPaneCollapsed READ subscriptionPaneCollapsed CONSTANT)
     Q_PROPERTY(int themeModeIndex READ themeModeIndex NOTIFY themeModeChanged)
     Q_PROPERTY(int languageModeIndex READ languageModeIndex NOTIFY languageModeChanged)
     Q_PROPERTY(int messageRetentionLimitIndex READ messageRetentionLimitIndex NOTIFY messageRetentionLimitChanged)
@@ -86,6 +90,10 @@ public:
     int windowWidth() const;
     int windowHeight() const;
     bool windowMaximized() const;
+    int subscriptionPaneWidth() const;
+    int publishComposerHeight() const;
+    bool connectionPaneCollapsed() const;
+    bool subscriptionPaneCollapsed() const;
     int themeModeIndex() const;
     int languageModeIndex() const;
     int messageRetentionLimitIndex() const;
@@ -101,6 +109,11 @@ public:
     void setWindowMaximized(bool maximized);
 
     Q_INVOKABLE void saveWindowGeometry(int width, int height);
+    Q_INVOKABLE void saveWorkbenchLayout(
+        int subscriptionPaneWidth,
+        int publishComposerHeight,
+        bool connectionPaneCollapsed,
+        bool subscriptionPaneCollapsed);
     Q_INVOKABLE void setThemeModeIndex(int index);
     Q_INVOKABLE void setThemeColor(const QString &color);
     Q_INVOKABLE void setLanguageModeIndex(int index);

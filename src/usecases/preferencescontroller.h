@@ -24,6 +24,10 @@ public:
     int windowWidth() const;
     int windowHeight() const;
     bool windowMaximized() const;
+    int subscriptionPaneWidth() const;
+    int publishComposerHeight() const;
+    bool connectionPaneCollapsed() const;
+    bool subscriptionPaneCollapsed() const;
 
 public slots:
     void setMessageRetentionLimit(int limit);
@@ -37,6 +41,11 @@ public slots:
     void setClearLogsOnExit(const QString &mode);
     void setWindowGeometry(int width, int height);
     void setWindowMaximized(bool maximized);
+    void setWorkbenchLayout(
+        int subscriptionPaneWidth,
+        int publishComposerHeight,
+        bool connectionPaneCollapsed,
+        bool subscriptionPaneCollapsed);
 
 signals:
     void messageRetentionLimitChanged();
@@ -68,4 +77,8 @@ private:
     int m_windowWidth = 1480;
     int m_windowHeight = 820;
     bool m_windowMaximized = false;
+    int m_subscriptionPaneWidth = 320;
+    int m_publishComposerHeight = 168;
+    bool m_connectionPaneCollapsed = false;
+    bool m_subscriptionPaneCollapsed = false;
 };

@@ -24,6 +24,18 @@ Item {
                                                  ? root.publishStatus.reason
                                                  : qsTr("Publish status: %1").arg(root.ui.statusLabel(root.publishStatus.state)))
                                               : ""
+    readonly property string publishDisabledReason: root.status.state !== "connected"
+                                                    ? qsTr("Connect before publishing")
+                                                    : (root.publisher.topic.trim().length === 0
+                                                       ? qsTr("Enter a topic before publishing")
+                                                       : "")
+    readonly property color publishFeedbackColor: root.publishStatus.state === "failed"
+                                                  ? root.ui.themePalette.errorText
+                                                  : (root.publishStatus.state === "sent"
+                                                     || root.publishStatus.state === "acknowledged"
+                                                     || root.publishStatus.state === "completed"
+                                                     ? root.ui.themePalette.successText
+                                                     : root.ui.textMuted)
 
     Layout.fillWidth: true
     Layout.preferredHeight: root.expanded ? root.composerHeight : root.collapsedHeight
@@ -41,6 +53,12 @@ Item {
 
     function revealDraftEditor() {
         root.expanded = true
+    }
+
+    function publishDraft() {
+        if (root.publisher.canPublish) {
+            root.publisher.publishDraft()
+        }
     }
 
     onHeightChanged: {
@@ -89,9 +107,7 @@ Item {
                         Label {
                             visible: root.publishFeedback.length > 0
                             text: root.publishFeedback
-                            color: root.publishStatus.state === "failed"
-                                   ? root.ui.themePalette.errorText
-                                   : root.ui.textMuted
+                            color: root.publishFeedbackColor
                             font.pixelSize: 11
                             elide: Label.ElideRight
                             Layout.fillWidth: true
@@ -205,11 +221,13 @@ Item {
                                          : qsTr("Payload")
                         text: root.publisher.payload
                         wrapMode: TextEdit.Wrap
+                        submitOnCtrlEnter: true
                         onTextChanged: {
                             if (root.publisher.payload !== text) {
                                 root.publisher.payload = text
                             }
                         }
+                        onSubmitRequested: root.publishDraft()
                     }
 
                     AppIconButton {
@@ -226,7 +244,10 @@ Item {
                         primary: true
                         enabled: root.publisher.canPublish
                         accessibleName: qsTr("Publish message")
-                        onClicked: root.publisher.publishDraft()
+                        toolTipText: root.publisher.canPublish
+                                     ? qsTr("Publish message (%1+Enter)").arg(Qt.platform.os === "osx" ? qsTr("Command") : qsTr("Ctrl"))
+                                     : root.publishDisabledReason
+                        onClicked: root.publishDraft()
                     }
                 }
             }

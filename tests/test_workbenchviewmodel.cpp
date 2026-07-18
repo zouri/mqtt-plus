@@ -300,8 +300,12 @@ void WorkbenchViewModelTest::ownsMessageFilterState()
     viewModel.addMessageTopicFilter(QStringLiteral("home/light/set"));
     QCOMPARE(viewModel.filteredMessages()->selectedTopics().size(), 2);
 
+    viewModel.setMessageSearchText(QStringLiteral("temperature"));
+    QCOMPARE(viewModel.filteredMessages()->filterText(), QStringLiteral("temperature"));
+
     viewModel.clearMessageFilters();
     QVERIFY(viewModel.filteredMessages()->selectedTopics().isEmpty());
+    QVERIFY(viewModel.filteredMessages()->filterText().isEmpty());
     QCOMPARE(viewModel.filteredMessages()->direction(), QStringLiteral("all"));
 }
 
