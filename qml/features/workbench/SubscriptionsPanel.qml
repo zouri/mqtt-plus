@@ -32,6 +32,7 @@ AppPanel {
     signal subscriptionEditRequested(int index)
     signal replaceMessageTopicFilter(string topic)
     signal addMessageTopicFilter(string topic)
+    signal collapseRequested
 
     function subscriptionActionLabel(actionId) {
         if (actionId === "edit") {
@@ -252,6 +253,23 @@ AppPanel {
                 toolTipPosition: AppToolTip.Position.Bottom
                 onClicked: control.subscriptionCreateRequested()
             }
+
+            AppIconButton {
+                ui: control.ui
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                iconSource: control.ui.materialIcon("chevron-left")
+                iconSize: 16
+                cornerRadius: 7
+                restBg: "transparent"
+                hoverBg: control.ui.themePalette.rowHover
+                outlineColor: "transparent"
+                symbolColor: control.ui.textMuted
+                accessibleName: qsTr("Hide subscription list")
+                toolTipText: qsTr("Hide subscription list")
+                toolTipPosition: AppToolTip.Position.Bottom
+                onClicked: control.collapseRequested()
+            }
         }
 
         Rectangle {
@@ -336,6 +354,7 @@ AppPanel {
                 readonly property bool activeTraffic: subscriptionDelegate.topicFps > 0
                                                       && !subscriptionDelegate.paused
                                                       && !subscriptionDelegate.hasError
+                readonly property bool filtersMessages: control.viewModel.filteredMessages.selectedTopics.indexOf(subscriptionDelegate.topic) >= 0
                 readonly property string rateText: qsTr("%1/s").arg(subscriptionDelegate.topicFps > 0
                                                                      ? Number(subscriptionDelegate.topicFps).toFixed(1)
                                                                      : "0")
@@ -355,19 +374,33 @@ AppPanel {
                 implicitHeight: subscriptionDelegate.hasError ? 60 : 46
                 radius: 7
                 color: subscriptionDelegate.subscriptionActive
-                       ? control.ui.themePalette.innerPanelBg
+                       ? (subscriptionDelegate.filtersMessages
+                          ? control.ui.themePalette.selectedBg
+                          : control.ui.themePalette.innerPanelBg)
                        : (subscriptionRowHover.hovered ? control.ui.themePalette.rowHover : "transparent")
                 border.color: subscriptionDelegate.hasError
                               ? control.ui.themePalette.errorText
+                              : (subscriptionDelegate.filtersMessages
+                                 ? control.ui.themePalette.selectedBorder
                               : (subscriptionDelegate.subscriptionActive
                                  ? control.ui.themePalette.panelBorder
-                                 : "transparent")
+                                 : "transparent"))
                 border.width: subscriptionDelegate.hasError
                               ? 1
                               : (subscriptionDelegate.subscriptionActive ? 1 : 0)
                 Accessible.role: Accessible.ListItem
                 Accessible.name: subscriptionDelegate.displayName
                 Accessible.description: subscriptionDelegate.accessibleDescription
+                activeFocusOnTab: true
+
+                function toggleMessageFilter() {
+                    const selectedTopics = control.viewModel.filteredMessages.selectedTopics;
+                    if (selectedTopics.length === 1 && selectedTopics[0] === subscriptionDelegate.topic) {
+                        control.replaceMessageTopicFilter("");
+                    } else {
+                        control.replaceMessageTopicFilter(subscriptionDelegate.topic);
+                    }
+                }
 
                 function openSubscriptionContextMenuAt(localX, localY) {
                     control.openSubscriptionContextMenuAt(subscriptionDelegate.index,
@@ -388,7 +421,10 @@ AppPanel {
                 }
 
                 Keys.onPressed: event => {
-                    if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                        subscriptionDelegate.toggleMessageFilter();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
                         subscriptionDelegate.openSubscriptionActionsMenu(subscriptionDelegate);
                         event.accepted = true;
                     }
@@ -396,9 +432,13 @@ AppPanel {
 
                 MouseArea {
                     anchors.fill: parent
-                    acceptedButtons: Qt.RightButton
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onClicked: mouse => {
-                        if (mouse.button === Qt.RightButton) {
+                        if (mouse.button === Qt.LeftButton) {
+                            subscriptionList.currentIndex = subscriptionDelegate.index;
+                            subscriptionDelegate.forceActiveFocus();
+                            subscriptionDelegate.toggleMessageFilter();
+                        } else if (mouse.button === Qt.RightButton) {
                             subscriptionDelegate.openSubscriptionContextMenuAt(mouse.x, mouse.y);
                         }
                     }
@@ -406,6 +446,14 @@ AppPanel {
 
                 HoverHandler {
                     id: subscriptionRowHover
+                }
+
+                AppToolTip {
+                    ui: control.ui
+                    text: subscriptionDelegate.topic
+                    position: AppToolTip.Position.Right
+                    active: subscriptionRowHover.hovered
+                            && (subscriptionDisplayName.truncated || subscriptionTopicLabel.truncated)
                 }
 
                 ColumnLayout {
@@ -435,6 +483,7 @@ AppPanel {
                             spacing: 1
 
                             Label {
+                                id: subscriptionDisplayName
                                 Layout.fillWidth: true
                                 text: subscriptionDelegate.displayName
                                 color: subscriptionDelegate.paused ? control.ui.textMuted : control.ui.textStrong
@@ -444,6 +493,7 @@ AppPanel {
                             }
 
                             Label {
+                                id: subscriptionTopicLabel
                                 visible: subscriptionDelegate.secondaryTopic.length > 0
                                 Layout.fillWidth: true
                                 text: subscriptionDelegate.secondaryTopic
@@ -462,7 +512,9 @@ AppPanel {
                                 Layout.minimumWidth: 42
                                 Layout.maximumWidth: 42
                                 text: subscriptionDelegate.rateText
-                                color: subscriptionDelegate.activeTraffic ? control.ui.textStrong : control.ui.textMuted
+                                color: subscriptionDelegate.activeTraffic
+                                       ? control.ui.textStrong
+                                       : control.ui.withAlpha(control.ui.textMuted, 0.55)
                                 font.pixelSize: 10
                                 font.bold: subscriptionDelegate.activeTraffic
                                 horizontalAlignment: Text.AlignRight

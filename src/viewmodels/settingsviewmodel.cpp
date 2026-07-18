@@ -110,6 +110,8 @@ void clearSessionMessages(QVector<SessionState> *sessions)
 
     for (auto &session : *sessions) {
         session.runtime.messageRows.clear();
+        session.runtime.totalMessageCount = 0;
+        session.runtime.viewedMessageCount = 0;
         session.runtime.oldestLoadedMessageId = 0;
         session.runtime.loadedAllMessageHistory = true;
     }
@@ -270,6 +272,10 @@ QString SettingsViewModel::clearLogsOnExit() const { return m_dependencies.prefe
 int SettingsViewModel::windowWidth() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowWidth() : 1480; }
 int SettingsViewModel::windowHeight() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowHeight() : 820; }
 bool SettingsViewModel::windowMaximized() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->windowMaximized(); }
+int SettingsViewModel::subscriptionPaneWidth() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->subscriptionPaneWidth() : 320; }
+int SettingsViewModel::publishComposerHeight() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->publishComposerHeight() : 168; }
+bool SettingsViewModel::connectionPaneCollapsed() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->connectionPaneCollapsed(); }
+bool SettingsViewModel::subscriptionPaneCollapsed() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->subscriptionPaneCollapsed(); }
 int SettingsViewModel::themeModeIndex() const { return optionIndex(SettingsOption::ThemeMode, themeMode()); }
 int SettingsViewModel::languageModeIndex() const { return optionIndex(SettingsOption::LanguageMode, languageMode()); }
 int SettingsViewModel::messageRetentionLimitIndex() const { return optionIndex(SettingsOption::MessageRetentionLimit, messageRetentionLimit()); }
@@ -424,6 +430,21 @@ void SettingsViewModel::saveWindowGeometry(int width, int height)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setWindowGeometry(width, height);
+    }
+}
+
+void SettingsViewModel::saveWorkbenchLayout(
+    int subscriptionPaneWidth,
+    int publishComposerHeight,
+    bool connectionPaneCollapsed,
+    bool subscriptionPaneCollapsed)
+{
+    if (m_dependencies.preferencesController) {
+        m_dependencies.preferencesController->setWorkbenchLayout(
+            subscriptionPaneWidth,
+            publishComposerHeight,
+            connectionPaneCollapsed,
+            subscriptionPaneCollapsed);
     }
 }
 

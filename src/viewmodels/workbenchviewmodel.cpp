@@ -524,6 +524,13 @@ void WorkbenchViewModel::setMessageTopicFilter(const QString &topic)
         trimmed.isEmpty() ? QStringList {} : QStringList {trimmed});
 }
 
+void WorkbenchViewModel::setMessageSearchText(const QString &text)
+{
+    if (m_dependencies.filteredMessages) {
+        m_dependencies.filteredMessages->setFilterText(text);
+    }
+}
+
 void WorkbenchViewModel::addMessageTopicFilter(const QString &topic)
 {
     if (!m_dependencies.filteredMessages) {

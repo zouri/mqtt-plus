@@ -15,6 +15,8 @@ ColumnLayout {
     property string actionLabel: ""
     property alias actionButton: actionButton
 
+    signal actionTriggered
+
     Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
     spacing: ui.spaceMd
 
@@ -62,5 +64,6 @@ ColumnLayout {
         text: root.actionLabel
         visible: root.actionLabel.length > 0
         Layout.alignment: Qt.AlignHCenter
+        onClicked: root.actionTriggered()
     }
 }

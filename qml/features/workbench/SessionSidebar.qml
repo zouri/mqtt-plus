@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
-import QtQuick.Shapes
 import "../../components"
 
 Rectangle {
@@ -184,6 +183,7 @@ Rectangle {
                 required property string connectionState
                 required property string protocolVersionName
                 required property string lastError
+                required property int unreadMessageCount
                 readonly property bool selected: index === control.viewModel.currentSessionIndex
                 readonly property bool highlighted: rowHover.hovered
                 readonly property bool connected: sessionDelegate.connectionState === "connected"
@@ -260,12 +260,18 @@ Rectangle {
 
                             AppBadge {
                                 ui: control.ui
-                                visible: sessionDelegate.protocolVersionName !== "MQTT 5"
-                                label: sessionDelegate.protocolVersionName.replace("MQTT ", "")
+                                visible: sessionDelegate.unreadMessageCount > 0
+                                         || sessionDelegate.protocolVersionName !== "MQTT 5"
+                                label: sessionDelegate.unreadMessageCount > 0
+                                       ? qsTr("+%1").arg(sessionDelegate.unreadMessageCount)
+                                       : sessionDelegate.protocolVersionName.replace("MQTT ", "")
                                 horizontalPadding: 5
                                 verticalPadding: 1
                                 badgeRadius: 5
                                 strong: true
+                                Accessible.name: sessionDelegate.unreadMessageCount > 0
+                                                 ? qsTr("%1 new messages").arg(sessionDelegate.unreadMessageCount)
+                                                 : sessionDelegate.protocolVersionName
                             }
                         }
 
@@ -317,116 +323,6 @@ Rectangle {
                 }
             }
 
-            footer: Item {
-                width: sessionList.width
-                height: 0
-
-                Rectangle {
-                    id: addSessionDelegate
-                    visible: false
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: 42
-                    radius: control.ui.innerRadius
-                    color: "transparent"
-                    Accessible.role: Accessible.Button
-                    Accessible.name: qsTr("New connection")
-
-                    Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
-                            control.sessionCreateRequested();
-                            event.accepted = true;
-                        }
-                    }
-
-                    Shape {
-                        id: addSessionBorder
-                        anchors.fill: parent
-                        anchors.margins: 0.5
-                        preferredRendererType: Shape.CurveRenderer
-                        antialiasing: true
-
-                        ShapePath {
-                            fillColor: "transparent"
-                            strokeColor: addRowMouse.containsMouse ? control.ui.themePalette.selectedBorder : control.ui.themePalette.itemBorder
-                            strokeWidth: 1
-                            strokeStyle: ShapePath.DashLine
-                            dashPattern: [5, 4]
-                            startX: control.ui.innerRadius
-                            startY: 0
-
-                            PathLine {
-                                x: addSessionBorder.width - control.ui.innerRadius
-                                y: 0
-                            }
-                            PathArc {
-                                x: addSessionBorder.width
-                                y: control.ui.innerRadius
-                                radiusX: control.ui.innerRadius
-                                radiusY: control.ui.innerRadius
-                            }
-                            PathLine {
-                                x: addSessionBorder.width
-                                y: addSessionBorder.height - control.ui.innerRadius
-                            }
-                            PathArc {
-                                x: addSessionBorder.width - control.ui.innerRadius
-                                y: addSessionBorder.height
-                                radiusX: control.ui.innerRadius
-                                radiusY: control.ui.innerRadius
-                            }
-                            PathLine {
-                                x: control.ui.innerRadius
-                                y: addSessionBorder.height
-                            }
-                            PathArc {
-                                x: 0
-                                y: addSessionBorder.height - control.ui.innerRadius
-                                radiusX: control.ui.innerRadius
-                                radiusY: control.ui.innerRadius
-                            }
-                            PathLine {
-                                x: 0
-                                y: control.ui.innerRadius
-                            }
-                            PathArc {
-                                x: control.ui.innerRadius
-                                y: 0
-                                radiusX: control.ui.innerRadius
-                                radiusY: control.ui.innerRadius
-                            }
-                        }
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: 6
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: qsTr("+ New connection")
-                            color: control.ui.textMuted
-                            elide: Label.ElideRight
-                            horizontalAlignment: Text.AlignHCenter
-                            font.pixelSize: 14
-                            font.bold: true
-                        }
-                    }
-
-                    MouseArea {
-                        id: addRowMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton
-                        cursorShape: Qt.PointingHandCursor
-
-                        onClicked: control.sessionCreateRequested()
-                    }
-                }
-            }
         }
     }
 

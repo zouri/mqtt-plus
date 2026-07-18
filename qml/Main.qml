@@ -75,6 +75,7 @@ ApplicationWindow {
     onClosing: function () {
         windowGeometrySaveTimer.stop();
         root.persistWindowGeometry();
+        workbenchPage.persistLayout();
         root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized;
     }
 
@@ -89,6 +90,29 @@ ApplicationWindow {
         id: appUi
         isDarkTheme: root.settingsViewModel.effectiveTheme === "dark"
         themeColor: root.settingsViewModel.themeColor
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+K", "Meta+K"]
+        enabled: root.currentAppView === "workbench"
+        onActivated: workbenchPage.focusMessageSearch()
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+B", "Meta+B"]
+        enabled: root.currentAppView === "workbench"
+        onActivated: workbenchPage.toggleConnectionPane()
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+N", "Meta+N"]
+        enabled: root.currentAppView === "workbench"
+        onActivated: workbenchPage.createSession()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Preferences]
+        onActivated: root.navigationViewModel.currentView = "settings"
     }
 
     Material.theme: appUi.materialTheme
@@ -241,6 +265,7 @@ ApplicationWindow {
                     id: workbenchPage
                     ui: appUi
                     viewModel: root.app.workbench
+                    settingsViewModel: root.settingsViewModel
                     fontFamily: root.font.family
                     autoCollapseConnectionListOnConnect: root.settingsViewModel.autoCollapseConnectionListOnConnect
                 }

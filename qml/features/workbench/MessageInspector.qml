@@ -83,7 +83,7 @@ Rectangle {
     }
 
     Shortcut {
-        sequence: StandardKey.Cancel
+        sequences: [StandardKey.Cancel]
         enabled: control.opened
         onActivated: control.closeRequested()
     }

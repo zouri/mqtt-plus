@@ -260,6 +260,23 @@ ApplicationCoreState::ApplicationCoreState(QObject *parent)
         &QTimer::timeout,
         &subscriptionController,
         &SubscriptionService::refreshSubscriptionFps);
+
+    sessionListActivityRefreshTimer.setInterval(100);
+    sessionListActivityRefreshTimer.setSingleShot(true);
+    QObject::connect(
+        &eventController,
+        &EventHistoryService::totalMessageCountChanged,
+        &sessionListActivityRefreshTimer,
+        [this]() {
+            if (!sessionListActivityRefreshTimer.isActive()) {
+                sessionListActivityRefreshTimer.start();
+            }
+        });
+    QObject::connect(
+        &sessionListActivityRefreshTimer,
+        &QTimer::timeout,
+        &sessionsModel,
+        &SessionListModel::notifyRefresh);
 }
 
 void ApplicationCoreState::applyExitCleanup()

@@ -24,6 +24,8 @@ void SessionListModelTest::exposesConnectionDetails()
     session.id = QStringLiteral("session-1");
     session.name = QStringLiteral("Production");
     session.runtime.client = &client;
+    session.runtime.totalMessageCount = 12;
+    session.runtime.viewedMessageCount = 8;
 
     QVector<SessionState> sessions {session};
     SessionListModel model;
@@ -33,11 +35,13 @@ void SessionListModelTest::exposesConnectionDetails()
     QCOMPARE(model.data(index, SessionListModel::HostRole).toString(), QStringLiteral("mqtt.example.com"));
     QCOMPARE(model.data(index, SessionListModel::PortRole).toInt(), 1884);
     QCOMPARE(model.data(index, SessionListModel::ClientIdRole).toString(), QStringLiteral("mqtt-id-1"));
+    QCOMPARE(model.data(index, SessionListModel::UnreadMessageCountRole).toLongLong(), qint64(4));
 
     const QVariantMap row = model.rowAt(0);
     QCOMPARE(row.value(QStringLiteral("host")).toString(), QStringLiteral("mqtt.example.com"));
     QCOMPARE(row.value(QStringLiteral("port")).toInt(), 1884);
     QCOMPARE(row.value(QStringLiteral("clientId")).toString(), QStringLiteral("mqtt-id-1"));
+    QCOMPARE(row.value(QStringLiteral("unreadMessageCount")).toLongLong(), qint64(4));
 }
 
 void SessionListModelTest::notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable()
