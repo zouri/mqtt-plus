@@ -54,7 +54,7 @@ private slots:
     void messageInspectorPreservesPayloadFormatting();
     void closingMessageInspectorClearsRowSelection();
     void messageInspectorUsesLeftEdgeShadow();
-    void qmlDoesNotManageComponentFocus();
+    void qmlUsesNativeFocusManagement();
     void qmlMenusAreApplicationRendered();
     void textEditorsUseNativeContextMenus();
     void workbenchViewsDoNotInterpretContextMenuActions();
@@ -314,6 +314,11 @@ void ArchitectureBoundariesTest::applicationCoreDelegatesModelProjection()
     QVERIFY(readSourceFile(QStringLiteral("src/models/sessionlistmodel.cpp"), sessionModel));
     QVERIFY2(sessionModel.contains(QStringLiteral("sessionStateName")),
         "SessionListModel must own session row projection by reading domain data directly");
+
+    QString coreStateSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/applicationcorestate.cpp"), coreStateSource));
+    QVERIFY2(coreStateSource.contains(QStringLiteral("if (!sessionListActivityRefreshTimer.isActive())")),
+        "Session-list activity refresh must throttle sustained message traffic instead of debouncing forever");
 
     const QString refreshCoordPath = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src/app/applicationviewrefreshcoordinator.cpp");
     QVERIFY2(!QFile::exists(refreshCoordPath), "ApplicationViewRefreshCoordinator is deleted — controller callbacks call models directly");
@@ -1064,7 +1069,14 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QString workbenchSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/WorkbenchView.qml"), workbenchSource));
     QVERIFY(workbenchSource.contains(QStringLiteral("expandedConnectionPaneWidth: 208")));
-    QVERIFY(workbenchSource.contains(QStringLiteral("subscriptionPaneWidth: 320")));
+    QVERIFY(workbenchSource.contains(QStringLiteral("subscriptionPaneWidth: root.settingsViewModel.subscriptionPaneWidth")));
+    QVERIFY(workbenchSource.contains(QStringLiteral("saveWorkbenchLayout")));
+    QVERIFY(workbenchSource.contains(QStringLiteral("function persistLayout()")));
+
+    QString mainSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), mainSource));
+    QVERIFY2(mainSource.contains(QStringLiteral("workbenchPage.persistLayout();")),
+        "Window shutdown must flush pending workbench layout changes");
 
     QString subscriptionsSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), subscriptionsSource));
@@ -1086,6 +1098,14 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(streamSource.contains(QStringLiteral("Keys.onPressed")));
     QVERIFY(streamSource.contains(QStringLiteral("streamActionsMenu.openForItem(streamActionsButton)")));
     QVERIFY(streamSource.contains(QStringLiteral("accessibleName: qsTr(\"More message actions\")")));
+    QVERIFY2(streamSource.contains(QStringLiteral("AppEmptyState {")),
+        "The message workspace must guide users when no rows are visible");
+    QVERIFY2(streamSource.contains(QStringLiteral("id: clearMessagesDialog")),
+        "Clearing message history must require confirmation");
+    QVERIFY2(streamSource.contains(QStringLiteral("maximumLineCount: 3")),
+        "Large payloads must not destroy the message-list rhythm");
+    QVERIFY2(streamSource.contains(QStringLiteral("Math.max(metadataRow.implicitWidth,")),
+        "Message-row quick actions must participate in width calculation");
     const int metadataStart = streamSource.indexOf(QStringLiteral("id: messageActions"));
     const int metadataEnd = streamSource.indexOf(QStringLiteral("id: followButton"), metadataStart);
     QVERIFY(metadataStart >= 0 && metadataEnd > metadataStart);
@@ -1124,8 +1144,10 @@ void ArchitectureBoundariesTest::messageInspectorPreservesPayloadFormatting()
 
     QVERIFY2(source.count(QStringLiteral("textFormat: TextEdit.PlainText")) >= 2,
         "Inspector payload fields must render message data as literal text so embedded markup and newlines are preserved");
-    QVERIFY2(source.count(QStringLiteral("Layout.preferredHeight: contentHeight")) >= 2,
-        "Inspector payload fields must grow to their wrapped content height instead of clipping multiline data");
+    QVERIFY2(source.contains(QStringLiteral("Layout.preferredHeight: Math.max(40, payloadBodyText.contentHeight + 20)")),
+        "The payload container must grow to its wrapped content height instead of clipping multiline data");
+    QVERIFY2(source.contains(QStringLiteral("Layout.preferredHeight: Math.max(40, parsedResultText.contentHeight + 20)")),
+        "The parsed-result container must grow to its wrapped content height instead of clipping multiline data");
     QVERIFY2(source.contains(QStringLiteral("contentWidth: availableWidth")),
         "The inspector scroller must constrain content to its viewport so long payload lines can wrap");
     QVERIFY2(source.contains(QStringLiteral("width: inspectorScroll.availableWidth")),
@@ -1173,11 +1195,9 @@ void ArchitectureBoundariesTest::messageInspectorUsesLeftEdgeShadow()
         "The inspector shadow should project toward the message list on its left");
 }
 
-void ArchitectureBoundariesTest::qmlDoesNotManageComponentFocus()
+void ArchitectureBoundariesTest::qmlUsesNativeFocusManagement()
 {
     const QStringList forbiddenFocusTokens {
-        QStringLiteral("forceActiveFocus("),
-        QStringLiteral("activeFocus"),
         QStringLiteral("showFocusIndicators"),
         QStringLiteral("focusIndicatorVisible"),
         QStringLiteral("focusRingColor"),
@@ -1194,9 +1214,19 @@ void ArchitectureBoundariesTest::qmlDoesNotManageComponentFocus()
         const QString source = QString::fromUtf8(file.readAll());
         for (const QString &token : forbiddenFocusTokens) {
             QVERIFY2(!source.contains(token),
-                qPrintable(QStringLiteral("%1 still contains explicit focus management token '%2'").arg(path, token)));
+                qPrintable(QStringLiteral("%1 still contains custom focus-management token '%2'").arg(path, token)));
         }
     }
+
+    QString streamSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), streamSource));
+    QVERIFY2(streamSource.contains(QStringLiteral("activeFocusOnTab: eventDelegate.isMessage")),
+        "Message rows must participate in native keyboard focus traversal");
+
+    QString subscriptionSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), subscriptionSource));
+    QVERIFY2(subscriptionSource.contains(QStringLiteral("activeFocusOnTab: true")),
+        "Subscription rows must participate in native keyboard focus traversal");
 }
 
 void ArchitectureBoundariesTest::qmlMenusAreApplicationRendered()

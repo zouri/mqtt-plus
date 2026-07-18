@@ -25,6 +25,7 @@ public:
         ProtocolVersionNameRole,
         SummaryRole,
         LastErrorRole,
+        UnreadMessageCountRole,
     };
     Q_ENUM(Role)
 

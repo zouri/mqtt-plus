@@ -16,6 +16,9 @@ AppPanel {
     required property string fontFamily
     property string selectedMessageHistoryId: ""
     property bool inspectorOpened: false
+    property alias composerHeight: publishComposer.composerHeight
+
+    signal subscriptionCreateRequested
 
     showTopBorder: false
     showLeftBorder: false
@@ -31,6 +34,10 @@ AppPanel {
 
     function noteStreamRowsAppended(count) {
         eventStreamView.noteStreamRowsAppended(count);
+    }
+
+    function focusMessageSearch() {
+        eventStreamView.focusSearch();
     }
 
     function closeInspector() {
@@ -84,6 +91,7 @@ AppPanel {
                 root.inspectorOpened = true;
             }
             onMessagesCleared: root.closeInspector()
+            onSubscriptionCreateRequested: root.subscriptionCreateRequested()
         }
 
         PublishComposer {

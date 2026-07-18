@@ -16,6 +16,7 @@ Control {
     property alias selectByMouse: textArea.selectByMouse
     property alias wrapMode: textArea.wrapMode
     property bool showLineNumbers: false
+    property bool submitOnCtrlEnter: false
     property int backgroundRadius: 8
     property int backgroundBorderWidth: 1
     property color backgroundColor: control.ui.themePalette.fieldBg
@@ -27,6 +28,8 @@ Control {
     readonly property int lineNumberGutterWidth: control.showLineNumbers
                                                ? Math.max(42, 24 + String(control.lineCount).length * 8)
                                                : 0
+
+    signal submitRequested
     clip: true
     font.pixelSize: 13
 
@@ -107,6 +110,15 @@ Control {
 
                 ContextMenu.menu: AppNativeTextMenu {
                     editor: textArea
+                }
+
+                Keys.onPressed: event => {
+                    if (control.submitOnCtrlEnter
+                            && (event.modifiers & (Qt.ControlModifier | Qt.MetaModifier))
+                            && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                        control.submitRequested()
+                        event.accepted = true
+                    }
                 }
             }
         }

@@ -61,6 +61,20 @@ int sanitizeWindowHeight(const QVariant &value, int fallback)
     return (std::clamp)(height, 700, 10000);
 }
 
+int sanitizeSubscriptionPaneWidth(const QVariant &value, int fallback)
+{
+    bool ok = false;
+    const int width = value.toInt(&ok);
+    return ok ? (std::clamp)(width, 276, 520) : fallback;
+}
+
+int sanitizePublishComposerHeight(const QVariant &value, int fallback)
+{
+    bool ok = false;
+    const int height = value.toInt(&ok);
+    return ok ? (std::clamp)(height, 150, 300) : fallback;
+}
+
 QString sanitizeCleanupMode(const QString &value)
 {
     const QString mode = value.trimmed();
@@ -107,6 +121,16 @@ PreferencesController::PreferencesController(QSettings *settings, QObject *paren
         sanitizeWindowHeight(m_settings->value(QStringLiteral("window/height"), m_windowHeight), m_windowHeight);
     m_windowMaximized =
         m_settings->value(QStringLiteral("window/maximized"), m_windowMaximized).toBool();
+    m_subscriptionPaneWidth = sanitizeSubscriptionPaneWidth(
+        m_settings->value(QStringLiteral("workspace/subscriptionPaneWidth"), m_subscriptionPaneWidth),
+        m_subscriptionPaneWidth);
+    m_publishComposerHeight = sanitizePublishComposerHeight(
+        m_settings->value(QStringLiteral("workspace/publishComposerHeight"), m_publishComposerHeight),
+        m_publishComposerHeight);
+    m_connectionPaneCollapsed =
+        m_settings->value(QStringLiteral("workspace/connectionPaneCollapsed"), m_connectionPaneCollapsed).toBool();
+    m_subscriptionPaneCollapsed =
+        m_settings->value(QStringLiteral("workspace/subscriptionPaneCollapsed"), m_subscriptionPaneCollapsed).toBool();
 }
 
 int PreferencesController::messageRetentionLimit() const
@@ -167,6 +191,26 @@ int PreferencesController::windowHeight() const
 bool PreferencesController::windowMaximized() const
 {
     return m_windowMaximized;
+}
+
+int PreferencesController::subscriptionPaneWidth() const
+{
+    return m_subscriptionPaneWidth;
+}
+
+int PreferencesController::publishComposerHeight() const
+{
+    return m_publishComposerHeight;
+}
+
+bool PreferencesController::connectionPaneCollapsed() const
+{
+    return m_connectionPaneCollapsed;
+}
+
+bool PreferencesController::subscriptionPaneCollapsed() const
+{
+    return m_subscriptionPaneCollapsed;
 }
 
 void PreferencesController::setMessageRetentionLimit(int limit)
@@ -310,6 +354,34 @@ void PreferencesController::setWindowMaximized(bool maximized)
     m_windowMaximized = maximized;
     syncValue(QStringLiteral("window/maximized"), m_windowMaximized);
     emit windowMaximizedChanged();
+}
+
+void PreferencesController::setWorkbenchLayout(
+    int subscriptionPaneWidth,
+    int publishComposerHeight,
+    bool connectionPaneCollapsed,
+    bool subscriptionPaneCollapsed)
+{
+    const int sanitizedPaneWidth = sanitizeSubscriptionPaneWidth(subscriptionPaneWidth, m_subscriptionPaneWidth);
+    const int sanitizedComposerHeight = sanitizePublishComposerHeight(publishComposerHeight, m_publishComposerHeight);
+    if (sanitizedPaneWidth == m_subscriptionPaneWidth
+        && sanitizedComposerHeight == m_publishComposerHeight
+        && connectionPaneCollapsed == m_connectionPaneCollapsed
+        && subscriptionPaneCollapsed == m_subscriptionPaneCollapsed) {
+        return;
+    }
+
+    m_subscriptionPaneWidth = sanitizedPaneWidth;
+    m_publishComposerHeight = sanitizedComposerHeight;
+    m_connectionPaneCollapsed = connectionPaneCollapsed;
+    m_subscriptionPaneCollapsed = subscriptionPaneCollapsed;
+    if (m_settings) {
+        m_settings->setValue(QStringLiteral("workspace/subscriptionPaneWidth"), m_subscriptionPaneWidth);
+        m_settings->setValue(QStringLiteral("workspace/publishComposerHeight"), m_publishComposerHeight);
+        m_settings->setValue(QStringLiteral("workspace/connectionPaneCollapsed"), m_connectionPaneCollapsed);
+        m_settings->setValue(QStringLiteral("workspace/subscriptionPaneCollapsed"), m_subscriptionPaneCollapsed);
+        m_settings->sync();
+    }
 }
 
 void PreferencesController::syncValue(const QString &key, const QVariant &value)

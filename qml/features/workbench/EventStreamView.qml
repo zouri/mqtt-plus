@@ -23,6 +23,7 @@ Item {
     property string followMode: "smart"
     property string selectedHistoryId: ""
     readonly property bool connected: root.status.state === "connected"
+    readonly property bool connecting: root.status.state === "connecting"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
     readonly property bool compactHeader: root.width <= 520
     readonly property var messageTopicFilterState: root.viewModel.messageTopicFilterState
@@ -34,10 +35,43 @@ Item {
                                                : (root.selectedTopicCount > 1
                                                   ? qsTr("%1 selected Topics are paused").arg(root.selectedTopicsPausedCount)
                                                   : qsTr("Receiving is paused"))
+    readonly property int subscriptionCount: root.viewModel.messageFilterSubscriptions
+                                             ? root.viewModel.messageFilterSubscriptions.count
+                                             : 0
+    // qmllint disable missing-property
+    readonly property bool streamEmpty: root.streamModel.count === 0
+    readonly property bool filtersActive: root.streamModel.filterActive
+    // qmllint enable missing-property
+    readonly property string emptyStateTitle: root.filtersActive
+                                               ? qsTr("No matching messages")
+                                               : (root.connecting
+                                                  ? qsTr("Connecting to broker")
+                                                  : (!root.connected
+                                                     ? qsTr("Connect to receive messages")
+                                                     : (root.subscriptionCount === 0
+                                                        ? qsTr("No subscriptions yet")
+                                                        : qsTr("Listening for messages"))))
+    readonly property string emptyStateDescription: root.filtersActive
+                                                     ? qsTr("Adjust the search or filters to see messages again.")
+                                                     : (root.connecting
+                                                        ? qsTr("The message stream will start when the connection is ready.")
+                                                        : (!root.connected
+                                                           ? qsTr("Start this connection, then subscribe to the topics you want to inspect.")
+                                                           : (root.subscriptionCount === 0
+                                                              ? qsTr("Add a topic to start listening on this connection.")
+                                                              : qsTr("Listening to %1 topic(s). New messages will appear here.").arg(root.subscriptionCount))))
+    readonly property string emptyStateAction: root.filtersActive
+                                                ? qsTr("Clear filters")
+                                                : (!root.connected && !root.connecting
+                                                   ? qsTr("Connect")
+                                                   : (root.connected && root.subscriptionCount === 0
+                                                      ? qsTr("Add subscription")
+                                                      : ""))
 
     signal publishDraftRevealRequested()
     signal messageSelected(string historyId)
     signal messagesCleared()
+    signal subscriptionCreateRequested()
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -114,6 +148,21 @@ Item {
                 eventList.scrollToBottom()
             }
         })
+    }
+
+    function focusSearch() {
+        messageSearchField.forceActiveFocus()
+        messageSearchField.selectAll()
+    }
+
+    function triggerEmptyStateAction() {
+        if (root.filtersActive) {
+            root.viewModel.clearMessageFilters()
+        } else if (!root.connected && !root.connecting) {
+            root.viewModel.toggleCurrentSessionConnection()
+        } else if (root.connected && root.subscriptionCount === 0) {
+            root.subscriptionCreateRequested()
+        }
     }
 
     function loadOlderEvents() {
@@ -243,7 +292,7 @@ Item {
                     placeholderText: qsTr("Search messages")
                     // qmllint disable missing-property
                     text: root.streamModel.filterText
-                    onTextEdited: root.streamModel.filterText = text
+                    onTextChanged: root.viewModel.setMessageSearchText(text)
                     // qmllint enable missing-property
 
                     AppIconButton {
@@ -401,9 +450,7 @@ Item {
                     if (actionId !== "clear-messages") {
                         return;
                     }
-                    root.viewModel.clearMessages();
-                    root.clearMessageSelection();
-                    root.messagesCleared();
+                    clearMessagesDialog.open();
                 }
             }
         }
@@ -554,6 +601,7 @@ Item {
 
                 delegate: Item {
                     id: eventDelegate
+                    required property int index
                     required property string kind
                     required property string timestamp
                     required property string title
@@ -592,6 +640,7 @@ Item {
                             return;
                         }
                         root.setFollowMode("manual");
+                        eventList.currentIndex = eventDelegate.index;
                         root.selectedHistoryId = eventDelegate.historyId;
                         root.messageSelected(eventDelegate.historyId);
                     }
@@ -639,6 +688,7 @@ Item {
                                              .arg(eventDelegate.topic)
                                              .arg(root.compactTimestamp(eventDelegate.timestamp))
                                          : ""
+                        activeFocusOnTab: eventDelegate.isMessage
 
                         Keys.onPressed: event => {
                             if (event.key === Qt.Key_Return
@@ -653,10 +703,20 @@ Item {
                             id: rowHover
                         }
 
+                        AppToolTip {
+                            ui: root.ui
+                            text: eventDelegate.topic
+                            position: AppToolTip.Position.Right
+                            active: rowHover.hovered && messageTopicLabel.truncated
+                        }
+
                         TapHandler {
                             enabled: eventDelegate.isMessage
                             gesturePolicy: TapHandler.ReleaseWithinBounds
-                            onTapped: eventDelegate.selectMessage()
+                            onTapped: {
+                                messageRow.forceActiveFocus()
+                                eventDelegate.selectMessage()
+                            }
                         }
 
                         RowLayout {
@@ -728,6 +788,7 @@ Item {
                                     }
 
                                     Label {
+                                        id: messageTopicLabel
                                         Layout.fillWidth: true
                                         Layout.minimumWidth: 0
                                         text: eventDelegate.alias.length > 0
@@ -755,6 +816,8 @@ Item {
                                     font.pixelSize: 12
                                     textFormat: Text.PlainText
                                     wrapMode: Text.WrapAnywhere
+                                    maximumLineCount: 3
+                                    elide: Label.ElideRight
                                 }
                             }
 
@@ -762,7 +825,8 @@ Item {
                                 id: messageActions
                                 visible: eventDelegate.isMessage || eventDelegate.payloadFormat.length > 0
                                 Layout.alignment: Qt.AlignRight | Qt.AlignTop
-                                Layout.preferredWidth: metadataRow.implicitWidth
+                                Layout.preferredWidth: Math.max(metadataRow.implicitWidth,
+                                                                quickActionsRow.implicitWidth)
                                 Layout.minimumWidth: Layout.preferredWidth
                                 Layout.maximumWidth: Layout.preferredWidth
                                 spacing: 4
@@ -790,10 +854,87 @@ Item {
                                     }
                                 }
 
+                                RowLayout {
+                                    id: quickActionsRow
+
+                                    visible: eventDelegate.isMessage
+                                             && (rowHover.hovered || messageRow.activeFocus
+                                                 || eventDelegate.historyId === root.selectedHistoryId)
+                                    Layout.alignment: Qt.AlignRight
+                                    spacing: 2
+
+                                    AppIconButton {
+                                        ui: root.ui
+                                        implicitWidth: 24
+                                        implicitHeight: 24
+                                        cornerRadius: 6
+                                        iconSource: root.ui.materialIcon("content-copy")
+                                        iconSize: 13
+                                        restBg: root.ui.themePalette.itemBg
+                                        outlineColor: root.ui.themePalette.panelBorder
+                                        accessibleName: qsTr("Copy payload")
+                                        toolTipText: qsTr("Copy payload")
+                                        onClicked: root.viewModel.copyMessagePayload(
+                                            eventDelegate.historyId,
+                                            eventDelegate.payload,
+                                            eventDelegate.testPayload,
+                                            eventDelegate.testFormat)
+                                    }
+
+                                    AppIconButton {
+                                        ui: root.ui
+                                        implicitWidth: 24
+                                        implicitHeight: 24
+                                        cornerRadius: 6
+                                        iconSource: root.ui.materialIcon("topic")
+                                        iconSize: 13
+                                        restBg: root.ui.themePalette.itemBg
+                                        outlineColor: root.ui.themePalette.panelBorder
+                                        accessibleName: qsTr("Copy topic")
+                                        toolTipText: qsTr("Copy topic")
+                                        onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
+                                    }
+
+                                    AppIconButton {
+                                        ui: root.ui
+                                        implicitWidth: 24
+                                        implicitHeight: 24
+                                        cornerRadius: 6
+                                        iconSource: root.ui.materialIcon("edit")
+                                        iconSize: 13
+                                        restBg: root.ui.themePalette.itemBg
+                                        outlineColor: root.ui.themePalette.panelBorder
+                                        accessibleName: qsTr("Use as publish draft")
+                                        toolTipText: qsTr("Use as publish draft")
+                                        onClicked: {
+                                            root.viewModel.useMessageAsDraft(
+                                                eventDelegate.historyId,
+                                                eventDelegate.topic,
+                                                eventDelegate.payload,
+                                                eventDelegate.testPayload,
+                                                eventDelegate.testFormat)
+                                            root.publishDraftRevealRequested()
+                                        }
+                                    }
+                                }
+
                             }
                         }
                     }
                 }
+            }
+
+
+            AppEmptyState {
+                anchors.centerIn: parent
+                width: Math.min(360, parent.width - 48)
+                visible: root.streamEmpty
+                ui: root.ui
+                mode: root.connecting ? "loading" : "empty"
+                title: root.emptyStateTitle
+                description: root.emptyStateDescription
+                actionLabel: root.emptyStateAction
+                onActionTriggered: root.triggerEmptyStateAction()
             }
 
             Rectangle {
@@ -883,6 +1024,83 @@ Item {
                     hoverEnabled: true
                     onClicked: {
                         root.setFollowMode("smart")
+                    }
+                }
+            }
+        }
+    }
+
+
+    Popup {
+        id: clearMessagesDialog
+
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(390, root.width - 32)
+        height: clearMessagesDialogContent.implicitHeight + 36
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: 0
+
+        Overlay.modal: AppDialogOverlay {
+            ui: root.ui
+        }
+
+        background: Rectangle {
+            radius: 10
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+
+        contentItem: ColumnLayout {
+            id: clearMessagesDialogContent
+
+            anchors.fill: parent
+            anchors.margins: 18
+            spacing: 14
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Clear message history?")
+                color: root.ui.textStrong
+                font.pixelSize: 15
+                font.bold: true
+                wrapMode: Text.Wrap
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("This permanently removes all saved messages for the current connection.")
+                color: root.ui.textMuted
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 78
+                    onClicked: clearMessagesDialog.close()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Clear")
+                    minimumWidth: 78
+                    danger: true
+                    onClicked: {
+                        root.viewModel.clearMessages()
+                        root.clearMessageSelection()
+                        root.messagesCleared()
+                        clearMessagesDialog.close()
                     }
                 }
             }
