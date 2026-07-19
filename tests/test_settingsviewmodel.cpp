@@ -84,6 +84,7 @@ private slots:
     void themeChangesEmitSignals();
     void themeColorPersistsAndEmitsSignal();
     void languageChangesEmitSignals();
+    void messagePayloadDisplayModePersistsAndEmitsSignal();
 };
 
 void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
@@ -94,6 +95,7 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(settings.themeModeIndex(), 0);
     QCOMPARE(settings.themeColor(), QStringLiteral("mint"));
     QCOMPARE(settings.languageModeIndex(), 0);
+    QCOMPARE(settings.messagePayloadDisplayModeIndex(), 1);
     QCOMPARE(settings.messageRetentionLimitIndex(), 1);
     QCOMPARE(settings.logRetentionLimitIndex(), 1);
     QCOMPARE(settings.historyPageSizeIndex(), 1);
@@ -118,12 +120,14 @@ void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
     deps.settings.setValue(QStringLiteral("appearance/themeMode"), QStringLiteral("dark"));
     deps.settings.setValue(QStringLiteral("appearance/themeColor"), QStringLiteral("violet"));
     deps.settings.setValue(QStringLiteral("appearance/languageMode"), QStringLiteral("zh_CN"));
+    deps.settings.setValue(QStringLiteral("workbench/messagePayloadDisplayMode"), QStringLiteral("full"));
     SettingsViewModel settings(deps.dependencies(), &deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 2);
     QCOMPARE(settings.effectiveTheme(), QStringLiteral("dark"));
     QCOMPARE(settings.themeColor(), QStringLiteral("violet"));
     QCOMPARE(settings.languageModeIndex(), 2);
+    QCOMPARE(settings.messagePayloadDisplayModeIndex(), 2);
     QCOMPARE(settings.messageRetentionLimitIndex(), 2);
     QCOMPARE(settings.logRetentionLimitIndex(), 2);
     QCOMPARE(settings.windowWidth(), 1200);
@@ -194,6 +198,7 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     settings.setThemeModeIndex(1);
     settings.setThemeColor(QStringLiteral("blue"));
     settings.setLanguageModeIndex(1);
+    settings.setMessagePayloadDisplayModeIndex(0);
     settings.setMessageRetentionLimitIndex(0);
     settings.setLogRetentionLimitIndex(0);
     settings.setHistoryPageSizeIndex(2);
@@ -214,6 +219,8 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     QCOMPARE(settings.themeColor(), QStringLiteral("blue"));
     QCOMPARE(deps.settings.value(QStringLiteral("appearance/themeColor")).toString(), QStringLiteral("blue"));
     QCOMPARE(settings.languageMode(), QStringLiteral("en"));
+    QCOMPARE(settings.messagePayloadDisplayModeIndex(), 0);
+    QCOMPARE(deps.settings.value(QStringLiteral("workbench/messagePayloadDisplayMode")).toString(), QStringLiteral("compact"));
     QCOMPARE(deps.preferencesController.messageRetentionLimit(), 1000);
     QCOMPARE(deps.preferencesController.logRetentionLimit(), 500);
     QCOMPARE(deps.preferencesController.historyPageSize(), 1000);
@@ -297,6 +304,22 @@ void SettingsOptionsViewModelTest::languageChangesEmitSignals()
     settings.setLanguageModeIndex(2);
     QCOMPARE(modeSpy.count(), 1);
     QCOMPARE(langSpy.count(), 1);
+}
+
+void SettingsOptionsViewModelTest::messagePayloadDisplayModePersistsAndEmitsSignal()
+{
+    FakeSettingsDeps deps;
+    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    QSignalSpy modeSpy(&settings, &SettingsViewModel::messagePayloadDisplayModeChanged);
+
+    settings.setMessagePayloadDisplayModeIndex(2);
+    settings.setMessagePayloadDisplayModeIndex(2);
+    QCOMPARE(settings.messagePayloadDisplayModeIndex(), 2);
+    QCOMPARE(modeSpy.count(), 1);
+    QCOMPARE(deps.settings.value(QStringLiteral("workbench/messagePayloadDisplayMode")).toString(), QStringLiteral("full"));
+
+    SettingsViewModel restoredSettings(deps.dependencies(), &deps.settings);
+    QCOMPARE(restoredSettings.messagePayloadDisplayModeIndex(), 2);
 }
 
 QTEST_MAIN(SettingsOptionsViewModelTest)

@@ -1082,6 +1082,8 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), subscriptionsSource));
     QVERIFY(subscriptionsSource.contains(QStringLiteral("signal replaceMessageTopicFilter(string topic)")));
     QVERIFY(subscriptionsSource.contains(QStringLiteral("setAllCurrentSubscriptionsPaused")));
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("topicRateHistory")),
+        "Subscription rows must expose a compact recent-rate sparkline");
 
     QString panelSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SessionMessagePanel.qml"), panelSource));
@@ -1102,8 +1104,16 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
         "The message workspace must guide users when no rows are visible");
     QVERIFY2(streamSource.contains(QStringLiteral("id: clearMessagesDialog")),
         "Clearing message history must require confirmation");
-    QVERIFY2(streamSource.contains(QStringLiteral("maximumLineCount: 3")),
-        "Large payloads must not destroy the message-list rhythm");
+    QVERIFY2(streamSource.contains(QStringLiteral("? 12"))
+            && streamSource.contains(QStringLiteral(": 3")),
+        "Large payloads must stay clamped until the row is selected or inspected");
+    QVERIFY2(streamSource.contains(QStringLiteral("required property int payloadDisplayMode"))
+            && streamSource.contains(QStringLiteral("? 2147483647")),
+        "Message payload clamping must support the persisted full-content display mode");
+    QVERIFY2(streamSource.contains(QStringLiteral("selectAdjacentMessage"))
+            && streamSource.contains(QStringLiteral("Qt.Key_Up"))
+            && streamSource.contains(QStringLiteral("Qt.Key_Down")),
+        "Message rows must support keyboard navigation");
     QVERIFY2(streamSource.contains(QStringLiteral("Math.max(metadataRow.implicitWidth,")),
         "Message-row quick actions must participate in width calculation");
     const int metadataStart = streamSource.indexOf(QStringLiteral("id: messageActions"));
@@ -1111,6 +1121,24 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(metadataStart >= 0 && metadataEnd > metadataStart);
     QVERIFY2(!streamSource.mid(metadataStart, metadataEnd - metadataStart).contains(QStringLiteral("AppBadge {")),
         "Message format metadata should remain plain text like the reference row");
+
+    QString composerSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/PublishComposer.qml"), composerSource));
+    QVERIFY2(composerSource.contains(QStringLiteral("recentPublishes"))
+            && composerSource.contains(QStringLiteral("Publish again")),
+        "The composer must expose reusable publish history and one-click republish");
+    QVERIFY2(composerSource.contains(QStringLiteral("id: publishPulseTimer"))
+            && composerSource.contains(QStringLiteral("interval: 300")),
+        "Publish completion must provide short-lived button feedback");
+
+    QVERIFY2(workbenchSource.contains(QStringLiteral("id: workbenchStatusBar"))
+            && workbenchSource.contains(QStringLiteral("currentIncomingMessageRate"))
+            && workbenchSource.contains(QStringLiteral("currentOutgoingMessageRate")),
+        "The workbench must expose aggregate traffic and history state");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("text: root.liveConnectionStatusText"))
+            && workbenchSource.contains(QStringLiteral("connectedAtMs"))
+            && workbenchSource.contains(QStringLiteral("connectionStartedAtMs")),
+        "The bottom status bar must include live connection duration or timeout context");
 
     QString filterSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageFilterPopover.qml"), filterSource));

@@ -349,6 +349,7 @@ AppPanel {
                 required property bool paused
                 required property string lastError
                 required property real topicFps
+                required property var topicRateHistory
                 readonly property bool hasError: subscriptionDelegate.lastError.length > 0
                 readonly property bool subscriptionActive: !subscriptionDelegate.paused
                 readonly property bool activeTraffic: subscriptionDelegate.topicFps > 0
@@ -506,6 +507,39 @@ AppPanel {
                         RowLayout {
                             id: subscriptionActionGroup
                             spacing: 2
+
+                            Row {
+                                Layout.preferredWidth: 30
+                                Layout.preferredHeight: 16
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: 1
+                                visible: subscriptionDelegate.topicRateHistory.some(
+                                             value => Number(value) > 0)
+
+                                Repeater {
+                                    model: subscriptionDelegate.topicRateHistory
+
+                                    delegate: Rectangle {
+                                        id: rateBar
+                                        required property int index
+                                        required property var modelData
+                                        readonly property real sample: Number(rateBar.modelData || 0)
+                                        readonly property real peak: Math.max(
+                                                                         1,
+                                                                         ...subscriptionDelegate.topicRateHistory.map(
+                                                                             value => Number(value || 0)))
+                                        width: 2.5
+                                        height: Math.max(2, 14 * rateBar.sample / rateBar.peak)
+                                        anchors.bottom: parent.bottom
+                                        radius: 1
+                                        color: control.ui.withAlpha(
+                                                   subscriptionDelegate.topicSwatchColor,
+                                                   rateBar.index === subscriptionDelegate.topicRateHistory.length - 1
+                                                   ? 0.95
+                                                   : 0.45)
+                                    }
+                                }
+                            }
 
                             Label {
                                 Layout.preferredWidth: 42

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QVariantList>
 #include <QVector>
 
 #include "domain/subscription.h"
@@ -22,6 +23,7 @@ public:
         RequestedQosRole,
         GrantedQosRole,
         TopicFpsRole,
+        TopicRateHistoryRole,
         FormatRole,
         FormatNameRole,
         ScriptIdRole,
@@ -58,6 +60,8 @@ private:
     const QVector<SubscriptionEntry> *m_subs = nullptr;
     QVector<SubscriptionEntry> m_empty;
     QVector<qreal> m_fpsCache;
+    QVector<QVariantList> m_rateHistoryCache;
+    QVector<QString> m_rateHistoryTopicCache;
     QVector<QString> m_scriptNameCache;
     std::function<QString(const QString &)> m_scriptNameLookup;
 };

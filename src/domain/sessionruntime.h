@@ -22,6 +22,10 @@ struct SessionRuntimeState {
     qint64 viewedMessageCount = 0;
     qint64 oldestLoadedMessageId = 0;
     qint64 oldestLoadedLogId = 0;
+    qint64 connectedAtMs = 0;
+    qint64 connectionStartedAtMs = 0;
+    QVector<qint64> recentReceivedTimestampsMs;
+    QVector<qint64> recentPublishedTimestampsMs;
     bool loadedAllMessageHistory = false;
     bool loadedAllLogHistory = false;
     QMqttClient *client = nullptr;

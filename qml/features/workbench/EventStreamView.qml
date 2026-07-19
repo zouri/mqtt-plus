@@ -16,6 +16,7 @@ Item {
     required property var ui
     required property string fontFamily
     required property string title
+    required property int payloadDisplayMode
 
     property bool showOutputControls: false
     property bool loadingOlderEvents: false
@@ -129,6 +130,29 @@ Item {
 
     function clearMessageSelection() {
         root.selectedHistoryId = "";
+    }
+
+    function selectAdjacentMessage(fromIndex, direction) {
+        for (let index = fromIndex + direction;
+             index >= 0 && index < root.streamModel.count;
+             index += direction) {
+            const row = root.streamModel.rowAt(index);
+            if (String(row.kind || "") !== "message") {
+                continue;
+            }
+            root.setFollowMode("manual");
+            eventList.currentIndex = index;
+            root.selectedHistoryId = String(row.historyId || "");
+            root.messageSelected(root.selectedHistoryId);
+            eventList.positionViewAtIndex(index, ListView.Contain);
+            Qt.callLater(function() {
+                const delegateItem = eventList.itemAtIndex(index);
+                if (delegateItem) {
+                    delegateItem.focusMessageRow();
+                }
+            });
+            return;
+        }
     }
 
     function requestFollowScroll() {
@@ -645,6 +669,10 @@ Item {
                         root.messageSelected(eventDelegate.historyId);
                     }
 
+                    function focusMessageRow() {
+                        messageRow.forceActiveFocus();
+                    }
+
                     RowLayout {
                         id: dividerRow
                         visible: eventDelegate.isDivider
@@ -695,6 +723,12 @@ Item {
                                     || event.key === Qt.Key_Enter
                                     || event.key === Qt.Key_Space) {
                                 eventDelegate.selectMessage();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Up) {
+                                root.selectAdjacentMessage(eventDelegate.index, -1);
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Down) {
+                                root.selectAdjacentMessage(eventDelegate.index, 1);
                                 event.accepted = true;
                             }
                         }
@@ -816,7 +850,13 @@ Item {
                                     font.pixelSize: 12
                                     textFormat: Text.PlainText
                                     wrapMode: Text.WrapAnywhere
-                                    maximumLineCount: 3
+                                    maximumLineCount: root.payloadDisplayMode === 2
+                                                      ? 2147483647
+                                                      : (root.payloadDisplayMode === 1
+                                                         && (eventDelegate.historyId === root.selectedHistoryId
+                                                             || rowHover.hovered)
+                                                         ? 12
+                                                         : 3)
                                     elide: Label.ElideRight
                                 }
                             }

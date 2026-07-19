@@ -10,6 +10,7 @@
 #include "services/payload/payloadcodec.h"
 
 #include <QCoreApplication>
+#include <QDateTime>
 
 #include <algorithm>
 #include <memory>
@@ -39,9 +40,8 @@ PublishDraftViewModel::Dependencies publishDraftDependencies(const WorkbenchView
             return sessionStateName(*session, session->runtime.client) == QStringLiteral("connected");
         },
         [dependencies](const QString &topic, const QString &payload, int format, int qos, bool retain) {
-            if (dependencies.mqttController) {
-                dependencies.mqttController->publishCurrentSession(topic, payload, format, qos, retain);
-            }
+            return dependencies.mqttController
+                && dependencies.mqttController->publishCurrentSession(topic, payload, format, qos, retain);
         },
     };
 }
@@ -201,6 +201,9 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
     row.insert(QStringLiteral("sessionRestored"), session->runtime.sessionRestored);
     row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
     row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
+    row.insert(QStringLiteral("connectedAtMs"), session->runtime.connectedAtMs);
+    row.insert(QStringLiteral("connectionStartedAtMs"), session->runtime.connectionStartedAtMs);
+    row.insert(QStringLiteral("connectTimeoutSeconds"), session->connectTimeoutSeconds);
     return row;
 }
 
@@ -272,6 +275,33 @@ qint64 WorkbenchViewModel::totalMessageCount() const
         ? m_dependencies.sessionController->currentSession()
         : nullptr;
     return session ? session->runtime.totalMessageCount : 0;
+}
+
+qreal WorkbenchViewModel::currentIncomingMessageRate() const
+{
+    const auto *session = m_dependencies.sessionController
+        ? m_dependencies.sessionController->currentSession()
+        : nullptr;
+    if (!session) {
+        return 0;
+    }
+
+    return recentMessageCount(
+        session->runtime.recentReceivedTimestampsMs,
+        QDateTime::currentMSecsSinceEpoch());
+}
+
+qreal WorkbenchViewModel::currentOutgoingMessageRate() const
+{
+    const auto *session = m_dependencies.sessionController
+        ? m_dependencies.sessionController->currentSession()
+        : nullptr;
+    if (!session) {
+        return 0;
+    }
+    return recentMessageCount(
+        session->runtime.recentPublishedTimestampsMs,
+        QDateTime::currentMSecsSinceEpoch());
 }
 
 void WorkbenchViewModel::setCurrentSessionIndex(int index)

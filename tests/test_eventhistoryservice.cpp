@@ -29,6 +29,7 @@ private slots:
     void skippedRowsKeepPayloadBodyEmpty();
     void publishedRowsAppearWhenOutputPaused();
     void pausedIncomingRowsAreStoredWithoutScriptParsing();
+    void aggregateReceiveRateCountsOverlappingSubscriptionsOnce();
     void publishedAndIncomingRowsBothRemainInMessageStream();
     void pendingVisibleRowsDoNotDuplicateAfterModelRefresh();
     void batchedVisibleRowsEmitOneAppendSignalWithCount();
@@ -357,6 +358,23 @@ void EventHistoryServiceTest::pausedIncomingRowsAreStoredWithoutScriptParsing()
     QCOMPARE(row.value(QStringLiteral("topic")).toString(), QStringLiteral("devices/paused"));
     QCOMPARE(row.value(QStringLiteral("parse_error")).toString(), QString());
     QCOMPARE(row.value(QStringLiteral("script_id")).toString(), QString());
+}
+
+void EventHistoryServiceTest::aggregateReceiveRateCountsOverlappingSubscriptionsOnce()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.addSubscription(QStringLiteral("devices/#"), static_cast<int>(PayloadFormat::Plaintext));
+    fixture.addSubscription(QStringLiteral("devices/+/temp"), static_cast<int>(PayloadFormat::Plaintext));
+
+    fixture.service.appendIncomingMessage(
+        fixture.session.id,
+        QStringLiteral("devices/room/temp"),
+        QByteArrayLiteral("23"));
+
+    QCOMPARE(fixture.session.runtime.recentReceivedTimestampsMs.size(), 1);
+    QCOMPARE(fixture.session.subscriptions.at(0).recentMessageTimestampsMs.size(), 1);
+    QCOMPARE(fixture.session.subscriptions.at(1).recentMessageTimestampsMs.size(), 1);
 }
 
 void EventHistoryServiceTest::reusablePayloadLoadsStoredBytesAfterHistoryRowsDropBlobs()

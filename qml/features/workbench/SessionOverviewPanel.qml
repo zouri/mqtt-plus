@@ -83,23 +83,6 @@ AppPanel {
                 elide: Label.ElideRight
             }
 
-
-            Label {
-                text: control.ui.statusLabel(control.effectiveState)
-                color: control.statusDotColor
-                font.pixelSize: 10
-                font.bold: true
-                leftPadding: 7
-                rightPadding: 7
-                topPadding: 4
-                bottomPadding: 4
-
-                background: Rectangle {
-                    radius: 6
-                    color: control.ui.withAlpha(control.statusDotColor, control.ui.isDarkTheme ? 0.16 : 0.10)
-                }
-            }
-
             AppIconButton {
                 ui: control.ui
                 enabled: control.statusState === "disconnected"
