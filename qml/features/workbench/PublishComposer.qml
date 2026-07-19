@@ -36,6 +36,7 @@ Item {
                                                      || root.publishStatus.state === "completed"
                                                      ? root.ui.themePalette.successText
                                                      : root.ui.textMuted)
+    property bool publishPulseActive: false
 
     Layout.fillWidth: true
     Layout.preferredHeight: root.expanded ? root.composerHeight : root.collapsedHeight
@@ -59,6 +60,21 @@ Item {
         if (root.publisher.canPublish) {
             root.publisher.publishDraft()
         }
+    }
+
+    onPublishStatusChanged: {
+        const state = String(root.publishStatus.state || "");
+        if (state === "failed" || state === "sent" || state === "acknowledged" || state === "completed") {
+            root.publishPulseActive = true;
+            publishPulseTimer.restart();
+        }
+    }
+
+    Timer {
+        id: publishPulseTimer
+        interval: 300
+        repeat: false
+        onTriggered: root.publishPulseActive = false
     }
 
     onHeightChanged: {
@@ -231,6 +247,28 @@ Item {
                     }
 
                     AppIconButton {
+                        id: publishHistoryButton
+                        ui: root.ui
+                        anchors.right: publishButton.left
+                        anchors.bottom: parent.bottom
+                        anchors.rightMargin: 6
+                        anchors.bottomMargin: 8
+                        implicitWidth: 30
+                        implicitHeight: 30
+                        cornerRadius: 8
+                        iconSource: root.ui.materialIcon("logs")
+                        iconSize: 15
+                        restBg: root.ui.themePalette.innerPanelBg
+                        outlineColor: root.ui.themePalette.fieldBorder
+                        accessibleName: qsTr("Recent publishes")
+                        toolTipText: root.publisher.recentPublishes.length > 0
+                                     ? qsTr("Recent publishes")
+                                     : qsTr("No recent publishes")
+                        onClicked: publishHistoryPopup.open()
+                    }
+
+                    AppIconButton {
+                        id: publishButton
                         ui: root.ui
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
@@ -242,12 +280,166 @@ Item {
                         iconSource: root.ui.materialIcon("send")
                         iconSize: 16
                         primary: true
+                        forceActive: root.publishPulseActive
+                        danger: root.publishPulseActive && root.publishStatus.state === "failed"
                         enabled: root.publisher.canPublish
                         accessibleName: qsTr("Publish message")
                         toolTipText: root.publisher.canPublish
                                      ? qsTr("Publish message (%1+Enter)").arg(Qt.platform.os === "osx" ? qsTr("Command") : qsTr("Ctrl"))
                                      : root.publishDisabledReason
                         onClicked: root.publishDraft()
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: publishHistoryPopup
+
+        width: Math.min(420, root.width - 24)
+        height: Math.min(320, Math.max(96, historyContent.implicitHeight + 20))
+        x: Math.max(12, root.width - width - 12)
+        y: Math.max(12, root.height - height - 44)
+        padding: 10
+        modal: false
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            radius: 8
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+
+        contentItem: ColumnLayout {
+            id: historyContent
+            spacing: 8
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                Label {
+                    Layout.fillWidth: true
+                    text: qsTr("Recent publishes")
+                    color: root.ui.textStrong
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+
+                AppIconButton {
+                    ui: root.ui
+                    visible: root.publisher.recentPublishes.length > 0
+                    implicitWidth: 26
+                    implicitHeight: 26
+                    cornerRadius: 6
+                    iconSource: root.ui.materialIcon("delete")
+                    iconSize: 13
+                    restBg: "transparent"
+                    outlineColor: "transparent"
+                    accessibleName: qsTr("Clear recent publishes")
+                    toolTipText: accessibleName
+                    onClicked: root.publisher.clearRecentPublishes()
+                }
+            }
+
+            Label {
+                visible: root.publisher.recentPublishes.length === 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                text: qsTr("Published messages will appear here for quick reuse.")
+                color: root.ui.textMuted
+                font.pixelSize: 11
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                wrapMode: Text.Wrap
+            }
+
+            ListView {
+                id: recentPublishList
+                visible: root.publisher.recentPublishes.length > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(contentHeight, 250)
+                clip: true
+                spacing: 3
+                model: root.publisher.recentPublishes
+                reuseItems: true
+
+                delegate: Rectangle {
+                    id: recentPublishDelegate
+                    required property int index
+                    required property var modelData
+                    width: ListView.view.width
+                    height: 48
+                    radius: 6
+                    color: recentPublishHover.hovered
+                           ? root.ui.themePalette.rowHover
+                           : root.ui.themePalette.innerPanelBg
+
+                    HoverHandler {
+                        id: recentPublishHover
+                    }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 9
+                        anchors.rightMargin: 6
+                        spacing: 8
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            spacing: 2
+
+                            TapHandler {
+                                gesturePolicy: TapHandler.ReleaseWithinBounds
+                                onTapped: {
+                                    root.publisher.useRecentPublish(recentPublishDelegate.index);
+                                    publishHistoryPopup.close();
+                                }
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: String(recentPublishDelegate.modelData.topic || "")
+                                color: root.ui.textStrong
+                                font.pixelSize: 11
+                                font.bold: true
+                                elide: Label.ElideMiddle
+                            }
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: String(recentPublishDelegate.modelData.payload || qsTr("Empty payload"))
+                                color: root.ui.textMuted
+                                font.pixelSize: 10
+                                elide: Label.ElideRight
+                            }
+                        }
+
+                        Label {
+                            text: qsTr("QoS %1").arg(Number(recentPublishDelegate.modelData.qos || 0))
+                            color: root.ui.themePalette.textSubtle
+                            font.pixelSize: 10
+                        }
+
+                        AppIconButton {
+                            ui: root.ui
+                            implicitWidth: 26
+                            implicitHeight: 26
+                            cornerRadius: 6
+                            iconSource: root.ui.materialIcon("send")
+                            iconSize: 13
+                            primary: true
+                            enabled: root.status.state === "connected"
+                            accessibleName: qsTr("Publish again")
+                            toolTipText: enabled ? accessibleName : qsTr("Connect before publishing")
+                            onClicked: {
+                                root.publisher.useRecentPublish(recentPublishDelegate.index);
+                                root.publishDraft();
+                                publishHistoryPopup.close();
+                            }
+                        }
                     }
                 }
             }

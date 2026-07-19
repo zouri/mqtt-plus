@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QVariantList>
 
 #include <functional>
 
@@ -16,13 +17,14 @@ class PublishDraftViewModel : public QObject
     Q_PROPERTY(int qos READ qos WRITE setQos NOTIFY qosChanged)
     Q_PROPERTY(bool retain READ retain WRITE setRetain NOTIFY retainChanged)
     Q_PROPERTY(bool canPublish READ canPublish NOTIFY canPublishChanged)
+    Q_PROPERTY(QVariantList recentPublishes READ recentPublishes NOTIFY recentPublishesChanged)
 
 public:
     struct Dependencies
     {
         std::function<void(QObject *, std::function<void()>)> bindPublishAvailabilityChanged;
         std::function<bool()> canPublishToCurrentSession;
-        std::function<void(const QString &, const QString &, int, int, bool)> publishCurrentSession;
+        std::function<bool(const QString &, const QString &, int, int, bool)> publishCurrentSession;
     };
 
     explicit PublishDraftViewModel(QObject *parent = nullptr);
@@ -35,6 +37,7 @@ public:
     int qos() const;
     bool retain() const;
     bool canPublish() const;
+    QVariantList recentPublishes() const;
 
     void setTopic(const QString &topic);
     void setPayload(const QString &payload);
@@ -43,6 +46,8 @@ public:
     void setRetain(bool retain);
 
     Q_INVOKABLE void useMessageAsDraft(const QString &topic, const QString &payload, const QString &testPayload, int format);
+    Q_INVOKABLE bool useRecentPublish(int index);
+    Q_INVOKABLE void clearRecentPublishes();
     Q_INVOKABLE bool publishDraft();
 
 signals:
@@ -52,6 +57,7 @@ signals:
     void qosChanged();
     void retainChanged();
     void canPublishChanged();
+    void recentPublishesChanged();
 
 private:
     Dependencies m_dependencies;
@@ -60,4 +66,5 @@ private:
     int m_format = 1;
     int m_qos = 0;
     bool m_retain = false;
+    QVariantList m_recentPublishes;
 };

@@ -33,7 +33,7 @@ public:
 
     void connectCurrentSession();
     void disconnectCurrentSession();
-    void publishCurrentSession(
+    bool publishCurrentSession(
         const QString &topic,
         const QString &payload,
         int format,

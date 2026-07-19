@@ -48,6 +48,10 @@ Item {
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
     property int pendingSubscriptionIndex: -1
+    property real incomingMessageRate: 0
+    property real outgoingMessageRate: 0
+    property double nowMs: Date.now()
+    readonly property string liveConnectionStatusText: root.connectionStatusText()
 
     Layout.fillWidth: true
     Layout.fillHeight: true
@@ -79,6 +83,49 @@ Item {
 
     function createSession() {
         root.openSessionEditorForCreate();
+    }
+
+    function refreshMessageRates() {
+        root.incomingMessageRate = root.viewModel.currentIncomingMessageRate();
+        root.outgoingMessageRate = root.viewModel.currentOutgoingMessageRate();
+    }
+
+    function compactMessageCount(count) {
+        const numericCount = Number(count || 0);
+        if (numericCount < 1000) {
+            return String(numericCount);
+        }
+        if (numericCount < 1000000) {
+            return qsTr("%1K").arg((numericCount / 1000).toFixed(numericCount < 10000 ? 1 : 0));
+        }
+        return qsTr("%1M").arg((numericCount / 1000000).toFixed(numericCount < 10000000 ? 1 : 0));
+    }
+
+    function compactDuration(milliseconds) {
+        const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+        if (totalSeconds < 60) {
+            return qsTr("%1s").arg(totalSeconds);
+        }
+        const totalMinutes = Math.floor(totalSeconds / 60);
+        if (totalMinutes < 60) {
+            return qsTr("%1m").arg(totalMinutes);
+        }
+        const hours = Math.floor(totalMinutes / 60);
+        return qsTr("%1h %2m").arg(hours).arg(totalMinutes % 60);
+    }
+
+    function connectionStatusText() {
+        const state = root.status.state || "idle";
+        if (state === "connected" && Number(root.status.connectedAtMs || 0) > 0) {
+            return qsTr("Connected · %1").arg(
+                        root.compactDuration(root.nowMs - Number(root.status.connectedAtMs)));
+        }
+        if (state === "connecting" && Number(root.status.connectionStartedAtMs || 0) > 0) {
+            const timeoutMs = Number(root.status.connectTimeoutSeconds || 10) * 1000;
+            const remaining = Math.max(0, timeoutMs - (root.nowMs - Number(root.status.connectionStartedAtMs)));
+            return qsTr("Connecting · %1 left").arg(root.compactDuration(remaining));
+        }
+        return root.ui.statusLabel(root.status.hasError ? "error" : state);
     }
 
     function scheduleLayoutSave() {
@@ -198,6 +245,17 @@ Item {
         onTriggered: root.persistLayout()
     }
 
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.visible
+        triggeredOnStart: true
+        onTriggered: {
+            root.nowMs = Date.now();
+            root.refreshMessageRates();
+        }
+    }
+
     onAutoCollapseConnectionListOnConnectChanged: {
         if (!root.autoCollapseConnectionListOnConnect) {
             root.collapseConnectionPaneOnConnect = false;
@@ -230,7 +288,7 @@ Item {
 
     SessionSidebar {
         anchors.top: parent.top
-        anchors.bottom: parent.bottom
+        anchors.bottom: workbenchStatusBar.top
         anchors.left: parent.left
         width: root.effectiveExpandedConnectionPaneWidth
         z: 0
@@ -250,7 +308,7 @@ Item {
 
         anchors.top: parent.top
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.bottom: workbenchStatusBar.top
         anchors.left: parent.left
         anchors.leftMargin: root.connectionPaneWidth
         z: 2
@@ -323,11 +381,83 @@ Item {
             publishStatus: root.viewModel.publishStatus
             publisher: root.viewModel.publisher
             fontFamily: root.fontFamily
+            messagePayloadDisplayMode: root.settingsViewModel.messagePayloadDisplayModeIndex
             composerHeight: root.settingsViewModel.publishComposerHeight
             onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
             onComposerHeightChanged: root.scheduleLayoutSave()
             SplitView.fillWidth: true
             SplitView.fillHeight: true
+        }
+    }
+
+    Rectangle {
+        id: workbenchStatusBar
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: 24
+        color: root.ui.themePalette.innerPanelBg
+        border.color: root.ui.themePalette.separator
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 10
+
+            Rectangle {
+                Layout.preferredWidth: 7
+                Layout.preferredHeight: 7
+                radius: 4
+                color: root.ui.stateColor(root.status.hasError ? "error" : (root.status.state || "idle"))
+                Accessible.ignored: true
+            }
+
+            Label {
+                Layout.maximumWidth: 240
+                text: root.session.name || qsTr("No session")
+                color: root.ui.textMuted
+                font.pixelSize: 10
+                elide: Label.ElideRight
+            }
+
+            Label {
+                text: root.liveConnectionStatusText
+                color: root.ui.stateColor(root.status.hasError ? "error" : (root.status.state || "idle"))
+                font.pixelSize: 10
+                font.bold: root.status.state === "connected" || root.status.state === "connecting"
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 12
+                color: root.ui.themePalette.separator
+            }
+
+            Label {
+                text: qsTr("↓ %1/s").arg(Number(root.incomingMessageRate).toFixed(0))
+                color: root.incomingMessageRate > 0 ? root.ui.textStrong : root.ui.textMuted
+                font.pixelSize: 10
+                font.bold: root.incomingMessageRate > 0
+            }
+
+            Label {
+                text: qsTr("↑ %1/s").arg(Number(root.outgoingMessageRate).toFixed(0))
+                color: root.outgoingMessageRate > 0 ? root.ui.textStrong : root.ui.textMuted
+                font.pixelSize: 10
+                font.bold: root.outgoingMessageRate > 0
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Label {
+                text: qsTr("%1 messages").arg(root.compactMessageCount(root.viewModel.totalMessageCount))
+                color: root.ui.textMuted
+                font.pixelSize: 10
+            }
         }
     }
 
