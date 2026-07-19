@@ -3,6 +3,7 @@
 #include "models/subscriptionlistmodel.h"
 
 #include <QtTest/QtTest>
+#include <QDateTime>
 
 class SubscriptionListModelTest : public QObject
 {
@@ -11,6 +12,7 @@ class SubscriptionListModelTest : public QObject
 private slots:
     void refreshBindsCurrentSession();
     void refreshRebuildsScriptNameCache();
+    void samplesTopicRateHistory();
 };
 
 void SubscriptionListModelTest::refreshBindsCurrentSession()
@@ -70,6 +72,36 @@ void SubscriptionListModelTest::refreshRebuildsScriptNameCache()
     QCOMPARE(dataSpy.count(), 1);
     QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 0);
     QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 0);
+}
+
+void SubscriptionListModelTest::samplesTopicRateHistory()
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    SessionState session;
+    SubscriptionEntry subscription;
+    subscription.topic = QStringLiteral("devices/temp");
+    subscription.recentMessageTimestampsMs = {nowMs - 50, nowMs - 100};
+    session.subscriptions.append(subscription);
+
+    SubscriptionListModel model;
+    model.setSource(&session);
+    for (int sample = 0; sample < 10; ++sample) {
+        model.updateTopicFps(nowMs + sample);
+    }
+
+    const QVariantList history = model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList();
+    QCOMPARE(history.size(), 8);
+    QCOMPARE(history.constLast().toReal(), 2.0);
+
+    session.subscriptions[0].topic = QStringLiteral("devices/humidity");
+    session.subscriptions[0].recentMessageTimestampsMs.clear();
+    model.setSource(&session);
+    QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
+
+    SessionState otherSession;
+    otherSession.subscriptions.append({QStringLiteral("devices/other")});
+    model.setSource(&otherSession);
+    QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
 }
 
 QTEST_MAIN(SubscriptionListModelTest)

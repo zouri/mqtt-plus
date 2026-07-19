@@ -8,6 +8,7 @@
 
 #include <QSslCertificate>
 #include <QSslSocket>
+#include <QDateTime>
 
 #include <algorithm>
 
@@ -111,7 +112,7 @@ void MqttSessionService::disconnectCurrentSession()
     emit sessionStateChanged();
 }
 
-void MqttSessionService::publishCurrentSession(
+bool MqttSessionService::publishCurrentSession(
     const QString &topic,
     const QString &payload,
     int format,
@@ -121,24 +122,24 @@ void MqttSessionService::publishCurrentSession(
     auto *session = m_dependencies.currentSessionState();
     auto *client = session ? session->runtime.client : nullptr;
     if (!session || !client) {
-        return;
+        return false;
     }
 
     const QString trimmedTopic = topic.trimmed();
     if (trimmedTopic.isEmpty()) {
         m_dependencies.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Topic cannot be empty."));
-        return;
+        return false;
     }
 
     const QMqttTopicName topicName(trimmedTopic);
     if (!topicName.isValid()) {
         m_dependencies.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Invalid topic name: %1").arg(trimmedTopic));
-        return;
+        return false;
     }
 
     if (client->state() != QMqttClient::Connected) {
         m_dependencies.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Connect before publishing."));
-        return;
+        return false;
     }
 
     QByteArray payloadBytes;
@@ -149,7 +150,7 @@ void MqttSessionService::publishCurrentSession(
             *session,
             QStringLiteral("Publish"),
             QStringLiteral("%1 (%2)").arg(error).arg(PayloadCodec::formatName(payloadFormat)));
-        return;
+        return false;
     }
 
     PublishStatus status;
@@ -167,6 +168,12 @@ void MqttSessionService::publishCurrentSession(
         updatePublishStatus(*session, QStringLiteral("failed"), tr("Qt MQTT rejected the publish request."));
         m_dependencies.appendEvent(*session, QStringLiteral("Publish"), QStringLiteral("Publish rejected for %1").arg(trimmedTopic));
     } else {
+        const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+        session->runtime.recentPublishedTimestampsMs.append(nowMs);
+        while (!session->runtime.recentPublishedTimestampsMs.isEmpty()
+               && session->runtime.recentPublishedTimestampsMs.constFirst() < nowMs - 1000) {
+            session->runtime.recentPublishedTimestampsMs.removeFirst();
+        }
         updatePublishStatus(*session, QStringLiteral("queued"), QString(), messageId);
         (*m_dependencies.eventController).appendPublishedMessage(
             session->id,
@@ -188,6 +195,7 @@ void MqttSessionService::publishCurrentSession(
         m_dependencies.refreshModels();
     }
     emit sessionStateChanged();
+    return messageId >= 0;
 }
 
 void MqttSessionService::bindSessionSignals(SessionState *session)
@@ -204,6 +212,8 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
             }
             const auto *boundClient = boundSession->runtime.client;
             boundSession->runtime.disconnectRequested = false;
+            boundSession->runtime.connectedAtMs = QDateTime::currentMSecsSinceEpoch();
+            boundSession->runtime.connectionStartedAtMs = 0;
             boundSession->runtime.lastError.clear();
             boundSession->runtime.brokerInfo =
                 QStringLiteral("%1 • %2 • client %3")
@@ -229,6 +239,8 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
                 ? QStringLiteral("Disconnected")
                 : QStringLiteral("Connection closed by broker");
             boundSession->runtime.disconnectRequested = false;
+            boundSession->runtime.connectedAtMs = 0;
+            boundSession->runtime.connectionStartedAtMs = 0;
             (*m_dependencies.subscriptionController).resetRuntimeSubscriptions(*boundSession);
             m_dependencies.appendEvent(*boundSession, QStringLiteral("Connection"), message);
         }
@@ -352,6 +364,9 @@ void MqttSessionService::connectSession(SessionState &session, const QString &ev
         return;
     }
 
+    session.runtime.connectionStartedAtMs = QDateTime::currentMSecsSinceEpoch();
+    session.runtime.connectedAtMs = 0;
+
     if (session.runtime.connectTimeoutTimer) {
         session.runtime.connectTimeoutTimer->start((std::max)(1, session.connectTimeoutSeconds) * 1000);
     }
@@ -374,6 +389,7 @@ void MqttSessionService::connectSession(SessionState &session, const QString &ev
                 session.runtime.connectTimeoutTimer->stop();
             }
             session.runtime.lastError = tlsError;
+            session.runtime.connectionStartedAtMs = 0;
             m_dependencies.appendEvent(session, QStringLiteral("Error"), tlsError);
             return;
         }

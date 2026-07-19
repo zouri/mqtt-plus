@@ -24,6 +24,7 @@ enum class SettingsOption
 {
     ThemeMode,
     LanguageMode,
+    MessagePayloadDisplayMode,
     MessageRetentionLimit,
     LogRetentionLimit,
     HistoryPageSize,
@@ -43,6 +44,11 @@ const QVariantList &optionValues(SettingsOption option)
         QStringLiteral("en"),
         QStringLiteral("zh_CN"),
     };
+    static const QVariantList messagePayloadDisplayModes {
+        QStringLiteral("compact"),
+        QStringLiteral("hover"),
+        QStringLiteral("full"),
+    };
     static const QVariantList messageRetentionLimits {1000, 5000, 10000, 0};
     static const QVariantList logRetentionLimits {500, 2000, 5000, 0};
     static const QVariantList historyPageSizes {200, 500, 1000};
@@ -58,6 +64,8 @@ const QVariantList &optionValues(SettingsOption option)
         return themeModes;
     case SettingsOption::LanguageMode:
         return languageModes;
+    case SettingsOption::MessagePayloadDisplayMode:
+        return messagePayloadDisplayModes;
     case SettingsOption::MessageRetentionLimit:
         return messageRetentionLimits;
     case SettingsOption::LogRetentionLimit:
@@ -175,6 +183,15 @@ QString sanitizeThemeColor(const QString &value)
     return themeColors.contains(color) ? color : QStringLiteral("mint");
 }
 
+QString sanitizeMessagePayloadDisplayMode(const QString &value)
+{
+    const QString mode = value.trimmed().toLower();
+    if (mode == QStringLiteral("compact") || mode == QStringLiteral("full")) {
+        return mode;
+    }
+    return QStringLiteral("hover");
+}
+
 } // namespace
 
 SettingsViewModel::SettingsViewModel(QSettings *settings, QObject *parent)
@@ -194,6 +211,8 @@ SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QSettings
             m_settings->value(QStringLiteral("appearance/themeColor"), QStringLiteral("mint")).toString());
         m_languageMode = sanitizeLanguageMode(
             m_settings->value(QStringLiteral("appearance/languageMode"), QStringLiteral("system")).toString());
+        m_messagePayloadDisplayMode = sanitizeMessagePayloadDisplayMode(
+            m_settings->value(QStringLiteral("workbench/messagePayloadDisplayMode"), QStringLiteral("hover")).toString());
     }
     refreshSystemColorScheme();
     applyCurrentLanguage();
@@ -278,6 +297,7 @@ bool SettingsViewModel::connectionPaneCollapsed() const { return m_dependencies.
 bool SettingsViewModel::subscriptionPaneCollapsed() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->subscriptionPaneCollapsed(); }
 int SettingsViewModel::themeModeIndex() const { return optionIndex(SettingsOption::ThemeMode, themeMode()); }
 int SettingsViewModel::languageModeIndex() const { return optionIndex(SettingsOption::LanguageMode, languageMode()); }
+int SettingsViewModel::messagePayloadDisplayModeIndex() const { return optionIndex(SettingsOption::MessagePayloadDisplayMode, m_messagePayloadDisplayMode); }
 int SettingsViewModel::messageRetentionLimitIndex() const { return optionIndex(SettingsOption::MessageRetentionLimit, messageRetentionLimit()); }
 int SettingsViewModel::logRetentionLimitIndex() const { return optionIndex(SettingsOption::LogRetentionLimit, logRetentionLimit()); }
 int SettingsViewModel::historyPageSizeIndex() const { return optionIndex(SettingsOption::HistoryPageSize, historyPageSize()); }
@@ -336,6 +356,21 @@ void SettingsViewModel::setLanguageMode(const QString &mode)
     applyCurrentLanguage();
     emit languageModeChanged();
     emit languageChanged();
+}
+
+void SettingsViewModel::setMessagePayloadDisplayMode(const QString &mode)
+{
+    const QString sanitized = sanitizeMessagePayloadDisplayMode(mode);
+    if (sanitized == m_messagePayloadDisplayMode) {
+        return;
+    }
+
+    m_messagePayloadDisplayMode = sanitized;
+    if (m_settings) {
+        m_settings->setValue(QStringLiteral("workbench/messagePayloadDisplayMode"), m_messagePayloadDisplayMode);
+        m_settings->sync();
+    }
+    emit messagePayloadDisplayModeChanged();
 }
 
 void SettingsViewModel::setMessageRetentionLimit(int limit)
@@ -450,6 +485,7 @@ void SettingsViewModel::saveWorkbenchLayout(
 
 void SettingsViewModel::setThemeModeIndex(int index) { setThemeMode(optionValue(SettingsOption::ThemeMode, index).toString()); }
 void SettingsViewModel::setLanguageModeIndex(int index) { setLanguageMode(optionValue(SettingsOption::LanguageMode, index).toString()); }
+void SettingsViewModel::setMessagePayloadDisplayModeIndex(int index) { setMessagePayloadDisplayMode(optionValue(SettingsOption::MessagePayloadDisplayMode, index).toString()); }
 void SettingsViewModel::setMessageRetentionLimitIndex(int index) { setMessageRetentionLimit(optionValue(SettingsOption::MessageRetentionLimit, index).toInt()); }
 void SettingsViewModel::setLogRetentionLimitIndex(int index) { setLogRetentionLimit(optionValue(SettingsOption::LogRetentionLimit, index).toInt()); }
 void SettingsViewModel::setHistoryPageSizeIndex(int index) { setHistoryPageSize(optionValue(SettingsOption::HistoryPageSize, index).toInt()); }

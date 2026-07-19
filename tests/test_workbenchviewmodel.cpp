@@ -6,6 +6,7 @@
 #include "usecases/sessionservice.h"
 
 #include <QtTest/QtTest>
+#include <QDateTime>
 
 class WorkbenchViewModelTest : public QObject
 {
@@ -19,10 +20,12 @@ private slots:
     void rejectsSubscriptionEditorEditWithoutCore();
     void ignoresSessionCommandsWithoutCore();
     void updatesPublishDraft();
+    void keepsBoundedReusablePublishHistory();
     void rejectsPublishWithoutConnectedSession();
     void forwardsSessionAndRuntimeStateNotificationsSeparately();
     void forwardsMessageBatchNotifications();
     void exposesTotalMessageCountAndForwardsFreeze();
+    void exposesConnectionTimingAndAggregateRates();
     void ownsSubscriptionFilterState();
     void ownsPendingSubscriptionDeleteState();
     void acceptsIntentCommandsWithoutCore();
@@ -130,6 +133,53 @@ void WorkbenchViewModelTest::updatesPublishDraft()
     QCOMPARE(retainSpy.size(), 1);
 }
 
+void WorkbenchViewModelTest::keepsBoundedReusablePublishHistory()
+{
+    int publishedCount = 0;
+    PublishDraftViewModel::Dependencies dependencies;
+    dependencies.canPublishToCurrentSession = []() { return true; };
+    dependencies.publishCurrentSession = [&publishedCount](const QString &, const QString &, int, int, bool) {
+        ++publishedCount;
+        return true;
+    };
+    PublishDraftViewModel publisher(dependencies);
+    QSignalSpy historySpy(&publisher, &PublishDraftViewModel::recentPublishesChanged);
+
+    publisher.setTopic(QStringLiteral("devices/light"));
+    publisher.setPayload(QStringLiteral("on"));
+    publisher.setQos(1);
+    publisher.setRetain(true);
+    QVERIFY(publisher.publishDraft());
+    QVERIFY(publisher.publishDraft());
+    QCOMPARE(publishedCount, 2);
+    QCOMPARE(publisher.recentPublishes().size(), 1);
+
+    for (int index = 0; index < 12; ++index) {
+        publisher.setTopic(QStringLiteral("devices/%1").arg(index));
+        publisher.setPayload(QString::number(index));
+        QVERIFY(publisher.publishDraft());
+    }
+    QCOMPARE(publisher.recentPublishes().size(), 10);
+    QCOMPARE(publisher.recentPublishes().first().toMap().value(QStringLiteral("topic")).toString(), QStringLiteral("devices/11"));
+
+    publisher.setTopic(QStringLiteral("other"));
+    publisher.setPayload(QStringLiteral("draft"));
+    QVERIFY(publisher.useRecentPublish(0));
+    QCOMPARE(publisher.topic(), QStringLiteral("devices/11"));
+    QCOMPARE(publisher.payload(), QStringLiteral("11"));
+    publisher.clearRecentPublishes();
+    QVERIFY(publisher.recentPublishes().isEmpty());
+    QVERIFY(historySpy.count() >= 14);
+
+    dependencies.publishCurrentSession = [](const QString &, const QString &, int, int, bool) {
+        return false;
+    };
+    PublishDraftViewModel rejectedPublisher(dependencies);
+    rejectedPublisher.setTopic(QStringLiteral("devices/rejected"));
+    QVERIFY(!rejectedPublisher.publishDraft());
+    QVERIFY(rejectedPublisher.recentPublishes().isEmpty());
+}
+
 void WorkbenchViewModelTest::rejectsPublishWithoutConnectedSession()
 {
     WorkbenchViewModel viewModel;
@@ -218,6 +268,38 @@ void WorkbenchViewModelTest::exposesTotalMessageCountAndForwardsFreeze()
     notifyTotalMessageCount();
     QCOMPARE(totalSpy.count(), 1);
     QCOMPARE(viewModel.totalMessageCount(), 1202);
+}
+
+void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    SessionState session;
+    session.connectTimeoutSeconds = 8;
+    session.runtime.connectedAtMs = nowMs - 5000;
+    session.runtime.connectionStartedAtMs = nowMs - 1000;
+    session.runtime.recentReceivedTimestampsMs = {nowMs - 100, nowMs - 200, nowMs - 300};
+    session.runtime.recentPublishedTimestampsMs = {nowMs - 100, nowMs - 200};
+    SubscriptionEntry first;
+    first.topic = QStringLiteral("devices/one");
+    first.recentMessageTimestampsMs = {nowMs - 100, nowMs - 200};
+    SubscriptionEntry second;
+    second.topic = QStringLiteral("devices/two");
+    second.recentMessageTimestampsMs = {nowMs - 300};
+    session.subscriptions = {first, second};
+
+    SessionService sessions;
+    sessions.appendSession(session);
+    sessions.setCurrentIndex(0);
+    WorkbenchViewModel::Dependencies dependencies;
+    dependencies.sessionController = &sessions;
+    WorkbenchViewModel viewModel(dependencies);
+
+    const QVariantMap status = viewModel.sessionStatus();
+    QCOMPARE(status.value(QStringLiteral("connectedAtMs")).toLongLong(), nowMs - 5000);
+    QCOMPARE(status.value(QStringLiteral("connectionStartedAtMs")).toLongLong(), nowMs - 1000);
+    QCOMPARE(status.value(QStringLiteral("connectTimeoutSeconds")).toInt(), 8);
+    QCOMPARE(viewModel.currentIncomingMessageRate(), 3.0);
+    QCOMPARE(viewModel.currentOutgoingMessageRate(), 2.0);
 }
 
 void WorkbenchViewModelTest::ownsSubscriptionFilterState()

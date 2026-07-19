@@ -14,6 +14,7 @@ AppPanel {
     required property var status
     required property var publishStatus
     required property string fontFamily
+    required property int messagePayloadDisplayMode
     property string selectedMessageHistoryId: ""
     property bool inspectorOpened: false
     property alias composerHeight: publishComposer.composerHeight
@@ -79,6 +80,7 @@ AppPanel {
             session: root.session
             status: root.status
             fontFamily: root.fontFamily
+            payloadDisplayMode: root.messagePayloadDisplayMode
             title: qsTr("Messages")
             showOutputControls: true
             SplitView.fillWidth: true

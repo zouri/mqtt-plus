@@ -34,6 +34,7 @@ class SettingsViewModel : public QObject
     Q_PROPERTY(bool subscriptionPaneCollapsed READ subscriptionPaneCollapsed CONSTANT)
     Q_PROPERTY(int themeModeIndex READ themeModeIndex NOTIFY themeModeChanged)
     Q_PROPERTY(int languageModeIndex READ languageModeIndex NOTIFY languageModeChanged)
+    Q_PROPERTY(int messagePayloadDisplayModeIndex READ messagePayloadDisplayModeIndex NOTIFY messagePayloadDisplayModeChanged)
     Q_PROPERTY(int messageRetentionLimitIndex READ messageRetentionLimitIndex NOTIFY messageRetentionLimitChanged)
     Q_PROPERTY(int logRetentionLimitIndex READ logRetentionLimitIndex NOTIFY logRetentionLimitChanged)
     Q_PROPERTY(int historyPageSizeIndex READ historyPageSizeIndex NOTIFY historyPageSizeChanged)
@@ -96,6 +97,7 @@ public:
     bool subscriptionPaneCollapsed() const;
     int themeModeIndex() const;
     int languageModeIndex() const;
+    int messagePayloadDisplayModeIndex() const;
     int messageRetentionLimitIndex() const;
     int logRetentionLimitIndex() const;
     int historyPageSizeIndex() const;
@@ -117,6 +119,7 @@ public:
     Q_INVOKABLE void setThemeModeIndex(int index);
     Q_INVOKABLE void setThemeColor(const QString &color);
     Q_INVOKABLE void setLanguageModeIndex(int index);
+    Q_INVOKABLE void setMessagePayloadDisplayModeIndex(int index);
     Q_INVOKABLE void setMessageRetentionLimitIndex(int index);
     Q_INVOKABLE void setLogRetentionLimitIndex(int index);
     Q_INVOKABLE void setHistoryPageSizeIndex(int index);
@@ -133,6 +136,7 @@ signals:
     void themeColorChanged();
     void languageModeChanged();
     void languageChanged();
+    void messagePayloadDisplayModeChanged();
     void messageRetentionLimitChanged();
     void logRetentionLimitChanged();
     void historyPageSizeChanged();
@@ -149,6 +153,7 @@ signals:
 private:
     void setThemeMode(const QString &mode);
     void setLanguageMode(const QString &mode);
+    void setMessagePayloadDisplayMode(const QString &mode);
     void setMessageRetentionLimit(int limit);
     void setLogRetentionLimit(int limit);
     void setHistoryPageSize(int pageSize);
@@ -167,6 +172,7 @@ private:
     bool m_systemDarkMode = false;
 
     QString m_languageMode = QStringLiteral("system");
+    QString m_messagePayloadDisplayMode = QStringLiteral("hover");
     QString m_effectiveLanguage = QStringLiteral("en");
     QTranslator m_translator;
     bool m_translatorInstalled = false;

@@ -130,6 +130,8 @@ public:
     Q_INVOKABLE void clearMessageFilters();
     Q_INVOKABLE QVariantMap messageDetails(const QString &historyId) const;
     Q_INVOKABLE void setAllCurrentSubscriptionsPaused(bool paused);
+    Q_INVOKABLE qreal currentIncomingMessageRate() const;
+    Q_INVOKABLE qreal currentOutgoingMessageRate() const;
 
 signals:
     void currentSessionIndexChanged();

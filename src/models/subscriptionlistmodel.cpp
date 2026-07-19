@@ -44,6 +44,8 @@ QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
         return sub.grantedQos;
     case TopicFpsRole:
         return row < m_fpsCache.size() ? m_fpsCache.at(row) : 0.0;
+    case TopicRateHistoryRole:
+        return row < m_rateHistoryCache.size() ? m_rateHistoryCache.at(row) : QVariantList {};
     case FormatRole:
         return sub.format;
     case FormatNameRole:
@@ -74,6 +76,7 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
         {RequestedQosRole, "requestedQos"},
         {GrantedQosRole, "grantedQos"},
         {TopicFpsRole, "topicFps"},
+        {TopicRateHistoryRole, "topicRateHistory"},
         {FormatRole, "format"},
         {FormatNameRole, "formatName"},
         {ScriptIdRole, "scriptId"},
@@ -97,11 +100,14 @@ QVariantMap SubscriptionListModel::rowAt(int row) const
 
 void SubscriptionListModel::setSource(const SessionState *session)
 {
-    if (session) {
-        m_subs = &session->subscriptions;
-    } else {
-        m_subs = &m_empty;
+    const QVector<SubscriptionEntry> *nextSubscriptions = session
+        ? &session->subscriptions
+        : &m_empty;
+    if (m_subs != nextSubscriptions) {
+        m_rateHistoryCache.clear();
+        m_rateHistoryTopicCache.clear();
     }
+    m_subs = nextSubscriptions;
     rebuildCache();
 }
 
@@ -123,13 +129,24 @@ void SubscriptionListModel::updateTopicFps(qint64 nowMs)
 
     const qsizetype n = m_subs->size();
     m_fpsCache.resize(n);
+    m_rateHistoryCache.resize(n);
+    m_rateHistoryTopicCache.resize(n);
     for (qsizetype i = 0; i < n; ++i) {
         m_fpsCache[i] = static_cast<qreal>(recentMessageCount(m_subs->at(i).recentMessageTimestampsMs, nowMs));
+        if (m_rateHistoryTopicCache.at(i) != m_subs->at(i).topic) {
+            m_rateHistoryCache[i].clear();
+            m_rateHistoryTopicCache[i] = m_subs->at(i).topic;
+        }
+        QVariantList &history = m_rateHistoryCache[i];
+        history.append(m_fpsCache.at(i));
+        while (history.size() > 8) {
+            history.removeFirst();
+        }
     }
 
     for (qsizetype i = 0; i < n; ++i) {
         const QModelIndex rowIndex = index(static_cast<int>(i), 0);
-        emit dataChanged(rowIndex, rowIndex, {TopicFpsRole});
+        emit dataChanged(rowIndex, rowIndex, {TopicFpsRole, TopicRateHistoryRole});
     }
 }
 
@@ -139,6 +156,8 @@ void SubscriptionListModel::rebuildCache()
     const auto rebuildRows = [this]() {
         if (!m_subs) {
             m_fpsCache.clear();
+            m_rateHistoryCache.clear();
+            m_rateHistoryTopicCache.clear();
             m_scriptNameCache.clear();
             return;
         }
@@ -146,9 +165,15 @@ void SubscriptionListModel::rebuildCache()
         const qsizetype rowCount = m_subs->size();
         const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
         m_fpsCache.resize(rowCount);
+        m_rateHistoryCache.resize(rowCount);
+        m_rateHistoryTopicCache.resize(rowCount);
 
         m_scriptNameCache.resize(rowCount);
         for (qsizetype i = 0; i < rowCount; ++i) {
+            if (m_rateHistoryTopicCache.at(i) != m_subs->at(i).topic) {
+                m_rateHistoryCache[i].clear();
+                m_rateHistoryTopicCache[i] = m_subs->at(i).topic;
+            }
             m_fpsCache[i] = static_cast<qreal>(recentMessageCount(m_subs->at(i).recentMessageTimestampsMs, nowMs));
             m_scriptNameCache[i] = m_scriptNameLookup
                 ? m_scriptNameLookup(m_subs->at(i).scriptId)
@@ -158,6 +183,8 @@ void SubscriptionListModel::rebuildCache()
 
     if (countWillChange) {
         beginResetModel();
+        m_rateHistoryCache.clear();
+        m_rateHistoryTopicCache.clear();
         rebuildRows();
         endResetModel();
         emit countChanged();
@@ -176,6 +203,7 @@ void SubscriptionListModel::rebuildCache()
                 RequestedQosRole,
                 GrantedQosRole,
                 TopicFpsRole,
+                TopicRateHistoryRole,
                 FormatRole,
                 FormatNameRole,
                 ScriptIdRole,
@@ -199,6 +227,9 @@ QVariantMap SubscriptionListModel::rowToMap(const SubscriptionEntry &sub, int ro
     map.insert(QStringLiteral("requestedQos"), sub.requestedQos);
     map.insert(QStringLiteral("grantedQos"), sub.grantedQos);
     map.insert(QStringLiteral("topicFps"), fps);
+    map.insert(
+        QStringLiteral("topicRateHistory"),
+        row >= 0 && row < m_rateHistoryCache.size() ? m_rateHistoryCache.at(row) : QVariantList {});
     map.insert(QStringLiteral("format"), sub.format);
     map.insert(QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(sub.format)));
     map.insert(QStringLiteral("scriptId"), sub.scriptId);
