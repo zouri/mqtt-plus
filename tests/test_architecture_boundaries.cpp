@@ -1052,8 +1052,17 @@ void ArchitectureBoundariesTest::subscriptionRowsKeepCompactActionGroup()
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"), source));
     QVERIFY2(source.contains(QStringLiteral("id: subscriptionActionGroup")),
         "Subscription rate and row actions must share one layout group");
-    QVERIFY2(source.contains(QStringLiteral("Layout.preferredWidth: 42")),
-        "Subscription rate must use the compact fixed width");
+    const qsizetype rateMetricStart = source.indexOf(QStringLiteral("id: rateMetric"));
+    const qsizetype pauseButtonStart = source.indexOf(
+        QStringLiteral("id: subscriptionPauseButton"),
+        rateMetricStart);
+    QVERIFY(rateMetricStart >= 0);
+    QVERIFY(pauseButtonStart > rateMetricStart);
+    const QString rateMetricSource = source.mid(rateMetricStart, pauseButtonStart - rateMetricStart);
+    QVERIFY2(rateMetricSource.contains(QStringLiteral("Layout.preferredWidth: 52"))
+            && rateMetricSource.contains(QStringLiteral("Layout.minimumWidth: 52"))
+            && rateMetricSource.contains(QStringLiteral("Layout.maximumWidth: 52")),
+        "Subscription rate and trend must share one compact fixed-width metric");
     QVERIFY2(source.contains(QStringLiteral("spacing: 2")),
         "Subscription action group must use compact spacing");
     QVERIFY2(source.contains(QStringLiteral("readonly property bool subscriptionActive: !subscriptionDelegate.paused")),
@@ -1084,6 +1093,15 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(subscriptionsSource.contains(QStringLiteral("setAllCurrentSubscriptionsPaused")));
     QVERIFY2(subscriptionsSource.contains(QStringLiteral("topicRateHistory")),
         "Subscription rows must expose a compact recent-rate sparkline");
+
+    QString sessionSidebarSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SessionSidebar.qml"), sessionSidebarSource));
+    QVERIFY2(sessionSidebarSource.contains(QStringLiteral("qsTr(\"Connection error · See Logs\")"))
+            && sessionSidebarSource.contains(QStringLiteral("Accessible.description: sessionDelegate.endpointText")),
+        "Connection rows must direct users to Logs instead of truncating technical errors");
+    QVERIFY2(!sessionSidebarSource.contains(
+                 QStringLiteral("sessionDelegate.lastError.length > 0 ? sessionDelegate.lastError")),
+        "Connection rows must not render raw technical errors in the compact sidebar");
 
     QString panelSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SessionMessagePanel.qml"), panelSource));
@@ -1148,6 +1166,13 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
 
     QVERIFY(workbenchSource.contains(QStringLiteral("connectionPaneAutoHidden")));
     QVERIFY(workbenchSource.contains(QStringLiteral("subscriptionPaneAutoHidden")));
+    QVERIFY2(!workbenchSource.contains(QStringLiteral("subscriptionPaneCollapsed"))
+            && !workbenchSource.contains(QStringLiteral("Show subscription list")),
+        "The subscription pane must not expose a manual collapsed state or restore action");
+
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("signal collapseRequested"))
+            && !subscriptionsSource.contains(QStringLiteral("Hide subscription list")),
+        "The subscription panel must not expose a manual collapse action");
 
     QVERIFY(panelSource.contains(QStringLiteral("function closeInspector()")));
     QVERIFY(panelSource.contains(QStringLiteral("selectedMessageHistoryId = \"\"")));

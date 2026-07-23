@@ -47,7 +47,7 @@ public:
     void setSource(const SessionState *session);
     void setScriptNameLookup(std::function<QString(const QString &)> lookup);
     void notifyRefresh();
-    void updateTopicFps(qint64 nowMs);
+    bool updateTopicFps(qint64 nowMs);
 
 signals:
     void countChanged();

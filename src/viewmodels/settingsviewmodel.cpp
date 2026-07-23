@@ -294,7 +294,6 @@ bool SettingsViewModel::windowMaximized() const { return m_dependencies.preferen
 int SettingsViewModel::subscriptionPaneWidth() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->subscriptionPaneWidth() : 320; }
 int SettingsViewModel::publishComposerHeight() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->publishComposerHeight() : 168; }
 bool SettingsViewModel::connectionPaneCollapsed() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->connectionPaneCollapsed(); }
-bool SettingsViewModel::subscriptionPaneCollapsed() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->subscriptionPaneCollapsed(); }
 int SettingsViewModel::themeModeIndex() const { return optionIndex(SettingsOption::ThemeMode, themeMode()); }
 int SettingsViewModel::languageModeIndex() const { return optionIndex(SettingsOption::LanguageMode, languageMode()); }
 int SettingsViewModel::messagePayloadDisplayModeIndex() const { return optionIndex(SettingsOption::MessagePayloadDisplayMode, m_messagePayloadDisplayMode); }
@@ -471,15 +470,13 @@ void SettingsViewModel::saveWindowGeometry(int width, int height)
 void SettingsViewModel::saveWorkbenchLayout(
     int subscriptionPaneWidth,
     int publishComposerHeight,
-    bool connectionPaneCollapsed,
-    bool subscriptionPaneCollapsed)
+    bool connectionPaneCollapsed)
 {
     if (m_dependencies.preferencesController) {
         m_dependencies.preferencesController->setWorkbenchLayout(
             subscriptionPaneWidth,
             publishComposerHeight,
-            connectionPaneCollapsed,
-            subscriptionPaneCollapsed);
+            connectionPaneCollapsed);
     }
 }
 

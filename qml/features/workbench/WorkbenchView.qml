@@ -35,7 +35,6 @@ Item {
     readonly property int subscriptionPaneMinWidth: 300
     readonly property int subscriptionPaneMaxWidth: 520
     property int subscriptionPaneWidth: root.settingsViewModel.subscriptionPaneWidth
-    property bool subscriptionPaneCollapsed: root.settingsViewModel.subscriptionPaneCollapsed
     property bool layoutReady: false
     readonly property int compactSubscriptionPaneWidth: 286
     readonly property int effectiveSubscriptionPaneWidth: root.compactPaneWidths
@@ -142,8 +141,7 @@ Item {
         root.settingsViewModel.saveWorkbenchLayout(
             root.subscriptionPaneWidth,
             sessionActivityPanel.composerHeight,
-            root.connectionPaneCollapsed,
-            root.subscriptionPaneCollapsed);
+            root.connectionPaneCollapsed);
     }
 
     function handleConnectionStateChanged() {
@@ -234,7 +232,6 @@ Item {
     }
 
     onConnectionPaneCollapsedChanged: root.scheduleLayoutSave()
-    onSubscriptionPaneCollapsedChanged: root.scheduleLayoutSave()
     onSubscriptionPaneWidthChanged: root.scheduleLayoutSave()
 
     Timer {
@@ -334,7 +331,7 @@ Item {
         }
 
         Rectangle {
-            visible: !root.subscriptionPaneAutoHidden && !root.subscriptionPaneCollapsed
+            visible: !root.subscriptionPaneAutoHidden
             SplitView.preferredWidth: visible ? root.effectiveSubscriptionPaneWidth : 0
             SplitView.minimumWidth: visible ? (root.compactPaneWidths ? 276 : root.subscriptionPaneMinWidth) : 0
             SplitView.maximumWidth: visible ? root.subscriptionPaneMaxWidth : 0
@@ -367,7 +364,6 @@ Item {
                     onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
                     onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
                     onAddMessageTopicFilter: topic => root.viewModel.addMessageTopicFilter(topic)
-                    onCollapseRequested: root.subscriptionPaneCollapsed = true
                 }
             }
         }
@@ -459,28 +455,6 @@ Item {
                 font.pixelSize: 10
             }
         }
-    }
-
-
-    AppIconButton {
-        ui: root.ui
-        visible: root.subscriptionPaneCollapsed && !root.subscriptionPaneAutoHidden
-        anchors.left: parent.left
-        anchors.leftMargin: root.connectionPaneWidth + 8
-        anchors.top: parent.top
-        anchors.topMargin: 8
-        z: 8
-        implicitWidth: 32
-        implicitHeight: 32
-        cornerRadius: 7
-        iconSource: root.ui.materialIcon("chevron-right")
-        iconSize: 17
-        restBg: root.ui.themePalette.itemBg
-        hoverBg: root.ui.themePalette.rowHover
-        outlineColor: root.ui.themePalette.panelBorder
-        accessibleName: qsTr("Show subscription list")
-        toolTipText: qsTr("Show subscription list")
-        onClicked: root.subscriptionPaneCollapsed = false
     }
 
     Loader {

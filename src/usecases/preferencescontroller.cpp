@@ -129,8 +129,6 @@ PreferencesController::PreferencesController(QSettings *settings, QObject *paren
         m_publishComposerHeight);
     m_connectionPaneCollapsed =
         m_settings->value(QStringLiteral("workspace/connectionPaneCollapsed"), m_connectionPaneCollapsed).toBool();
-    m_subscriptionPaneCollapsed =
-        m_settings->value(QStringLiteral("workspace/subscriptionPaneCollapsed"), m_subscriptionPaneCollapsed).toBool();
 }
 
 int PreferencesController::messageRetentionLimit() const
@@ -206,11 +204,6 @@ int PreferencesController::publishComposerHeight() const
 bool PreferencesController::connectionPaneCollapsed() const
 {
     return m_connectionPaneCollapsed;
-}
-
-bool PreferencesController::subscriptionPaneCollapsed() const
-{
-    return m_subscriptionPaneCollapsed;
 }
 
 void PreferencesController::setMessageRetentionLimit(int limit)
@@ -359,27 +352,23 @@ void PreferencesController::setWindowMaximized(bool maximized)
 void PreferencesController::setWorkbenchLayout(
     int subscriptionPaneWidth,
     int publishComposerHeight,
-    bool connectionPaneCollapsed,
-    bool subscriptionPaneCollapsed)
+    bool connectionPaneCollapsed)
 {
     const int sanitizedPaneWidth = sanitizeSubscriptionPaneWidth(subscriptionPaneWidth, m_subscriptionPaneWidth);
     const int sanitizedComposerHeight = sanitizePublishComposerHeight(publishComposerHeight, m_publishComposerHeight);
     if (sanitizedPaneWidth == m_subscriptionPaneWidth
         && sanitizedComposerHeight == m_publishComposerHeight
-        && connectionPaneCollapsed == m_connectionPaneCollapsed
-        && subscriptionPaneCollapsed == m_subscriptionPaneCollapsed) {
+        && connectionPaneCollapsed == m_connectionPaneCollapsed) {
         return;
     }
 
     m_subscriptionPaneWidth = sanitizedPaneWidth;
     m_publishComposerHeight = sanitizedComposerHeight;
     m_connectionPaneCollapsed = connectionPaneCollapsed;
-    m_subscriptionPaneCollapsed = subscriptionPaneCollapsed;
     if (m_settings) {
         m_settings->setValue(QStringLiteral("workspace/subscriptionPaneWidth"), m_subscriptionPaneWidth);
         m_settings->setValue(QStringLiteral("workspace/publishComposerHeight"), m_publishComposerHeight);
         m_settings->setValue(QStringLiteral("workspace/connectionPaneCollapsed"), m_connectionPaneCollapsed);
-        m_settings->setValue(QStringLiteral("workspace/subscriptionPaneCollapsed"), m_subscriptionPaneCollapsed);
         m_settings->sync();
     }
 }
