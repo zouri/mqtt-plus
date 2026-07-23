@@ -31,7 +31,6 @@ class SettingsViewModel : public QObject
     Q_PROPERTY(int subscriptionPaneWidth READ subscriptionPaneWidth CONSTANT)
     Q_PROPERTY(int publishComposerHeight READ publishComposerHeight CONSTANT)
     Q_PROPERTY(bool connectionPaneCollapsed READ connectionPaneCollapsed CONSTANT)
-    Q_PROPERTY(bool subscriptionPaneCollapsed READ subscriptionPaneCollapsed CONSTANT)
     Q_PROPERTY(int themeModeIndex READ themeModeIndex NOTIFY themeModeChanged)
     Q_PROPERTY(int languageModeIndex READ languageModeIndex NOTIFY languageModeChanged)
     Q_PROPERTY(int messagePayloadDisplayModeIndex READ messagePayloadDisplayModeIndex NOTIFY messagePayloadDisplayModeChanged)
@@ -94,7 +93,6 @@ public:
     int subscriptionPaneWidth() const;
     int publishComposerHeight() const;
     bool connectionPaneCollapsed() const;
-    bool subscriptionPaneCollapsed() const;
     int themeModeIndex() const;
     int languageModeIndex() const;
     int messagePayloadDisplayModeIndex() const;
@@ -114,8 +112,7 @@ public:
     Q_INVOKABLE void saveWorkbenchLayout(
         int subscriptionPaneWidth,
         int publishComposerHeight,
-        bool connectionPaneCollapsed,
-        bool subscriptionPaneCollapsed);
+        bool connectionPaneCollapsed);
     Q_INVOKABLE void setThemeModeIndex(int index);
     Q_INVOKABLE void setThemeColor(const QString &color);
     Q_INVOKABLE void setLanguageModeIndex(int index);

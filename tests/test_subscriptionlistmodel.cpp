@@ -1,6 +1,7 @@
 #include "usecases/sessionservice.h"
 #include "domain/session.h"
 #include "models/subscriptionlistmodel.h"
+#include "services/apputils.h"
 
 #include <QtTest/QtTest>
 #include <QDateTime>
@@ -13,6 +14,7 @@ private slots:
     void refreshBindsCurrentSession();
     void refreshRebuildsScriptNameCache();
     void samplesTopicRateHistory();
+    void pausedSubscriptionClearsTopicRateHistory();
 };
 
 void SubscriptionListModelTest::refreshBindsCurrentSession()
@@ -85,22 +87,54 @@ void SubscriptionListModelTest::samplesTopicRateHistory()
 
     SubscriptionListModel model;
     model.setSource(&session);
-    for (int sample = 0; sample < 10; ++sample) {
-        model.updateTopicFps(nowMs + sample);
-    }
+    QVERIFY(model.updateTopicFps(nowMs));
 
-    const QVariantList history = model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList();
-    QCOMPARE(history.size(), 8);
+    QVariantList history = model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList();
+    QCOMPARE(history.size(), AppUtils::kSubscriptionRateHistorySampleCount);
+    for (int sample = 0; sample < history.size() - 1; ++sample) {
+        QCOMPARE(history.at(sample).toReal(), 0.0);
+    }
     QCOMPARE(history.constLast().toReal(), 2.0);
 
-    session.subscriptions[0].topic = QStringLiteral("devices/humidity");
     session.subscriptions[0].recentMessageTimestampsMs.clear();
+    for (int sample = 1; sample < AppUtils::kSubscriptionRateHistorySampleCount; ++sample) {
+        QVERIFY(model.updateTopicFps(
+            nowMs + sample * AppUtils::kSubscriptionFpsRefreshIntervalMs));
+    }
+    QVERIFY(!model.updateTopicFps(
+        nowMs
+        + AppUtils::kSubscriptionRateHistorySampleCount
+            * AppUtils::kSubscriptionFpsRefreshIntervalMs));
+    QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
+
+    session.subscriptions[0].topic = QStringLiteral("devices/humidity");
     model.setSource(&session);
     QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
 
     SessionState otherSession;
     otherSession.subscriptions.append({QStringLiteral("devices/other")});
     model.setSource(&otherSession);
+    QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
+}
+
+void SubscriptionListModelTest::pausedSubscriptionClearsTopicRateHistory()
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    SessionState session;
+    SubscriptionEntry subscription;
+    subscription.topic = QStringLiteral("devices/temp");
+    subscription.recentMessageTimestampsMs = {nowMs};
+    session.subscriptions.append(subscription);
+
+    SubscriptionListModel model;
+    model.setSource(&session);
+    QVERIFY(model.updateTopicFps(nowMs));
+    QVERIFY(!model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
+
+    session.subscriptions[0].paused = true;
+    model.notifyRefresh();
+
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("topicFps")).toReal(), 0.0);
     QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
 }
 

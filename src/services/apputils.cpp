@@ -1,7 +1,6 @@
 #include "services/apputils.h"
 
 #include <QAbstractSocket>
-#include <QCoreApplication>
 #include <QDateTime>
 #include <QFile>
 #include <QRegularExpression>
@@ -104,27 +103,27 @@ QString clientErrorName(QMqttClient::ClientError error)
 {
     switch (error) {
     case QMqttClient::NoError:
-        return QCoreApplication::translate("AppUtils", "No error");
+        return QStringLiteral("No error");
     case QMqttClient::InvalidProtocolVersion:
-        return QCoreApplication::translate("AppUtils", "Protocol version rejected by broker");
+        return QStringLiteral("Protocol version rejected by broker");
     case QMqttClient::IdRejected:
-        return QCoreApplication::translate("AppUtils", "Client ID rejected");
+        return QStringLiteral("Client ID rejected");
     case QMqttClient::ServerUnavailable:
-        return QCoreApplication::translate("AppUtils", "Broker unavailable");
+        return QStringLiteral("Broker unavailable");
     case QMqttClient::BadUsernameOrPassword:
-        return QCoreApplication::translate("AppUtils", "Username or password rejected");
+        return QStringLiteral("Username or password rejected");
     case QMqttClient::NotAuthorized:
-        return QCoreApplication::translate("AppUtils", "Not authorized");
+        return QStringLiteral("Not authorized");
     case QMqttClient::TransportInvalid:
-        return QCoreApplication::translate("AppUtils", "Invalid transport");
+        return QStringLiteral("Invalid transport");
     case QMqttClient::ProtocolViolation:
-        return QCoreApplication::translate("AppUtils", "Protocol violation");
+        return QStringLiteral("Protocol violation");
     case QMqttClient::UnknownError:
-        return QCoreApplication::translate("AppUtils", "Unknown MQTT error");
+        return QStringLiteral("Unknown MQTT error");
     case QMqttClient::Mqtt5SpecificError:
-        return QCoreApplication::translate("AppUtils", "MQTT 5 broker reported an error");
+        return QStringLiteral("MQTT 5 broker reported an error");
     }
-    return QCoreApplication::translate("AppUtils", "MQTT error");
+    return QStringLiteral("MQTT error");
 }
 
 QString messageStatusName(QMqtt::MessageStatus status)

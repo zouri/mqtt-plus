@@ -187,7 +187,10 @@ Rectangle {
                 readonly property bool selected: index === control.viewModel.currentSessionIndex
                 readonly property bool highlighted: rowHover.hovered
                 readonly property bool connected: sessionDelegate.connectionState === "connected"
-                readonly property string endpointText: sessionDelegate.lastError.length > 0 ? sessionDelegate.lastError : qsTr("%1:%2").arg(sessionDelegate.host || "-").arg(sessionDelegate.port)
+                readonly property bool hasError: sessionDelegate.lastError.length > 0
+                readonly property string endpointText: sessionDelegate.hasError
+                                                       ? qsTr("Connection error · See Logs")
+                                                       : qsTr("%1:%2").arg(sessionDelegate.host || "-").arg(sessionDelegate.port)
                 width: ListView.view.width
                 height: 54
                 radius: 10
@@ -197,6 +200,7 @@ Rectangle {
                 border.width: 0
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
+                Accessible.description: sessionDelegate.endpointText
 
                 HoverHandler {
                     id: rowHover
@@ -278,7 +282,9 @@ Rectangle {
                         Label {
                             Layout.fillWidth: true
                             text: sessionDelegate.endpointText
-                            color: control.ui.themePalette.textSubtle
+                            color: sessionDelegate.hasError
+                                   ? control.ui.themePalette.errorText
+                                   : control.ui.themePalette.textSubtle
                             elide: Label.ElideRight
                             font.pixelSize: 11
                         }
