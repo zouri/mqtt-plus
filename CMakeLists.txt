@@ -247,6 +247,11 @@ if(BUILD_TESTING)
         src/services/apputils.cpp
     )
 
+    add_mqtt_plus_qt_test(test_connectionerrortext
+        tests/test_connectionerrortext.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
     add_mqtt_plus_qt_test(test_eventstreammodel
         tests/test_eventstreammodel.cpp
         src/models/eventstreammodel.cpp

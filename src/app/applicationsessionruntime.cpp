@@ -2,8 +2,6 @@
 
 #include "app/applicationsessionconfigurator.h"
 #include "domain/sessionconfig.h"
-
-#include <QCoreApplication>
 #include <QMqttClient>
 #include <QTimer>
 #include <QUuid>
@@ -34,7 +32,7 @@ void ApplicationSessionRuntime::initialize(SessionState *session)
                 return;
             }
 
-            const QString timeoutMessage = QCoreApplication::translate("ApplicationSessionRuntime", "Connection timed out.");
+            const QString timeoutMessage = QStringLiteral("Connection timed out.");
             boundSession->runtime.lastError = timeoutMessage;
             if (m_callbacks.appendEvent) {
                 m_callbacks.appendEvent(*boundSession, QStringLiteral("Error"), timeoutMessage);

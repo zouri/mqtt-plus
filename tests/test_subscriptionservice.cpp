@@ -1,8 +1,13 @@
 #include "usecases/subscriptionservice.h"
 
+#include "models/subscriptionlistmodel.h"
+#include "services/apputils.h"
 #include "usecases/scriptservice.h"
 
 #include <QtTest/QtTest>
+
+#include <QDateTime>
+#include <QTimer>
 
 class SubscriptionServiceTest : public QObject
 {
@@ -11,6 +16,7 @@ class SubscriptionServiceTest : public QObject
 private slots:
     void updateCurrentSubscriptionEditsQosAndFormat();
     void setsAllCurrentSubscriptionsPausedWithSingleRefresh();
+    void refreshTimerStopsAfterRateHistoryDrains();
 };
 
 void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
@@ -68,6 +74,8 @@ void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleRefresh
         SubscriptionEntry {.topic = QStringLiteral("devices/one")},
         SubscriptionEntry {.topic = QStringLiteral("devices/two")},
     };
+    session.subscriptions[0].recentMessageTimestampsMs = {1, 2};
+    session.subscriptions[1].recentMessageTimestampsMs = {3, 4};
 
     int saveCount = 0;
     int refreshCount = 0;
@@ -90,8 +98,61 @@ void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleRefresh
 
     QVERIFY(session.subscriptions.at(0).paused);
     QVERIFY(session.subscriptions.at(1).paused);
+    QVERIFY(session.subscriptions.at(0).recentMessageTimestampsMs.isEmpty());
+    QVERIFY(session.subscriptions.at(1).recentMessageTimestampsMs.isEmpty());
     QCOMPARE(saveCount, 1);
     QCOMPARE(refreshCount, 1);
+
+    session.subscriptions[0].recentMessageTimestampsMs = {5};
+    session.subscriptions[1].recentMessageTimestampsMs = {6};
+    service.setAllCurrentSubscriptionsPaused(false);
+
+    QVERIFY(!session.subscriptions.at(0).paused);
+    QVERIFY(!session.subscriptions.at(1).paused);
+    QVERIFY(session.subscriptions.at(0).recentMessageTimestampsMs.isEmpty());
+    QVERIFY(session.subscriptions.at(1).recentMessageTimestampsMs.isEmpty());
+    QCOMPARE(saveCount, 2);
+    QCOMPARE(refreshCount, 2);
+}
+
+void SubscriptionServiceTest::refreshTimerStopsAfterRateHistoryDrains()
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    SessionState session;
+    SubscriptionEntry entry;
+    entry.topic = QStringLiteral("devices/temp");
+    entry.recentMessageTimestampsMs = {nowMs};
+    session.subscriptions.append(entry);
+
+    SubscriptionListModel model;
+    model.setSource(&session);
+    QVERIFY(model.updateTopicFps(nowMs));
+    session.subscriptions[0].recentMessageTimestampsMs.clear();
+
+    QTimer refreshTimer;
+    refreshTimer.setInterval(60'000);
+    refreshTimer.start();
+
+    SubscriptionService service;
+    service.setDependencies({
+        &model,
+        nullptr,
+        nullptr,
+        &refreshTimer,
+        [&session]() { return &session; },
+        {},
+        {},
+        {},
+    });
+
+    for (int sample = 1; sample < AppUtils::kSubscriptionRateHistorySampleCount; ++sample) {
+        service.refreshSubscriptionFps();
+        QVERIFY(refreshTimer.isActive());
+    }
+
+    service.refreshSubscriptionFps();
+    QVERIFY(!refreshTimer.isActive());
+    QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
 }
 
 QTEST_MAIN(SubscriptionServiceTest)

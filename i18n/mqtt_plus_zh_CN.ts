@@ -239,64 +239,6 @@
     </message>
 </context>
 <context>
-    <name>AppUtils</name>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="107"/>
-        <source>No error</source>
-        <translation>无错误</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="109"/>
-        <source>Protocol version rejected by broker</source>
-        <translation>代理拒绝了协议版本</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="111"/>
-        <source>Client ID rejected</source>
-        <translation>客户端 ID 被拒绝</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="113"/>
-        <source>Broker unavailable</source>
-        <translation>代理不可用</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="115"/>
-        <source>Username or password rejected</source>
-        <translation>用户名或密码被拒绝</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="117"/>
-        <source>Not authorized</source>
-        <translation>未授权</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="119"/>
-        <source>Invalid transport</source>
-        <translation>传输方式无效</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="121"/>
-        <source>Protocol violation</source>
-        <translation>协议违规</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="123"/>
-        <source>Unknown MQTT error</source>
-        <translation>未知 MQTT 错误</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="125"/>
-        <source>MQTT 5 broker reported an error</source>
-        <translation>MQTT 5 代理报告了错误</translation>
-    </message>
-    <message>
-        <location filename="../src/services/apputils.cpp" line="127"/>
-        <source>MQTT error</source>
-        <translation>MQTT 错误</translation>
-    </message>
-</context>
-<context>
     <name>ApplicationSessionRepository</name>
     <message>
         <location filename="../src/app/applicationsessionrepository.cpp" line="48"/>
@@ -305,17 +247,9 @@
     </message>
 </context>
 <context>
-    <name>ApplicationSessionRuntime</name>
-    <message>
-        <location filename="../src/app/applicationsessionruntime.cpp" line="37"/>
-        <source>Connection timed out.</source>
-        <translation>连接超时。</translation>
-    </message>
-</context>
-<context>
     <name>EventHistoryService</name>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="521"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="523"/>
         <source>Selected Lua script is missing.</source>
         <translation>选择的 Lua 脚本不存在。</translation>
     </message>
@@ -796,17 +730,7 @@
 <context>
     <name>MqttSessionService</name>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="65"/>
-        <source>Broker host cannot be empty.</source>
-        <translation>代理主机不能为空。</translation>
-    </message>
-    <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="75"/>
-        <source>Client ID cannot be empty.</source>
-        <translation>客户端 ID 不能为空。</translation>
-    </message>
-    <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="168"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="141"/>
         <source>Qt MQTT rejected the publish request.</source>
         <translation>Qt MQTT 拒绝了发布请求。</translation>
     </message>
@@ -1375,13 +1299,13 @@
 <context>
     <name>SessionSidebar</name>
     <message>
-        <location filename="../qml/features/workbench/SessionSidebar.qml" line="190"/>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="193"/>
         <source>%1:%2</source>
         <translation>%1:%2</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SessionSidebar.qml" line="73"/>
-        <location filename="../qml/features/workbench/SessionSidebar.qml" line="306"/>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="312"/>
         <source>Connection actions</source>
         <translation>连接操作</translation>
     </message>
@@ -1391,7 +1315,7 @@
         <translation>连接</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionSidebar.qml" line="199"/>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="202"/>
         <source>Connection %1</source>
         <translation>连接 %1</translation>
     </message>
@@ -1422,18 +1346,23 @@
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionSidebar.qml" line="266"/>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="192"/>
+        <source>Connection error · See Logs</source>
+        <translation>连接异常 · 查看日志</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="270"/>
         <source>+%1</source>
         <translation>+%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionSidebar.qml" line="273"/>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="277"/>
         <source>%1 new messages</source>
         <translation>%1 条新消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionSidebar.qml" line="342"/>
-        <location filename="../qml/features/workbench/SessionSidebar.qml" line="366"/>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="348"/>
+        <location filename="../qml/features/workbench/SessionSidebar.qml" line="372"/>
         <source>Show connection list</source>
         <translation>显示连接列表</translation>
     </message>
@@ -1789,12 +1718,12 @@
 <context>
     <name>SubscriptionService</name>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="440"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="442"/>
         <source>Invalid topic filter.</source>
         <translation>主题过滤器无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="453"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="455"/>
         <source>Qt MQTT returned no subscription object.</source>
         <translation>Qt MQTT 未返回订阅对象。</translation>
     </message>
@@ -1832,12 +1761,12 @@
         <translation>暂停所有主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="359"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="352"/>
         <source>%1/s</source>
         <translation>%1/s</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="371"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="364"/>
         <source>Paused, %1</source>
         <translation>已暂停，%1</translation>
     </message>
@@ -1852,82 +1781,76 @@
         <translation>编辑</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="297"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="281"/>
         <source>No matching subscriptions</source>
         <translation>没有匹配订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="297"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="281"/>
         <source>No subscriptions yet</source>
         <translation>还没有订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="297"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="281"/>
         <source>Subscriptions are ready after connecting</source>
         <translation>订阅将在连接后生效</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="307"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="291"/>
         <source>Adjust the filter or show all subscriptions.</source>
         <translation>调整筛选条件，或显示全部订阅。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="307"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="291"/>
         <source>Add a topic to start listening.</source>
         <translation>添加主题以开始监听。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="307"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="291"/>
         <source>You can add topics now; they will start listening once connected.</source>
         <translation>现在可以先添加主题；连接后会开始监听。</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="252"/>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="318"/>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="321"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="302"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="305"/>
         <source>Add subscription</source>
         <translation>添加订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="579"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="634"/>
         <source>Resume topic</source>
         <translation>恢复主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="579"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="634"/>
         <source>Pause topic</source>
         <translation>暂停主题</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="130"/>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="604"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="659"/>
         <source>More actions</source>
         <translation>更多操作</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="268"/>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="269"/>
-        <source>Hide subscription list</source>
-        <translation>隐藏订阅列表</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="696"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="751"/>
         <source>Delete subscription?</source>
         <translation>删除订阅？</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="705"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="760"/>
         <source>Delete %1 from this connection?</source>
         <translation>从当前连接中删除 %1？</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="721"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="776"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="51"/>
-        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="731"/>
+        <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="786"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
@@ -1935,65 +1858,59 @@
 <context>
     <name>WorkbenchView</name>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="99"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="98"/>
         <source>%1K</source>
         <translation>%1K</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="101"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="100"/>
         <source>%1M</source>
         <translation>%1M</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="107"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="106"/>
         <source>%1s</source>
         <translation>%1 秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="111"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="110"/>
         <source>%1m</source>
         <translation>%1 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="114"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="113"/>
         <source>%1h %2m</source>
         <translation>%1 小时 %2 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="120"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="119"/>
         <source>Connected · %1</source>
         <translation>已连接 · %1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="126"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="125"/>
         <source>Connecting · %1 left</source>
         <translation>连接中 · 剩余 %1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="419"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="415"/>
         <source>No session</source>
         <translation>无会话</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="439"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="435"/>
         <source>↓ %1/s</source>
         <translation>↓ %1/秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="446"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="442"/>
         <source>↑ %1/s</source>
         <translation>↑ %1/秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="457"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="453"/>
         <source>%1 messages</source>
         <translation>%1 条消息</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="481"/>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="482"/>
-        <source>Show subscription list</source>
-        <translation>显示订阅列表</translation>
     </message>
 </context>
 <context>

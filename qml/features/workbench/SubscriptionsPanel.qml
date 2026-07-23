@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import QtQuick.Shapes
 import "../../components"
 
 AppPanel {
@@ -32,7 +33,6 @@ AppPanel {
     signal subscriptionEditRequested(int index)
     signal replaceMessageTopicFilter(string topic)
     signal addMessageTopicFilter(string topic)
-    signal collapseRequested
 
     function subscriptionActionLabel(actionId) {
         if (actionId === "edit") {
@@ -254,22 +254,6 @@ AppPanel {
                 onClicked: control.subscriptionCreateRequested()
             }
 
-            AppIconButton {
-                ui: control.ui
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                iconSource: control.ui.materialIcon("chevron-left")
-                iconSize: 16
-                cornerRadius: 7
-                restBg: "transparent"
-                hoverBg: control.ui.themePalette.rowHover
-                outlineColor: "transparent"
-                symbolColor: control.ui.textMuted
-                accessibleName: qsTr("Hide subscription list")
-                toolTipText: qsTr("Hide subscription list")
-                toolTipPosition: AppToolTip.Position.Bottom
-                onClicked: control.collapseRequested()
-            }
         }
 
         Rectangle {
@@ -355,6 +339,15 @@ AppPanel {
                 readonly property bool activeTraffic: subscriptionDelegate.topicFps > 0
                                                       && !subscriptionDelegate.paused
                                                       && !subscriptionDelegate.hasError
+                readonly property real rateHistoryPeak: subscriptionDelegate.topicRateHistory.reduce(
+                                                            (peak, value) => Math.max(
+                                                                peak,
+                                                                Number(value || 0)),
+                                                            0)
+                readonly property real rateHistoryScale: Math.max(
+                                                             5,
+                                                             subscriptionDelegate.rateHistoryPeak * 1.15)
+                readonly property bool hasRateHistory: subscriptionDelegate.rateHistoryPeak > 0
                 readonly property bool filtersMessages: control.viewModel.filteredMessages.selectedTopics.indexOf(subscriptionDelegate.topic) >= 0
                 readonly property string rateText: qsTr("%1/s").arg(subscriptionDelegate.topicFps > 0
                                                                      ? Number(subscriptionDelegate.topicFps).toFixed(1)
@@ -508,50 +501,112 @@ AppPanel {
                             id: subscriptionActionGroup
                             spacing: 2
 
-                            Row {
-                                Layout.preferredWidth: 30
-                                Layout.preferredHeight: 16
+                            Item {
+                                id: rateMetric
+
+                                Layout.preferredWidth: 52
+                                Layout.minimumWidth: 52
+                                Layout.maximumWidth: 52
+                                Layout.preferredHeight: 30
                                 Layout.alignment: Qt.AlignVCenter
-                                spacing: 1
-                                visible: subscriptionDelegate.topicRateHistory.some(
-                                             value => Number(value) > 0)
+                                Accessible.ignored: true
 
-                                Repeater {
-                                    model: subscriptionDelegate.topicRateHistory
+                                Label {
+                                    anchors.top: parent.top
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    text: subscriptionDelegate.rateText
+                                    color: subscriptionDelegate.activeTraffic
+                                           ? control.ui.textStrong
+                                           : control.ui.withAlpha(control.ui.textMuted, 0.55)
+                                    font.pixelSize: 10
+                                    font.bold: subscriptionDelegate.activeTraffic
+                                    horizontalAlignment: Text.AlignRight
+                                }
 
-                                    delegate: Rectangle {
-                                        id: rateBar
-                                        required property int index
-                                        required property var modelData
-                                        readonly property real sample: Number(rateBar.modelData || 0)
-                                        readonly property real peak: Math.max(
-                                                                         1,
-                                                                         ...subscriptionDelegate.topicRateHistory.map(
-                                                                             value => Number(value || 0)))
-                                        width: 2.5
-                                        height: Math.max(2, 14 * rateBar.sample / rateBar.peak)
+                                Item {
+                                    id: rateTrendViewport
+
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    anchors.leftMargin: 2
+                                    anchors.rightMargin: 2
+                                    height: 11
+                                    Accessible.ignored: true
+                                    readonly property color trendColor: control.ui.withAlpha(
+                                                                            subscriptionDelegate.topicSwatchColor,
+                                                                            0.62)
+
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
                                         anchors.bottom: parent.bottom
-                                        radius: 1
+                                        height: 1
+                                        color: control.ui.withAlpha(
+                                                   control.ui.textMuted,
+                                                   subscriptionDelegate.paused ? 0.08 : 0.16)
+                                        Accessible.ignored: true
+                                    }
+
+                                    Shape {
+                                        id: rateTrendShape
+
+                                        anchors.fill: parent
+                                        visible: subscriptionDelegate.hasRateHistory
+                                        Accessible.ignored: true
+
+                                        readonly property var linePoints: {
+                                            const history = subscriptionDelegate.topicRateHistory;
+                                            const sampleCount = history.length;
+                                            if (sampleCount === 0) {
+                                                return [];
+                                            }
+                                            const horizontalInset = 1.5;
+                                            const verticalInset = 1.5;
+                                            const plotWidth = Math.max(
+                                                                    0,
+                                                                    rateTrendShape.width - horizontalInset * 2);
+                                            const plotHeight = Math.max(
+                                                                     1,
+                                                                     rateTrendShape.height - verticalInset * 2);
+                                            const step = sampleCount > 1 ? plotWidth / (sampleCount - 1) : 0;
+                                            return history.map((value, index) => Qt.point(
+                                                                   horizontalInset + index * step,
+                                                                   verticalInset + plotHeight * (1 - Number(value || 0)
+                                                                                                / subscriptionDelegate.rateHistoryScale)));
+                                        }
+
+                                        ShapePath {
+                                            fillColor: "transparent"
+                                            strokeColor: rateTrendViewport.trendColor
+                                            strokeWidth: 1.25
+                                            capStyle: ShapePath.RoundCap
+                                            joinStyle: ShapePath.RoundJoin
+
+                                            PathPolyline {
+                                                path: rateTrendShape.linePoints
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        readonly property point latestPoint: rateTrendShape.linePoints.length > 0
+                                                                                 ? rateTrendShape.linePoints[rateTrendShape.linePoints.length - 1]
+                                                                                 : Qt.point(0, 0)
+                                        visible: subscriptionDelegate.hasRateHistory
+                                                 && rateTrendShape.linePoints.length > 0
+                                        x: latestPoint.x - width / 2
+                                        y: latestPoint.y - height / 2
+                                        width: 3
+                                        height: 3
+                                        radius: 1.5
                                         color: control.ui.withAlpha(
                                                    subscriptionDelegate.topicSwatchColor,
-                                                   rateBar.index === subscriptionDelegate.topicRateHistory.length - 1
-                                                   ? 0.95
-                                                   : 0.45)
+                                                   0.9)
+                                        Accessible.ignored: true
                                     }
                                 }
-                            }
-
-                            Label {
-                                Layout.preferredWidth: 42
-                                Layout.minimumWidth: 42
-                                Layout.maximumWidth: 42
-                                text: subscriptionDelegate.rateText
-                                color: subscriptionDelegate.activeTraffic
-                                       ? control.ui.textStrong
-                                       : control.ui.withAlpha(control.ui.textMuted, 0.55)
-                                font.pixelSize: 10
-                                font.bold: subscriptionDelegate.activeTraffic
-                                horizontalAlignment: Text.AlignRight
                             }
 
                             AppIconButton {

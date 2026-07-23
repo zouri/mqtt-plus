@@ -14,35 +14,6 @@
 
 using namespace AppUtils;
 
-namespace {
-QString clientErrorLogName(QMqttClient::ClientError error)
-{
-    switch (error) {
-    case QMqttClient::NoError:
-        return QStringLiteral("No error");
-    case QMqttClient::InvalidProtocolVersion:
-        return QStringLiteral("Protocol version rejected by broker");
-    case QMqttClient::IdRejected:
-        return QStringLiteral("Client ID rejected");
-    case QMqttClient::ServerUnavailable:
-        return QStringLiteral("Broker unavailable");
-    case QMqttClient::BadUsernameOrPassword:
-        return QStringLiteral("Username or password rejected");
-    case QMqttClient::NotAuthorized:
-        return QStringLiteral("Not authorized");
-    case QMqttClient::TransportInvalid:
-        return QStringLiteral("Invalid transport");
-    case QMqttClient::ProtocolViolation:
-        return QStringLiteral("Protocol violation");
-    case QMqttClient::UnknownError:
-        return QStringLiteral("Unknown MQTT error");
-    case QMqttClient::Mqtt5SpecificError:
-        return QStringLiteral("MQTT 5 broker reported an error");
-    }
-    return QStringLiteral("MQTT error");
-}
-}
-
 MqttSessionService::MqttSessionService(QObject *parent)
     : QObject(parent)
 {
@@ -62,8 +33,9 @@ void MqttSessionService::connectCurrentSession()
     }
 
     if (client->hostname().trimmed().isEmpty()) {
-        session->runtime.lastError = tr("Broker host cannot be empty.");
-        m_dependencies.appendEvent(*session, QStringLiteral("Connection"), QStringLiteral("Broker host cannot be empty."));
+        const QString message = QStringLiteral("Broker host cannot be empty.");
+        session->runtime.lastError = message;
+        m_dependencies.appendEvent(*session, QStringLiteral("Connection"), message);
         if (m_dependencies.refreshModels) {
             m_dependencies.refreshModels();
         }
@@ -72,8 +44,9 @@ void MqttSessionService::connectCurrentSession()
     }
 
     if (client->clientId().trimmed().isEmpty()) {
-        session->runtime.lastError = tr("Client ID cannot be empty.");
-        m_dependencies.appendEvent(*session, QStringLiteral("Connection"), QStringLiteral("Client ID cannot be empty."));
+        const QString message = QStringLiteral("Client ID cannot be empty.");
+        session->runtime.lastError = message;
+        m_dependencies.appendEvent(*session, QStringLiteral("Connection"), message);
         if (m_dependencies.refreshModels) {
             m_dependencies.refreshModels();
         }
@@ -269,16 +242,12 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
 
             if (auto *boundSession = m_dependencies.sessionById(sessionId)) {
                 QString message = clientErrorName(error);
-                QString logMessage = clientErrorLogName(error);
                 const QString socketText = socketDiagnostic(boundSession->runtime.client);
                 if (!socketText.isEmpty() && socketText != message) {
                     message = QStringLiteral("%1 (%2)").arg(message).arg(socketText);
                 }
-                if (!socketText.isEmpty() && socketText != logMessage) {
-                    logMessage = QStringLiteral("%1 (%2)").arg(logMessage).arg(socketText);
-                }
                 boundSession->runtime.lastError = message;
-                m_dependencies.appendEvent(*boundSession, QStringLiteral("Error"), logMessage);
+                m_dependencies.appendEvent(*boundSession, QStringLiteral("Error"), message);
             }
 
             if (m_dependencies.refreshModels) {

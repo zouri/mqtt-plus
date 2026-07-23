@@ -267,6 +267,7 @@ void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, boo
     }
 
     entry->paused = paused;
+    entry->recentMessageTimestampsMs.clear();
     if (paused) {
         entry->runtimeState = QStringLiteral("paused");
         if (entry->runtimeSubscription) {
@@ -314,6 +315,7 @@ void SubscriptionService::setAllCurrentSubscriptionsPaused(bool paused)
 
         changed = true;
         entry.paused = paused;
+        entry.recentMessageTimestampsMs.clear();
         if (paused) {
             entry.runtimeState = QStringLiteral("paused");
             if (entry.runtimeSubscription) {
@@ -542,6 +544,9 @@ void SubscriptionService::updateSubscriptionState(
 
 qreal SubscriptionService::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
 {
+    if (entry.paused) {
+        return 0.0;
+    }
     return static_cast<qreal>(recentMessageCount(entry.recentMessageTimestampsMs, nowMs));
 }
 
@@ -553,7 +558,8 @@ bool SubscriptionService::currentSessionHasActiveSubscriptionFps(qint64 nowMs) c
     }
 
     for (const auto &subscription : session->subscriptions) {
-        if (recentMessageCount(subscription.recentMessageTimestampsMs, nowMs) > 0) {
+        if (!subscription.paused
+            && recentMessageCount(subscription.recentMessageTimestampsMs, nowMs) > 0) {
             return true;
         }
     }
@@ -570,17 +576,8 @@ void SubscriptionService::refreshSubscriptionFps()
         return;
     }
 
-    bool hasActiveFps = false;
-    for (const auto &subscription : session->subscriptions) {
-        if (recentMessageCount(subscription.recentMessageTimestampsMs, nowMs) > 0) {
-            hasActiveFps = true;
-            break;
-        }
-    }
-
-    if (!hasActiveFps) {
+    const bool hasRateHistory = (*m_dependencies.subscriptionsModel).updateTopicFps(nowMs);
+    if (!hasRateHistory) {
         (*m_dependencies.subscriptionFpsRefreshTimer).stop();
     }
-
-    (*m_dependencies.subscriptionsModel).updateTopicFps(nowMs);
 }

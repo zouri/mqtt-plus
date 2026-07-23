@@ -188,9 +188,11 @@ MessageSubscriptionMatch matchSubscriptionsForMessage(
             continue;
         }
 
-        subscription.recentMessageTimestampsMs.append(nowMs);
-        pruneRecentMessageTimestamps(subscription.recentMessageTimestampsMs, nowMs);
-        match.refreshCurrentSubscriptionFps = match.refreshCurrentSubscriptionFps || isCurrentSession;
+        if (!subscription.paused) {
+            subscription.recentMessageTimestampsMs.append(nowMs);
+            pruneRecentMessageTimestamps(subscription.recentMessageTimestampsMs, nowMs);
+            match.refreshCurrentSubscriptionFps = match.refreshCurrentSubscriptionFps || isCurrentSession;
+        }
 
         const int score = topicSpecificityScore(subscription.topic);
         if (score > bestDisplayScore

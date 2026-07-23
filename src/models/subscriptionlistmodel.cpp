@@ -6,7 +6,19 @@
 
 #include <QDateTime>
 
+#include <algorithm>
+
 using namespace AppUtils;
+
+namespace {
+bool hasPositiveRateSample(const QVariantList &history)
+{
+    return std::any_of(
+        history.cbegin(),
+        history.cend(),
+        [](const QVariant &sample) { return sample.toReal() > 0.0; });
+}
+}
 
 SubscriptionListModel::SubscriptionListModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -121,33 +133,57 @@ void SubscriptionListModel::notifyRefresh()
     rebuildCache();
 }
 
-void SubscriptionListModel::updateTopicFps(qint64 nowMs)
+bool SubscriptionListModel::updateTopicFps(qint64 nowMs)
 {
     if (!m_subs || m_subs->isEmpty()) {
-        return;
+        return false;
     }
 
+    bool hasRateHistory = false;
     const qsizetype n = m_subs->size();
     m_fpsCache.resize(n);
     m_rateHistoryCache.resize(n);
     m_rateHistoryTopicCache.resize(n);
     for (qsizetype i = 0; i < n; ++i) {
-        m_fpsCache[i] = static_cast<qreal>(recentMessageCount(m_subs->at(i).recentMessageTimestampsMs, nowMs));
-        if (m_rateHistoryTopicCache.at(i) != m_subs->at(i).topic) {
+        const SubscriptionEntry &subscription = m_subs->at(i);
+        if (m_rateHistoryTopicCache.at(i) != subscription.topic) {
             m_rateHistoryCache[i].clear();
-            m_rateHistoryTopicCache[i] = m_subs->at(i).topic;
+            m_rateHistoryTopicCache[i] = subscription.topic;
         }
+
         QVariantList &history = m_rateHistoryCache[i];
-        history.append(m_fpsCache.at(i));
-        while (history.size() > 8) {
-            history.removeFirst();
+        if (subscription.paused) {
+            m_fpsCache[i] = 0.0;
+            history.clear();
+        } else {
+            m_fpsCache[i] = static_cast<qreal>(
+                recentMessageCount(subscription.recentMessageTimestampsMs, nowMs));
+            const qreal currentRate = m_fpsCache.at(i);
+            if (history.isEmpty() && currentRate > 0.0) {
+                history.reserve(kSubscriptionRateHistorySampleCount);
+                for (int sample = 1; sample < kSubscriptionRateHistorySampleCount; ++sample) {
+                    history.append(0.0);
+                }
+                history.append(currentRate);
+            } else if (!history.isEmpty()) {
+                history.append(currentRate);
+                while (history.size() > kSubscriptionRateHistorySampleCount) {
+                    history.removeFirst();
+                }
+                if (!hasPositiveRateSample(history)) {
+                    history.clear();
+                }
+            }
         }
+        hasRateHistory = hasRateHistory || !history.isEmpty();
     }
 
     for (qsizetype i = 0; i < n; ++i) {
         const QModelIndex rowIndex = index(static_cast<int>(i), 0);
         emit dataChanged(rowIndex, rowIndex, {TopicFpsRole, TopicRateHistoryRole});
     }
+
+    return hasRateHistory;
 }
 
 void SubscriptionListModel::rebuildCache()
@@ -170,13 +206,20 @@ void SubscriptionListModel::rebuildCache()
 
         m_scriptNameCache.resize(rowCount);
         for (qsizetype i = 0; i < rowCount; ++i) {
-            if (m_rateHistoryTopicCache.at(i) != m_subs->at(i).topic) {
+            const SubscriptionEntry &subscription = m_subs->at(i);
+            if (m_rateHistoryTopicCache.at(i) != subscription.topic) {
                 m_rateHistoryCache[i].clear();
-                m_rateHistoryTopicCache[i] = m_subs->at(i).topic;
+                m_rateHistoryTopicCache[i] = subscription.topic;
             }
-            m_fpsCache[i] = static_cast<qreal>(recentMessageCount(m_subs->at(i).recentMessageTimestampsMs, nowMs));
+            if (subscription.paused) {
+                m_fpsCache[i] = 0.0;
+                m_rateHistoryCache[i].clear();
+            } else {
+                m_fpsCache[i] = static_cast<qreal>(
+                    recentMessageCount(subscription.recentMessageTimestampsMs, nowMs));
+            }
             m_scriptNameCache[i] = m_scriptNameLookup
-                ? m_scriptNameLookup(m_subs->at(i).scriptId)
+                ? m_scriptNameLookup(subscription.scriptId)
                 : QString();
         }
     };

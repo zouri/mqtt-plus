@@ -27,7 +27,6 @@ public:
     int subscriptionPaneWidth() const;
     int publishComposerHeight() const;
     bool connectionPaneCollapsed() const;
-    bool subscriptionPaneCollapsed() const;
 
 public slots:
     void setMessageRetentionLimit(int limit);
@@ -44,8 +43,7 @@ public slots:
     void setWorkbenchLayout(
         int subscriptionPaneWidth,
         int publishComposerHeight,
-        bool connectionPaneCollapsed,
-        bool subscriptionPaneCollapsed);
+        bool connectionPaneCollapsed);
 
 signals:
     void messageRetentionLimitChanged();
@@ -80,5 +78,4 @@ private:
     int m_subscriptionPaneWidth = 320;
     int m_publishComposerHeight = 168;
     bool m_connectionPaneCollapsed = false;
-    bool m_subscriptionPaneCollapsed = false;
 };
