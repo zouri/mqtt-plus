@@ -418,7 +418,6 @@ AppPanel {
                                 Layout.maximumWidth: 42
                                 text: subscriptionDelegate.rateText
                                 color: subscriptionDelegate.activeTraffic ? control.ui.textStrong : control.ui.textMuted
-                                font.family: "Menlo"
                                 font.pixelSize: 10
                                 font.bold: subscriptionDelegate.activeTraffic
                                 horizontalAlignment: Text.AlignRight
