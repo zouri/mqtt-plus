@@ -445,7 +445,7 @@ AppPanel {
                 AppToolTip {
                     ui: control.ui
                     text: subscriptionDelegate.topic
-                    position: AppToolTip.Position.Right
+                    position: AppToolTip.Position.Top
                     active: subscriptionRowHover.hovered
                             && (subscriptionDisplayName.truncated || subscriptionTopicLabel.truncated)
                 }
