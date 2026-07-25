@@ -173,7 +173,6 @@ AppPanel {
                 backgroundColor: root.ui.themePalette.innerPanelBg
                 selectByMouse: true
                 wrapMode: TextEdit.WrapAnywhere
-                font.family: "Menlo"
                 font.pixelSize: 14
 
                 onContentYChanged: {

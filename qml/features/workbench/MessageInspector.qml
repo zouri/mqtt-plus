@@ -163,13 +163,13 @@ Rectangle {
                     Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.alias || qsTr("-")); color: String(control.details.alias || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; elide: Label.ElideRight; font.pixelSize: 11 }
                     Rectangle { id: metadataSeparator1; Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Topic"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.topic || qsTr("-")); color: String(control.details.topic || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; elide: Label.ElideRight; font.family: "Menlo"; font.pixelSize: 11 }
+                    Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.topic || qsTr("-")); color: String(control.details.topic || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; elide: Label.ElideRight; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Direction"); color: control.ui.textMuted; font.pixelSize: 11 }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: control.details.direction === "outgoing" ? qsTr("Sent") : (control.details.direction === "incoming" ? qsTr("Received") : qsTr("-")); color: control.details.direction === "outgoing" || control.details.direction === "incoming" ? control.ui.textStrong : control.ui.textMuted; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Time"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.timestamp || qsTr("-")); color: String(control.details.timestamp || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; font.family: "Menlo"; font.pixelSize: 11 }
+                    Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.timestamp || qsTr("-")); color: String(control.details.timestamp || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; font.pixelSize: 11 }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("QoS"); color: control.ui.textMuted; font.pixelSize: 11 }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: Number(control.details.qos) >= 0 ? String(control.details.qos) : qsTr("-"); color: Number(control.details.qos) >= 0 ? control.ui.textStrong : control.ui.textMuted; font.pixelSize: 11 }
@@ -230,7 +230,6 @@ Rectangle {
                             anchors.margins: 10
                             text: control.displayedPayload
                             color: control.ui.textStrong
-                            font.family: "Menlo"
                             font.pixelSize: 11
                             textFormat: TextEdit.PlainText
                             readOnly: true
@@ -278,7 +277,6 @@ Rectangle {
                             anchors.margins: 10
                             text: String(control.details.parsedPayload || "")
                             color: control.ui.textStrong
-                            font.family: "Menlo"
                             font.pixelSize: 11
                             textFormat: TextEdit.PlainText
                             readOnly: true
