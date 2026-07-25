@@ -10,7 +10,11 @@
 #include <QtTest/QtTest>
 
 #include <QSettings>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
 #include <QTemporaryDir>
+#include <QUuid>
 
 class EventHistoryServiceTest : public QObject
 {
@@ -36,6 +40,8 @@ private slots:
     void frozenVisibleRowsWaitForResume();
     void frozenHistoryLoadingUsesSnapshotBoundary();
     void totalMessageCountExceedsVisibleWindowAndResets();
+    void failedMessageClearKeepsRuntimeAndModel();
+    void clearAllMessagesDiscardsPendingVisibleRows();
     void runtimeFlushDoesNotApplyMessageRetentionLimit();
     void reloadRestoresTotalMessageCount();
     void reusablePayloadLoadsStoredBytesAfterHistoryRowsDropBlobs();
@@ -557,10 +563,76 @@ void EventHistoryServiceTest::totalMessageCountExceedsVisibleWindowAndResets()
     QTRY_COMPARE(fixture.messages.count(), 1200);
     QCOMPARE(fixture.session.runtime.totalMessageCount, 1201);
 
-    fixture.service.clearCurrentMessages();
+    QVERIFY(fixture.service.clearCurrentMessages());
     QCOMPARE(fixture.session.runtime.totalMessageCount, 0);
     QCOMPARE(fixture.session.runtime.viewedMessageCount, 0);
     QCOMPARE(fixture.messages.count(), 0);
+}
+
+void EventHistoryServiceTest::failedMessageClearKeepsRuntimeAndModel()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/one"),
+        QByteArrayLiteral("one"),
+        static_cast<int>(PayloadFormat::Plaintext));
+    QTRY_COMPARE(fixture.messages.count(), 1);
+
+    const QString connectionName = QStringLiteral("fail-service-clear-%1")
+                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(fixture.dataDir.filePath(QStringLiteral("history.db")));
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral(
+                     "CREATE TRIGGER fail_service_total_delete "
+                     "BEFORE DELETE ON mqtt_message_totals "
+                     "BEGIN SELECT RAISE(ABORT, 'forced delete failure'); END")),
+            qPrintable(query.lastError().text()));
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    QSignalSpy streamSpy(&fixture.service, &EventHistoryService::messageStreamChanged);
+    QSignalSpy totalSpy(&fixture.service, &EventHistoryService::totalMessageCountChanged);
+    QVERIFY(!fixture.service.clearCurrentMessages());
+
+    QCOMPARE(streamSpy.count(), 0);
+    QCOMPARE(totalSpy.count(), 0);
+    QCOMPARE(fixture.messages.count(), 1);
+    QCOMPARE(fixture.session.runtime.messageRows.size(), 1);
+    QCOMPARE(fixture.session.runtime.totalMessageCount, 1);
+    QCOMPARE(fixture.historyStore.loadMessages(fixture.session.id, 10).size(), 1);
+    QVERIFY(!fixture.session.runtime.logRows.isEmpty());
+    QVERIFY(fixture.session.runtime.logRows.last().toMap()
+                .value(QStringLiteral("payload"))
+                .toString()
+                .contains(QStringLiteral("forced delete failure")));
+}
+
+void EventHistoryServiceTest::clearAllMessagesDiscardsPendingVisibleRows()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+
+    fixture.service.appendPublishedMessage(
+        fixture.session.id,
+        QStringLiteral("devices/pending"),
+        QByteArrayLiteral("pending"),
+        static_cast<int>(PayloadFormat::Plaintext));
+    QCOMPARE(fixture.session.runtime.messageRows.size(), 1);
+
+    QVERIFY(fixture.service.clearAllMessages());
+    QTest::qWait(50);
+
+    QCOMPARE(fixture.historyStore.pendingMessageCount(), 0);
+    QCOMPARE(fixture.historyStore.totalMessageCount(fixture.session.id), 0);
+    QCOMPARE(fixture.messages.count(), 0);
+    QCOMPARE(fixture.session.runtime.messageRows.size(), 0);
+    QCOMPARE(fixture.session.runtime.totalMessageCount, 0);
 }
 
 void EventHistoryServiceTest::runtimeFlushDoesNotApplyMessageRetentionLimit()

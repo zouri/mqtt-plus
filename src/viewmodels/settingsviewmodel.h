@@ -9,7 +9,6 @@
 #include <QVector>
 
 class EventHistoryService;
-class EventStreamModel;
 class HistoryStore;
 class PreferencesController;
 
@@ -43,8 +42,6 @@ public:
         EventHistoryService &eventController,
         HistoryStore &historyStore,
         QVector<SessionState> &sessions,
-        EventStreamModel &messages,
-        EventStreamModel &logs,
         QSettings &settings,
         QObject *parent = nullptr);
 
@@ -135,8 +132,6 @@ private:
     EventHistoryService &m_eventController;
     HistoryStore &m_historyStore;
     QVector<SessionState> &m_sessions;
-    EventStreamModel &m_messages;
-    EventStreamModel &m_logs;
 
     QString m_themeMode = QStringLiteral("system");
     QString m_themeColor = QStringLiteral("mint");

@@ -214,6 +214,22 @@ MessageSubscriptionMatch matchSubscriptionsForMessage(
 
     return match;
 }
+
+void clearMessageRuntime(SessionState &session)
+{
+    session.runtime.messageRows.clear();
+    session.runtime.totalMessageCount = 0;
+    session.runtime.viewedMessageCount = 0;
+    session.runtime.oldestLoadedMessageId = 0;
+    session.runtime.loadedAllMessageHistory = true;
+}
+
+void clearLogRuntime(SessionState &session)
+{
+    session.runtime.logRows.clear();
+    session.runtime.oldestLoadedLogId = 0;
+    session.runtime.loadedAllLogHistory = true;
+}
 }
 
 EventHistoryService::EventHistoryService(
@@ -252,43 +268,132 @@ EventHistoryService::EventHistoryService(
         Qt::UniqueConnection);
 }
 
-void EventHistoryService::clearCurrentMessages()
+bool EventHistoryService::clearCurrentMessages()
 {
     auto *session = m_sessionService.currentSession();
     if (!session) {
-        return;
+        return false;
     }
 
-    m_historyStore.clearMessages(session->id);
-    session->runtime.messageRows.clear();
-    session->runtime.totalMessageCount = 0;
-    session->runtime.viewedMessageCount = 0;
+    if (!m_historyStore.clearMessages(session->id)) {
+        reportMessageStorageError(
+            *session,
+            tr("Cannot clear message history: %1").arg(m_historyStore.lastError()));
+        return false;
+    }
+
+    clearMessageRuntime(*session);
     emit totalMessageCountChanged();
+    m_messageHistoryFlushTimer.stop();
     m_messageStreamFrozen = false;
     m_frozenOldestLoadedMessageId = 0;
-    session->runtime.oldestLoadedMessageId = 0;
-    session->runtime.loadedAllMessageHistory = true;
     if (m_pendingVisibleMessageSessionId == session->id) {
         m_pendingVisibleMessageRows.clear();
         m_pendingVisibleMessageSessionId.clear();
+        m_visibleMessageRowsFlushTimer.stop();
     }
     m_messages.clear();
+    m_lastMessageStorageError.clear();
     emit messageStreamChanged();
+    return true;
 }
 
-void EventHistoryService::clearCurrentLogs()
+bool EventHistoryService::clearCurrentLogs()
 {
     auto *session = m_sessionService.currentSession();
     if (!session) {
-        return;
+        return false;
     }
 
-    m_historyStore.clearLogs(session->id);
-    session->runtime.logRows.clear();
-    session->runtime.oldestLoadedLogId = 0;
-    session->runtime.loadedAllLogHistory = true;
+    if (!m_historyStore.clearLogs(session->id)) {
+        reportMessageStorageError(
+            *session,
+            tr("Cannot clear log history: %1").arg(m_historyStore.lastError()));
+        return false;
+    }
+
+    clearLogRuntime(*session);
     m_logs.clear();
+    m_lastMessageStorageError.clear();
     emit logStreamChanged();
+    return true;
+}
+
+bool EventHistoryService::clearAllMessages()
+{
+    if (!m_historyStore.clearAllMessages()) {
+        if (auto *session = m_sessionService.currentSession()) {
+            reportMessageStorageError(
+                *session,
+                tr("Cannot clear message history: %1").arg(m_historyStore.lastError()));
+        }
+        return false;
+    }
+
+    for (SessionState &session : m_sessionService.sessions()) {
+        clearMessageRuntime(session);
+    }
+    m_messageHistoryFlushTimer.stop();
+    m_visibleMessageRowsFlushTimer.stop();
+    m_pendingVisibleMessageRows.clear();
+    m_pendingVisibleMessageSessionId.clear();
+    m_messageStreamFrozen = false;
+    m_frozenOldestLoadedMessageId = 0;
+    m_messages.clear();
+    m_lastMessageStorageError.clear();
+    emit totalMessageCountChanged();
+    emit messageStreamChanged();
+    return true;
+}
+
+bool EventHistoryService::clearAllLogs()
+{
+    if (!m_historyStore.clearAllLogs()) {
+        if (auto *session = m_sessionService.currentSession()) {
+            reportMessageStorageError(
+                *session,
+                tr("Cannot clear log history: %1").arg(m_historyStore.lastError()));
+        }
+        return false;
+    }
+
+    for (SessionState &session : m_sessionService.sessions()) {
+        clearLogRuntime(session);
+    }
+    m_logs.clear();
+    m_lastMessageStorageError.clear();
+    emit logStreamChanged();
+    return true;
+}
+
+bool EventHistoryService::clearAllHistory()
+{
+    if (!m_historyStore.clearAllHistory()) {
+        if (auto *session = m_sessionService.currentSession()) {
+            reportMessageStorageError(
+                *session,
+                tr("Cannot clear history: %1").arg(m_historyStore.lastError()));
+        }
+        return false;
+    }
+
+    for (SessionState &session : m_sessionService.sessions()) {
+        clearMessageRuntime(session);
+        clearLogRuntime(session);
+    }
+    m_messageHistoryFlushTimer.stop();
+    m_visibleMessageRowsFlushTimer.stop();
+    m_pendingVisibleMessageRows.clear();
+    m_pendingVisibleMessageSessionId.clear();
+    m_messageStreamFrozen = false;
+    m_frozenOldestLoadedMessageId = 0;
+    m_messages.clear();
+    m_logs.clear();
+    m_lastMessageStorageError.clear();
+    emit totalMessageCountChanged();
+    emit messageStreamChanged();
+    emit logStreamChanged();
+    return true;
 }
 
 int EventHistoryService::loadOlderCurrentSessionMessages()

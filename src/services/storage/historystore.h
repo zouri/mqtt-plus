@@ -52,16 +52,19 @@ public:
     QByteArray loadMessagePayloadBytes(qint64 messageId) const;
     QVariantList loadLogs(const QString &sessionId, int limit) const;
     QVariantList loadLogsBefore(const QString &sessionId, qint64 beforeId, int limit) const;
-    void clearMessages(const QString &sessionId);
-    void clearLogs(const QString &sessionId);
-    void clearAllMessages();
-    void clearAllLogs();
-    void clearSessionHistory(const QString &sessionId);
+    bool clearMessages(const QString &sessionId);
+    bool clearLogs(const QString &sessionId);
+    bool clearAllMessages();
+    bool clearAllLogs();
+    bool clearSessionHistory(const QString &sessionId);
+    bool clearAllHistory();
     void pruneMessages(const QString &sessionId, int keepCount);
     void pruneLogs(const QString &sessionId, int keepCount);
 
 private:
     bool initialize(const QString &dataPath);
+    bool flushPendingMessagesForClear();
+    bool executeDeletes(const QStringList &statements, const QString &sessionId = QString());
 
     QSqlDatabase m_db;
     QString m_connectionName;

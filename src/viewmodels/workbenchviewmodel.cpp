@@ -319,8 +319,7 @@ bool WorkbenchViewModel::submitSessionEditor()
     }
     const QVariantMap config = m_sessionEditor.collectedConfig();
     if (!m_sessionEditor.editMode()) {
-        m_sessionService.addSessionWithConfig(config);
-        return true;
+        return m_sessionService.addSessionWithConfig(config);
     }
 
     const int index = m_sessionEditor.targetIndex();

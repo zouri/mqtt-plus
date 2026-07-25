@@ -3,6 +3,7 @@
 #include "services/apputils.h"
 
 #include <QDateTime>
+#include <QDebug>
 
 using namespace AppUtils;
 
@@ -266,19 +267,33 @@ void Application::applyExitCleanup()
 
     const QString clearMessagesMode = m_preferences.clearMessagesOnExit();
     if (clearMessagesMode == QStringLiteral("all")) {
-        m_historyStore.clearAllMessages();
+        if (!m_historyStore.clearAllMessages()) {
+            qWarning().noquote()
+                << "Cannot clear message history on exit:" << m_historyStore.lastError();
+        }
     } else if (clearMessagesMode == QStringLiteral("current")) {
         if (const auto *session = m_sessionService.currentSession()) {
-            m_historyStore.clearMessages(session->id);
+            if (!m_historyStore.clearMessages(session->id)) {
+                qWarning().noquote()
+                    << "Cannot clear current message history on exit:"
+                    << m_historyStore.lastError();
+            }
         }
     }
 
     const QString clearLogsMode = m_preferences.clearLogsOnExit();
     if (clearLogsMode == QStringLiteral("all")) {
-        m_historyStore.clearAllLogs();
+        if (!m_historyStore.clearAllLogs()) {
+            qWarning().noquote()
+                << "Cannot clear log history on exit:" << m_historyStore.lastError();
+        }
     } else if (clearLogsMode == QStringLiteral("current")) {
         if (const auto *session = m_sessionService.currentSession()) {
-            m_historyStore.clearLogs(session->id);
+            if (!m_historyStore.clearLogs(session->id)) {
+                qWarning().noquote()
+                    << "Cannot clear current log history on exit:"
+                    << m_historyStore.lastError();
+            }
         }
     }
 }

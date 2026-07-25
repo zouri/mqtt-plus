@@ -11,16 +11,41 @@
 #include "usecases/subscriptionservice.h"
 
 #include <QDateTime>
+#include <QFile>
+#include <QIODevice>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QtTest/QtTest>
 
 namespace {
 
+int failingSettingsWriteCount = 0;
+
+bool readEmptySettings(QIODevice &, QSettings::SettingsMap &settings)
+{
+    settings.clear();
+    return true;
+}
+
+bool rejectSettingsWrite(QIODevice &, const QSettings::SettingsMap &)
+{
+    ++failingSettingsWriteCount;
+    return false;
+}
+
+QSettings::Format failingSettingsFormat()
+{
+    static const QSettings::Format format = QSettings::registerFormat(
+        QStringLiteral("mqtt-plus-failing-settings"),
+        readEmptySettings,
+        rejectSettingsWrite);
+    return format;
+}
+
 struct WorkbenchFixture
 {
-    WorkbenchFixture()
-        : settings(temporaryDirectory.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
+    explicit WorkbenchFixture(QSettings::Format settingsFormat = QSettings::IniFormat)
+        : settings(temporaryDirectory.filePath(QStringLiteral("settings.data")), settingsFormat)
         , preferences(&settings)
         , historyStore(temporaryDirectory.path())
         , sessionService(
@@ -93,6 +118,9 @@ class WorkbenchViewModelTest : public QObject
 
 private slots:
     void exposesDefaultPublishDraft();
+    void recoversFromInvalidSessionSettingsWithoutOverwritingFile();
+    void rejectsSessionCreateWhenSettingsWriteFails();
+    void rollsBackSessionEditWhenSettingsWriteFails();
     void exposesSessionEditor();
     void exposesSubscriptionEditor();
     void preparesSubscriptionEditorForCreate();
@@ -123,6 +151,109 @@ void WorkbenchViewModelTest::exposesDefaultPublishDraft()
     QCOMPARE(viewModel.publisher()->qos(), 0);
     QCOMPARE(viewModel.publisher()->retain(), false);
     QVERIFY(!viewModel.publisher()->canPublish());
+}
+
+void WorkbenchViewModelTest::recoversFromInvalidSessionSettingsWithoutOverwritingFile()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    const QString settingsPath = dataDir.filePath(QStringLiteral("settings.ini"));
+    QFile settingsFile(settingsPath);
+    const bool openedForWrite = settingsFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(openedForWrite);
+    QCOMPARE(settingsFile.write("["), 1);
+    settingsFile.close();
+
+    QSettings settings(settingsPath, QSettings::IniFormat);
+    PreferencesController preferences(&settings);
+    HistoryStore historyStore(dataDir.path());
+    ScriptService scriptService;
+    SessionService sessionService(settings, scriptService, historyStore, preferences);
+    QSignalSpy errorSpy(&sessionService, &SessionService::storageError);
+
+    QVERIFY(!sessionService.loadSessions());
+    QCOMPARE(sessionService.sessions().size(), 1);
+    QCOMPARE(sessionService.sessions().front().name, QStringLiteral("Session 1"));
+    QCOMPARE(errorSpy.size(), 1);
+    QCOMPARE(
+        errorSpy.front().front().toString(),
+        QStringLiteral("Cannot read session settings: invalid settings format."));
+
+    const bool openedForRead = settingsFile.open(QIODevice::ReadOnly);
+    QVERIFY(openedForRead);
+    QCOMPARE(settingsFile.readAll(), QByteArray("["));
+}
+
+void WorkbenchViewModelTest::rejectsSessionCreateWhenSettingsWriteFails()
+{
+    const QSettings::Format format = failingSettingsFormat();
+    QVERIFY(format != QSettings::InvalidFormat);
+    WorkbenchFixture fixture(format);
+    QVERIFY(!fixture.sessionService.loadSessions());
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+
+    const int previousCount = fixture.sessionService.sessions().size();
+    const int previousIndex = fixture.sessionService.currentIndex();
+    QSignalSpy storageErrorSpy(&fixture.sessionService, &SessionService::storageError);
+    QSignalSpy runtimeReadySpy(&fixture.sessionService, &SessionService::sessionRuntimeReady);
+    QSignalSpy sessionsChangedSpy(&fixture.sessionService, &SessionService::sessionsChanged);
+    QSignalSpy indexChangedSpy(&fixture.sessionService, &SessionService::currentSessionIndexChanged);
+    QSignalSpy currentChangedSpy(&fixture.sessionService, &SessionService::currentSessionChanged);
+    failingSettingsWriteCount = 0;
+
+    fixture.viewModel.openSessionEditorForCreate();
+    fixture.viewModel.sessionEditor()->setName(QStringLiteral("Unsaved Session"));
+
+    QVERIFY(!fixture.viewModel.submitSessionEditor());
+    QCOMPARE(fixture.sessionService.sessions().size(), previousCount);
+    QCOMPARE(fixture.sessionService.currentIndex(), previousIndex);
+    QCOMPARE(storageErrorSpy.size(), 1);
+    QCOMPARE(runtimeReadySpy.size(), 0);
+    QCOMPARE(sessionsChangedSpy.size(), 0);
+    QCOMPARE(indexChangedSpy.size(), 0);
+    QCOMPARE(currentChangedSpy.size(), 0);
+    QCOMPARE(failingSettingsWriteCount, 2);
+}
+
+void WorkbenchViewModelTest::rollsBackSessionEditWhenSettingsWriteFails()
+{
+    const QSettings::Format format = failingSettingsFormat();
+    QVERIFY(format != QSettings::InvalidFormat);
+    WorkbenchFixture fixture(format);
+    QVERIFY(!fixture.sessionService.loadSessions());
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+
+    SessionState &session = fixture.sessionService.sessions().front();
+    QVERIFY(session.runtime.client);
+    session.runtime.lastError = QStringLiteral("Existing runtime error");
+    session.runtime.sessionRestored = true;
+    session.runtime.publishStatus.state = QStringLiteral("sent");
+    session.runtime.publishStatus.topic = QStringLiteral("devices/status");
+    session.runtime.publishStatus.reason = QStringLiteral("Existing publish status");
+    session.runtime.publishStatus.updatedAt = QStringLiteral("2026-07-25T12:00:00.000Z");
+    const QVariantMap previousConfig = fixture.sessionService.sessionConfigAt(0);
+    const QVariantMap previousPublishStatus = session.runtime.publishStatus.toVariantMap();
+    QSignalSpy storageErrorSpy(&fixture.sessionService, &SessionService::storageError);
+    QSignalSpy sessionsChangedSpy(&fixture.sessionService, &SessionService::sessionsChanged);
+    QSignalSpy currentChangedSpy(&fixture.sessionService, &SessionService::currentSessionChanged);
+    failingSettingsWriteCount = 0;
+
+    fixture.viewModel.openSessionEditorForEdit(0);
+    fixture.viewModel.sessionEditor()->setName(QStringLiteral("Changed Session"));
+    fixture.viewModel.sessionEditor()->setHost(QStringLiteral("changed.example.com"));
+
+    QVERIFY(!fixture.viewModel.submitSessionEditor());
+    QCOMPARE(fixture.sessionService.sessionConfigAt(0), previousConfig);
+    QCOMPARE(session.runtime.lastError, QStringLiteral("Existing runtime error"));
+    QVERIFY(session.runtime.sessionRestored);
+    QCOMPARE(session.runtime.publishStatus.toVariantMap(), previousPublishStatus);
+    QCOMPARE(storageErrorSpy.size(), 1);
+    QCOMPARE(sessionsChangedSpy.size(), 0);
+    QCOMPARE(currentChangedSpy.size(), 0);
+    QCOMPARE(failingSettingsWriteCount, 2);
 }
 
 void WorkbenchViewModelTest::exposesSessionEditor()

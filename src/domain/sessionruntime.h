@@ -11,6 +11,7 @@
 
 struct SessionRuntimeState {
     bool disconnectRequested = false;
+    bool reconnectPending = false;
     bool sessionRestored = false;
     QString lastError;
     QString brokerInfo;
