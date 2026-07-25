@@ -17,6 +17,8 @@ public:
     explicit HistoryStore(const QString &dataPath);
     ~HistoryStore();
 
+    Q_DISABLE_COPY_MOVE(HistoryStore)
+
     bool isReady() const;
     QString lastError() const;
 

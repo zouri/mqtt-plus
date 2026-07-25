@@ -4,6 +4,8 @@
 #include "services/apputils.h"
 #include "services/storage/scriptstore.h"
 
+#include <utility>
+
 using namespace AppUtils;
 
 ScriptLibraryModel::ScriptLibraryModel(QObject *parent)
@@ -13,7 +15,7 @@ ScriptLibraryModel::ScriptLibraryModel(QObject *parent)
 
 int ScriptLibraryModel::rowCount(const QModelIndex &parent) const
 {
-    return parent.isValid() || !m_scripts ? 0 : m_scripts->size();
+    return parent.isValid() ? 0 : m_rows.size();
 }
 
 int ScriptLibraryModel::count() const
@@ -23,11 +25,11 @@ int ScriptLibraryModel::count() const
 
 QVariant ScriptLibraryModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || !m_scripts || index.row() < 0 || index.row() >= m_scripts->size()) {
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
         return {};
     }
 
-    const auto &script = m_scripts->at(index.row());
+    const ScriptRow &script = m_rows.at(index.row());
     switch (role) {
     case IdRole:
         return script.id;
@@ -38,9 +40,9 @@ QVariant ScriptLibraryModel::data(const QModelIndex &index, int role) const
     case CodeRole:
         return script.code;
     case UpdatedAtRole:
-        return displayTimestamp(script.updatedAt);
+        return script.updatedAt;
     case FilePathRole:
-        return ScriptStore::scriptFilePath(script.fileName);
+        return script.filePath;
     default:
         return {};
     }
@@ -61,58 +63,52 @@ QHash<int, QByteArray> ScriptLibraryModel::roleNames() const
 
 QVariantMap ScriptLibraryModel::rowAt(int row) const
 {
-    if (!m_scripts || row < 0 || row >= m_scripts->size()) {
+    if (row < 0 || row >= m_rows.size()) {
         return {};
     }
 
-    const auto &script = m_scripts->at(row);
+    const ScriptRow &script = m_rows.at(row);
     QVariantMap map;
     map.insert(QStringLiteral("id"), script.id);
     map.insert(QStringLiteral("name"), script.name);
     map.insert(QStringLiteral("description"), script.description);
     map.insert(QStringLiteral("code"), script.code);
-    map.insert(QStringLiteral("updatedAt"), displayTimestamp(script.updatedAt));
-    map.insert(QStringLiteral("filePath"), ScriptStore::scriptFilePath(script.fileName));
+    map.insert(QStringLiteral("updatedAt"), script.updatedAt);
+    map.insert(QStringLiteral("filePath"), script.filePath);
     return map;
 }
 
 int ScriptLibraryModel::indexOfId(const QString &id) const
 {
-    if (!m_scripts) {
-        return -1;
-    }
-    for (qsizetype i = 0; i < m_scripts->size(); ++i) {
-        if (m_scripts->at(i).id == id) {
+    for (qsizetype i = 0; i < m_rows.size(); ++i) {
+        if (m_rows.at(i).id == id) {
             return static_cast<int>(i);
         }
     }
     return -1;
 }
 
-void ScriptLibraryModel::setSource(const QVector<ScriptEntry> *scripts)
+void ScriptLibraryModel::setScripts(const QVector<ScriptEntry> &scripts)
 {
-    m_scripts = scripts;
-    beginResetModel();
-    endResetModel();
-    m_knownCount = count();
-    emit countChanged();
-}
+    QVector<ScriptRow> rows;
+    rows.reserve(scripts.size());
+    for (const ScriptEntry &script : scripts) {
+        rows.append(rowFromScript(script));
+    }
 
-void ScriptLibraryModel::notifyRefresh()
-{
-    const int refreshedCount = count();
-    if (refreshedCount != m_knownCount) {
+    if (rows.size() != m_rows.size()) {
         beginResetModel();
+        m_rows = std::move(rows);
         endResetModel();
-        m_knownCount = refreshedCount;
         emit countChanged();
         return;
     }
 
-    if (refreshedCount > 0) {
+    m_rows = std::move(rows);
+    if (!m_rows.isEmpty()) {
         emit dataChanged(
             index(0, 0),
-            index(refreshedCount - 1, 0),
+            index(static_cast<int>(m_rows.size() - 1), 0),
             {
                 IdRole,
                 NameRole,
@@ -122,4 +118,16 @@ void ScriptLibraryModel::notifyRefresh()
                 FilePathRole,
             });
     }
+}
+
+ScriptLibraryModel::ScriptRow ScriptLibraryModel::rowFromScript(const ScriptEntry &script)
+{
+    return {
+        script.id,
+        script.name,
+        script.description,
+        script.code,
+        displayTimestamp(script.updatedAt),
+        ScriptStore::scriptFilePath(script.fileName),
+    };
 }

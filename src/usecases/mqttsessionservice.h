@@ -4,11 +4,10 @@
 #include <QSslConfiguration>
 #include <QString>
 
-#include <functional>
-
 #include "domain/session.h"
 
 class EventHistoryService;
+class SessionService;
 class SubscriptionService;
 
 class MqttSessionService : public QObject
@@ -16,20 +15,11 @@ class MqttSessionService : public QObject
     Q_OBJECT
 
 public:
-    struct Dependencies
-    {
-        SubscriptionService *subscriptionController = nullptr;
-        EventHistoryService *eventController = nullptr;
-        std::function<SessionState *()> currentSessionState;
-        std::function<SessionState *(const QString &)> sessionById;
-        std::function<void(SessionState &, const QString &, const QString &)> appendEvent;
-        std::function<void()> refreshModels;
-        std::function<void()> refreshCurrentSessionModels;
-    };
-
-    explicit MqttSessionService(QObject *parent = nullptr);
-
-    void setDependencies(const Dependencies &dependencies);
+    explicit MqttSessionService(
+        SessionService &sessionService,
+        SubscriptionService &subscriptionService,
+        EventHistoryService &eventHistoryService,
+        QObject *parent = nullptr);
 
     void connectCurrentSession();
     void disconnectCurrentSession();
@@ -41,16 +31,21 @@ public:
         bool retain);
     void bindSessionSignals(SessionState *session);
     void connectSession(SessionState &session, const QString &eventPrefix);
-    QSslConfiguration sslConfigurationForSession(const SessionState &session, QString &errorMessage) const;
+
+signals:
+    void sessionStateChanged();
+
+private:
+    QSslConfiguration sslConfigurationForSession(
+        const SessionState &session,
+        QString &errorMessage) const;
     void updatePublishStatus(
         SessionState &session,
         const QString &state,
         const QString &reason = QString(),
         qint32 messageId = -1);
 
-signals:
-    void sessionStateChanged();
-
-private:
-    Dependencies m_dependencies;
+    SessionService &m_sessionService;
+    SubscriptionService &m_subscriptionService;
+    EventHistoryService &m_eventHistoryService;
 };

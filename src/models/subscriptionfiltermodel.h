@@ -4,8 +4,6 @@
 #include <QString>
 #include <QVariantMap>
 
-class SubscriptionListModel;
-
 class SubscriptionFilterModel : public QSortFilterProxyModel
 {
     Q_OBJECT
@@ -24,7 +22,6 @@ public:
     int filterModeIndex() const;
     bool hasFilter() const;
 
-    void setSourceModel(QAbstractItemModel *sourceModel) override;
     void setFilterText(const QString &filterText);
     void setFilterMode(const QString &filterMode);
     void setFilterModeIndex(int index);

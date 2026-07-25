@@ -4,8 +4,7 @@
 #include <QString>
 #include <QVariantMap>
 
-#include <functional>
-
+class EventHistoryService;
 class EventStreamModel;
 
 class LogsViewModel : public QObject
@@ -15,17 +14,10 @@ class LogsViewModel : public QObject
     Q_PROPERTY(QString logText READ logText NOTIFY logTextChanged)
 
 public:
-    struct Dependencies
-    {
-        EventStreamModel *logs = nullptr;
-        std::function<void(QObject *, std::function<void()>)> bindLogStreamChanged;
-        std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindLogStreamRowAppended;
-        std::function<void()> clearCurrentLogs;
-        std::function<int()> loadOlderCurrentSessionLogs;
-    };
-
-    explicit LogsViewModel(QObject *parent = nullptr);
-    explicit LogsViewModel(const Dependencies &dependencies, QObject *parent = nullptr);
+    explicit LogsViewModel(
+        EventHistoryService &history,
+        EventStreamModel &logs,
+        QObject *parent = nullptr);
 
     EventStreamModel *logs() const;
     QString logText() const;
@@ -41,5 +33,6 @@ signals:
     void logTextChanged();
 
 private:
-    Dependencies m_dependencies;
+    EventHistoryService &m_history;
+    EventStreamModel &m_logs;
 };

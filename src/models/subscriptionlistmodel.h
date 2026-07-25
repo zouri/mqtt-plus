@@ -1,14 +1,13 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QString>
 #include <QVariantList>
 #include <QVector>
 
 #include "domain/subscription.h"
 
-#include <functional>
-
-struct SessionState;
+struct ScriptEntry;
 
 class SubscriptionListModel : public QAbstractListModel
 {
@@ -44,24 +43,40 @@ public:
 
     Q_INVOKABLE QVariantMap rowAt(int row) const;
 
-    void setSource(const SessionState *session);
-    void setScriptNameLookup(std::function<QString(const QString &)> lookup);
-    void notifyRefresh();
-    bool updateTopicFps(qint64 nowMs);
+    void setSubscriptions(
+        const QString &sourceSessionId,
+        const QVector<SubscriptionEntry> &subscriptions,
+        const QVector<ScriptEntry> &scripts);
+    bool updateTopicFps(const QVector<SubscriptionEntry> &subscriptions, qint64 nowMs);
 
 signals:
     void countChanged();
 
 private:
-    QVariantMap rowToMap(const SubscriptionEntry &sub, int row) const;
-    void rebuildCache();
-    QString displayNameForSub(const SubscriptionEntry &sub) const;
+    struct SubscriptionRow
+    {
+        QString topic;
+        QString alias;
+        int requestedQos = 0;
+        int grantedQos = -1;
+        qreal topicFps = 0.0;
+        QVariantList topicRateHistory;
+        int format = 0;
+        QString scriptId;
+        QString scriptName;
+        QString color;
+        bool paused = false;
+        QString state;
+        QString lastError;
+    };
 
-    const QVector<SubscriptionEntry> *m_subs = nullptr;
-    QVector<SubscriptionEntry> m_empty;
-    QVector<qreal> m_fpsCache;
-    QVector<QVariantList> m_rateHistoryCache;
-    QVector<QString> m_rateHistoryTopicCache;
-    QVector<QString> m_scriptNameCache;
-    std::function<QString(const QString &)> m_scriptNameLookup;
+    static SubscriptionRow rowFromSubscription(
+        const SubscriptionEntry &subscription,
+        const QVector<ScriptEntry> &scripts,
+        qint64 nowMs);
+    static QVariantMap rowToMap(const SubscriptionRow &row);
+    static QString displayName(const SubscriptionRow &row);
+
+    QVector<SubscriptionRow> m_rows;
+    QString m_sourceSessionId;
 };

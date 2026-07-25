@@ -8,6 +8,14 @@ MessageFilterModel::MessageFilterModel(QObject *parent)
 {
     setDynamicSortFilter(true);
     connectCountSignals();
+    connect(this,
+            &QAbstractProxyModel::sourceModelChanged,
+            this,
+            &MessageFilterModel::connectSourceSignals);
+    connect(this,
+            &QAbstractProxyModel::sourceModelChanged,
+            this,
+            &MessageFilterModel::messageCountsChanged);
 }
 
 QString MessageFilterModel::filterText() const
@@ -43,15 +51,6 @@ int MessageFilterModel::filteredMessageCount() const
 int MessageFilterModel::totalMessageCount() const
 {
     return messageCount(sourceModel());
-}
-
-void MessageFilterModel::setSourceModel(QAbstractItemModel *sourceModel)
-{
-    QSortFilterProxyModel::setSourceModel(sourceModel);
-    connectCountSignals();
-    connectSourceSignals();
-    emit countChanged();
-    emit messageCountsChanged();
 }
 
 void MessageFilterModel::setFilterText(const QString &filterText)
@@ -101,11 +100,14 @@ QVariantMap MessageFilterModel::rowAt(int row) const
     if (row < 0 || row >= rowCount()) {
         return {};
     }
-    const auto *events = qobject_cast<EventStreamModel *>(sourceModel());
-    if (!events) {
-        return {};
+
+    const QModelIndex rowIndex = index(row, 0);
+    QVariantMap result;
+    const QHash<int, QByteArray> roles = roleNames();
+    for (auto role = roles.cbegin(); role != roles.cend(); ++role) {
+        result.insert(QString::fromUtf8(role.value()), rowIndex.data(role.key()));
     }
-    return events->rowAt(mapToSource(index(row, 0)).row());
+    return result;
 }
 
 bool MessageFilterModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
@@ -156,6 +158,7 @@ void MessageFilterModel::invalidateRows(bool wasActive)
 {
     beginFilterChange();
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    emit messageCountsChanged();
     if (wasActive != filterActive()) {
         emit filterActiveChanged();
     }
@@ -167,22 +170,42 @@ void MessageFilterModel::connectCountSignals()
     connect(this, &QAbstractItemModel::rowsRemoved, this, &MessageFilterModel::countChanged, Qt::UniqueConnection);
     connect(this, &QAbstractItemModel::modelReset, this, &MessageFilterModel::countChanged, Qt::UniqueConnection);
     connect(this, &QAbstractItemModel::layoutChanged, this, &MessageFilterModel::countChanged, Qt::UniqueConnection);
-    connect(this, &QAbstractItemModel::rowsInserted, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
-    connect(this, &QAbstractItemModel::rowsRemoved, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
-    connect(this, &QAbstractItemModel::modelReset, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
-    connect(this, &QAbstractItemModel::layoutChanged, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
 }
 
 void MessageFilterModel::connectSourceSignals()
 {
-    if (!sourceModel()) {
+    for (const QMetaObject::Connection &connection : m_sourceConnections) {
+        disconnect(connection);
+    }
+    m_sourceConnections.clear();
+
+    QAbstractItemModel *source = sourceModel();
+    if (!source) {
         return;
     }
-    connect(sourceModel(), &QAbstractItemModel::rowsInserted, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
-    connect(sourceModel(), &QAbstractItemModel::rowsRemoved, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
-    connect(sourceModel(), &QAbstractItemModel::modelReset, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
-    connect(sourceModel(), &QAbstractItemModel::layoutChanged, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
-    connect(sourceModel(), &QAbstractItemModel::dataChanged, this, &MessageFilterModel::messageCountsChanged, Qt::UniqueConnection);
+
+    m_sourceConnections = {
+        connect(source,
+                &QAbstractItemModel::rowsInserted,
+                this,
+                &MessageFilterModel::messageCountsChanged),
+        connect(source,
+                &QAbstractItemModel::rowsRemoved,
+                this,
+                &MessageFilterModel::messageCountsChanged),
+        connect(source,
+                &QAbstractItemModel::modelReset,
+                this,
+                &MessageFilterModel::messageCountsChanged),
+        connect(source,
+                &QAbstractItemModel::layoutChanged,
+                this,
+                &MessageFilterModel::messageCountsChanged),
+        connect(source,
+                &QAbstractItemModel::dataChanged,
+                this,
+                &MessageFilterModel::messageCountsChanged),
+    };
 }
 
 int MessageFilterModel::messageCount(const QAbstractItemModel *model)

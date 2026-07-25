@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QString>
 #include <QVector>
 
 struct ScriptEntry;
@@ -31,13 +32,23 @@ public:
     Q_INVOKABLE QVariantMap rowAt(int row) const;
     Q_INVOKABLE int indexOfId(const QString &id) const;
 
-    void setSource(const QVector<ScriptEntry> *scripts);
-    void notifyRefresh();
+    void setScripts(const QVector<ScriptEntry> &scripts);
 
 signals:
     void countChanged();
 
 private:
-    const QVector<ScriptEntry> *m_scripts = nullptr;
-    int m_knownCount = 0;
+    struct ScriptRow
+    {
+        QString id;
+        QString name;
+        QString description;
+        QString code;
+        QString updatedAt;
+        QString filePath;
+    };
+
+    static ScriptRow rowFromScript(const ScriptEntry &script);
+
+    QVector<ScriptRow> m_rows;
 };

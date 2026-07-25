@@ -1,21 +1,35 @@
 #include "sessionservice.h"
 
-#include "usecases/mqttsessionservice.h"
-#include "usecases/subscriptionservice.h"
 #include "domain/sessionconfig.h"
-#include "services/storage/sessionsettingsstore.h"
+#include "services/apputils.h"
 #include "services/storage/historystore.h"
+#include "services/storage/sessionsettingsstore.h"
+#include "usecases/preferencescontroller.h"
+#include "usecases/scriptservice.h"
 
-#include <QDateTime>
+#include <QMqttClient>
+#include <QMqttConnectionProperties>
+#include <QSettings>
+#include <QTimer>
+#include <QUuid>
 
-SessionService::SessionService(QObject *parent)
+#include <algorithm>
+#include <utility>
+
+using namespace AppUtils;
+
+SessionService::SessionService(
+    QSettings &settings,
+    ScriptService &scriptService,
+    HistoryStore &historyStore,
+    PreferencesController &preferences,
+    QObject *parent)
     : QObject(parent)
+    , m_settings(settings)
+    , m_scriptService(scriptService)
+    , m_historyStore(historyStore)
+    , m_preferences(preferences)
 {
-}
-
-void SessionService::setDependencies(const Dependencies &dependencies)
-{
-    m_dependencies = dependencies;
 }
 
 QVector<SessionState> &SessionService::sessions()
@@ -33,25 +47,14 @@ int SessionService::currentIndex() const
     return m_currentIndex;
 }
 
-void SessionService::setCurrentIndex(int index)
-{
-    m_currentIndex = index;
-}
-
 SessionState *SessionService::currentSession()
 {
-    if (!isValidIndex(m_currentIndex)) {
-        return nullptr;
-    }
-    return &m_sessions[m_currentIndex];
+    return isValidIndex(m_currentIndex) ? &m_sessions[m_currentIndex] : nullptr;
 }
 
 const SessionState *SessionService::currentSession() const
 {
-    if (!isValidIndex(m_currentIndex)) {
-        return nullptr;
-    }
-    return &m_sessions[m_currentIndex];
+    return isValidIndex(m_currentIndex) ? &m_sessions[m_currentIndex] : nullptr;
 }
 
 SessionState *SessionService::sessionById(const QString &sessionId)
@@ -74,45 +77,63 @@ const SessionState *SessionService::sessionById(const QString &sessionId) const
     return nullptr;
 }
 
-void SessionService::appendSession(const SessionState &session)
+bool SessionService::loadSessions()
 {
-    m_sessions.append(session);
-}
-
-SessionState SessionService::takeSessionAt(int index)
-{
-    return m_sessions.takeAt(index);
-}
-
-void SessionService::clear()
-{
+    for (SessionState &session : m_sessions) {
+        destroySessionRuntime(session);
+    }
     m_sessions.clear();
     m_currentIndex = -1;
+
+    const int count = m_settings.beginReadArray(QStringLiteral("sessions"));
+    m_sessions.reserve(count > 0 ? count : 1);
+    for (int i = 0; i < count; ++i) {
+        SessionSettingsStore::LoadedSession loaded = SessionSettingsStore::readSession(m_settings, i);
+        for (SubscriptionEntry &subscription : loaded.session.subscriptions) {
+            if (!subscription.scriptId.isEmpty()
+                    && !m_scriptService.scriptById(subscription.scriptId)) {
+                subscription.scriptId.clear();
+            }
+        }
+
+        initializeSessionRuntime(loaded.session);
+        applyConfig(loaded.session, loaded.config, false);
+        m_sessions.append(std::move(loaded.session));
+        emit sessionRuntimeReady(&m_sessions.last());
+    }
+    m_settings.endArray();
+
+    bool loaded = true;
+    if (m_sessions.isEmpty()) {
+        m_sessions.append(createDefaultSession(tr("Session 1")));
+        emit sessionRuntimeReady(&m_sessions.last());
+        loaded = saveSessions();
+    }
+
+    emit sessionsChanged();
+    return loaded;
 }
 
-bool SessionService::isValidIndex(int index) const
+bool SessionService::saveSessions()
 {
-    return index >= 0 && index < m_sessions.size();
+    QString errorMessage;
+    if (SessionSettingsStore::writeSessions(m_settings, m_sessions, errorMessage)) {
+        return true;
+    }
+
+    emit storageError(
+        errorMessage.isEmpty() ? tr("Cannot save sessions.") : errorMessage);
+    return false;
 }
 
 void SessionService::setCurrentSessionIndex(int index)
 {
-    if (!m_dependencies.subscriptionController || !m_dependencies.subscriptionFpsRefreshTimer || !isValidIndex(index) || index == m_currentIndex) {
+    if (!isValidIndex(index) || index == m_currentIndex) {
         return;
     }
 
     m_currentIndex = index;
-    if (m_dependencies.reloadCurrentSessionHistory) {
-        m_dependencies.reloadCurrentSessionHistory();
-    }
-    if (m_dependencies.subscriptionController->currentSessionHasActiveSubscriptionFps(QDateTime::currentMSecsSinceEpoch())) {
-        m_dependencies.subscriptionFpsRefreshTimer->start();
-    } else {
-        m_dependencies.subscriptionFpsRefreshTimer->stop();
-    }
-    if (m_dependencies.refreshAllModels) {
-        m_dependencies.refreshAllModels();
-    }
+    emit currentSessionHistoryReloadRequested();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
 }
@@ -124,49 +145,45 @@ QVariantMap SessionService::defaultSessionConfig() const
 
 QVariantMap SessionService::sessionConfigAt(int index) const
 {
-    if (index < 0 || index >= m_sessions.size()) {
+    if (!isValidIndex(index)) {
         return defaultSessionConfig();
     }
-
-    const auto &session = m_sessions.at(index);
-    return SessionSettingsStore::configFromState(session);
+    return SessionSettingsStore::configFromState(m_sessions.at(index));
 }
 
 bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
 {
-    if (!m_dependencies.configureSession || !m_dependencies.mqttController || !m_dependencies.saveSessions || index < 0 || index >= m_sessions.size()) {
+    if (!isValidIndex(index)) {
         return false;
     }
 
-    auto *session = &m_sessions[index];
-    auto *client = session->runtime.client;
+    auto &session = m_sessions[index];
+    auto *client = session.runtime.client;
     if (!client) {
         return false;
     }
+
     const bool reconnect = client->state() != QMqttClient::Disconnected;
     if (reconnect) {
-        session->runtime.disconnectRequested = true;
+        session.runtime.disconnectRequested = true;
         client->disconnectFromHost();
     }
 
-    m_dependencies.configureSession(*session, config, true);
-    session->runtime.lastError.clear();
-    session->runtime.sessionRestored = false;
-    m_dependencies.mqttController->updatePublishStatus(*session, QStringLiteral("idle"));
-    const bool saved = m_dependencies.saveSessions();
+    applyConfig(session, config, true);
+    session.runtime.lastError.clear();
+    session.runtime.sessionRestored = false;
+    session.runtime.publishStatus.state = QStringLiteral("idle");
+    session.runtime.publishStatus.reason.clear();
+    session.runtime.publishStatus.updatedAt = timestampNow();
+    const bool saved = saveSessions();
 
     if (reconnect) {
-        session->runtime.disconnectRequested = false;
-        m_dependencies.mqttController->connectSession(*session, tr("Connecting to"));
+        session.runtime.disconnectRequested = false;
+        emit reconnectRequested(&session);
     }
 
-    if (m_dependencies.refreshSessionsModel) {
-        m_dependencies.refreshSessionsModel();
-    }
+    emit sessionsChanged();
     if (index == m_currentIndex) {
-        if (m_dependencies.refreshSessionAndSubscriptionModels) {
-            m_dependencies.refreshSessionAndSubscriptionModels();
-        }
         emit currentSessionChanged();
     }
     return saved;
@@ -174,46 +191,34 @@ bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
 
 void SessionService::addSessionWithConfig(const QVariantMap &config)
 {
-    if (!m_dependencies.createDefaultSession || !m_dependencies.configureSession || !m_dependencies.saveSessions) {
-        return;
-    }
-
-    const QString fallbackName = config.value(QStringLiteral("name")).toString().trimmed().isEmpty()
+    const QString configuredName = config.value(QStringLiteral("name")).toString().trimmed();
+    const QString fallbackName = configuredName.isEmpty()
         ? tr("Session %1").arg(m_sessions.size() + 1)
-        : config.value(QStringLiteral("name")).toString().trimmed();
+        : configuredName;
 
-    SessionState session = m_dependencies.createDefaultSession(fallbackName);
-    m_dependencies.configureSession(session, config, false);
-    m_sessions.append(session);
+    SessionState session = createDefaultSession(fallbackName);
+    applyConfig(session, config, false);
+    m_sessions.append(std::move(session));
     m_currentIndex = m_sessions.size() - 1;
-    if (m_dependencies.reloadCurrentSessionHistory) {
-        m_dependencies.reloadCurrentSessionHistory();
-    }
-    m_dependencies.saveSessions();
-    if (m_dependencies.refreshAllModels) {
-        m_dependencies.refreshAllModels();
-    }
-    if (m_dependencies.refreshScriptsModel) {
-        m_dependencies.refreshScriptsModel();
-    }
-    if (m_dependencies.refreshSessionsModel) {
-        m_dependencies.refreshSessionsModel();
-    }
+    emit sessionRuntimeReady(&m_sessions.last());
+    emit currentSessionHistoryReloadRequested();
+    saveSessions();
+    emit sessionsChanged();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
 }
 
 void SessionService::duplicateSessionAt(int index)
 {
-    if (!m_dependencies.createDefaultSession || !m_dependencies.configureSession || !m_dependencies.saveSessions || index < 0 || index >= m_sessions.size()) {
+    if (!isValidIndex(index)) {
         return;
     }
 
-    const auto &source = m_sessions.at(index);
+    const SessionState &source = m_sessions.at(index);
     const QVariantMap config = SessionSettingsStore::duplicateConfigFromState(source);
 
-    SessionState session = m_dependencies.createDefaultSession(tr("%1 Copy").arg(source.name));
-    m_dependencies.configureSession(session, config, false);
+    SessionState session = createDefaultSession(tr("%1 Copy").arg(source.name));
+    applyConfig(session, config, false);
     session.outputPaused = source.outputPaused;
     session.runtime.subscriptionFormats = source.runtime.subscriptionFormats;
     session.subscriptions = source.subscriptions;
@@ -225,81 +230,225 @@ void SessionService::duplicateSessionAt(int index)
         subscription.recentMessageTimestampsMs.clear();
     }
 
-    m_sessions.append(session);
+    m_sessions.append(std::move(session));
     m_currentIndex = m_sessions.size() - 1;
-    if (m_dependencies.reloadCurrentSessionHistory) {
-        m_dependencies.reloadCurrentSessionHistory();
-    }
-    m_dependencies.saveSessions();
-    if (m_dependencies.refreshAllModels) {
-        m_dependencies.refreshAllModels();
-    }
-    if (m_dependencies.refreshScriptsModel) {
-        m_dependencies.refreshScriptsModel();
-    }
-    if (m_dependencies.refreshSessionsModel) {
-        m_dependencies.refreshSessionsModel();
-    }
+    emit sessionRuntimeReady(&m_sessions.last());
+    emit currentSessionHistoryReloadRequested();
+    saveSessions();
+    emit sessionsChanged();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
 }
 
 void SessionService::removeSessionAt(int index)
 {
-    if (!m_dependencies.historyStore || !m_dependencies.destroySessionRuntime || !m_dependencies.saveSessions || m_sessions.size() <= 1 || index < 0 || index >= m_sessions.size()) {
+    if (m_sessions.size() <= 1 || !isValidIndex(index)) {
         return;
     }
 
-    SessionState removed = takeSessionAt(index);
-    if (m_dependencies.deleteHistoryWithSession && m_dependencies.deleteHistoryWithSession()) {
-        m_dependencies.historyStore->clearSessionHistory(removed.id);
+    SessionState removed = m_sessions.takeAt(index);
+    if (m_preferences.deleteHistoryWithSession()) {
+        m_historyStore.clearSessionHistory(removed.id);
     }
-    m_dependencies.destroySessionRuntime(removed);
+    destroySessionRuntime(removed);
 
-    int indexAfterRemoval = m_currentIndex;
-    if (indexAfterRemoval >= m_sessions.size()) {
-        indexAfterRemoval = m_sessions.size() - 1;
+    if (m_currentIndex == index) {
+        m_currentIndex = (std::min)(index, static_cast<int>(m_sessions.size()) - 1);
+    } else if (m_currentIndex > index) {
+        --m_currentIndex;
     }
-    if (indexAfterRemoval > index) {
-        --indexAfterRemoval;
-    }
-    m_currentIndex = indexAfterRemoval;
 
-    if (m_dependencies.reloadCurrentSessionHistory) {
-        m_dependencies.reloadCurrentSessionHistory();
-    }
-    m_dependencies.saveSessions();
-    if (m_dependencies.refreshAllModels) {
-        m_dependencies.refreshAllModels();
-    }
-    if (m_dependencies.refreshScriptsModel) {
-        m_dependencies.refreshScriptsModel();
-    }
-    if (m_dependencies.refreshSessionsModel) {
-        m_dependencies.refreshSessionsModel();
-    }
+    emit currentSessionHistoryReloadRequested();
+    saveSessions();
+    emit sessionsChanged();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
 }
 
 void SessionService::setCurrentOutputPaused(bool paused)
 {
-    if (!m_dependencies.saveSessions) {
-        return;
-    }
-
     auto *session = currentSession();
     if (!session || session->outputPaused == paused) {
         return;
     }
 
     session->outputPaused = paused;
-    m_dependencies.saveSessions();
-    if (!paused && m_dependencies.reloadCurrentSessionHistory) {
-        m_dependencies.reloadCurrentSessionHistory();
+    saveSessions();
+    if (!paused) {
+        emit currentSessionHistoryReloadRequested();
     }
-    if (m_dependencies.refreshCurrentSessionModels) {
-        m_dependencies.refreshCurrentSessionModels();
-    }
+    emit sessionsChanged();
     emit currentSessionChanged();
+}
+
+bool SessionService::isValidIndex(int index) const
+{
+    return index >= 0 && index < m_sessions.size();
+}
+
+void SessionService::applyConfig(
+    SessionState &session,
+    const QVariantMap &config,
+    bool keepNameFallback) const
+{
+    auto *client = session.runtime.client;
+    if (!client) {
+        return;
+    }
+
+    QString name = config.value(QStringLiteral("name")).toString().trimmed();
+    if (name.isEmpty() && !keepNameFallback) {
+        name = session.name;
+    }
+    if (!name.isEmpty()) {
+        session.name = name;
+    }
+
+    session.transport = SessionConfig::sanitizeTransport(config.value(QStringLiteral("transport")));
+    session.protocolVersion = SessionConfig::sanitizeProtocolVersion(
+        config.value(QStringLiteral("protocolVersion"), 5));
+    session.sslSecure = config.value(QStringLiteral("sslSecure"), true).toBool();
+    session.alpn = config.value(QStringLiteral("alpn")).toString().trimmed();
+    session.certificateType = config.value(
+                                  QStringLiteral("certificateType"),
+                                  QStringLiteral("ca"))
+                                      .toString()
+            == QStringLiteral("self")
+        ? QStringLiteral("self")
+        : QStringLiteral("ca");
+    session.caFile = config.value(QStringLiteral("caFile")).toString().trimmed();
+    session.clientCertificateFile = config.value(
+                                            QStringLiteral("clientCertificateFile"))
+                                        .toString()
+                                        .trimmed();
+    session.clientKeyFile = config.value(QStringLiteral("clientKeyFile")).toString().trimmed();
+    session.connectTimeoutSeconds = SessionConfig::sanitizeBoundedInt(
+        config.value(QStringLiteral("connectTimeoutSeconds"), 10), 10, 1, 300);
+    session.sessionExpiryInterval = SessionConfig::sanitizeOptionalUInt32(
+        config.value(QStringLiteral("sessionExpiryInterval"), 0));
+    session.receiveMaximum = SessionConfig::sanitizeOptionalUInt16(
+        config.value(QStringLiteral("receiveMaximum")));
+    session.maximumPacketSize = SessionConfig::sanitizeOptionalUInt32(
+        config.value(QStringLiteral("maximumPacketSize")));
+    session.topicAliasMaximum = SessionConfig::sanitizeOptionalUInt16(
+        config.value(QStringLiteral("topicAliasMaximum")));
+    session.requestResponseInformation = config.value(
+                                                QStringLiteral("requestResponseInformation"),
+                                                false)
+                                            .toBool();
+    session.requestProblemInformation = config.value(
+                                               QStringLiteral("requestProblemInformation"),
+                                               false)
+                                           .toBool();
+    session.authenticationMethod = config.value(
+                                             QStringLiteral("authenticationMethod"))
+                                         .toString()
+                                         .trimmed();
+    session.authenticationData = config.value(QStringLiteral("authenticationData")).toString();
+
+    QString host = config.value(QStringLiteral("host")).toString().trimmed();
+    if (host.isEmpty()) {
+        host = QStringLiteral("broker.emqx.io");
+    }
+
+    client->setHostname(host);
+    client->setPort(SessionConfig::sanitizePort(config.value(QStringLiteral("port")), session.transport));
+    client->setProtocolVersion(toProtocolVersion(session.protocolVersion));
+
+    QString clientId = config.value(QStringLiteral("clientId")).toString().trimmed();
+    if (clientId.isEmpty()) {
+        clientId = SessionConfig::generateClientId();
+    }
+    client->setClientId(clientId);
+    client->setUsername(config.value(QStringLiteral("username")).toString());
+    client->setPassword(config.value(QStringLiteral("password")).toString());
+    client->setCleanSession(config.value(QStringLiteral("cleanSession"), true).toBool());
+    client->setKeepAlive(SessionConfig::sanitizeKeepAlive(
+        config.value(QStringLiteral("keepAliveSeconds"), SessionConfig::kDefaultKeepAlive)));
+    client->setAutoKeepAlive(true);
+    if (session.runtime.connectTimeoutTimer) {
+        session.runtime.connectTimeoutTimer->setInterval(session.connectTimeoutSeconds * 1000);
+    }
+
+    QMqttConnectionProperties connectionProperties;
+    connectionProperties.setSessionExpiryInterval(session.sessionExpiryInterval);
+    if (session.receiveMaximum > 0) {
+        connectionProperties.setMaximumReceive(session.receiveMaximum);
+    }
+    if (session.maximumPacketSize > 0) {
+        connectionProperties.setMaximumPacketSize(session.maximumPacketSize);
+    }
+    if (session.topicAliasMaximum > 0) {
+        connectionProperties.setMaximumTopicAlias(session.topicAliasMaximum);
+    }
+    connectionProperties.setRequestResponseInformation(session.requestResponseInformation);
+    connectionProperties.setRequestProblemInformation(session.requestProblemInformation);
+    if (!session.authenticationMethod.isEmpty()) {
+        connectionProperties.setAuthenticationMethod(session.authenticationMethod);
+        connectionProperties.setAuthenticationData(session.authenticationData.toUtf8());
+    }
+    client->setConnectionProperties(connectionProperties);
+}
+
+void SessionService::initializeSessionRuntime(SessionState &session)
+{
+    if (!session.runtime.client) {
+        session.runtime.client = new QMqttClient(this);
+        session.runtime.client->setAutoKeepAlive(true);
+    }
+    if (session.runtime.connectTimeoutTimer) {
+        return;
+    }
+
+    session.runtime.connectTimeoutTimer = new QTimer(this);
+    session.runtime.connectTimeoutTimer->setSingleShot(true);
+    connect(
+        session.runtime.connectTimeoutTimer,
+        &QTimer::timeout,
+        this,
+        [this, sessionId = session.id]() {
+            auto *boundSession = sessionById(sessionId);
+            auto *client = boundSession ? boundSession->runtime.client : nullptr;
+            if (!boundSession || !client || client->state() != QMqttClient::Connecting) {
+                return;
+            }
+
+            const QString timeoutMessage = QStringLiteral("Connection timed out.");
+            boundSession->runtime.lastError = timeoutMessage;
+            emit runtimeError(
+                boundSession->id,
+                QStringLiteral("Error"),
+                timeoutMessage);
+            client->disconnectFromHost();
+            emit sessionsChanged();
+        });
+}
+
+void SessionService::destroySessionRuntime(SessionState &session)
+{
+    if (session.runtime.connectTimeoutTimer) {
+        session.runtime.connectTimeoutTimer->stop();
+        session.runtime.connectTimeoutTimer->deleteLater();
+        session.runtime.connectTimeoutTimer = nullptr;
+    }
+    if (session.runtime.client) {
+        session.runtime.client->disconnectFromHost();
+        session.runtime.client->deleteLater();
+        session.runtime.client = nullptr;
+    }
+}
+
+SessionState SessionService::createDefaultSession(const QString &name)
+{
+    SessionState session;
+    session.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    session.name = name;
+    session.transport = QStringLiteral("tcp");
+    session.protocolVersion = 5;
+    initializeSessionRuntime(session);
+
+    QVariantMap config = SessionConfig::defaultConfig(1);
+    config.insert(QStringLiteral("name"), name);
+    applyConfig(session, config, false);
+    return session;
 }

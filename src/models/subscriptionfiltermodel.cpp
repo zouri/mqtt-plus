@@ -36,13 +36,6 @@ bool SubscriptionFilterModel::hasFilter() const
     return !m_filterText.isEmpty() || m_filterMode != QStringLiteral("all");
 }
 
-void SubscriptionFilterModel::setSourceModel(QAbstractItemModel *sourceModel)
-{
-    QSortFilterProxyModel::setSourceModel(sourceModel);
-    connectCountSignals();
-    emit countChanged();
-}
-
 void SubscriptionFilterModel::setFilterText(const QString &filterText)
 {
     const bool hadFilter = hasFilter();
@@ -94,13 +87,19 @@ QVariantMap SubscriptionFilterModel::rowAt(int row) const
         return {};
     }
 
-    auto *subscriptions = qobject_cast<SubscriptionListModel *>(sourceModel());
-    if (!subscriptions) {
-        return {};
+    const QModelIndex rowIndex = index(row, 0);
+    QVariantMap result;
+    const QHash<int, QByteArray> roles = roleNames();
+    for (auto role = roles.cbegin(); role != roles.cend(); ++role) {
+        QString key = QString::fromUtf8(role.value());
+        if (role.key() == SubscriptionListModel::ColorRole) {
+            key = QStringLiteral("color");
+        } else if (role.key() == SubscriptionListModel::StateRole) {
+            key = QStringLiteral("state");
+        }
+        result.insert(key, rowIndex.data(role.key()));
     }
-
-    const QModelIndex sourceIndex = mapToSource(index(row, 0));
-    return subscriptions->rowAt(sourceIndex.row());
+    return result;
 }
 
 bool SubscriptionFilterModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
