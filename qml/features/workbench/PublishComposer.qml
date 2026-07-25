@@ -14,28 +14,16 @@ Item {
     required property var ui
 
     property bool expanded: true
-    property int composerHeight: 168
-    readonly property int collapsedHeight: 40
+    property int composerHeight: 166
+    property string fontFamily: ""
+    readonly property int collapsedHeight: root.ui.compactControlHeight + 2
+    readonly property int metadataControlHeight: root.ui.compactCheckHeight
     readonly property int minComposerHeight: 150
     readonly property int maxComposerHeight: 300
     readonly property color surfaceBg: root.ui.themePalette.panelBg
-    readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle"
-                                              ? (root.publishStatus.reason && root.publishStatus.reason.length > 0
-                                                 ? root.publishStatus.reason
-                                                 : qsTr("Publish status: %1").arg(root.ui.statusLabel(root.publishStatus.state)))
-                                              : ""
-    readonly property string publishDisabledReason: root.status.state !== "connected"
-                                                    ? qsTr("Connect before publishing")
-                                                    : (root.publisher.topic.trim().length === 0
-                                                       ? qsTr("Enter a topic before publishing")
-                                                       : "")
-    readonly property color publishFeedbackColor: root.publishStatus.state === "failed"
-                                                  ? root.ui.themePalette.errorText
-                                                  : (root.publishStatus.state === "sent"
-                                                     || root.publishStatus.state === "acknowledged"
-                                                     || root.publishStatus.state === "completed"
-                                                     ? root.ui.themePalette.successText
-                                                     : root.ui.textMuted)
+    readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle" ? (root.publishStatus.reason && root.publishStatus.reason.length > 0 ? root.publishStatus.reason : qsTr("Publish status: %1").arg(root.ui.statusLabel(root.publishStatus.state))) : ""
+    readonly property string publishDisabledReason: root.status.state !== "connected" ? qsTr("Connect before publishing") : (root.publisher.topic.trim().length === 0 ? qsTr("Enter a topic before publishing") : "")
+    readonly property color publishFeedbackColor: root.publishStatus.state === "failed" ? root.ui.themePalette.errorText : (root.publishStatus.state === "sent" || root.publishStatus.state === "acknowledged" || root.publishStatus.state === "completed" ? root.ui.themePalette.successText : root.ui.textMuted)
     property bool publishPulseActive: false
 
     Layout.fillWidth: true
@@ -47,18 +35,16 @@ Item {
     SplitView.maximumHeight: root.expanded ? root.maxComposerHeight : root.collapsedHeight
 
     function resizeComposer(height) {
-        root.composerHeight = Math.max(
-                    root.minComposerHeight,
-                    Math.min(root.maxComposerHeight, Math.round(height)))
+        root.composerHeight = Math.max(root.minComposerHeight, Math.min(root.maxComposerHeight, Math.round(height)));
     }
 
     function revealDraftEditor() {
-        root.expanded = true
+        root.expanded = true;
     }
 
     function publishDraft() {
         if (root.publisher.canPublish) {
-            root.publisher.publishDraft()
+            root.publisher.publishDraft();
         }
     }
 
@@ -79,8 +65,13 @@ Item {
 
     onHeightChanged: {
         if (root.expanded && height > 0) {
-            root.resizeComposer(height)
+            root.resizeComposer(height);
         }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        color: root.surfaceBg
     }
 
     ColumnLayout {
@@ -89,207 +80,199 @@ Item {
 
         Item {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
+            Layout.preferredHeight: root.collapsedHeight
 
-            Rectangle {
+            Button {
+                id: composerHeader
+
                 anchors.fill: parent
-                color: root.surfaceBg
+                Accessible.name: root.expanded ? qsTr("Collapse publish composer") : qsTr("Expand publish composer")
+
+                contentItem: Item {}
+
+                background: Item {}
+
+                onClicked: root.expanded = !root.expanded
             }
 
-            ColumnLayout {
+            RowLayout {
                 anchors.fill: parent
-                spacing: 7
+                anchors.leftMargin: root.ui.spaceSm
+                anchors.rightMargin: root.ui.spaceSm
+                anchors.topMargin: 3
+                anchors.bottomMargin: 3
+                spacing: 6
 
-                Button {
-                    id: composerHeader
-
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: root.collapsedHeight
-                    leftPadding: 14
-                    rightPadding: 12
-                    Accessible.name: root.expanded ? qsTr("Collapse publish composer") : qsTr("Expand publish composer")
-
-                    contentItem: RowLayout {
-                        spacing: 7
-
-                        Label {
-                            text: qsTr("Publish Message")
-                            color: root.ui.textStrong
-                            font.pixelSize: 12
-                            font.bold: true
-                        }
-
-                        Label {
-                            visible: root.publishFeedback.length > 0
-                            text: root.publishFeedback
-                            color: root.publishFeedbackColor
-                            font.pixelSize: 11
-                            elide: Label.ElideRight
-                            Layout.fillWidth: true
-                        }
-
-                        Item {
-                            visible: root.publishFeedback.length === 0
-                            Layout.fillWidth: true
-                        }
-
-                        Label {
-                            text: root.expanded
-                                  ? "⌄ " + qsTr("Collapse")
-                                  : "› " + qsTr("Expand")
-                            color: root.ui.textMuted
-                            font.pixelSize: 11
-                        }
-                    }
-
-                    background: Rectangle {
-                        color: composerHeader.hovered ? root.ui.themePalette.rowHover : "transparent"
-                    }
-
-                    onClicked: root.expanded = !root.expanded
+                Label {
+                    text: qsTr("Publish Message")
+                    color: root.ui.textStrong
+                    font.pixelSize: root.ui.textSm
+                    font.bold: true
                 }
 
-                RowLayout {
-                    visible: root.expanded
+                Label {
+                    visible: root.publishFeedback.length > 0
                     Layout.fillWidth: true
-                    Layout.leftMargin: 14
-                    Layout.rightMargin: 12
-                    Layout.preferredHeight: visible ? 34 : 0
-                    spacing: 6
-
-                    ColumnLayout {
-                        Layout.preferredWidth: 340
-                        Layout.minimumWidth: 240
-                        Layout.maximumWidth: 380
-                        spacing: 0
-
-                        AppTextField {
-                            ui: root.ui
-                            id: publishTopicField
-                            Layout.fillWidth: true
-                            text: root.publisher.topic
-                            placeholderText: qsTr("home/living-room/light/set")
-                            onTextEdited: root.publisher.topic = text
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.preferredWidth: 88
-                        spacing: 0
-
-                        AppComboBox {
-                            ui: root.ui
-                            id: publishQosBox
-                            model: [qsTr("QoS 0"), qsTr("QoS 1")]
-                            currentIndex: root.publisher.qos
-                            Layout.fillWidth: true
-                            onActivated: root.publisher.qos = currentIndex
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.preferredWidth: 104
-                        spacing: 0
-
-                        AppComboBox {
-                            ui: root.ui
-                            id: publishFormatBox
-                            model: root.publisher.payloadFormats
-                            currentIndex: root.publisher.format
-                            Layout.fillWidth: true
-                            onActivated: root.publisher.format = currentIndex
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.preferredWidth: 68
-                        spacing: 0
-
-                        AppCheckBox {
-                            ui: root.ui
-                            id: retainCheck
-                            text: qsTr("Retain")
-                            checked: root.publisher.retain
-                            onToggled: root.publisher.retain = checked
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                    }
+                    text: root.publishFeedback
+                    color: root.publishFeedbackColor
+                    font.pixelSize: root.ui.textXs
+                    elide: Label.ElideRight
                 }
 
                 Item {
+                    visible: root.publishFeedback.length === 0
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.leftMargin: 14
-                    Layout.rightMargin: 12
-                    Layout.bottomMargin: 12
-                    visible: root.expanded
+                }
 
-                    AppTextArea {
-                        ui: root.ui
-                        id: publishPayloadArea
-                        anchors.fill: parent
-                        placeholderText: publishFormatBox.currentText === "JSON"
-                                         ? "{\"value\": 23.7}"
-                                         : qsTr("Payload")
-                        text: root.publisher.payload
-                        wrapMode: TextEdit.Wrap
-                        submitOnCtrlEnter: true
-                        onTextChanged: {
-                            if (root.publisher.payload !== text) {
-                                root.publisher.payload = text
-                            }
-                        }
-                        onSubmitRequested: root.publishDraft()
-                    }
+                AppIconButton {
+                    id: publishHistoryButton
 
-                    AppIconButton {
-                        id: publishHistoryButton
-                        ui: root.ui
-                        anchors.right: publishButton.left
-                        anchors.bottom: parent.bottom
-                        anchors.rightMargin: 6
-                        anchors.bottomMargin: 8
-                        implicitWidth: 30
-                        implicitHeight: 30
-                        cornerRadius: 8
-                        iconSource: root.ui.materialIcon("logs")
-                        iconSize: 15
-                        restBg: root.ui.themePalette.innerPanelBg
-                        outlineColor: root.ui.themePalette.fieldBorder
-                        accessibleName: qsTr("Recent publishes")
-                        toolTipText: root.publisher.recentPublishes.length > 0
-                                     ? qsTr("Recent publishes")
-                                     : qsTr("No recent publishes")
-                        onClicked: publishHistoryPopup.open()
-                    }
+                    ui: root.ui
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    cornerRadius: 7
+                    iconSource: root.ui.materialIcon("logs")
+                    iconSize: 14
+                    restBg: publishHistoryPopup.visible ? root.ui.themePalette.selectedBg : "transparent"
+                    hoverBg: root.ui.themePalette.rowHover
+                    outlineColor: publishHistoryPopup.visible ? root.ui.themePalette.selectedBorder : "transparent"
+                    symbolColor: publishHistoryPopup.visible ? root.ui.themePalette.infoText : root.ui.textMuted
+                    accessibleName: qsTr("Recent publishes")
+                    toolTipText: root.publisher.recentPublishes.length > 0 ? qsTr("Recent publishes") : qsTr("No recent publishes")
+                    toolTipPosition: AppToolTip.Position.Bottom
+                    onClicked: publishHistoryPopup.open()
+                }
 
-                    AppIconButton {
-                        id: publishButton
-                        ui: root.ui
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.rightMargin: 8
-                        anchors.bottomMargin: 8
-                        implicitWidth: 30
-                        implicitHeight: 30
-                        cornerRadius: 8
-                        iconSource: root.ui.materialIcon("send")
-                        iconSize: 16
-                        primary: true
-                        forceActive: root.publishPulseActive
-                        danger: root.publishPulseActive && root.publishStatus.state === "failed"
-                        enabled: root.publisher.canPublish
-                        accessibleName: qsTr("Publish message")
-                        toolTipText: root.publisher.canPublish
-                                     ? qsTr("Publish message (%1+Enter)").arg(Qt.platform.os === "osx" ? qsTr("Command") : qsTr("Ctrl"))
-                                     : root.publishDisabledReason
-                        onClicked: root.publishDraft()
+                AppIconButton {
+                    id: collapseButton
+
+                    ui: root.ui
+                    readonly property bool collapseHoverActive: collapseButton.hovered
+                                                                 || (composerHeader.hovered
+                                                                     && !publishHistoryButton.hovered)
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    cornerRadius: 7
+                    iconSource: root.ui.materialIcon(root.expanded ? "chevron-down" : "chevron-right")
+                    iconSize: 18
+                    restBg: root.ui.themePalette.itemBg
+                    hoverBg: root.ui.themePalette.rowHover
+                    outlineColor: root.ui.themePalette.fieldBorder
+                    symbolColor: collapseButton.collapseHoverActive
+                                 ? root.ui.textStrong
+                                 : root.ui.textMuted
+                    forceActive: collapseButton.collapseHoverActive
+                    accessibleName: composerHeader.Accessible.name
+                    toolTipText: root.expanded ? qsTr("Collapse") : qsTr("Expand")
+                    toolTipPosition: AppToolTip.Position.Bottom
+                    onClicked: root.expanded = !root.expanded
+                }
+            }
+        }
+
+        RowLayout {
+            visible: root.expanded
+            Layout.fillWidth: true
+            Layout.leftMargin: root.ui.spaceSm
+            Layout.rightMargin: root.ui.spaceSm
+            Layout.topMargin: 0
+            Layout.bottomMargin: 7
+            Layout.preferredHeight: visible ? root.metadataControlHeight : 0
+            spacing: 6
+
+            AppTextField {
+                id: publishTopicField
+                ui: root.ui
+                Layout.fillWidth: true
+                Layout.minimumWidth: 180
+                Layout.preferredWidth: 340
+                Layout.maximumWidth: 380
+                Layout.preferredHeight: root.metadataControlHeight
+                text: root.publisher.topic
+                placeholderText: qsTr("home/living-room/light/set")
+                onTextEdited: root.publisher.topic = text
+            }
+
+            AppComboBox {
+                id: publishQosBox
+                ui: root.ui
+                Layout.preferredWidth: 88
+                Layout.preferredHeight: root.metadataControlHeight
+                model: [qsTr("QoS 0"), qsTr("QoS 1")]
+                currentIndex: root.publisher.qos
+                onActivated: root.publisher.qos = currentIndex
+            }
+
+            AppComboBox {
+                id: publishFormatBox
+                ui: root.ui
+                Layout.preferredWidth: 104
+                Layout.preferredHeight: root.metadataControlHeight
+                model: root.publisher.payloadFormats
+                currentIndex: root.publisher.format
+                onActivated: root.publisher.format = currentIndex
+            }
+
+            AppCheckBox {
+                id: retainCheck
+                ui: root.ui
+                Layout.preferredWidth: 68
+                Layout.preferredHeight: root.metadataControlHeight
+                text: qsTr("Retain")
+                checked: root.publisher.retain
+                onToggled: root.publisher.retain = checked
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+        }
+
+        Item {
+            visible: root.expanded
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.leftMargin: root.ui.spaceSm
+            Layout.rightMargin: root.ui.spaceSm
+            Layout.bottomMargin: 12
+
+            AppTextArea {
+                id: publishPayloadArea
+                ui: root.ui
+                anchors.fill: parent
+                font.family: root.fontFamily
+                placeholderText: publishFormatBox.currentText === "JSON" ? "{\"value\": 23.7}" : qsTr("Payload")
+                text: root.publisher.payload
+                wrapMode: TextEdit.Wrap
+                submitOnCtrlEnter: true
+                onTextChanged: {
+                    if (root.publisher.payload !== text) {
+                        root.publisher.payload = text;
                     }
                 }
+                onSubmitRequested: root.publishDraft()
+            }
+
+            AppIconButton {
+                id: publishButton
+
+                ui: root.ui
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.rightMargin: 8
+                anchors.bottomMargin: 8
+                implicitWidth: 30
+                implicitHeight: 30
+                cornerRadius: 8
+                iconSource: root.ui.materialIcon("send")
+                iconSize: 16
+                primary: true
+                forceActive: root.publishPulseActive
+                danger: root.publishPulseActive && root.publishStatus.state === "failed"
+                enabled: root.publisher.canPublish
+                accessibleName: qsTr("Publish message")
+                toolTipText: root.publisher.canPublish ? qsTr("Publish message (%1+Enter)").arg(Qt.platform.os === "osx" ? qsTr("Command") : qsTr("Ctrl")) : root.publishDisabledReason
+                onClicked: root.publishDraft()
             }
         }
     }
@@ -372,9 +355,7 @@ Item {
                     width: ListView.view.width
                     height: 48
                     radius: 6
-                    color: recentPublishHover.hovered
-                           ? root.ui.themePalette.rowHover
-                           : root.ui.themePalette.innerPanelBg
+                    color: recentPublishHover.hovered ? root.ui.themePalette.rowHover : root.ui.themePalette.innerPanelBg
 
                     HoverHandler {
                         id: recentPublishHover
