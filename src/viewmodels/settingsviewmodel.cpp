@@ -2,7 +2,6 @@
 
 #include "usecases/eventhistoryservice.h"
 #include "usecases/preferencescontroller.h"
-#include "models/eventstreammodel.h"
 #include "services/apputils.h"
 #include "services/storage/historystore.h"
 
@@ -98,26 +97,6 @@ QVariant optionValue(SettingsOption option, int index)
     return values.at(std::clamp(index, 0, static_cast<int>(values.size()) - 1));
 }
 
-void clearSessionMessages(QVector<SessionState> &sessions)
-{
-    for (SessionState &session : sessions) {
-        session.runtime.messageRows.clear();
-        session.runtime.totalMessageCount = 0;
-        session.runtime.viewedMessageCount = 0;
-        session.runtime.oldestLoadedMessageId = 0;
-        session.runtime.loadedAllMessageHistory = true;
-    }
-}
-
-void clearSessionLogs(QVector<SessionState> &sessions)
-{
-    for (SessionState &session : sessions) {
-        session.runtime.logRows.clear();
-        session.runtime.oldestLoadedLogId = 0;
-        session.runtime.loadedAllLogHistory = true;
-    }
-}
-
 QString sanitizeLanguageMode(const QString &value)
 {
     const QString mode = value.trimmed();
@@ -156,8 +135,6 @@ SettingsViewModel::SettingsViewModel(
     EventHistoryService &eventController,
     HistoryStore &historyStore,
     QVector<SessionState> &sessions,
-    EventStreamModel &messages,
-    EventStreamModel &logs,
     QSettings &settings,
     QObject *parent)
     : QObject(parent)
@@ -166,8 +143,6 @@ SettingsViewModel::SettingsViewModel(
     , m_eventController(eventController)
     , m_historyStore(historyStore)
     , m_sessions(sessions)
-    , m_messages(messages)
-    , m_logs(logs)
 {
     m_themeMode = sanitizeThemeMode(
         m_settings.value(QStringLiteral("appearance/themeMode"), QStringLiteral("system")).toString());
@@ -365,30 +340,17 @@ void SettingsViewModel::setClearLogsOnExitIndex(int index) { m_preferencesContro
 
 void SettingsViewModel::clearAllMessages()
 {
-    m_historyStore.clearAllMessages();
-    clearSessionMessages(m_sessions);
-    m_messages.clear();
-    emit m_eventController.messageStreamChanged();
+    m_eventController.clearAllMessages();
 }
 
 void SettingsViewModel::clearAllLogs()
 {
-    m_historyStore.clearAllLogs();
-    clearSessionLogs(m_sessions);
-    m_logs.clear();
-    emit m_eventController.logStreamChanged();
+    m_eventController.clearAllLogs();
 }
 
 void SettingsViewModel::clearAllHistory()
 {
-    m_historyStore.clearAllMessages();
-    m_historyStore.clearAllLogs();
-    clearSessionMessages(m_sessions);
-    clearSessionLogs(m_sessions);
-    m_messages.clear();
-    m_logs.clear();
-    emit m_eventController.messageStreamChanged();
-    emit m_eventController.logStreamChanged();
+    m_eventController.clearAllHistory();
 }
 
 void SettingsViewModel::refreshSystemColorScheme()

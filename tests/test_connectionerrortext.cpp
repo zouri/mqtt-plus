@@ -165,6 +165,7 @@ private slots:
     void connectionValidationErrorsIgnoreApplicationTranslator();
     void clientErrorUsesSameRawTextForSessionAndLog();
     void connectionTimeoutIgnoresApplicationTranslator();
+    void pendingReconnectStartsAfterDisconnectedSignal();
     void qosZeroPublishDoesNotRemainQueued();
 };
 
@@ -291,6 +292,27 @@ void ConnectionErrorTextTest::connectionTimeoutIgnoresApplicationTranslator()
     const QVariantMap row = logSpy.takeFirst().at(0).toMap();
     QCOMPARE(row.value(QStringLiteral("title")).toString(), QStringLiteral("Error"));
     QCOMPARE(row.value(QStringLiteral("payload")).toString(), session.runtime.lastError);
+}
+
+void ConnectionErrorTextTest::pendingReconnectStartsAfterDisconnectedSignal()
+{
+    QBuffer transport;
+    QVERIFY(transport.open(QIODevice::ReadWrite));
+    MqttFixture fixture;
+    QVERIFY2(fixture.initialize(), qPrintable(fixture.historyStore.lastError()));
+    SessionState &session = *fixture.sessions.currentSession();
+    auto *client = session.runtime.client;
+    QVERIFY(client);
+    client->setTransport(&transport, QMqttClient::IODevice);
+    session.runtime.disconnectRequested = true;
+    session.runtime.reconnectPending = true;
+
+    client->disconnected();
+
+    QVERIFY(!session.runtime.disconnectRequested);
+    QVERIFY(!session.runtime.reconnectPending);
+    QCOMPARE(client->state(), QMqttClient::Connecting);
+    QVERIFY(session.runtime.connectionStartedAtMs > 0);
 }
 
 void ConnectionErrorTextTest::qosZeroPublishDoesNotRemainQueued()

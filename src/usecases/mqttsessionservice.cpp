@@ -52,6 +52,7 @@ void MqttSessionService::connectCurrentSession()
     }
 
     session->runtime.disconnectRequested = false;
+    session->runtime.reconnectPending = false;
     session->runtime.sessionRestored = false;
     session->runtime.lastError.clear();
     updatePublishStatus(*session, QStringLiteral("idle"));
@@ -69,6 +70,7 @@ void MqttSessionService::disconnectCurrentSession()
     }
 
     session->runtime.disconnectRequested = true;
+    session->runtime.reconnectPending = false;
     if (session->runtime.connectTimeoutTimer) {
         session->runtime.connectTimeoutTimer->stop();
     }
@@ -190,6 +192,7 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
             }
             const auto *boundClient = boundSession->runtime.client;
             boundSession->runtime.disconnectRequested = false;
+            boundSession->runtime.reconnectPending = false;
             boundSession->runtime.connectedAtMs = QDateTime::currentMSecsSinceEpoch();
             boundSession->runtime.connectionStartedAtMs = 0;
             boundSession->runtime.lastError.clear();
@@ -210,6 +213,7 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
 
     connect(client, &QMqttClient::disconnected, this, [this, sessionId = session->id]() {
         if (auto *boundSession = m_sessionService.sessionById(sessionId)) {
+            const bool reconnect = boundSession->runtime.reconnectPending;
             if (boundSession->runtime.connectTimeoutTimer) {
                 boundSession->runtime.connectTimeoutTimer->stop();
             }
@@ -217,6 +221,7 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
                 ? QStringLiteral("Disconnected")
                 : QStringLiteral("Connection closed by broker");
             boundSession->runtime.disconnectRequested = false;
+            boundSession->runtime.reconnectPending = false;
             boundSession->runtime.connectedAtMs = 0;
             boundSession->runtime.connectionStartedAtMs = 0;
             m_subscriptionService.resetRuntimeSubscriptions(*boundSession);
@@ -224,6 +229,9 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
                 *boundSession,
                 QStringLiteral("Connection"),
                 message);
+            if (reconnect) {
+                connectSession(*boundSession, QStringLiteral("Connecting to"));
+            }
         }
 
         emit sessionStateChanged();

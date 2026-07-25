@@ -31,8 +31,11 @@ public:
         PreferencesController &preferencesController,
         QObject *parent = nullptr);
 
-    void clearCurrentMessages();
-    void clearCurrentLogs();
+    bool clearCurrentMessages();
+    bool clearCurrentLogs();
+    bool clearAllMessages();
+    bool clearAllLogs();
+    bool clearAllHistory();
     int loadOlderCurrentSessionMessages();
     int loadOlderCurrentSessionLogs();
     bool messageStreamFrozen() const;

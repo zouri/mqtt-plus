@@ -65,8 +65,6 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 0);
@@ -102,8 +100,6 @@ void SettingsOptionsViewModelTest::readsSettings()
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 2);
@@ -153,8 +149,6 @@ void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
     QSignalSpy messageSpy(&deps.eventHistoryService, &EventHistoryService::messageStreamChanged);
 
@@ -180,8 +174,6 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
     QSignalSpy reloadSpy(&deps.eventHistoryService, &EventHistoryService::totalMessageCountChanged);
     QSignalSpy messageSpy(&deps.eventHistoryService, &EventHistoryService::messageStreamChanged);
@@ -233,7 +225,7 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     QVERIFY(!deps.settings.contains(QStringLiteral("workspace/subscriptionPaneCollapsed")));
     QCOMPARE(session.runtime.totalMessageCount, 0);
     QCOMPARE(session.runtime.viewedMessageCount, 0);
-    QCOMPARE(reloadSpy.count(), 1);
+    QCOMPARE(reloadSpy.count(), 3);
     QCOMPARE(messageSpy.count(), 3);
     QCOMPARE(logSpy.count(), 3);
 }
@@ -246,8 +238,6 @@ void SettingsOptionsViewModelTest::forwardsPreferenceSignals()
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
     QSignalSpy windowSpy(&settings, &SettingsViewModel::windowMaximizedChanged);
     QSignalSpy autoCollapseSpy(&settings, &SettingsViewModel::autoCollapseConnectionListOnConnectChanged);
@@ -266,8 +256,6 @@ void SettingsOptionsViewModelTest::themeChangesEmitSignals()
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
 
     settings.setThemeModeIndex(1);
@@ -288,8 +276,6 @@ void SettingsOptionsViewModelTest::themeColorPersistsAndEmitsSignal()
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
     QSignalSpy colorSpy(&settings, &SettingsViewModel::themeColorChanged);
 
@@ -311,8 +297,6 @@ void SettingsOptionsViewModelTest::languageChangesEmitSignals()
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
     QSignalSpy modeSpy(&settings, &SettingsViewModel::languageModeChanged);
     QSignalSpy langSpy(&settings, &SettingsViewModel::languageChanged);
@@ -330,8 +314,6 @@ void SettingsOptionsViewModelTest::messagePayloadDisplayModePersistsAndEmitsSign
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
     QSignalSpy modeSpy(&settings, &SettingsViewModel::messagePayloadDisplayModeChanged);
 
@@ -346,8 +328,6 @@ void SettingsOptionsViewModelTest::messagePayloadDisplayModePersistsAndEmitsSign
         deps.eventHistoryService,
         deps.historyStore,
         deps.sessionService.sessions(),
-        deps.messages,
-        deps.logs,
         deps.settings);
     QCOMPARE(restoredSettings.messagePayloadDisplayModeIndex(), 2);
 }

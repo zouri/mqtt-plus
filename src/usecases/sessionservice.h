@@ -38,7 +38,7 @@ public:
     QVariantMap defaultSessionConfig() const;
     QVariantMap sessionConfigAt(int index) const;
     bool updateSessionConfigAt(int index, const QVariantMap &config);
-    void addSessionWithConfig(const QVariantMap &config);
+    bool addSessionWithConfig(const QVariantMap &config);
     void duplicateSessionAt(int index);
     void removeSessionAt(int index);
     void setCurrentOutputPaused(bool paused);
@@ -59,6 +59,7 @@ signals:
 private:
     bool isValidIndex(int index) const;
     void applyConfig(SessionState &session, const QVariantMap &config, bool keepNameFallback) const;
+    void requestReconnect(SessionState &session);
     void initializeSessionRuntime(SessionState &session);
     void destroySessionRuntime(SessionState &session);
     SessionState createDefaultSession(const QString &name);

@@ -23,6 +23,8 @@ private slots:
     void countsPersistedAndPendingMessagesPerSession();
     void keepsTotalMessageCountAcrossPruneAndReopen();
     void backfillsTotalMessageCountForExistingHistory();
+    void clearMessagesRollsBackWhenTotalDeleteFails();
+    void clearAllHistoryRollsBackWhenLogDeleteFails();
 };
 
 void HistoryStoreTest::flushesRawPayloadWithoutLegacyColumns()
@@ -317,6 +319,89 @@ void HistoryStoreTest::backfillsTotalMessageCountForExistingHistory()
     HistoryStore migrated(dataDir.path());
     QVERIFY2(migrated.isReady(), qPrintable(migrated.lastError()));
     QCOMPARE(migrated.totalMessageCount(sessionId), 2);
+}
+
+void HistoryStoreTest::clearMessagesRollsBackWhenTotalDeleteFails()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+
+    MessageRecord record;
+    record.sessionId = QStringLiteral("session-1");
+    record.timestamp = QStringLiteral("2026-07-25T10:00:00.000");
+    record.topic = QStringLiteral("devices/one");
+    record.payloadPreview = QStringLiteral("one");
+    record.payloadState = QStringLiteral("full");
+    QVERIFY(store.enqueueMessage(record) > 0);
+    QCOMPARE(store.flushPendingMessages(), QStringList {record.sessionId});
+
+    const QString connectionName = QStringLiteral("fail-total-delete-%1")
+                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral(
+                     "CREATE TRIGGER fail_message_total_delete "
+                     "BEFORE DELETE ON mqtt_message_totals "
+                     "BEGIN SELECT RAISE(ABORT, 'forced delete failure'); END")),
+            qPrintable(query.lastError().text()));
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    QVERIFY(!store.clearMessages(record.sessionId));
+    QVERIFY(store.lastError().contains(QStringLiteral("forced delete failure")));
+    QCOMPARE(store.loadMessages(record.sessionId, 10).size(), 1);
+    QCOMPARE(store.totalMessageCount(record.sessionId), 1);
+}
+
+void HistoryStoreTest::clearAllHistoryRollsBackWhenLogDeleteFails()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+
+    MessageRecord record;
+    record.sessionId = QStringLiteral("session-1");
+    record.timestamp = QStringLiteral("2026-07-25T10:00:00.000");
+    record.topic = QStringLiteral("devices/one");
+    record.payloadPreview = QStringLiteral("one");
+    record.payloadState = QStringLiteral("full");
+    QVERIFY(store.enqueueMessage(record) > 0);
+    QCOMPARE(store.flushPendingMessages(), QStringList {record.sessionId});
+    QVERIFY(store.appendEvent(
+                record.sessionId,
+                QStringLiteral("2026-07-25T10:00:01.000"),
+                QStringLiteral("MQTT"),
+                QStringLiteral("kept log"))
+        > 0);
+
+    const QString connectionName = QStringLiteral("fail-log-delete-%1")
+                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral(
+                     "CREATE TRIGGER fail_log_delete "
+                     "BEFORE DELETE ON event_logs "
+                     "BEGIN SELECT RAISE(ABORT, 'forced delete failure'); END")),
+            qPrintable(query.lastError().text()));
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    QVERIFY(!store.clearAllHistory());
+    QVERIFY(store.lastError().contains(QStringLiteral("forced delete failure")));
+    QCOMPARE(store.loadMessages(record.sessionId, 10).size(), 1);
+    QCOMPARE(store.totalMessageCount(record.sessionId), 1);
+    QCOMPARE(store.loadLogs(record.sessionId, 10).size(), 1);
 }
 
 void HistoryStoreTest::loadsPayloadBytesByMessageId()
