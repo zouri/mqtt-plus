@@ -207,9 +207,10 @@ Item {
         z: 2
         orientation: Qt.Horizontal
 
-        handle: Item {
+        handle: Rectangle {
             implicitWidth: workbenchSplit.orientation === Qt.Horizontal ? 6 : workbenchSplit.width
             implicitHeight: workbenchSplit.orientation === Qt.Horizontal ? workbenchSplit.height : 6
+            color: root.ui.themePalette.panelBg
 
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter

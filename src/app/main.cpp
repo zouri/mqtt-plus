@@ -1,3 +1,4 @@
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -11,6 +12,9 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
     QGuiApplication app(argc, argv);
+    auto applicationFont = app.font();
+    applicationFont.setFamily(QFontDatabase::systemFont(QFontDatabase::FixedFont).family());
+    app.setFont(applicationFont);
     app.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app-icon.png")));
 
     ApplicationObjectGraph objectGraph;

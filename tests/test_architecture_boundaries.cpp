@@ -42,6 +42,7 @@ private slots:
     void messagePanelUsesSplitViewForComposerResize();
     void eventStreamFollowModeUsesSingleCycleButton();
     void qmlUsesApplicationViewModelRootOnly();
+    void applicationUsesSystemFixedFont();
     void translationsDoNotReferenceLegacyFacade();
     void settingsExplainDeferredMessageRetention();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
@@ -798,6 +799,13 @@ void ArchitectureBoundariesTest::eventStreamFollowModeUsesSingleCycleButton()
         "Smart mode should synchronize and resume the rendered message model");
     QVERIFY2(source.contains(QStringLiteral("allowResume && eventList.userScrollActive")),
         "Only an active user scroll should automatically resume at the snapshot bottom");
+    QVERIFY2(source.contains(QStringLiteral("const atBottom = count === 0 || atYEnd")),
+        "Moving away from the exact bottom should stop following without a distance threshold");
+    QVERIFY2(!source.contains(QStringLiteral("distanceFromBottom <= 24")),
+        "Message stream following should not retain the old 24-pixel pause threshold");
+    QVERIFY2(source.contains(
+                 QStringLiteral("PointerDevice.Mouse | PointerDevice.TouchPad")),
+        "Wheel handling should cover both mouse wheels and touchpads");
     QVERIFY2(source.contains(QStringLiteral("root.viewModel.totalMessageCount")),
         "The message badge should use the session total instead of the capped visible model count");
     QVERIFY2(!source.contains(QStringLiteral("checkable: true")),
@@ -872,6 +880,30 @@ void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()
         "main.cpp must not compose ScriptsWorkspace directly");
     QVERIFY2(!mainSource.contains(QStringLiteral("SettingsWorkspace")),
         "main.cpp must not compose SettingsWorkspace directly");
+}
+
+void ArchitectureBoundariesTest::applicationUsesSystemFixedFont()
+{
+    QString mainSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/main.cpp"), mainSource));
+    QVERIFY2(mainSource.contains(
+                 QStringLiteral("QFontDatabase::systemFont(QFontDatabase::FixedFont)")),
+        "The application must use the platform fixed-width font globally");
+
+    QDirIterator qmlFiles(
+        QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/qml"),
+        {QStringLiteral("*.qml")},
+        QDir::Files,
+        QDirIterator::Subdirectories);
+    while (qmlFiles.hasNext()) {
+        QFile file(qmlFiles.next());
+        QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text),
+            qPrintable(QStringLiteral("Cannot read %1").arg(file.fileName())));
+        const QString source = QString::fromUtf8(file.readAll());
+        QVERIFY2(!source.contains(QStringLiteral("\"Menlo\"")),
+            qPrintable(QStringLiteral("%1 must inherit the platform fixed-width font")
+                           .arg(file.fileName())));
+    }
 }
 
 void ArchitectureBoundariesTest::translationsDoNotReferenceLegacyFacade()

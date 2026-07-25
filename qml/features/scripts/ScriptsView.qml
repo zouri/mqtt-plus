@@ -175,7 +175,6 @@ Item {
                         Layout.fillHeight: true
                         Layout.minimumHeight: 360
                         text: control.editor.code
-                        font.family: "Menlo"
                         clip: true
                         showLineNumbers: false
                         wrapMode: TextEdit.NoWrap

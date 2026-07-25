@@ -423,7 +423,7 @@ Item {
                 anchors.topMargin: 8
                 anchors.bottomMargin: 8
                 clip: true
-                spacing: 4
+                spacing: 2
                 model: root.streamModel
                 reuseItems: true
                 property bool shouldFollowOutput: true
@@ -456,18 +456,16 @@ Item {
                         return
                     }
 
-                    const maxContentY = Math.max(originY, contentHeight - height)
-                    const distanceFromBottom = Math.max(0, maxContentY - contentY)
-                    const nearBottom = count === 0 || distanceFromBottom <= 24
+                    const atBottom = count === 0 || atYEnd
                     if (root.followMode === "manual") {
                         shouldFollowOutput = false
-                        if (nearBottom && allowResume && eventList.userScrollActive) {
+                        if (atBottom && allowResume && eventList.userScrollActive) {
                             root.setFollowMode("smart")
                         }
                         return
                     }
 
-                    shouldFollowOutput = nearBottom
+                    shouldFollowOutput = atBottom
                     if (!shouldFollowOutput) {
                         root.setFollowMode("manual")
                         return
@@ -495,12 +493,44 @@ Item {
 
                 ScrollBar.vertical: ScrollBar {
                     policy: ScrollBar.AsNeeded
+
+                    onPressedChanged: {
+                        if (pressed) {
+                            eventList.noteManualScrollStarted()
+                        } else {
+                            eventList.noteManualScrollEnded()
+                        }
+                    }
                 }
 
-                onMovementStarted: noteManualScrollStarted()
-                onMovementEnded: noteManualScrollEnded()
-                onFlickStarted: noteManualScrollStarted()
-                onFlickEnded: noteManualScrollEnded()
+                WheelHandler {
+                    target: null
+                    blocking: false
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+
+                    onActiveChanged: {
+                        if (active) {
+                            eventList.noteManualScrollStarted()
+                        } else {
+                            eventList.noteManualScrollEnded()
+                        }
+                    }
+                }
+
+                onDraggingChanged: {
+                    if (dragging) {
+                        noteManualScrollStarted()
+                    } else if (!flicking) {
+                        noteManualScrollEnded()
+                    }
+                }
+                onFlickingChanged: {
+                    if (flicking) {
+                        noteManualScrollStarted()
+                    } else if (!dragging) {
+                        noteManualScrollEnded()
+                    }
+                }
                 onContentHeightChanged: {
                     if (bottomAnchorActive && !followScrollQueued && !root.loadingOlderEvents) {
                         root.requestFollowScroll()
@@ -548,7 +578,7 @@ Item {
                     width: ListView.view.width
                     implicitHeight: eventDelegate.isDivider
                                     ? dividerRow.implicitHeight + 14
-                                    : messageRow.implicitHeight + 8
+                                    : messageRow.implicitHeight + 2
 
                     function selectMessage() {
                         if (!eventDelegate.isMessage) {
@@ -659,7 +689,6 @@ Item {
                                 Layout.preferredWidth: 82
                                 text: root.compactTimestamp(eventDelegate.timestamp)
                                 color: root.ui.themePalette.timestampText
-                                font.family: "Menlo"
                                 font.pixelSize: 11
                                 elide: Label.ElideRight
                             }
@@ -715,7 +744,7 @@ Item {
                                     Layout.minimumWidth: 0
                                     text: eventDelegate.payload
                                     color: eventDelegate.isEvent ? root.ui.textMuted : root.ui.textStrong
-                                    font.family: eventDelegate.isMessage ? "Menlo" : root.fontFamily
+                                    font.family: root.fontFamily
                                     font.pixelSize: 12
                                     textFormat: Text.PlainText
                                     wrapMode: Text.WrapAnywhere
@@ -749,7 +778,6 @@ Item {
                                         visible: eventDelegate.isMessage
                                         text: eventDelegate.payloadSizeLabel
                                         color: root.ui.themePalette.textSubtle
-                                        font.family: "Menlo"
                                         font.pixelSize: 10
                                         horizontalAlignment: Text.AlignRight
                                     }

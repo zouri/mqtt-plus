@@ -32,10 +32,9 @@ AppPanel {
     showLeftBorder: false
     showRightBorder: false
     radius: 0
-    color: control.ui.themePalette.headerBg
+    color: control.ui.themePalette.panelBg
 
     Layout.fillWidth: true
-    Layout.rightMargin: -3
     Layout.minimumHeight: 96
     Layout.preferredHeight: 96
     Layout.maximumHeight: 96
@@ -129,7 +128,6 @@ AppPanel {
                 Layout.minimumWidth: 0
                 text: control.endpointText
                 color: control.ui.textStrong
-                font.family: "Menlo"
                 font.pixelSize: 12
                 font.bold: true
                 elide: Label.ElideRight
