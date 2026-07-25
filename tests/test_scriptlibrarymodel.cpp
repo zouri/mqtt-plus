@@ -8,10 +8,11 @@ class ScriptLibraryModelTest : public QObject
     Q_OBJECT
 
 private slots:
-    void notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable();
+    void setScriptsOwnsRowsAndUpdatesWithoutResetWhenCountIsStable();
+    void setScriptsResetsWhenCountChanges();
 };
 
-void ScriptLibraryModelTest::notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable()
+void ScriptLibraryModelTest::setScriptsOwnsRowsAndUpdatesWithoutResetWhenCountIsStable()
 {
     ScriptEntry script;
     script.id = QStringLiteral("script-1");
@@ -23,14 +24,16 @@ void ScriptLibraryModelTest::notifyRefreshUpdatesRowsWithoutResetWhenCountIsStab
     QVector<ScriptEntry> scripts {script};
 
     ScriptLibraryModel model;
-    model.setSource(&scripts);
+    model.setScripts(scripts);
 
     QSignalSpy dataSpy(&model, &ScriptLibraryModel::dataChanged);
     QSignalSpy resetSpy(&model, &ScriptLibraryModel::modelReset);
     QSignalSpy countSpy(&model, &ScriptLibraryModel::countChanged);
 
     scripts[0].name = QStringLiteral("Pretty Decoder");
-    model.notifyRefresh();
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("name")).toString(), QStringLiteral("Decoder"));
+
+    model.setScripts(scripts);
 
     QCOMPARE(model.rowAt(0).value(QStringLiteral("name")).toString(), QStringLiteral("Pretty Decoder"));
     QCOMPARE(resetSpy.count(), 0);
@@ -38,6 +41,31 @@ void ScriptLibraryModelTest::notifyRefreshUpdatesRowsWithoutResetWhenCountIsStab
     QCOMPARE(dataSpy.count(), 1);
     QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 0);
     QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 0);
+}
+
+void ScriptLibraryModelTest::setScriptsResetsWhenCountChanges()
+{
+    ScriptEntry first;
+    first.id = QStringLiteral("script-1");
+    first.name = QStringLiteral("Decoder");
+    QVector<ScriptEntry> scripts {first};
+
+    ScriptLibraryModel model;
+    model.setScripts(scripts);
+    QSignalSpy dataSpy(&model, &ScriptLibraryModel::dataChanged);
+    QSignalSpy resetSpy(&model, &ScriptLibraryModel::modelReset);
+    QSignalSpy countSpy(&model, &ScriptLibraryModel::countChanged);
+
+    ScriptEntry second;
+    second.id = QStringLiteral("script-2");
+    second.name = QStringLiteral("Logger");
+    scripts.append(second);
+    model.setScripts(scripts);
+
+    QCOMPARE(model.count(), 2);
+    QCOMPARE(resetSpy.count(), 1);
+    QCOMPARE(countSpy.count(), 1);
+    QCOMPARE(dataSpy.count(), 0);
 }
 
 QTEST_MAIN(ScriptLibraryModelTest)

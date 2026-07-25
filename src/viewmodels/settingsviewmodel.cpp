@@ -11,11 +11,9 @@
 #include <QLocale>
 #include <QStyleHints>
 #include <QStringList>
-#include <QVariantMap>
+#include <QVariantList>
 
 #include <algorithm>
-#include <utility>
-
 using namespace AppUtils;
 
 namespace {
@@ -100,23 +98,9 @@ QVariant optionValue(SettingsOption option, int index)
     return values.at(std::clamp(index, 0, static_cast<int>(values.size()) - 1));
 }
 
-void bindDependencyChange(
-    const std::function<void(QObject *, std::function<void()>)> &binder,
-    QObject *context,
-    std::function<void()> handler)
+void clearSessionMessages(QVector<SessionState> &sessions)
 {
-    if (binder) {
-        binder(context, std::move(handler));
-    }
-}
-
-void clearSessionMessages(QVector<SessionState> *sessions)
-{
-    if (!sessions) {
-        return;
-    }
-
-    for (auto &session : *sessions) {
+    for (SessionState &session : sessions) {
         session.runtime.messageRows.clear();
         session.runtime.totalMessageCount = 0;
         session.runtime.viewedMessageCount = 0;
@@ -125,39 +109,12 @@ void clearSessionMessages(QVector<SessionState> *sessions)
     }
 }
 
-void clearSessionLogs(QVector<SessionState> *sessions)
+void clearSessionLogs(QVector<SessionState> &sessions)
 {
-    if (!sessions) {
-        return;
-    }
-
-    for (auto &session : *sessions) {
+    for (SessionState &session : sessions) {
         session.runtime.logRows.clear();
         session.runtime.oldestLoadedLogId = 0;
         session.runtime.loadedAllLogHistory = true;
-    }
-}
-
-void notifyMessagesCleared(SettingsViewModel::Dependencies &dependencies)
-{
-    if (dependencies.messages) {
-        dependencies.messages->clear();
-    }
-    if (dependencies.refreshScriptTestSamplesModel) {
-        dependencies.refreshScriptTestSamplesModel();
-    }
-    if (dependencies.emitMessageStreamChanged) {
-        dependencies.emitMessageStreamChanged();
-    }
-}
-
-void notifyLogsCleared(SettingsViewModel::Dependencies &dependencies)
-{
-    if (dependencies.logs) {
-        dependencies.logs->clear();
-    }
-    if (dependencies.emitLogStreamChanged) {
-        dependencies.emitLogStreamChanged();
     }
 }
 
@@ -194,26 +151,32 @@ QString sanitizeMessagePayloadDisplayMode(const QString &value)
 
 } // namespace
 
-SettingsViewModel::SettingsViewModel(QSettings *settings, QObject *parent)
-    : SettingsViewModel(Dependencies{}, settings, parent)
-{
-}
-
-SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QSettings *settings, QObject *parent)
+SettingsViewModel::SettingsViewModel(
+    PreferencesController &preferencesController,
+    EventHistoryService &eventController,
+    HistoryStore &historyStore,
+    QVector<SessionState> &sessions,
+    EventStreamModel &messages,
+    EventStreamModel &logs,
+    QSettings &settings,
+    QObject *parent)
     : QObject(parent)
     , m_settings(settings)
-    , m_dependencies(dependencies)
+    , m_preferencesController(preferencesController)
+    , m_eventController(eventController)
+    , m_historyStore(historyStore)
+    , m_sessions(sessions)
+    , m_messages(messages)
+    , m_logs(logs)
 {
-    if (m_settings) {
-        m_themeMode = sanitizeThemeMode(
-            m_settings->value(QStringLiteral("appearance/themeMode"), QStringLiteral("system")).toString());
-        m_themeColor = sanitizeThemeColor(
-            m_settings->value(QStringLiteral("appearance/themeColor"), QStringLiteral("mint")).toString());
-        m_languageMode = sanitizeLanguageMode(
-            m_settings->value(QStringLiteral("appearance/languageMode"), QStringLiteral("system")).toString());
-        m_messagePayloadDisplayMode = sanitizeMessagePayloadDisplayMode(
-            m_settings->value(QStringLiteral("workbench/messagePayloadDisplayMode"), QStringLiteral("hover")).toString());
-    }
+    m_themeMode = sanitizeThemeMode(
+        m_settings.value(QStringLiteral("appearance/themeMode"), QStringLiteral("system")).toString());
+    m_themeColor = sanitizeThemeColor(
+        m_settings.value(QStringLiteral("appearance/themeColor"), QStringLiteral("mint")).toString());
+    m_languageMode = sanitizeLanguageMode(
+        m_settings.value(QStringLiteral("appearance/languageMode"), QStringLiteral("system")).toString());
+    m_messagePayloadDisplayMode = sanitizeMessagePayloadDisplayMode(
+        m_settings.value(QStringLiteral("workbench/messagePayloadDisplayMode"), QStringLiteral("hover")).toString());
     refreshSystemColorScheme();
     applyCurrentLanguage();
 
@@ -225,18 +188,18 @@ SettingsViewModel::SettingsViewModel(const Dependencies &dependencies, QSettings
             [this](Qt::ColorScheme) { refreshSystemColorScheme(); });
     }
 
-    bindDependencyChange(m_dependencies.bindMessageRetentionLimitChanged, this, [this]() { emit messageRetentionLimitChanged(); });
-    bindDependencyChange(m_dependencies.bindLogRetentionLimitChanged, this, [this]() { emit logRetentionLimitChanged(); });
-    bindDependencyChange(m_dependencies.bindHistoryPageSizeChanged, this, [this]() { emit historyPageSizeChanged(); });
-    bindDependencyChange(m_dependencies.bindMaxIncomingPayloadBytesChanged, this, [this]() { emit maxIncomingPayloadBytesChanged(); });
-    bindDependencyChange(m_dependencies.bindDeleteHistoryWithSessionChanged, this, [this]() { emit deleteHistoryWithSessionChanged(); });
-    bindDependencyChange(m_dependencies.bindSaveMessagesWhenOutputPausedChanged, this, [this]() { emit saveMessagesWhenOutputPausedChanged(); });
-    bindDependencyChange(m_dependencies.bindAutoCollapseConnectionListOnConnectChanged, this, [this]() { emit autoCollapseConnectionListOnConnectChanged(); });
-    bindDependencyChange(m_dependencies.bindClearMessagesOnExitChanged, this, [this]() { emit clearMessagesOnExitChanged(); });
-    bindDependencyChange(m_dependencies.bindClearLogsOnExitChanged, this, [this]() { emit clearLogsOnExitChanged(); });
-    bindDependencyChange(m_dependencies.bindWindowWidthChanged, this, [this]() { emit windowWidthChanged(); });
-    bindDependencyChange(m_dependencies.bindWindowHeightChanged, this, [this]() { emit windowHeightChanged(); });
-    bindDependencyChange(m_dependencies.bindWindowMaximizedChanged, this, [this]() { emit windowMaximizedChanged(); });
+    connect(&m_preferencesController, &PreferencesController::messageRetentionLimitChanged, this, &SettingsViewModel::messageRetentionLimitChanged);
+    connect(&m_preferencesController, &PreferencesController::logRetentionLimitChanged, this, &SettingsViewModel::logRetentionLimitChanged);
+    connect(&m_preferencesController, &PreferencesController::historyPageSizeChanged, this, &SettingsViewModel::historyPageSizeChanged);
+    connect(&m_preferencesController, &PreferencesController::maxIncomingPayloadBytesChanged, this, &SettingsViewModel::maxIncomingPayloadBytesChanged);
+    connect(&m_preferencesController, &PreferencesController::deleteHistoryWithSessionChanged, this, &SettingsViewModel::deleteHistoryWithSessionChanged);
+    connect(&m_preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, this, &SettingsViewModel::saveMessagesWhenOutputPausedChanged);
+    connect(&m_preferencesController, &PreferencesController::autoCollapseConnectionListOnConnectChanged, this, &SettingsViewModel::autoCollapseConnectionListOnConnectChanged);
+    connect(&m_preferencesController, &PreferencesController::clearMessagesOnExitChanged, this, &SettingsViewModel::clearMessagesOnExitChanged);
+    connect(&m_preferencesController, &PreferencesController::clearLogsOnExitChanged, this, &SettingsViewModel::clearLogsOnExitChanged);
+    connect(&m_preferencesController, &PreferencesController::windowWidthChanged, this, &SettingsViewModel::windowWidthChanged);
+    connect(&m_preferencesController, &PreferencesController::windowHeightChanged, this, &SettingsViewModel::windowHeightChanged);
+    connect(&m_preferencesController, &PreferencesController::windowMaximizedChanged, this, &SettingsViewModel::windowMaximizedChanged);
 }
 
 QString SettingsViewModel::themeMode() const { return m_themeMode; }
@@ -253,47 +216,21 @@ QString SettingsViewModel::effectiveTheme() const
 
 QString SettingsViewModel::languageMode() const { return m_languageMode; }
 
-QVariantList SettingsViewModel::availableLanguages() const
-{
-    QVariantList languages;
-    {
-        QVariantMap system;
-        system.insert(QStringLiteral("mode"), QStringLiteral("system"));
-        system.insert(QStringLiteral("label"), tr("System"));
-        languages.append(system);
-    }
-    {
-        QVariantMap english;
-        english.insert(QStringLiteral("mode"), QStringLiteral("en"));
-        english.insert(QStringLiteral("label"), QStringLiteral("English"));
-        languages.append(english);
-    }
-    {
-        QVariantMap simplifiedChinese;
-        simplifiedChinese.insert(QStringLiteral("mode"), QStringLiteral("zh_CN"));
-        simplifiedChinese.insert(QStringLiteral("label"), QStringLiteral("简体中文"));
-        languages.append(simplifiedChinese);
-    }
-    return languages;
-}
-
-QString SettingsViewModel::effectiveLanguage() const { return m_effectiveLanguage; }
-
-int SettingsViewModel::messageRetentionLimit() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->messageRetentionLimit() : 5000; }
-int SettingsViewModel::logRetentionLimit() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->logRetentionLimit() : 2000; }
-int SettingsViewModel::historyPageSize() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->historyPageSize() : 500; }
-int SettingsViewModel::maxIncomingPayloadBytes() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->maxIncomingPayloadBytes() : 1024 * 1024; }
-bool SettingsViewModel::deleteHistoryWithSession() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->deleteHistoryWithSession() : true; }
-bool SettingsViewModel::saveMessagesWhenOutputPaused() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->saveMessagesWhenOutputPaused() : true; }
-bool SettingsViewModel::autoCollapseConnectionListOnConnect() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->autoCollapseConnectionListOnConnect() : true; }
-QString SettingsViewModel::clearMessagesOnExit() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->clearMessagesOnExit() : QStringLiteral("never"); }
-QString SettingsViewModel::clearLogsOnExit() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->clearLogsOnExit() : QStringLiteral("never"); }
-int SettingsViewModel::windowWidth() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowWidth() : 1480; }
-int SettingsViewModel::windowHeight() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->windowHeight() : 820; }
-bool SettingsViewModel::windowMaximized() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->windowMaximized(); }
-int SettingsViewModel::subscriptionPaneWidth() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->subscriptionPaneWidth() : 320; }
-int SettingsViewModel::publishComposerHeight() const { return m_dependencies.preferencesController ? m_dependencies.preferencesController->publishComposerHeight() : 168; }
-bool SettingsViewModel::connectionPaneCollapsed() const { return m_dependencies.preferencesController && m_dependencies.preferencesController->connectionPaneCollapsed(); }
+int SettingsViewModel::messageRetentionLimit() const { return m_preferencesController.messageRetentionLimit(); }
+int SettingsViewModel::logRetentionLimit() const { return m_preferencesController.logRetentionLimit(); }
+int SettingsViewModel::historyPageSize() const { return m_preferencesController.historyPageSize(); }
+int SettingsViewModel::maxIncomingPayloadBytes() const { return m_preferencesController.maxIncomingPayloadBytes(); }
+bool SettingsViewModel::deleteHistoryWithSession() const { return m_preferencesController.deleteHistoryWithSession(); }
+bool SettingsViewModel::saveMessagesWhenOutputPaused() const { return m_preferencesController.saveMessagesWhenOutputPaused(); }
+bool SettingsViewModel::autoCollapseConnectionListOnConnect() const { return m_preferencesController.autoCollapseConnectionListOnConnect(); }
+QString SettingsViewModel::clearMessagesOnExit() const { return m_preferencesController.clearMessagesOnExit(); }
+QString SettingsViewModel::clearLogsOnExit() const { return m_preferencesController.clearLogsOnExit(); }
+int SettingsViewModel::windowWidth() const { return m_preferencesController.windowWidth(); }
+int SettingsViewModel::windowHeight() const { return m_preferencesController.windowHeight(); }
+bool SettingsViewModel::windowMaximized() const { return m_preferencesController.windowMaximized(); }
+int SettingsViewModel::subscriptionPaneWidth() const { return m_preferencesController.subscriptionPaneWidth(); }
+int SettingsViewModel::publishComposerHeight() const { return m_preferencesController.publishComposerHeight(); }
+bool SettingsViewModel::connectionPaneCollapsed() const { return m_preferencesController.connectionPaneCollapsed(); }
 int SettingsViewModel::themeModeIndex() const { return optionIndex(SettingsOption::ThemeMode, themeMode()); }
 int SettingsViewModel::languageModeIndex() const { return optionIndex(SettingsOption::LanguageMode, languageMode()); }
 int SettingsViewModel::messagePayloadDisplayModeIndex() const { return optionIndex(SettingsOption::MessagePayloadDisplayMode, m_messagePayloadDisplayMode); }
@@ -313,10 +250,8 @@ void SettingsViewModel::setThemeMode(const QString &mode)
 
     const QString previousEffectiveTheme = effectiveTheme();
     m_themeMode = sanitized;
-    if (m_settings) {
-        m_settings->setValue(QStringLiteral("appearance/themeMode"), m_themeMode);
-        m_settings->sync();
-    }
+    m_settings.setValue(QStringLiteral("appearance/themeMode"), m_themeMode);
+    m_settings.sync();
 
     emit themeModeChanged();
     if (effectiveTheme() != previousEffectiveTheme) {
@@ -332,10 +267,8 @@ void SettingsViewModel::setThemeColor(const QString &color)
     }
 
     m_themeColor = sanitized;
-    if (m_settings) {
-        m_settings->setValue(QStringLiteral("appearance/themeColor"), m_themeColor);
-        m_settings->sync();
-    }
+    m_settings.setValue(QStringLiteral("appearance/themeColor"), m_themeColor);
+    m_settings.sync();
     emit themeColorChanged();
 }
 
@@ -347,10 +280,8 @@ void SettingsViewModel::setLanguageMode(const QString &mode)
     }
 
     m_languageMode = sanitized;
-    if (m_settings) {
-        m_settings->setValue(QStringLiteral("appearance/languageMode"), m_languageMode);
-        m_settings->sync();
-    }
+    m_settings.setValue(QStringLiteral("appearance/languageMode"), m_languageMode);
+    m_settings.sync();
 
     applyCurrentLanguage();
     emit languageModeChanged();
@@ -365,106 +296,50 @@ void SettingsViewModel::setMessagePayloadDisplayMode(const QString &mode)
     }
 
     m_messagePayloadDisplayMode = sanitized;
-    if (m_settings) {
-        m_settings->setValue(QStringLiteral("workbench/messagePayloadDisplayMode"), m_messagePayloadDisplayMode);
-        m_settings->sync();
-    }
+    m_settings.setValue(QStringLiteral("workbench/messagePayloadDisplayMode"), m_messagePayloadDisplayMode);
+    m_settings.sync();
     emit messagePayloadDisplayModeChanged();
-}
-
-void SettingsViewModel::setMessageRetentionLimit(int limit)
-{
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setMessageRetentionLimit(limit);
-    }
 }
 
 void SettingsViewModel::setLogRetentionLimit(int limit)
 {
-    if (!m_dependencies.preferencesController) {
-        return;
-    }
-
     const int previousLimit = logRetentionLimit();
-    m_dependencies.preferencesController->setLogRetentionLimit(limit);
+    m_preferencesController.setLogRetentionLimit(limit);
     if (logRetentionLimit() == previousLimit || logRetentionLimit() <= 0) {
         return;
     }
 
-    if (m_dependencies.historyStore && m_dependencies.sessions) {
-        for (const auto &session : *m_dependencies.sessions) {
-            m_dependencies.historyStore->pruneLogs(session.id, logRetentionLimit());
-        }
+    for (const auto &session : m_sessions) {
+        m_historyStore.pruneLogs(session.id, logRetentionLimit());
     }
-    if (m_dependencies.reloadCurrentSessionHistory) {
-        m_dependencies.reloadCurrentSessionHistory();
-    }
-    if (m_dependencies.emitLogStreamChanged) {
-        m_dependencies.emitLogStreamChanged();
-    }
-}
-
-void SettingsViewModel::setHistoryPageSize(int pageSize)
-{
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setHistoryPageSize(pageSize);
-    }
-}
-
-void SettingsViewModel::setMaxIncomingPayloadBytes(int bytes)
-{
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setMaxIncomingPayloadBytes(bytes);
-    }
+    m_eventController.reloadCurrentSessionHistory();
+    emit m_eventController.messageStreamChanged();
+    emit m_eventController.logStreamChanged();
 }
 
 void SettingsViewModel::setDeleteHistoryWithSession(bool enabled)
 {
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setDeleteHistoryWithSession(enabled);
-    }
+    m_preferencesController.setDeleteHistoryWithSession(enabled);
 }
 
 void SettingsViewModel::setSaveMessagesWhenOutputPaused(bool enabled)
 {
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setSaveMessagesWhenOutputPaused(enabled);
-    }
+    m_preferencesController.setSaveMessagesWhenOutputPaused(enabled);
 }
 
 void SettingsViewModel::setAutoCollapseConnectionListOnConnect(bool enabled)
 {
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setAutoCollapseConnectionListOnConnect(enabled);
-    }
-}
-
-void SettingsViewModel::setClearMessagesOnExit(const QString &mode)
-{
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setClearMessagesOnExit(mode);
-    }
-}
-
-void SettingsViewModel::setClearLogsOnExit(const QString &mode)
-{
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setClearLogsOnExit(mode);
-    }
+    m_preferencesController.setAutoCollapseConnectionListOnConnect(enabled);
 }
 
 void SettingsViewModel::setWindowMaximized(bool maximized)
 {
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setWindowMaximized(maximized);
-    }
+    m_preferencesController.setWindowMaximized(maximized);
 }
 
 void SettingsViewModel::saveWindowGeometry(int width, int height)
 {
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setWindowGeometry(width, height);
-    }
+    m_preferencesController.setWindowGeometry(width, height);
 }
 
 void SettingsViewModel::saveWorkbenchLayout(
@@ -472,52 +347,48 @@ void SettingsViewModel::saveWorkbenchLayout(
     int publishComposerHeight,
     bool connectionPaneCollapsed)
 {
-    if (m_dependencies.preferencesController) {
-        m_dependencies.preferencesController->setWorkbenchLayout(
-            subscriptionPaneWidth,
-            publishComposerHeight,
-            connectionPaneCollapsed);
-    }
+    m_preferencesController.setWorkbenchLayout(
+        subscriptionPaneWidth,
+        publishComposerHeight,
+        connectionPaneCollapsed);
 }
 
 void SettingsViewModel::setThemeModeIndex(int index) { setThemeMode(optionValue(SettingsOption::ThemeMode, index).toString()); }
 void SettingsViewModel::setLanguageModeIndex(int index) { setLanguageMode(optionValue(SettingsOption::LanguageMode, index).toString()); }
 void SettingsViewModel::setMessagePayloadDisplayModeIndex(int index) { setMessagePayloadDisplayMode(optionValue(SettingsOption::MessagePayloadDisplayMode, index).toString()); }
-void SettingsViewModel::setMessageRetentionLimitIndex(int index) { setMessageRetentionLimit(optionValue(SettingsOption::MessageRetentionLimit, index).toInt()); }
+void SettingsViewModel::setMessageRetentionLimitIndex(int index) { m_preferencesController.setMessageRetentionLimit(optionValue(SettingsOption::MessageRetentionLimit, index).toInt()); }
 void SettingsViewModel::setLogRetentionLimitIndex(int index) { setLogRetentionLimit(optionValue(SettingsOption::LogRetentionLimit, index).toInt()); }
-void SettingsViewModel::setHistoryPageSizeIndex(int index) { setHistoryPageSize(optionValue(SettingsOption::HistoryPageSize, index).toInt()); }
-void SettingsViewModel::setMaxIncomingPayloadBytesIndex(int index) { setMaxIncomingPayloadBytes(optionValue(SettingsOption::MaxIncomingPayloadBytes, index).toInt()); }
-void SettingsViewModel::setClearMessagesOnExitIndex(int index) { setClearMessagesOnExit(optionValue(SettingsOption::CleanupMode, index).toString()); }
-void SettingsViewModel::setClearLogsOnExitIndex(int index) { setClearLogsOnExit(optionValue(SettingsOption::CleanupMode, index).toString()); }
+void SettingsViewModel::setHistoryPageSizeIndex(int index) { m_preferencesController.setHistoryPageSize(optionValue(SettingsOption::HistoryPageSize, index).toInt()); }
+void SettingsViewModel::setMaxIncomingPayloadBytesIndex(int index) { m_preferencesController.setMaxIncomingPayloadBytes(optionValue(SettingsOption::MaxIncomingPayloadBytes, index).toInt()); }
+void SettingsViewModel::setClearMessagesOnExitIndex(int index) { m_preferencesController.setClearMessagesOnExit(optionValue(SettingsOption::CleanupMode, index).toString()); }
+void SettingsViewModel::setClearLogsOnExitIndex(int index) { m_preferencesController.setClearLogsOnExit(optionValue(SettingsOption::CleanupMode, index).toString()); }
 
 void SettingsViewModel::clearAllMessages()
 {
-    if (m_dependencies.historyStore) {
-        m_dependencies.historyStore->clearAllMessages();
-    }
-    clearSessionMessages(m_dependencies.sessions);
-    notifyMessagesCleared(m_dependencies);
+    m_historyStore.clearAllMessages();
+    clearSessionMessages(m_sessions);
+    m_messages.clear();
+    emit m_eventController.messageStreamChanged();
 }
 
 void SettingsViewModel::clearAllLogs()
 {
-    if (m_dependencies.historyStore) {
-        m_dependencies.historyStore->clearAllLogs();
-    }
-    clearSessionLogs(m_dependencies.sessions);
-    notifyLogsCleared(m_dependencies);
+    m_historyStore.clearAllLogs();
+    clearSessionLogs(m_sessions);
+    m_logs.clear();
+    emit m_eventController.logStreamChanged();
 }
 
 void SettingsViewModel::clearAllHistory()
 {
-    if (m_dependencies.historyStore) {
-        m_dependencies.historyStore->clearAllMessages();
-        m_dependencies.historyStore->clearAllLogs();
-    }
-    clearSessionMessages(m_dependencies.sessions);
-    clearSessionLogs(m_dependencies.sessions);
-    notifyMessagesCleared(m_dependencies);
-    notifyLogsCleared(m_dependencies);
+    m_historyStore.clearAllMessages();
+    m_historyStore.clearAllLogs();
+    clearSessionMessages(m_sessions);
+    clearSessionLogs(m_sessions);
+    m_messages.clear();
+    m_logs.clear();
+    emit m_eventController.messageStreamChanged();
+    emit m_eventController.logStreamChanged();
 }
 
 void SettingsViewModel::refreshSystemColorScheme()
@@ -552,8 +423,8 @@ void SettingsViewModel::applyCurrentLanguage()
         m_translatorInstalled = false;
     }
 
-    m_effectiveLanguage = resolvedLanguage();
-    if (m_effectiveLanguage != QStringLiteral("zh_CN")) {
+    const QString language = resolvedLanguage();
+    if (language != QStringLiteral("zh_CN")) {
         return;
     }
 

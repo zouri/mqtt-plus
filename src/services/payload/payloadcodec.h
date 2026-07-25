@@ -32,6 +32,7 @@ public:
         QString &error);
 
     static bool topicFilterMatches(const QString &filter, const QString &topic);
+    static int topicSpecificityScore(const QString &filter);
     static PayloadFormat resolveTopicFormat(
         const QHash<QString, int> &topicFormats,
         const QString &topic);

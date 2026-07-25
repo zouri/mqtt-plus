@@ -166,7 +166,7 @@ LoadResult loadScripts()
     return result;
 }
 
-bool saveScripts(QVector<ScriptEntry> &scripts, bool indexWritable, QString &errorMessage)
+bool saveScripts(const QVector<ScriptEntry> &scripts, bool indexWritable, QString &errorMessage)
 {
     errorMessage.clear();
     if (!indexWritable) {
@@ -186,7 +186,7 @@ bool saveScripts(QVector<ScriptEntry> &scripts, bool indexWritable, QString &err
     }
 
     QJsonArray scriptRows;
-    for (auto &script : scripts) {
+    for (const auto &script : scripts) {
         if (!writeTextFile(scriptFilePath(script.fileName), script.code.toUtf8(), errorMessage)) {
             restoreBackups(backups);
             return false;

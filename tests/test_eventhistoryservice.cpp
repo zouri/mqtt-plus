@@ -1,7 +1,7 @@
 #include "usecases/eventhistoryservice.h"
 #include "usecases/preferencescontroller.h"
 #include "usecases/scriptservice.h"
-#include "usecases/subscriptionservice.h"
+#include "usecases/sessionservice.h"
 #include "models/eventstreammodel.h"
 #include "presentation/eventrenderer.h"
 #include "services/payload/payloadcodec.h"
@@ -11,7 +11,6 @@
 
 #include <QSettings>
 #include <QTemporaryDir>
-#include <QTimer>
 
 class EventHistoryServiceTest : public QObject
 {
@@ -44,6 +43,16 @@ private slots:
 
 namespace {
 
+SessionState &initializeSession(SessionService &sessions)
+{
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    sessions.sessions().append(session);
+    sessions.setCurrentSessionIndex(0);
+    return *sessions.currentSession();
+}
+
 struct Fixture {
     QTemporaryDir dataDir;
     QSettings settings;
@@ -52,36 +61,26 @@ struct Fixture {
     EventStreamModel messages;
     EventStreamModel logs;
     ScriptService scripts;
-    SubscriptionService subscriptions;
-    QTimer fpsTimer;
     QString launchTimestamp = QStringLiteral("2026-07-04T00:00:00.000Z");
-    SessionState session;
+    SessionService sessions;
+    SessionState &session;
     EventHistoryService service;
 
     Fixture()
         : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
         , historyStore(dataDir.path())
         , preferences(&settings)
+        , sessions(settings, scripts, historyStore, preferences)
+        , session(initializeSession(sessions))
+        , service(
+              sessions,
+              historyStore,
+              messages,
+              logs,
+              scripts,
+              launchTimestamp,
+              preferences)
     {
-        session.id = QStringLiteral("session-1");
-        session.name = QStringLiteral("Session 1");
-
-        EventHistoryService::Dependencies dependencies;
-        dependencies.historyStore = &historyStore;
-        dependencies.messagesModel = &messages;
-        dependencies.logsModel = &logs;
-        dependencies.scriptController = &scripts;
-        dependencies.subscriptionController = &subscriptions;
-        dependencies.subscriptionFpsRefreshTimer = &fpsTimer;
-        dependencies.launchTimestamp = &launchTimestamp;
-        dependencies.preferencesController = &preferences;
-        dependencies.currentSessionState = [this]() { return &session; };
-        dependencies.sessionById = [this](const QString &id) -> SessionState * {
-            return id == session.id ? &session : nullptr;
-        };
-        dependencies.refreshSubscriptionsModel = []() {};
-        dependencies.refreshScriptTestSamplesModel = []() {};
-        service.setDependencies(dependencies);
     }
 
     void addSubscription(const QString &filter, int format)
@@ -367,6 +366,7 @@ void EventHistoryServiceTest::aggregateReceiveRateCountsOverlappingSubscriptions
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
     fixture.addSubscription(QStringLiteral("devices/#"), static_cast<int>(PayloadFormat::Plaintext));
     fixture.addSubscription(QStringLiteral("devices/+/temp"), static_cast<int>(PayloadFormat::Plaintext));
+    QSignalSpy activitySpy(&fixture.service, &EventHistoryService::subscriptionActivityChanged);
 
     fixture.service.appendIncomingMessage(
         fixture.session.id,
@@ -376,6 +376,7 @@ void EventHistoryServiceTest::aggregateReceiveRateCountsOverlappingSubscriptions
     QCOMPARE(fixture.session.runtime.recentReceivedTimestampsMs.size(), 1);
     QCOMPARE(fixture.session.subscriptions.at(0).recentMessageTimestampsMs.size(), 1);
     QCOMPARE(fixture.session.subscriptions.at(1).recentMessageTimestampsMs.size(), 1);
+    QCOMPARE(activitySpy.count(), 1);
 }
 
 void EventHistoryServiceTest::pausedSubscriptionsDoNotAccumulateReceiveRate()
@@ -384,6 +385,7 @@ void EventHistoryServiceTest::pausedSubscriptionsDoNotAccumulateReceiveRate()
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
     fixture.addSubscription(QStringLiteral("devices/#"), static_cast<int>(PayloadFormat::Plaintext));
     fixture.session.subscriptions.last().paused = true;
+    QSignalSpy activitySpy(&fixture.service, &EventHistoryService::subscriptionActivityChanged);
 
     fixture.service.appendIncomingMessage(
         fixture.session.id,
@@ -391,7 +393,7 @@ void EventHistoryServiceTest::pausedSubscriptionsDoNotAccumulateReceiveRate()
         QByteArrayLiteral("23"));
 
     QVERIFY(fixture.session.subscriptions.constLast().recentMessageTimestampsMs.isEmpty());
-    QVERIFY(!fixture.fpsTimer.isActive());
+    QCOMPARE(activitySpy.count(), 0);
 }
 
 void EventHistoryServiceTest::reusablePayloadLoadsStoredBytesAfterHistoryRowsDropBlobs()

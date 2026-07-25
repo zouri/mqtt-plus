@@ -5,9 +5,8 @@
 
 #include "viewmodels/scripteditorviewmodel.h"
 
-#include <functional>
-
 class ScriptLibraryModel;
+class ScriptService;
 
 class ScriptsViewModel : public QObject
 {
@@ -16,19 +15,13 @@ class ScriptsViewModel : public QObject
     Q_PROPERTY(ScriptEditorViewModel* editor READ editor CONSTANT)
 
 public:
-    struct Dependencies
-    {
-        ScriptLibraryModel *scripts = nullptr;
-        std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
-        std::function<QString(const QString &, const QString &, const QString &, const QString &)> upsertScript;
-    };
-
-    explicit ScriptsViewModel(QObject *parent = nullptr);
-    explicit ScriptsViewModel(const Dependencies &dependencies, QObject *parent = nullptr);
+    explicit ScriptsViewModel(
+        ScriptService &scriptService,
+        ScriptLibraryModel &scripts,
+        QObject *parent = nullptr);
 
     ScriptLibraryModel *scripts() const;
     ScriptEditorViewModel *editor();
-    int matchingScriptCount(const QString &filterText) const;
     static bool scriptMatchesFilter(
         const QString &name,
         const QString &description,
@@ -46,8 +39,7 @@ signals:
     void scriptLibraryChanged();
 
 private:
-    QString upsertScript(const QString &id, const QString &name, const QString &description, const QString &code);
-
-    Dependencies m_dependencies;
+    ScriptService &m_scriptService;
+    ScriptLibraryModel &m_scripts;
     ScriptEditorViewModel m_editor;
 };

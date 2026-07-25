@@ -1,13 +1,20 @@
 #include "usecases/subscriptionservice.h"
 
-#include "models/subscriptionlistmodel.h"
+#include "models/eventstreammodel.h"
 #include "services/apputils.h"
+#include "services/storage/historystore.h"
+#include "usecases/eventhistoryservice.h"
+#include "usecases/preferencescontroller.h"
 #include "usecases/scriptservice.h"
+#include "usecases/sessionservice.h"
 
 #include <QtTest/QtTest>
 
 #include <QDateTime>
-#include <QTimer>
+#include <QSettings>
+#include <QTemporaryDir>
+
+#include <utility>
 
 class SubscriptionServiceTest : public QObject
 {
@@ -15,42 +22,70 @@ class SubscriptionServiceTest : public QObject
 
 private slots:
     void updateCurrentSubscriptionEditsQosAndFormat();
-    void setsAllCurrentSubscriptionsPausedWithSingleRefresh();
-    void refreshTimerStopsAfterRateHistoryDrains();
+    void setsAllCurrentSubscriptionsPausedWithSingleSignal();
+    void detectsActiveCurrentSubscriptionFps();
 };
+
+namespace {
+
+struct Fixture {
+    QTemporaryDir dataDir;
+    QSettings settings;
+    HistoryStore historyStore;
+    PreferencesController preferences;
+    EventStreamModel messages;
+    EventStreamModel logs;
+    ScriptService scripts;
+    QString launchTimestamp = QStringLiteral("2026-07-25T00:00:00.000Z");
+    SessionService sessions;
+    EventHistoryService eventHistory;
+    SubscriptionService service;
+
+    Fixture()
+        : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
+        , historyStore(dataDir.path())
+        , preferences(&settings)
+        , sessions(settings, scripts, historyStore, preferences)
+        , eventHistory(
+              sessions,
+              historyStore,
+              messages,
+              logs,
+              scripts,
+              launchTimestamp,
+              preferences)
+        , service(sessions, scripts, eventHistory)
+    {
+    }
+
+    SessionState &setCurrentSession(SessionState session)
+    {
+        sessions.sessions().append(std::move(session));
+        sessions.setCurrentSessionIndex(0);
+        return *sessions.currentSession();
+    }
+};
+
+} // namespace
 
 void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
 {
+    Fixture fixture;
     SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
     SubscriptionEntry entry;
     entry.topic = QStringLiteral("devices/temp");
     entry.alias = QStringLiteral("Temperature");
     entry.requestedQos = 0;
     entry.format = 0;
-    entry.scriptId = QString();
     entry.color = QStringLiteral("#0071E3");
     session.subscriptions.append(entry);
     session.runtime.subscriptionFormats.insert(entry.topic, entry.format);
+    SessionState &currentSession = fixture.setCurrentSession(std::move(session));
+    QSignalSpy changedSpy(&fixture.service, &SubscriptionService::subscriptionsChanged);
 
-    bool saved = false;
-    bool refreshed = false;
-    ScriptService scripts;
-    SubscriptionService service;
-    service.setDependencies({
-        nullptr,
-        &scripts,
-        nullptr,
-        nullptr,
-        [&session]() { return &session; },
-        {},
-        [&saved]() {
-            saved = true;
-            return true;
-        },
-        [&refreshed]() { refreshed = true; },
-    });
-
-    QVERIFY(service.updateCurrentSubscription(
+    QVERIFY(fixture.service.updateCurrentSubscription(
         QStringLiteral("devices/temp"),
         QStringLiteral("devices/temp"),
         QStringLiteral("Temperature"),
@@ -59,100 +94,68 @@ void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
         QString(),
         QStringLiteral("#0071E3")));
 
-    QCOMPARE(session.subscriptions.size(), 1);
-    QCOMPARE(session.subscriptions.first().requestedQos, 1);
-    QCOMPARE(session.subscriptions.first().format, 2);
-    QCOMPARE(session.runtime.subscriptionFormats.value(QStringLiteral("devices/temp")), 2);
-    QVERIFY(saved);
-    QVERIFY(refreshed);
+    QCOMPARE(currentSession.subscriptions.size(), 1);
+    QCOMPARE(currentSession.subscriptions.first().requestedQos, 1);
+    QCOMPARE(currentSession.subscriptions.first().format, 2);
+    QCOMPARE(currentSession.runtime.subscriptionFormats.value(QStringLiteral("devices/temp")), 2);
+    QCOMPARE(changedSpy.count(), 1);
 }
 
-void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleRefresh()
+void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleSignal()
 {
+    Fixture fixture;
     SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
     session.subscriptions = {
         SubscriptionEntry {.topic = QStringLiteral("devices/one")},
         SubscriptionEntry {.topic = QStringLiteral("devices/two")},
     };
     session.subscriptions[0].recentMessageTimestampsMs = {1, 2};
     session.subscriptions[1].recentMessageTimestampsMs = {3, 4};
+    SessionState &currentSession = fixture.setCurrentSession(std::move(session));
+    QSignalSpy changedSpy(&fixture.service, &SubscriptionService::subscriptionsChanged);
 
-    int saveCount = 0;
-    int refreshCount = 0;
-    SubscriptionService service;
-    service.setDependencies({
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        [&session]() { return &session; },
-        {},
-        [&saveCount]() {
-            ++saveCount;
-            return true;
-        },
-        [&refreshCount]() { ++refreshCount; },
-    });
+    fixture.service.setAllCurrentSubscriptionsPaused(true);
 
-    service.setAllCurrentSubscriptionsPaused(true);
+    QVERIFY(currentSession.subscriptions.at(0).paused);
+    QVERIFY(currentSession.subscriptions.at(1).paused);
+    QVERIFY(currentSession.subscriptions.at(0).recentMessageTimestampsMs.isEmpty());
+    QVERIFY(currentSession.subscriptions.at(1).recentMessageTimestampsMs.isEmpty());
+    QCOMPARE(changedSpy.count(), 1);
 
-    QVERIFY(session.subscriptions.at(0).paused);
-    QVERIFY(session.subscriptions.at(1).paused);
-    QVERIFY(session.subscriptions.at(0).recentMessageTimestampsMs.isEmpty());
-    QVERIFY(session.subscriptions.at(1).recentMessageTimestampsMs.isEmpty());
-    QCOMPARE(saveCount, 1);
-    QCOMPARE(refreshCount, 1);
+    currentSession.subscriptions[0].recentMessageTimestampsMs = {5};
+    currentSession.subscriptions[1].recentMessageTimestampsMs = {6};
+    fixture.service.setAllCurrentSubscriptionsPaused(false);
 
-    session.subscriptions[0].recentMessageTimestampsMs = {5};
-    session.subscriptions[1].recentMessageTimestampsMs = {6};
-    service.setAllCurrentSubscriptionsPaused(false);
-
-    QVERIFY(!session.subscriptions.at(0).paused);
-    QVERIFY(!session.subscriptions.at(1).paused);
-    QVERIFY(session.subscriptions.at(0).recentMessageTimestampsMs.isEmpty());
-    QVERIFY(session.subscriptions.at(1).recentMessageTimestampsMs.isEmpty());
-    QCOMPARE(saveCount, 2);
-    QCOMPARE(refreshCount, 2);
+    QVERIFY(!currentSession.subscriptions.at(0).paused);
+    QVERIFY(!currentSession.subscriptions.at(1).paused);
+    QVERIFY(currentSession.subscriptions.at(0).recentMessageTimestampsMs.isEmpty());
+    QVERIFY(currentSession.subscriptions.at(1).recentMessageTimestampsMs.isEmpty());
+    QCOMPARE(changedSpy.count(), 2);
 }
 
-void SubscriptionServiceTest::refreshTimerStopsAfterRateHistoryDrains()
+void SubscriptionServiceTest::detectsActiveCurrentSubscriptionFps()
 {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    Fixture fixture;
     SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
     SubscriptionEntry entry;
     entry.topic = QStringLiteral("devices/temp");
     entry.recentMessageTimestampsMs = {nowMs};
     session.subscriptions.append(entry);
+    SessionState &currentSession = fixture.setCurrentSession(std::move(session));
 
-    SubscriptionListModel model;
-    model.setSource(&session);
-    QVERIFY(model.updateTopicFps(nowMs));
-    session.subscriptions[0].recentMessageTimestampsMs.clear();
+    QVERIFY(fixture.service.currentSessionHasActiveSubscriptionFps(nowMs));
 
-    QTimer refreshTimer;
-    refreshTimer.setInterval(60'000);
-    refreshTimer.start();
+    currentSession.subscriptions[0].paused = true;
+    QVERIFY(!fixture.service.currentSessionHasActiveSubscriptionFps(nowMs));
 
-    SubscriptionService service;
-    service.setDependencies({
-        &model,
-        nullptr,
-        nullptr,
-        &refreshTimer,
-        [&session]() { return &session; },
-        {},
-        {},
-        {},
-    });
-
-    for (int sample = 1; sample < AppUtils::kSubscriptionRateHistorySampleCount; ++sample) {
-        service.refreshSubscriptionFps();
-        QVERIFY(refreshTimer.isActive());
-    }
-
-    service.refreshSubscriptionFps();
-    QVERIFY(!refreshTimer.isActive());
-    QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
+    currentSession.subscriptions[0].paused = false;
+    QVERIFY(!fixture.service.currentSessionHasActiveSubscriptionFps(
+        nowMs + AppUtils::kSubscriptionFpsWindowMs + 1));
 }
 
 QTEST_MAIN(SubscriptionServiceTest)

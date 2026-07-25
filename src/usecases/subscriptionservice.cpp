@@ -2,12 +2,9 @@
 
 #include "usecases/eventhistoryservice.h"
 #include "usecases/scriptservice.h"
+#include "usecases/sessionservice.h"
 #include "services/apputils.h"
 #include "domain/sessionconfig.h"
-#include "models/subscriptionlistmodel.h"
-#include "services/payload/payloadcodec.h"
-
-#include <QDateTime>
 #include <QRegularExpression>
 
 #include <algorithm>
@@ -27,25 +24,26 @@ QString sanitizeTopicColor(const QString &color)
 }
 
 void reloadCurrentMessagesIfNeeded(
-    EventHistoryService *eventController,
-    const SubscriptionService::Dependencies &dependencies,
+    EventHistoryService &eventHistoryService,
+    SessionService &sessionService,
     const SessionState *session)
 {
-    if (eventController && session && dependencies.currentSessionState && session == dependencies.currentSessionState()) {
-        eventController->reloadCurrentSessionHistory();
+    if (session && session == sessionService.currentSession()) {
+        eventHistoryService.reloadCurrentSessionHistory();
     }
 }
 }
 
-SubscriptionService::SubscriptionService(QObject *parent)
+SubscriptionService::SubscriptionService(
+    SessionService &sessionService,
+    ScriptService &scriptService,
+    EventHistoryService &eventHistoryService,
+    QObject *parent)
     : QObject(parent)
+    , m_sessionService(sessionService)
+    , m_scriptService(scriptService)
+    , m_eventHistoryService(eventHistoryService)
 {
-}
-
-void SubscriptionService::setDependencies(const Dependencies &dependencies)
-{
-    m_dependencies = dependencies;
-
 }
 
 bool SubscriptionService::upsertCurrentSubscription(
@@ -56,7 +54,7 @@ bool SubscriptionService::upsertCurrentSubscription(
     const QString &color,
     const QString &alias)
 {
-    auto *session = m_dependencies.currentSessionState();
+    auto *session = m_sessionService.currentSession();
     if (!session) {
         return false;
     }
@@ -68,12 +66,12 @@ bool SubscriptionService::upsertCurrentSubscription(
 
     const QMqttTopicFilter topicFilter(filter);
     if (!topicFilter.isValid()) {
-        m_dependencies.eventController->appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
+        m_eventHistoryService.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
         return false;
     }
 
     SubscriptionEntry *entry = subscriptionByTopic(session, filter);
-    const QString sanitizedScriptId = (*m_dependencies.scriptController).scriptById(scriptId) ? scriptId : QString();
+    const QString sanitizedScriptId = m_scriptService.scriptById(scriptId) ? scriptId : QString();
     const QString sanitizedColor = sanitizeTopicColor(color);
     const QString displayAlias = alias.trimmed();
     bool shouldReloadMessages = false;
@@ -105,13 +103,10 @@ bool SubscriptionService::upsertCurrentSubscription(
         ensureSubscriptionActive(*session, *entry, true);
     }
 
-    const bool saved = m_dependencies.saveSessions();
-    if (m_dependencies.refreshSubscriptionsModel) {
-        m_dependencies.refreshSubscriptionsModel();
-    }
+    const bool saved = m_sessionService.saveSessions();
     emit subscriptionsChanged();
     if (shouldReloadMessages) {
-        reloadCurrentMessagesIfNeeded(m_dependencies.eventController, m_dependencies, session);
+        reloadCurrentMessagesIfNeeded(m_eventHistoryService, m_sessionService, session);
     }
     return saved;
 }
@@ -125,7 +120,7 @@ bool SubscriptionService::updateCurrentSubscription(
     const QString &scriptId,
     const QString &color)
 {
-    auto *session = m_dependencies.currentSessionState();
+    auto *session = m_sessionService.currentSession();
     if (!session) {
         return false;
     }
@@ -138,7 +133,7 @@ bool SubscriptionService::updateCurrentSubscription(
 
     const QMqttTopicFilter topicFilter(filter);
     if (!topicFilter.isValid()) {
-        m_dependencies.eventController->appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
+        m_eventHistoryService.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
         return false;
     }
 
@@ -148,14 +143,14 @@ bool SubscriptionService::updateCurrentSubscription(
     }
 
     if (filter != previousFilter && subscriptionByTopic(session, filter)) {
-        m_dependencies.eventController->appendEvent(
+        m_eventHistoryService.appendEvent(
             *session,
             QStringLiteral("Subscription"),
             QStringLiteral("%1 already exists").arg(filter));
         return false;
     }
 
-    const QString sanitizedScriptId = (*m_dependencies.scriptController).scriptById(scriptId) ? scriptId : QString();
+    const QString sanitizedScriptId = m_scriptService.scriptById(scriptId) ? scriptId : QString();
     const QString sanitizedColor = sanitizeTopicColor(color);
     const QString displayAlias = alias.trimmed();
     const int sanitizedQos = SessionConfig::sanitizeQos(qos);
@@ -207,20 +202,17 @@ bool SubscriptionService::updateCurrentSubscription(
         ensureSubscriptionActive(*session, *entry, true);
     }
 
-    const bool saved = m_dependencies.saveSessions();
-    if (m_dependencies.refreshSubscriptionsModel) {
-        m_dependencies.refreshSubscriptionsModel();
-    }
+    const bool saved = m_sessionService.saveSessions();
     emit subscriptionsChanged();
     if (topicChanged || colorChanged || formatChanged) {
-        reloadCurrentMessagesIfNeeded(m_dependencies.eventController, m_dependencies, session);
+        reloadCurrentMessagesIfNeeded(m_eventHistoryService, m_sessionService, session);
     }
     return saved;
 }
 
 void SubscriptionService::removeCurrentSubscription(const QString &topic)
 {
-    auto *session = m_dependencies.currentSessionState();
+    auto *session = m_sessionService.currentSession();
     if (!session) {
         return;
     }
@@ -244,19 +236,16 @@ void SubscriptionService::removeCurrentSubscription(const QString &topic)
         client->unsubscribe(QMqttTopicFilter(filter));
     }
 
-    m_dependencies.eventController->appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Removed %1").arg(filter));
+    m_eventHistoryService.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Removed %1").arg(filter));
     session->runtime.subscriptionFormats.remove(filter);
     session->subscriptions.erase(it);
-    m_dependencies.saveSessions();
-    if (m_dependencies.refreshSubscriptionsModel) {
-        m_dependencies.refreshSubscriptionsModel();
-    }
+    m_sessionService.saveSessions();
     emit subscriptionsChanged();
 }
 
 void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, bool paused)
 {
-    auto *session = m_dependencies.currentSessionState();
+    auto *session = m_sessionService.currentSession();
     if (!session) {
         return;
     }
@@ -275,7 +264,7 @@ void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, boo
         } else if (auto *client = session->runtime.client; client && client->state() == QMqttClient::Connected) {
             client->unsubscribe(QMqttTopicFilter(entry->topic));
         }
-        m_dependencies.eventController->appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Paused %1").arg(entry->topic));
+        m_eventHistoryService.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Paused %1").arg(entry->topic));
     } else {
         entry->lastError.clear();
         if (entry->runtimeSubscription) {
@@ -286,23 +275,20 @@ void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, boo
         if (client && client->state() == QMqttClient::Connected) {
             ensureSubscriptionActive(*session, *entry, true);
         } else {
-            m_dependencies.eventController->appendEvent(
+            m_eventHistoryService.appendEvent(
                 *session,
                 QStringLiteral("Subscription"),
                 QStringLiteral("Queued %1 for reconnect").arg(entry->topic));
         }
     }
 
-    m_dependencies.saveSessions();
-    if (m_dependencies.refreshSubscriptionsModel) {
-        m_dependencies.refreshSubscriptionsModel();
-    }
+    m_sessionService.saveSessions();
     emit subscriptionsChanged();
 }
 
 void SubscriptionService::setAllCurrentSubscriptionsPaused(bool paused)
 {
-    auto *session = m_dependencies.currentSessionState();
+    auto *session = m_sessionService.currentSession();
     if (!session) {
         return;
     }
@@ -341,18 +327,11 @@ void SubscriptionService::setAllCurrentSubscriptionsPaused(bool paused)
         return;
     }
 
-    if (m_dependencies.eventController) {
-        m_dependencies.eventController->appendEvent(
-            *session,
-            QStringLiteral("Subscription"),
-            paused ? QStringLiteral("Paused all subscriptions") : QStringLiteral("Resumed all subscriptions"));
-    }
-    if (m_dependencies.saveSessions) {
-        m_dependencies.saveSessions();
-    }
-    if (m_dependencies.refreshSubscriptionsModel) {
-        m_dependencies.refreshSubscriptionsModel();
-    }
+    m_eventHistoryService.appendEvent(
+        *session,
+        QStringLiteral("Subscription"),
+        paused ? QStringLiteral("Paused all subscriptions") : QStringLiteral("Resumed all subscriptions"));
+    m_sessionService.saveSessions();
     emit subscriptionsChanged();
 }
 
@@ -367,38 +346,6 @@ SubscriptionEntry *SubscriptionService::subscriptionByTopic(SessionState *sessio
         }
     }
     return nullptr;
-}
-
-const SubscriptionEntry *SubscriptionService::subscriptionByTopic(const SessionState *session, const QString &topic) const
-{
-    if (!session) {
-        return nullptr;
-    }
-    for (const auto &entry : session->subscriptions) {
-        if (entry.topic == topic) {
-            return &entry;
-        }
-    }
-    return nullptr;
-}
-
-const SubscriptionEntry *SubscriptionService::bestSubscriptionForTopic(
-    const SessionState &session,
-    const QString &topic) const
-{
-    const SubscriptionEntry *best = nullptr;
-    int bestScore = -1;
-    for (const auto &entry : session.subscriptions) {
-        if (!PayloadCodec::topicFilterMatches(entry.topic, topic)) {
-            continue;
-        }
-        const int score = topicSpecificityScore(entry.topic);
-        if (score > bestScore || (score == bestScore && (!best || entry.topic < best->topic))) {
-            bestScore = score;
-            best = &entry;
-        }
-    }
-    return best;
 }
 
 void SubscriptionService::restoreActiveSubscriptions(SessionState &session, bool emitEvents)
@@ -441,7 +388,7 @@ void SubscriptionService::ensureSubscriptionActive(SessionState &session, Subscr
         entry.runtimeState = QStringLiteral("error");
         entry.lastError = tr("Invalid topic filter.");
         if (emitEvents) {
-            m_dependencies.eventController->appendEvent(
+            m_eventHistoryService.appendEvent(
                 session,
                 QStringLiteral("Subscription"),
                 QStringLiteral("%1 is not a valid topic filter").arg(entry.topic));
@@ -454,7 +401,7 @@ void SubscriptionService::ensureSubscriptionActive(SessionState &session, Subscr
         entry.runtimeState = QStringLiteral("error");
         entry.lastError = tr("Qt MQTT returned no subscription object.");
         if (emitEvents) {
-            m_dependencies.eventController->appendEvent(
+            m_eventHistoryService.appendEvent(
                 session,
                 QStringLiteral("Subscription"),
                 QStringLiteral("Failed to subscribe to %1").arg(entry.topic));
@@ -469,7 +416,7 @@ void SubscriptionService::ensureSubscriptionActive(SessionState &session, Subscr
     observeSubscription(session, entry, subscription);
 
     if (emitEvents) {
-        m_dependencies.eventController->appendEvent(
+        m_eventHistoryService.appendEvent(
             session,
             QStringLiteral("Subscription"),
             QStringLiteral("Requested %1 at QoS %2").arg(entry.topic).arg(entry.requestedQos));
@@ -499,7 +446,7 @@ void SubscriptionService::updateSubscriptionState(
     const QPointer<QMqttSubscription> &subscription,
     QMqttSubscription::SubscriptionState state)
 {
-    auto *session = m_dependencies.sessionById(sessionId);
+    auto *session = m_sessionService.sessionById(sessionId);
     SubscriptionEntry *entry = subscriptionByTopic(session, topic);
     if (!session || !entry || entry->runtimeSubscription != subscription) {
         return;
@@ -518,12 +465,12 @@ void SubscriptionService::updateSubscriptionState(
 
     if (previousState != entry->runtimeState) {
         if (state == QMqttSubscription::Subscribed) {
-            m_dependencies.eventController->appendEvent(
+            m_eventHistoryService.appendEvent(
                 *session,
                 QStringLiteral("Subscription"),
                 QStringLiteral("Subscribed to %1").arg(entry->topic));
         } else if (state == QMqttSubscription::Unsubscribed && entry->paused) {
-            m_dependencies.eventController->appendEvent(
+            m_eventHistoryService.appendEvent(
                 *session,
                 QStringLiteral("Subscription"),
                 QStringLiteral("Paused %1").arg(entry->topic));
@@ -531,28 +478,19 @@ void SubscriptionService::updateSubscriptionState(
             const QString reason = entry->lastError.isEmpty()
                 ? QStringLiteral("Broker returned a subscription error.")
                 : entry->lastError;
-            m_dependencies.eventController->appendEvent(
+            m_eventHistoryService.appendEvent(
                 *session,
                 QStringLiteral("Subscription"),
                 QStringLiteral("%1 failed: %2").arg(entry->topic).arg(reason));
         }
     }
 
-    m_dependencies.refreshSubscriptionsModel();
     emit subscriptionsChanged();
-}
-
-qreal SubscriptionService::subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const
-{
-    if (entry.paused) {
-        return 0.0;
-    }
-    return static_cast<qreal>(recentMessageCount(entry.recentMessageTimestampsMs, nowMs));
 }
 
 bool SubscriptionService::currentSessionHasActiveSubscriptionFps(qint64 nowMs) const
 {
-    const auto *session = m_dependencies.currentSessionState();
+    const auto *session = m_sessionService.currentSession();
     if (!session) {
         return false;
     }
@@ -565,19 +503,4 @@ bool SubscriptionService::currentSessionHasActiveSubscriptionFps(qint64 nowMs) c
     }
 
     return false;
-}
-
-void SubscriptionService::refreshSubscriptionFps()
-{
-    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    const auto *session = m_dependencies.currentSessionState();
-    if (!session) {
-        (*m_dependencies.subscriptionFpsRefreshTimer).stop();
-        return;
-    }
-
-    const bool hasRateHistory = (*m_dependencies.subscriptionsModel).updateTopicFps(nowMs);
-    if (!hasRateHistory) {
-        (*m_dependencies.subscriptionFpsRefreshTimer).stop();
-    }
 }

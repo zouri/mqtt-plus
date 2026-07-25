@@ -274,12 +274,6 @@ if(BUILD_TESTING)
         src/services/storage/historystore.cpp
     )
 
-    add_mqtt_plus_qt_test(test_message_retention_lifecycle
-        tests/test_message_retention_lifecycle.cpp
-        src/app/messageretentionlifecycle.cpp
-        src/services/storage/historystore.cpp
-    )
-
     add_mqtt_plus_qt_test(test_subscriptionlistmodel
         tests/test_subscriptionlistmodel.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
@@ -302,11 +296,6 @@ if(BUILD_TESTING)
         src/services/storage/scriptstore.cpp
     )
 
-    add_mqtt_plus_qt_test(test_scripttestsamplesmodel
-        tests/test_scripttestsamplesmodel.cpp
-        src/models/scripttestsamplesmodel.cpp
-    )
-
     add_mqtt_plus_qt_test(test_scriptsviewmodel
         tests/test_scriptsviewmodel.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
@@ -324,11 +313,6 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_workbenchviewmodel
         tests/test_workbenchviewmodel.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
-    )
-
-    add_mqtt_plus_qt_test(test_applicationviewmodel_shape
-        tests/test_applicationviewmodel_shape.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 

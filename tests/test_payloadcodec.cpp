@@ -13,6 +13,7 @@ private slots:
     void encodeBinaryTextFormats();
     void decodeDisplayFormats();
     void matchTopicFilters();
+    void scoreTopicSpecificity();
     void resolveMostSpecificTopicFormat();
 };
 
@@ -95,6 +96,13 @@ void PayloadCodecTest::matchTopicFilters()
     QVERIFY(PayloadCodec::topicFilterMatches(QStringLiteral("devices/#"), QStringLiteral("devices/a/temp")));
     QVERIFY(!PayloadCodec::topicFilterMatches(QStringLiteral("devices/#/temp"), QStringLiteral("devices/a/temp")));
     QVERIFY(!PayloadCodec::topicFilterMatches(QString(), QStringLiteral("devices/a/temp")));
+}
+
+void PayloadCodecTest::scoreTopicSpecificity()
+{
+    QCOMPARE(PayloadCodec::topicSpecificityScore(QStringLiteral("devices/#")), 8);
+    QCOMPARE(PayloadCodec::topicSpecificityScore(QStringLiteral("devices/+/temp")), 13);
+    QCOMPARE(PayloadCodec::topicSpecificityScore(QStringLiteral("devices/a/temp")), 14);
 }
 
 void PayloadCodecTest::resolveMostSpecificTopicFormat()

@@ -207,7 +207,9 @@ void pushContext(lua_State *state, const LuaScriptContext &context)
 }
 }
 
-LuaScriptResult LuaRunner::run(const QString &code, const LuaScriptContext &context)
+namespace LuaRunner {
+
+LuaScriptResult run(const QString &code, const LuaScriptContext &context)
 {
     LuaScriptResult result;
     lua_State *state = luaL_newstate();
@@ -267,3 +269,5 @@ LuaScriptResult LuaRunner::run(const QString &code, const LuaScriptContext &cont
     lua_close(state);
     return result;
 }
+
+} // namespace LuaRunner

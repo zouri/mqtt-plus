@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QString>
 #include <QVector>
 
 struct SessionState;
@@ -38,13 +39,31 @@ public:
 
     Q_INVOKABLE QVariantMap rowAt(int row) const;
 
-    void setSource(const QVector<SessionState> *sessions);
-    void notifyRefresh();
+    void setSessions(const QVector<SessionState> &sessions);
 
 signals:
     void countChanged();
 
 private:
-    const QVector<SessionState> *m_sessions = nullptr;
-    int m_knownCount = 0;
+    struct SessionRow
+    {
+        QString id;
+        QString name;
+        QString state;
+        bool connected = false;
+        QString host;
+        int port = 0;
+        QString clientId;
+        QString transport;
+        QString transportLabel;
+        int protocolVersion = 0;
+        QString protocolVersionName;
+        QString summary;
+        QString lastError;
+        qint64 unreadMessageCount = 0;
+    };
+
+    static SessionRow rowFromSession(const SessionState &session);
+
+    QVector<SessionRow> m_rows;
 };

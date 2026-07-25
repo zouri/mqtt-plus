@@ -1,6 +1,7 @@
 #include "viewmodels/logsviewmodel.h"
 
 #include "models/eventstreammodel.h"
+#include "usecases/eventhistoryservice.h"
 
 #include <QStringList>
 
@@ -29,35 +30,27 @@ QString indentedPayload(QString payload)
 }
 }
 
-LogsViewModel::LogsViewModel(QObject *parent)
-    : LogsViewModel(Dependencies {}, parent)
-{
-}
-
-LogsViewModel::LogsViewModel(const Dependencies &dependencies, QObject *parent)
+LogsViewModel::LogsViewModel(
+    EventHistoryService &history,
+    EventStreamModel &logs,
+    QObject *parent)
     : QObject(parent)
-    , m_dependencies(dependencies)
+    , m_history(history)
+    , m_logs(logs)
 {
-    if (m_dependencies.bindLogStreamChanged) {
-        m_dependencies.bindLogStreamChanged(this, [this]() {
-            emit logTextChanged();
-            emit logStreamChanged();
-        });
-    }
-    if (m_dependencies.bindLogStreamRowAppended) {
-        m_dependencies.bindLogStreamRowAppended(this, [this](const QVariantMap &row) {
-            emit logTextChanged();
-            emit logStreamRowAppended(row);
-        });
-    }
-    if (auto *model = logs()) {
-        connect(model, &EventStreamModel::countChanged, this, &LogsViewModel::logTextChanged);
-    }
+    connect(&m_history, &EventHistoryService::logStreamChanged,
+        this, &LogsViewModel::logStreamChanged);
+    connect(&m_history, &EventHistoryService::logStreamChanged,
+        this, &LogsViewModel::logTextChanged);
+    connect(&m_history, &EventHistoryService::logAppended,
+        this, &LogsViewModel::logStreamRowAppended);
+    connect(&m_logs, &EventStreamModel::countChanged,
+        this, &LogsViewModel::logTextChanged);
 }
 
 EventStreamModel *LogsViewModel::logs() const
 {
-    return m_dependencies.logs;
+    return &m_logs;
 }
 
 QString LogsViewModel::logText() const
@@ -104,12 +97,10 @@ QString LogsViewModel::renderedLogText(const EventStreamModel *model)
 
 void LogsViewModel::clearCurrentLogs()
 {
-    if (m_dependencies.clearCurrentLogs) {
-        m_dependencies.clearCurrentLogs();
-    }
+    m_history.clearCurrentLogs();
 }
 
 int LogsViewModel::loadOlderCurrentSessionLogs()
 {
-    return m_dependencies.loadOlderCurrentSessionLogs ? m_dependencies.loadOlderCurrentSessionLogs() : 0;
+    return m_history.loadOlderCurrentSessionLogs();
 }

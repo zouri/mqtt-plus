@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QSortFilterProxyModel>
+#include <QList>
 #include <QStringList>
 #include <QVariantMap>
 
@@ -26,7 +27,6 @@ public:
     int filteredMessageCount() const;
     int totalMessageCount() const;
 
-    void setSourceModel(QAbstractItemModel *sourceModel) override;
     void setFilterText(const QString &filterText);
     void setSelectedTopics(const QStringList &selectedTopics);
     void setDirection(const QString &direction);
@@ -54,4 +54,5 @@ private:
     QString m_filterText;
     QStringList m_selectedTopics;
     QString m_direction = QStringLiteral("all");
+    QList<QMetaObject::Connection> m_sourceConnections;
 };

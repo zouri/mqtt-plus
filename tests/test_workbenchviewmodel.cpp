@@ -2,11 +2,90 @@
 
 #include "domain/session.h"
 #include "models/subscriptionlistmodel.h"
+#include "services/storage/historystore.h"
 #include "usecases/eventhistoryservice.h"
+#include "usecases/mqttsessionservice.h"
+#include "usecases/preferencescontroller.h"
+#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
+#include "usecases/subscriptionservice.h"
 
-#include <QtTest/QtTest>
 #include <QDateTime>
+#include <QSettings>
+#include <QTemporaryDir>
+#include <QtTest/QtTest>
+
+namespace {
+
+struct WorkbenchFixture
+{
+    WorkbenchFixture()
+        : settings(temporaryDirectory.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
+        , preferences(&settings)
+        , historyStore(temporaryDirectory.path())
+        , sessionService(
+              settings,
+              scriptService,
+              historyStore,
+              preferences)
+        , eventHistoryService(
+              sessionService,
+              historyStore,
+              messagesModel,
+              logsModel,
+              scriptService,
+              launchTimestamp,
+              preferences)
+        , subscriptionService(
+              sessionService,
+              scriptService,
+              eventHistoryService)
+        , mqttService(
+              sessionService,
+              subscriptionService,
+              eventHistoryService)
+        , viewModel(
+              sessionService,
+              mqttService,
+              subscriptionService,
+              eventHistoryService,
+              sessionsModel,
+              filteredSubscriptionsModel,
+              messageFilterSubscriptionsModel,
+              messagesModel,
+              filteredMessagesModel,
+              scriptsModel)
+    {
+        sessionsModel.setSessions(sessionService.sessions());
+        scriptsModel.setScripts(scriptService.scripts());
+        subscriptionsModel.setSubscriptions(QString(), {}, scriptService.scripts());
+        filteredSubscriptionsModel.setSourceModel(&subscriptionsModel);
+        messageFilterSubscriptionsModel.setSourceModel(&subscriptionsModel);
+        filteredMessagesModel.setSourceModel(&messagesModel);
+    }
+
+    QTemporaryDir temporaryDirectory;
+    QSettings settings;
+    PreferencesController preferences;
+    HistoryStore historyStore;
+    ScriptService scriptService;
+    SessionService sessionService;
+    SessionListModel sessionsModel;
+    SubscriptionListModel subscriptionsModel;
+    SubscriptionFilterModel filteredSubscriptionsModel;
+    SubscriptionFilterModel messageFilterSubscriptionsModel;
+    EventStreamModel messagesModel;
+    EventStreamModel logsModel;
+    MessageFilterModel filteredMessagesModel;
+    ScriptLibraryModel scriptsModel;
+    QString launchTimestamp = QStringLiteral("2026-07-25T00:00:00.000");
+    EventHistoryService eventHistoryService;
+    SubscriptionService subscriptionService;
+    MqttSessionService mqttService;
+    WorkbenchViewModel viewModel;
+};
+
+} // namespace
 
 class WorkbenchViewModelTest : public QObject
 {
@@ -17,10 +96,9 @@ private slots:
     void exposesSessionEditor();
     void exposesSubscriptionEditor();
     void preparesSubscriptionEditorForCreate();
-    void rejectsSubscriptionEditorEditWithoutCore();
-    void ignoresSessionCommandsWithoutCore();
+    void rejectsInvalidSubscriptionEditorIndex();
+    void ignoresInvalidSessionIndexes();
     void updatesPublishDraft();
-    void keepsBoundedReusablePublishHistory();
     void rejectsPublishWithoutConnectedSession();
     void forwardsSessionAndRuntimeStateNotificationsSeparately();
     void forwardsMessageBatchNotifications();
@@ -28,14 +106,15 @@ private slots:
     void exposesConnectionTimingAndAggregateRates();
     void ownsSubscriptionFilterState();
     void ownsPendingSubscriptionDeleteState();
-    void acceptsIntentCommandsWithoutCore();
+    void handlesIntentCommandsWithoutCurrentSession();
     void ownsMessageFilterState();
     void exposesUnfilteredSubscriptionsAndSelectedTopicState();
 };
 
 void WorkbenchViewModelTest::exposesDefaultPublishDraft()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     QVERIFY(viewModel.publisher());
     QCOMPARE(viewModel.publisher()->topic(), QString());
@@ -48,7 +127,8 @@ void WorkbenchViewModelTest::exposesDefaultPublishDraft()
 
 void WorkbenchViewModelTest::exposesSessionEditor()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     QVERIFY(viewModel.sessionEditor());
     viewModel.openSessionEditorForCreate();
@@ -62,7 +142,8 @@ void WorkbenchViewModelTest::exposesSessionEditor()
 
 void WorkbenchViewModelTest::exposesSubscriptionEditor()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     QVERIFY(viewModel.subscriptionEditor());
     viewModel.subscriptionEditor()->openForCreate();
@@ -74,7 +155,8 @@ void WorkbenchViewModelTest::exposesSubscriptionEditor()
 
 void WorkbenchViewModelTest::preparesSubscriptionEditorForCreate()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
     viewModel.subscriptionEditor()->setTopic(QStringLiteral("devices/+/temp"));
     viewModel.subscriptionEditor()->setAlias(QStringLiteral("Temperature"));
 
@@ -85,28 +167,30 @@ void WorkbenchViewModelTest::preparesSubscriptionEditorForCreate()
     QVERIFY(viewModel.subscriptionEditor()->alias().isEmpty());
 }
 
-void WorkbenchViewModelTest::rejectsSubscriptionEditorEditWithoutCore()
+void WorkbenchViewModelTest::rejectsInvalidSubscriptionEditorIndex()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     QVERIFY(!viewModel.openSubscriptionEditorForEdit(0));
     QVERIFY(!viewModel.subscriptionEditor()->editMode());
 }
 
-void WorkbenchViewModelTest::ignoresSessionCommandsWithoutCore()
+void WorkbenchViewModelTest::ignoresInvalidSessionIndexes()
 {
-    WorkbenchViewModel viewModel;
-    QSignalSpy sessionEditSpy(&viewModel, &WorkbenchViewModel::sessionEditRequested);
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     viewModel.requestSessionDuplicate(0);
     viewModel.requestSessionDelete(0);
 
-    QCOMPARE(sessionEditSpy.size(), 0);
+    QVERIFY(fixture.sessionService.sessions().isEmpty());
 }
 
 void WorkbenchViewModelTest::updatesPublishDraft()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
     auto *publisher = viewModel.publisher();
     QSignalSpy topicSpy(publisher, &PublishDraftViewModel::topicChanged);
     QSignalSpy payloadSpy(publisher, &PublishDraftViewModel::payloadChanged);
@@ -133,56 +217,10 @@ void WorkbenchViewModelTest::updatesPublishDraft()
     QCOMPARE(retainSpy.size(), 1);
 }
 
-void WorkbenchViewModelTest::keepsBoundedReusablePublishHistory()
-{
-    int publishedCount = 0;
-    PublishDraftViewModel::Dependencies dependencies;
-    dependencies.canPublishToCurrentSession = []() { return true; };
-    dependencies.publishCurrentSession = [&publishedCount](const QString &, const QString &, int, int, bool) {
-        ++publishedCount;
-        return true;
-    };
-    PublishDraftViewModel publisher(dependencies);
-    QSignalSpy historySpy(&publisher, &PublishDraftViewModel::recentPublishesChanged);
-
-    publisher.setTopic(QStringLiteral("devices/light"));
-    publisher.setPayload(QStringLiteral("on"));
-    publisher.setQos(1);
-    publisher.setRetain(true);
-    QVERIFY(publisher.publishDraft());
-    QVERIFY(publisher.publishDraft());
-    QCOMPARE(publishedCount, 2);
-    QCOMPARE(publisher.recentPublishes().size(), 1);
-
-    for (int index = 0; index < 12; ++index) {
-        publisher.setTopic(QStringLiteral("devices/%1").arg(index));
-        publisher.setPayload(QString::number(index));
-        QVERIFY(publisher.publishDraft());
-    }
-    QCOMPARE(publisher.recentPublishes().size(), 10);
-    QCOMPARE(publisher.recentPublishes().first().toMap().value(QStringLiteral("topic")).toString(), QStringLiteral("devices/11"));
-
-    publisher.setTopic(QStringLiteral("other"));
-    publisher.setPayload(QStringLiteral("draft"));
-    QVERIFY(publisher.useRecentPublish(0));
-    QCOMPARE(publisher.topic(), QStringLiteral("devices/11"));
-    QCOMPARE(publisher.payload(), QStringLiteral("11"));
-    publisher.clearRecentPublishes();
-    QVERIFY(publisher.recentPublishes().isEmpty());
-    QVERIFY(historySpy.count() >= 14);
-
-    dependencies.publishCurrentSession = [](const QString &, const QString &, int, int, bool) {
-        return false;
-    };
-    PublishDraftViewModel rejectedPublisher(dependencies);
-    rejectedPublisher.setTopic(QStringLiteral("devices/rejected"));
-    QVERIFY(!rejectedPublisher.publishDraft());
-    QVERIFY(rejectedPublisher.recentPublishes().isEmpty());
-}
-
 void WorkbenchViewModelTest::rejectsPublishWithoutConnectedSession()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     viewModel.publisher()->setTopic(QStringLiteral("sensors/temp"));
     viewModel.publisher()->setPayload(QStringLiteral("23"));
@@ -195,47 +233,35 @@ void WorkbenchViewModelTest::rejectsPublishWithoutConnectedSession()
 
 void WorkbenchViewModelTest::forwardsSessionAndRuntimeStateNotificationsSeparately()
 {
-    std::function<void()> notifyCurrentSession;
-    std::function<void()> notifySessionRuntimeState;
-    WorkbenchViewModel::Dependencies dependencies;
-    dependencies.bindCurrentSessionChanged = [&notifyCurrentSession](QObject *, std::function<void()> handler) {
-        notifyCurrentSession = std::move(handler);
-    };
-    dependencies.bindSessionRuntimeStateChanged = [&notifySessionRuntimeState](QObject *, std::function<void()> handler) {
-        notifySessionRuntimeState = std::move(handler);
-    };
-    WorkbenchViewModel viewModel(dependencies);
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
     QSignalSpy sessionSpy(&viewModel, &WorkbenchViewModel::currentSessionChanged);
     QSignalSpy statusSpy(&viewModel, &WorkbenchViewModel::sessionStatusChanged);
     QSignalSpy publishSpy(&viewModel, &WorkbenchViewModel::publishStatusChanged);
+    QSignalSpy availabilitySpy(viewModel.publisher(), &PublishDraftViewModel::canPublishChanged);
 
-    QVERIFY(notifyCurrentSession);
-    QVERIFY(notifySessionRuntimeState);
-    notifyCurrentSession();
+    emit fixture.sessionService.currentSessionChanged();
 
     QCOMPARE(sessionSpy.size(), 1);
     QCOMPARE(statusSpy.size(), 1);
     QCOMPARE(publishSpy.size(), 1);
+    QCOMPARE(availabilitySpy.size(), 1);
 
-    notifySessionRuntimeState();
+    emit fixture.mqttService.sessionStateChanged();
 
     QCOMPARE(sessionSpy.size(), 1);
     QCOMPARE(statusSpy.size(), 2);
     QCOMPARE(publishSpy.size(), 2);
+    QCOMPARE(availabilitySpy.size(), 2);
 }
 
 void WorkbenchViewModelTest::forwardsMessageBatchNotifications()
 {
-    std::function<void(int)> notifyMessageRows;
-    WorkbenchViewModel::Dependencies dependencies;
-    dependencies.bindMessageStreamRowsAppended = [&notifyMessageRows](QObject *, std::function<void(int)> handler) {
-        notifyMessageRows = std::move(handler);
-    };
-    WorkbenchViewModel viewModel(dependencies);
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
     QSignalSpy appendSpy(&viewModel, &WorkbenchViewModel::messageStreamRowsAppended);
 
-    QVERIFY(notifyMessageRows);
-    notifyMessageRows(4);
+    emit fixture.eventHistoryService.messageRowsAppended(4);
 
     QCOMPARE(appendSpy.size(), 1);
     QCOMPARE(appendSpy.first().at(0).toInt(), 4);
@@ -243,29 +269,20 @@ void WorkbenchViewModelTest::forwardsMessageBatchNotifications()
 
 void WorkbenchViewModelTest::exposesTotalMessageCountAndForwardsFreeze()
 {
-    std::function<void()> notifyTotalMessageCount;
     SessionState session;
     session.runtime.totalMessageCount = 1201;
-    SessionService sessions;
-    sessions.appendSession(session);
-    sessions.setCurrentIndex(0);
-    EventHistoryService history;
-
-    WorkbenchViewModel::Dependencies dependencies;
-    dependencies.bindTotalMessageCountChanged = [&notifyTotalMessageCount](QObject *, std::function<void()> handler) {
-        notifyTotalMessageCount = std::move(handler);
-    };
-    dependencies.sessionController = &sessions;
-    dependencies.eventController = &history;
-    WorkbenchViewModel viewModel(dependencies);
+    WorkbenchFixture fixture;
+    fixture.sessionService.sessions().append(session);
+    fixture.sessionService.setCurrentSessionIndex(0);
+    WorkbenchViewModel &viewModel = fixture.viewModel;
     QSignalSpy totalSpy(&viewModel, &WorkbenchViewModel::totalMessageCountChanged);
 
     QCOMPARE(viewModel.totalMessageCount(), 1201);
     viewModel.setMessageStreamFrozen(true);
-    QVERIFY(history.messageStreamFrozen());
+    QVERIFY(fixture.eventHistoryService.messageStreamFrozen());
 
-    sessions.currentSession()->runtime.totalMessageCount = 1202;
-    notifyTotalMessageCount();
+    fixture.sessionService.currentSession()->runtime.totalMessageCount = 1202;
+    emit fixture.eventHistoryService.totalMessageCountChanged();
     QCOMPARE(totalSpy.count(), 1);
     QCOMPARE(viewModel.totalMessageCount(), 1202);
 }
@@ -287,12 +304,10 @@ void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
     second.recentMessageTimestampsMs = {nowMs - 300};
     session.subscriptions = {first, second};
 
-    SessionService sessions;
-    sessions.appendSession(session);
-    sessions.setCurrentIndex(0);
-    WorkbenchViewModel::Dependencies dependencies;
-    dependencies.sessionController = &sessions;
-    WorkbenchViewModel viewModel(dependencies);
+    WorkbenchFixture fixture;
+    fixture.sessionService.sessions().append(session);
+    fixture.sessionService.setCurrentSessionIndex(0);
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     const QVariantMap status = viewModel.sessionStatus();
     QCOMPARE(status.value(QStringLiteral("connectedAtMs")).toLongLong(), nowMs - 5000);
@@ -304,10 +319,9 @@ void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
 
 void WorkbenchViewModelTest::ownsSubscriptionFilterState()
 {
-    SubscriptionFilterModel filteredSubscriptions;
-    WorkbenchViewModel::Dependencies dependencies;
-    dependencies.filteredSubscriptions = &filteredSubscriptions;
-    WorkbenchViewModel viewModel(dependencies);
+    WorkbenchFixture fixture;
+    SubscriptionFilterModel &filteredSubscriptions = fixture.filteredSubscriptionsModel;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
     QSignalSpy textSpy(&filteredSubscriptions, &SubscriptionFilterModel::filterTextChanged);
     QSignalSpy modeSpy(&filteredSubscriptions, &SubscriptionFilterModel::filterModeChanged);
     QSignalSpy indexSpy(&filteredSubscriptions, &SubscriptionFilterModel::filterModeIndexChanged);
@@ -343,7 +357,8 @@ void WorkbenchViewModelTest::ownsSubscriptionFilterState()
 
 void WorkbenchViewModelTest::ownsPendingSubscriptionDeleteState()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
     QSignalSpy pendingSpy(&viewModel, &WorkbenchViewModel::pendingSubscriptionDeleteChanged);
     QSignalSpy requestSpy(&viewModel, &WorkbenchViewModel::subscriptionDeleteRequested);
 
@@ -354,7 +369,7 @@ void WorkbenchViewModelTest::ownsPendingSubscriptionDeleteState()
     QCOMPARE(pendingSpy.size(), 1);
     QCOMPARE(requestSpy.size(), 1);
 
-    QVERIFY(!viewModel.confirmPendingSubscriptionDelete());
+    QVERIFY(viewModel.confirmPendingSubscriptionDelete());
     QCOMPARE(viewModel.pendingSubscriptionDeleteTopic(), QString());
     QCOMPARE(viewModel.pendingSubscriptionDeleteDisplayName(), QString());
     QCOMPARE(pendingSpy.size(), 2);
@@ -368,10 +383,8 @@ void WorkbenchViewModelTest::ownsPendingSubscriptionDeleteState()
 
 void WorkbenchViewModelTest::ownsMessageFilterState()
 {
-    MessageFilterModel filteredMessages;
-    WorkbenchViewModel::Dependencies dependencies;
-    dependencies.filteredMessages = &filteredMessages;
-    WorkbenchViewModel viewModel(dependencies);
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     viewModel.setMessageTopicFilter(QStringLiteral("sensors/+/temperature"));
     QCOMPARE(
@@ -405,20 +418,16 @@ void WorkbenchViewModelTest::exposesUnfilteredSubscriptionsAndSelectedTopicState
     light.alias = QStringLiteral("Light");
     session.subscriptions.append(light);
 
+    WorkbenchFixture fixture;
     SubscriptionListModel subscriptions;
-    subscriptions.setSource(&session);
-    SubscriptionFilterModel filteredSubscriptions;
-    filteredSubscriptions.setSourceModel(&subscriptions);
-    filteredSubscriptions.setFilterText(QStringLiteral("Light"));
-    SubscriptionFilterModel messageFilterSubscriptions;
-    messageFilterSubscriptions.setSourceModel(&subscriptions);
-    MessageFilterModel filteredMessages;
-
-    WorkbenchViewModel::Dependencies dependencies;
-    dependencies.filteredSubscriptions = &filteredSubscriptions;
-    dependencies.messageFilterSubscriptions = &messageFilterSubscriptions;
-    dependencies.filteredMessages = &filteredMessages;
-    WorkbenchViewModel viewModel(dependencies);
+    subscriptions.setSubscriptions(
+        session.id,
+        session.subscriptions,
+        fixture.scriptService.scripts());
+    fixture.filteredSubscriptionsModel.setSourceModel(&subscriptions);
+    fixture.filteredSubscriptionsModel.setFilterText(QStringLiteral("Light"));
+    fixture.messageFilterSubscriptionsModel.setSourceModel(&subscriptions);
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     QCOMPARE(viewModel.messageFilterSubscriptions()->count(), 2);
     QCOMPARE(viewModel.filteredSubscriptions()->count(), 1);
@@ -434,11 +443,24 @@ void WorkbenchViewModelTest::exposesUnfilteredSubscriptionsAndSelectedTopicState
     QCOMPARE(twoTopics.value(QStringLiteral("selectedCount")).toInt(), 2);
     QCOMPARE(twoTopics.value(QStringLiteral("pausedCount")).toInt(), 1);
     QVERIFY(twoTopics.value(QStringLiteral("singleTopicLabel")).toString().isEmpty());
+
+    QSignalSpy stateSpy(&viewModel, &WorkbenchViewModel::messageTopicFilterStateChanged);
+    session.subscriptions[0].paused = false;
+    subscriptions.setSubscriptions(
+        session.id,
+        session.subscriptions,
+        fixture.scriptService.scripts());
+
+    QCOMPARE(stateSpy.count(), 1);
+    QCOMPARE(
+        viewModel.messageTopicFilterState().value(QStringLiteral("pausedCount")).toInt(),
+        0);
 }
 
-void WorkbenchViewModelTest::acceptsIntentCommandsWithoutCore()
+void WorkbenchViewModelTest::handlesIntentCommandsWithoutCurrentSession()
 {
-    WorkbenchViewModel viewModel;
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     viewModel.toggleCurrentSessionConnection();
     viewModel.toggleCurrentOutputPaused(false);

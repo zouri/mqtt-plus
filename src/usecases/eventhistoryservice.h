@@ -10,40 +10,26 @@
 #include <QVariantList>
 #include <QVariantMap>
 
-#include <functional>
-
 class EventStreamModel;
 class HistoryStore;
 class PreferencesController;
 class ScriptService;
-class ScriptTestSamplesModel;
-class SubscriptionService;
+class SessionService;
 
 class EventHistoryService : public QObject
 {
     Q_OBJECT
 
 public:
-    struct Dependencies
-    {
-        HistoryStore *historyStore = nullptr;
-        EventStreamModel *messagesModel = nullptr;
-        EventStreamModel *logsModel = nullptr;
-        ScriptTestSamplesModel *scriptTestSamplesModel = nullptr;
-        ScriptService *scriptController = nullptr;
-        SubscriptionService *subscriptionController = nullptr;
-        QTimer *subscriptionFpsRefreshTimer = nullptr;
-        QString *launchTimestamp = nullptr;
-        PreferencesController *preferencesController = nullptr;
-        std::function<SessionState *()> currentSessionState;
-        std::function<SessionState *(const QString &)> sessionById;
-        std::function<void()> refreshSubscriptionsModel;
-        std::function<void()> refreshScriptTestSamplesModel;
-    };
-
-    explicit EventHistoryService(QObject *parent = nullptr);
-
-    void setDependencies(const Dependencies &dependencies);
+    explicit EventHistoryService(
+        SessionService &sessionService,
+        HistoryStore &historyStore,
+        EventStreamModel &messages,
+        EventStreamModel &logs,
+        ScriptService &scriptService,
+        QString &launchTimestamp,
+        PreferencesController &preferencesController,
+        QObject *parent = nullptr);
 
     void clearCurrentMessages();
     void clearCurrentLogs();
@@ -51,17 +37,7 @@ public:
     int loadOlderCurrentSessionLogs();
     bool messageStreamFrozen() const;
     void setMessageStreamFrozen(bool frozen);
-    void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
-    void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
     void appendEvent(SessionState &session, const QString &channel, const QString &message);
-    LuaScriptResult parseIncomingPayload(
-        const SessionState &session,
-        const SubscriptionEntry *subscription,
-        const QString &topic,
-        const QByteArray &payloadBytes,
-        const QString &timestamp,
-        QString &scriptNameOut,
-        QString &decodedPayloadOut) const;
     void appendPublishedMessage(
         const QString &sessionId,
         const QString &topic,
@@ -77,8 +53,6 @@ public:
         int format) const;
     QString messagePayloadForDisplay(qint64 messageId, const QString &fallbackPayload, int format) const;
     QVariantMap messageDetails(qint64 messageId) const;
-    void trimVisibleMessageRows(SessionState &session);
-    void trimVisibleLogRows(SessionState &session);
     void reloadCurrentSessionHistory();
     void flushPendingMessageHistory();
 
@@ -86,17 +60,35 @@ signals:
     void messageStreamChanged();
     void totalMessageCountChanged();
     void logStreamChanged();
-    void messageAppended(const QVariantMap &row);
     void messageRowsAppended(int count);
     void logAppended(const QVariantMap &row);
+    void subscriptionActivityChanged();
 
 private:
+    void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
+    void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
+    LuaScriptResult parseIncomingPayload(
+        const SessionState &session,
+        const SubscriptionEntry *subscription,
+        const QString &topic,
+        const QByteArray &payloadBytes,
+        const QString &timestamp,
+        QString &scriptNameOut,
+        QString &decodedPayloadOut) const;
+    void trimVisibleMessageRows(SessionState &session);
+    void trimVisibleLogRows(SessionState &session);
     void flushPendingVisibleMessageRows();
     void reportMessageStorageError(SessionState &session, const QString &message);
     void scheduleMessageHistoryFlush();
     void scheduleVisibleMessageRowsFlush();
 
-    Dependencies m_dependencies;
+    SessionService &m_sessionService;
+    HistoryStore &m_historyStore;
+    EventStreamModel &m_messages;
+    EventStreamModel &m_logs;
+    ScriptService &m_scriptService;
+    QString &m_launchTimestamp;
+    PreferencesController &m_preferencesController;
     QTimer m_messageHistoryFlushTimer;
     QTimer m_visibleMessageRowsFlushTimer;
     QVariantList m_pendingVisibleMessageRows;

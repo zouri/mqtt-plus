@@ -29,7 +29,7 @@ void ScriptEditorViewModel::setCurrentScriptId(const QString &id)
     }
     m_currentScriptId = id;
     emit currentScriptIdChanged();
-    emitEditorStateChanged();
+    emit editorStateChanged();
 }
 
 void ScriptEditorViewModel::setName(const QString &name)
@@ -39,7 +39,7 @@ void ScriptEditorViewModel::setName(const QString &name)
     }
     m_name = name;
     emit nameChanged();
-    emitEditorStateChanged();
+    emit editorStateChanged();
 }
 
 void ScriptEditorViewModel::setDescription(const QString &description)
@@ -49,7 +49,7 @@ void ScriptEditorViewModel::setDescription(const QString &description)
     }
     m_description = description;
     emit descriptionChanged();
-    emitEditorStateChanged();
+    emit editorStateChanged();
 }
 
 void ScriptEditorViewModel::setCode(const QString &code)
@@ -59,10 +59,10 @@ void ScriptEditorViewModel::setCode(const QString &code)
     }
     m_code = code;
     emit codeChanged();
-    emitEditorStateChanged();
+    emit editorStateChanged();
 }
 
-QString ScriptEditorViewModel::defaultCode() const
+QString ScriptEditorViewModel::defaultCode()
 {
     return QStringLiteral("function parse(ctx)\n    return ctx.decoded\nend\n");
 }
@@ -78,7 +78,7 @@ void ScriptEditorViewModel::loadScript(const QVariantMap &row)
     m_savedCode = m_code;
     setValidationStatus(m_currentScriptId.isEmpty() ? QStringLiteral("Unsaved") : QStringLiteral("Saved"));
     setValidationOk(false);
-    emitEditorStateChanged();
+    emit editorStateChanged();
 }
 
 void ScriptEditorViewModel::newScript()
@@ -92,7 +92,7 @@ void ScriptEditorViewModel::newScript()
     m_savedCode = m_code;
     setValidationStatus(QStringLiteral("Unsaved"));
     setValidationOk(false);
-    emitEditorStateChanged();
+    emit editorStateChanged();
 }
 
 bool ScriptEditorViewModel::validateStructure()
@@ -114,7 +114,7 @@ void ScriptEditorViewModel::markSaved(const QString &id)
     m_savedCode = m_code;
     setValidationStatus(QStringLiteral("Saved"));
     setValidationOk(true);
-    emitEditorStateChanged();
+    emit editorStateChanged();
 }
 
 void ScriptEditorViewModel::setValidationStatus(const QString &status)
@@ -133,9 +133,4 @@ void ScriptEditorViewModel::setValidationOk(bool ok)
     }
     m_validationOk = ok;
     emit validationOkChanged();
-}
-
-void ScriptEditorViewModel::emitEditorStateChanged()
-{
-    emit editorStateChanged();
 }

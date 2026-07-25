@@ -9,133 +9,135 @@
 #include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
 
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QGuiApplication>
 
 #include <algorithm>
-#include <memory>
-#include <utility>
 
 using namespace AppUtils;
 
-namespace {
-
-PublishDraftViewModel::Dependencies publishDraftDependencies(const WorkbenchViewModel::Dependencies &dependencies)
-{
-    return {
-        [dependencies](QObject *context, std::function<void()> handler) {
-            auto shared = std::make_shared<std::function<void()>>(std::move(handler));
-            if (dependencies.bindCurrentSessionChanged) {
-                dependencies.bindCurrentSessionChanged(context, [shared]() { (*shared)(); });
-            }
-            if (dependencies.bindSessionRuntimeStateChanged) {
-                dependencies.bindSessionRuntimeStateChanged(context, [shared]() { (*shared)(); });
-            }
-        },
-        [dependencies]() {
-            const auto *session = dependencies.sessionController ? dependencies.sessionController->currentSession() : nullptr;
-            if (!session) {
-                return false;
-            }
-            return sessionStateName(*session, session->runtime.client) == QStringLiteral("connected");
-        },
-        [dependencies](const QString &topic, const QString &payload, int format, int qos, bool retain) {
-            return dependencies.mqttController
-                && dependencies.mqttController->publishCurrentSession(topic, payload, format, qos, retain);
-        },
-    };
-}
-
-} // namespace
-
-WorkbenchViewModel::WorkbenchViewModel(QObject *parent)
-    : WorkbenchViewModel(Dependencies {}, parent)
-{
-}
-
-WorkbenchViewModel::WorkbenchViewModel(const Dependencies &dependencies, QObject *parent)
+WorkbenchViewModel::WorkbenchViewModel(
+    SessionService &sessionService,
+    MqttSessionService &mqttService,
+    SubscriptionService &subscriptionService,
+    EventHistoryService &eventHistoryService,
+    SessionListModel &sessionsModel,
+    SubscriptionFilterModel &filteredSubscriptionsModel,
+    SubscriptionFilterModel &messageFilterSubscriptionsModel,
+    EventStreamModel &messagesModel,
+    MessageFilterModel &filteredMessagesModel,
+    ScriptLibraryModel &scriptsModel,
+    QObject *parent)
     : QObject(parent)
-    , m_dependencies(dependencies)
-    , m_publisher(publishDraftDependencies(dependencies), this)
+    , m_sessionService(sessionService)
+    , m_mqttService(mqttService)
+    , m_subscriptionService(subscriptionService)
+    , m_eventHistoryService(eventHistoryService)
+    , m_sessionsModel(sessionsModel)
+    , m_filteredSubscriptionsModel(filteredSubscriptionsModel)
+    , m_messageFilterSubscriptionsModel(messageFilterSubscriptionsModel)
+    , m_messagesModel(messagesModel)
+    , m_filteredMessagesModel(filteredMessagesModel)
+    , m_scriptsModel(scriptsModel)
+    , m_publisher(sessionService, mqttService, this)
 {
-    if (m_dependencies.bindCurrentSessionIndexChanged) {
-        m_dependencies.bindCurrentSessionIndexChanged(this, [this]() {
-            emit currentSessionIndexChanged();
-        });
-    }
-    if (m_dependencies.bindCurrentSessionChanged) {
-        m_dependencies.bindCurrentSessionChanged(this, [this]() {
-            emit currentSessionChanged();
-            emit sessionStatusChanged();
-            emit publishStatusChanged();
-            emit messageTopicFilterStateChanged();
-            emit totalMessageCountChanged();
-        });
-    }
-    if (m_dependencies.bindSessionRuntimeStateChanged) {
-        m_dependencies.bindSessionRuntimeStateChanged(this, [this]() {
-            emit sessionStatusChanged();
-            emit publishStatusChanged();
-        });
-    }
-    if (m_dependencies.bindMessageStreamChanged) {
-        m_dependencies.bindMessageStreamChanged(this, [this]() {
-            emit messageStreamChanged();
-            emit totalMessageCountChanged();
-        });
-    }
-    if (m_dependencies.bindTotalMessageCountChanged) {
-        m_dependencies.bindTotalMessageCountChanged(this, [this]() {
-            emit totalMessageCountChanged();
-        });
-    }
-    if (m_dependencies.bindMessageStreamRowAppended) {
-        m_dependencies.bindMessageStreamRowAppended(this, [this](const QVariantMap &) {
-            emit messageStreamRowAppended();
-        });
-    }
-    if (m_dependencies.bindMessageStreamRowsAppended) {
-        m_dependencies.bindMessageStreamRowsAppended(this, [this](int count) {
-            emit messageStreamRowsAppended(count);
-        });
-    }
-    if (m_dependencies.bindScriptLibraryChanged) {
-        m_dependencies.bindScriptLibraryChanged(this, [this]() {
-            refreshSubscriptionEditorScriptOptions();
-        });
-    }
-    if (m_dependencies.bindSubscriptionsChanged) {
-        m_dependencies.bindSubscriptionsChanged(this, [this]() {
-            emit subscriptionsStateChanged();
-            emit messageTopicFilterStateChanged();
-        });
-    }
-    if (m_dependencies.filteredMessages) {
-        connect(
-            m_dependencies.filteredMessages,
+    connect(&m_sessionService,
+            &SessionService::currentSessionIndexChanged,
+            this,
+            &WorkbenchViewModel::currentSessionIndexChanged);
+    connect(&m_sessionService,
+            &SessionService::currentSessionChanged,
+            this,
+            &WorkbenchViewModel::currentSessionChanged);
+    connect(&m_sessionService,
+            &SessionService::currentSessionChanged,
+            this,
+            &WorkbenchViewModel::sessionStatusChanged);
+    connect(&m_sessionService,
+            &SessionService::currentSessionChanged,
+            this,
+            &WorkbenchViewModel::publishStatusChanged);
+    connect(&m_sessionService,
+            &SessionService::currentSessionChanged,
+            this,
+            &WorkbenchViewModel::totalMessageCountChanged);
+    connect(&m_mqttService,
+            &MqttSessionService::sessionStateChanged,
+            this,
+            &WorkbenchViewModel::sessionStatusChanged);
+    connect(&m_mqttService,
+            &MqttSessionService::sessionStateChanged,
+            this,
+            &WorkbenchViewModel::publishStatusChanged);
+    connect(&m_eventHistoryService,
+            &EventHistoryService::messageStreamChanged,
+            this,
+            &WorkbenchViewModel::messageStreamChanged);
+    connect(&m_eventHistoryService,
+            &EventHistoryService::messageStreamChanged,
+            this,
+            &WorkbenchViewModel::totalMessageCountChanged);
+    connect(&m_eventHistoryService,
+            &EventHistoryService::totalMessageCountChanged,
+            this,
+            &WorkbenchViewModel::totalMessageCountChanged);
+    connect(&m_eventHistoryService,
+            &EventHistoryService::messageRowsAppended,
+            this,
+            &WorkbenchViewModel::messageStreamRowsAppended);
+    connect(&m_scriptsModel,
+            &QAbstractItemModel::modelReset,
+            this,
+            &WorkbenchViewModel::refreshSubscriptionEditorScriptOptions);
+    connect(&m_scriptsModel,
+            &QAbstractItemModel::dataChanged,
+            this,
+            &WorkbenchViewModel::refreshSubscriptionEditorScriptOptions);
+    connect(&m_subscriptionService,
+            &SubscriptionService::subscriptionsChanged,
+            this,
+            &WorkbenchViewModel::subscriptionsStateChanged);
+    connect(&m_messageFilterSubscriptionsModel,
+            &QAbstractItemModel::modelReset,
+            this,
+            &WorkbenchViewModel::messageTopicFilterStateChanged);
+    connect(&m_messageFilterSubscriptionsModel,
+            &QAbstractItemModel::dataChanged,
+            this,
+            &WorkbenchViewModel::messageTopicFilterStateChanged);
+    connect(&m_messageFilterSubscriptionsModel,
+            &QAbstractItemModel::rowsInserted,
+            this,
+            &WorkbenchViewModel::messageTopicFilterStateChanged);
+    connect(&m_messageFilterSubscriptionsModel,
+            &QAbstractItemModel::rowsRemoved,
+            this,
+            &WorkbenchViewModel::messageTopicFilterStateChanged);
+    connect(&m_filteredMessagesModel,
             &MessageFilterModel::selectedTopicsChanged,
             this,
             &WorkbenchViewModel::messageTopicFilterStateChanged);
-    }
     refreshSubscriptionEditorScriptOptions();
 }
 
-SessionListModel *WorkbenchViewModel::sessions() const { return m_dependencies.sessions; }
-SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return m_dependencies.filteredSubscriptions; }
-SubscriptionFilterModel *WorkbenchViewModel::messageFilterSubscriptions() const { return m_dependencies.messageFilterSubscriptions; }
-EventStreamModel *WorkbenchViewModel::messages() const { return m_dependencies.messages; }
-MessageFilterModel *WorkbenchViewModel::filteredMessages() const { return m_dependencies.filteredMessages; }
+SessionListModel *WorkbenchViewModel::sessions() const { return &m_sessionsModel; }
+SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return &m_filteredSubscriptionsModel; }
+SubscriptionFilterModel *WorkbenchViewModel::messageFilterSubscriptions() const { return &m_messageFilterSubscriptionsModel; }
+EventStreamModel *WorkbenchViewModel::messages() const { return &m_messagesModel; }
+MessageFilterModel *WorkbenchViewModel::filteredMessages() const { return &m_filteredMessagesModel; }
 PublishDraftViewModel *WorkbenchViewModel::publisher() { return &m_publisher; }
 SessionEditorViewModel *WorkbenchViewModel::sessionEditor() { return &m_sessionEditor; }
 SubscriptionEditorViewModel *WorkbenchViewModel::subscriptionEditor() { return &m_subscriptionEditor; }
 int WorkbenchViewModel::currentSessionIndex() const
 {
-    return m_dependencies.sessionController ? m_dependencies.sessionController->currentIndex() : -1;
+    return m_sessionService.currentIndex();
 }
 
 QVariantMap WorkbenchViewModel::currentSession() const
 {
-    const auto *session = m_dependencies.sessionController ? m_dependencies.sessionController->currentSession() : nullptr;
+    const SessionState *session = m_sessionService.currentSession();
     if (!session) {
         return {};
     }
@@ -161,7 +163,7 @@ QVariantMap WorkbenchViewModel::currentSession() const
 
 QVariantMap WorkbenchViewModel::sessionStatus() const
 {
-    const auto *session = m_dependencies.sessionController ? m_dependencies.sessionController->currentSession() : nullptr;
+    const SessionState *session = m_sessionService.currentSession();
     if (!session) {
         return {};
     }
@@ -209,7 +211,7 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
 
 QVariantMap WorkbenchViewModel::publishStatus() const
 {
-    const auto *session = m_dependencies.sessionController ? m_dependencies.sessionController->currentSession() : nullptr;
+    const SessionState *session = m_sessionService.currentSession();
     QVariantMap status = session ? session->runtime.publishStatus.toVariantMap() : PublishStatus {}.toVariantMap();
     status.insert(
         QStringLiteral("updatedAt"),
@@ -222,9 +224,7 @@ QString WorkbenchViewModel::pendingSubscriptionDeleteTopic() const { return m_pe
 QString WorkbenchViewModel::pendingSubscriptionDeleteDisplayName() const { return m_pendingSubscriptionDeleteDisplayName; }
 bool WorkbenchViewModel::allSubscriptionsPaused() const
 {
-    const auto *session = m_dependencies.sessionController
-        ? m_dependencies.sessionController->currentSession()
-        : nullptr;
+    const SessionState *session = m_sessionService.currentSession();
     if (!session || session->subscriptions.isEmpty()) {
         return false;
     }
@@ -236,25 +236,21 @@ bool WorkbenchViewModel::allSubscriptionsPaused() const
 
 QVariantMap WorkbenchViewModel::messageTopicFilterState() const
 {
-    const QStringList selectedTopics = m_dependencies.filteredMessages
-        ? m_dependencies.filteredMessages->selectedTopics()
-        : QStringList {};
+    const QStringList selectedTopics = m_filteredMessagesModel.selectedTopics();
     int pausedCount = 0;
     QString singleTopicLabel;
 
     for (const QString &selectedTopic : selectedTopics) {
         QString displayName = selectedTopic;
         bool paused = false;
-        if (m_dependencies.messageFilterSubscriptions) {
-            for (int row = 0; row < m_dependencies.messageFilterSubscriptions->count(); ++row) {
-                const QVariantMap subscription = m_dependencies.messageFilterSubscriptions->rowAt(row);
-                if (subscription.value(QStringLiteral("topic")).toString() != selectedTopic) {
-                    continue;
-                }
-                displayName = subscription.value(QStringLiteral("displayName")).toString();
-                paused = subscription.value(QStringLiteral("paused")).toBool();
-                break;
+        for (int row = 0; row < m_messageFilterSubscriptionsModel.rowCount(); ++row) {
+            const QVariantMap subscription = m_messageFilterSubscriptionsModel.rowAt(row);
+            if (subscription.value(QStringLiteral("topic")).toString() != selectedTopic) {
+                continue;
             }
+            displayName = subscription.value(QStringLiteral("displayName")).toString();
+            paused = subscription.value(QStringLiteral("paused")).toBool();
+            break;
         }
         pausedCount += paused ? 1 : 0;
         if (selectedTopics.size() == 1) {
@@ -271,17 +267,13 @@ QVariantMap WorkbenchViewModel::messageTopicFilterState() const
 
 qint64 WorkbenchViewModel::totalMessageCount() const
 {
-    const auto *session = m_dependencies.sessionController
-        ? m_dependencies.sessionController->currentSession()
-        : nullptr;
+    const SessionState *session = m_sessionService.currentSession();
     return session ? session->runtime.totalMessageCount : 0;
 }
 
 qreal WorkbenchViewModel::currentIncomingMessageRate() const
 {
-    const auto *session = m_dependencies.sessionController
-        ? m_dependencies.sessionController->currentSession()
-        : nullptr;
+    const SessionState *session = m_sessionService.currentSession();
     if (!session) {
         return 0;
     }
@@ -293,9 +285,7 @@ qreal WorkbenchViewModel::currentIncomingMessageRate() const
 
 qreal WorkbenchViewModel::currentOutgoingMessageRate() const
 {
-    const auto *session = m_dependencies.sessionController
-        ? m_dependencies.sessionController->currentSession()
-        : nullptr;
+    const SessionState *session = m_sessionService.currentSession();
     if (!session) {
         return 0;
     }
@@ -306,25 +296,20 @@ qreal WorkbenchViewModel::currentOutgoingMessageRate() const
 
 void WorkbenchViewModel::setCurrentSessionIndex(int index)
 {
-    if (m_dependencies.sessionController) {
-        m_dependencies.sessionController->setCurrentSessionIndex(index);
-    }
+    m_sessionService.setCurrentSessionIndex(index);
 }
 
 void WorkbenchViewModel::openSessionEditorForCreate()
 {
-    m_sessionEditor.openForCreate(
-        m_dependencies.sessionController
-            ? m_dependencies.sessionController->defaultSessionConfig()
-            : SessionEditorViewModel::defaultConfig(1));
+    m_sessionEditor.openForCreate(m_sessionService.defaultSessionConfig());
 }
 
 void WorkbenchViewModel::openSessionEditorForEdit(int index)
 {
-    if (!m_dependencies.sessionController || !sessions() || index < 0 || index >= sessions()->count()) {
+    if (index < 0 || index >= m_sessionsModel.rowCount()) {
         return;
     }
-    m_sessionEditor.openForEdit(index, m_dependencies.sessionController->sessionConfigAt(index));
+    m_sessionEditor.openForEdit(index, m_sessionService.sessionConfigAt(index));
 }
 
 bool WorkbenchViewModel::submitSessionEditor()
@@ -332,69 +317,57 @@ bool WorkbenchViewModel::submitSessionEditor()
     if (!m_sessionEditor.validate()) {
         return false;
     }
-    if (!m_dependencies.sessionController) {
-        return false;
-    }
-
     const QVariantMap config = m_sessionEditor.collectedConfig();
     if (!m_sessionEditor.editMode()) {
-        m_dependencies.sessionController->addSessionWithConfig(config);
+        m_sessionService.addSessionWithConfig(config);
         return true;
     }
 
     const int index = m_sessionEditor.targetIndex();
-    return index >= 0 && m_dependencies.sessionController->updateSessionConfigAt(index, config);
+    return index >= 0 && m_sessionService.updateSessionConfigAt(index, config);
 }
 
 void WorkbenchViewModel::requestSessionDuplicate(int index)
 {
-    if (!m_dependencies.sessionController || !sessions() || index < 0 || index >= sessions()->count()) {
+    if (index < 0 || index >= m_sessionsModel.rowCount()) {
         return;
     }
 
-    m_dependencies.sessionController->duplicateSessionAt(index);
+    m_sessionService.duplicateSessionAt(index);
 }
 
 void WorkbenchViewModel::requestSessionDelete(int index)
 {
-    if (!m_dependencies.sessionController || !sessions() || index < 0 || index >= sessions()->count() || sessions()->count() <= 1) {
+    if (index < 0 || index >= m_sessionsModel.rowCount() || m_sessionsModel.rowCount() <= 1) {
         return;
     }
 
-    m_dependencies.sessionController->removeSessionAt(index);
+    m_sessionService.removeSessionAt(index);
 }
 
 void WorkbenchViewModel::toggleCurrentSessionConnection()
 {
-    if (!m_dependencies.mqttController) {
-        return;
-    }
-
     const QString state = sessionStatus().value(QStringLiteral("state")).toString();
     if (state == QStringLiteral("connected")
         || state == QStringLiteral("connecting")
         || state == QStringLiteral("disconnecting")) {
-        m_dependencies.mqttController->disconnectCurrentSession();
+        m_mqttService.disconnectCurrentSession();
         return;
     }
 
-    m_dependencies.mqttController->connectCurrentSession();
+    m_mqttService.connectCurrentSession();
 }
 
 void WorkbenchViewModel::toggleCurrentOutputPaused(bool currentlyPaused)
 {
-    if (m_dependencies.sessionController) {
-        m_dependencies.sessionController->setCurrentOutputPaused(!currentlyPaused);
-    }
+    m_sessionService.setCurrentOutputPaused(!currentlyPaused);
 }
 
 void WorkbenchViewModel::refreshSubscriptionEditorScriptOptions()
 {
     QVariantList options;
-    if (auto *scriptModel = scriptLibrary()) {
-        for (int row = 0; row < scriptModel->rowCount(); ++row) {
-            options.append(scriptModel->rowAt(row));
-        }
+    for (int row = 0; row < m_scriptsModel.rowCount(); ++row) {
+        options.append(m_scriptsModel.rowAt(row));
     }
     m_subscriptionEditor.setScriptOptions(options);
 }
@@ -407,24 +380,24 @@ void WorkbenchViewModel::openSubscriptionEditorForCreate()
 
 bool WorkbenchViewModel::openSubscriptionEditorForEdit(int filteredIndex)
 {
-    if (!filteredSubscriptions() || filteredIndex < 0 || filteredIndex >= filteredSubscriptions()->count()) {
+    if (filteredIndex < 0 || filteredIndex >= m_filteredSubscriptionsModel.rowCount()) {
         return false;
     }
 
     refreshSubscriptionEditorScriptOptions();
-    m_subscriptionEditor.openForEdit(filteredSubscriptions()->rowAt(filteredIndex));
+    m_subscriptionEditor.openForEdit(m_filteredSubscriptionsModel.rowAt(filteredIndex));
     return true;
 }
 
 bool WorkbenchViewModel::submitSubscriptionEditor()
 {
-    if (!m_dependencies.subscriptionController || !m_subscriptionEditor.canSubmit()) {
+    if (!m_subscriptionEditor.canSubmit()) {
         return false;
     }
 
     const QVariantMap submission = m_subscriptionEditor.submission();
     if (submission.value(QStringLiteral("editMode")).toBool()) {
-        return m_dependencies.subscriptionController->updateCurrentSubscription(
+        return m_subscriptionService.updateCurrentSubscription(
             submission.value(QStringLiteral("editTopic")).toString(),
             submission.value(QStringLiteral("topic")).toString(),
             submission.value(QStringLiteral("alias")).toString(),
@@ -434,7 +407,7 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
             submission.value(QStringLiteral("color")).toString());
     }
 
-    return m_dependencies.subscriptionController->upsertCurrentSubscription(
+    return m_subscriptionService.upsertCurrentSubscription(
         submission.value(QStringLiteral("topic")).toString(),
         submission.value(QStringLiteral("qos")).toInt(),
         submission.value(QStringLiteral("format")).toInt(),
@@ -444,9 +417,7 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
 }
 void WorkbenchViewModel::toggleCurrentSubscriptionPaused(const QString &topic, bool currentlyPaused)
 {
-    if (m_dependencies.subscriptionController) {
-        m_dependencies.subscriptionController->setCurrentSubscriptionPaused(topic, !currentlyPaused);
-    }
+    m_subscriptionService.setCurrentSubscriptionPaused(topic, !currentlyPaused);
 }
 
 void WorkbenchViewModel::requestSubscriptionDelete(const QString &topic, const QString &displayName)
@@ -470,19 +441,21 @@ void WorkbenchViewModel::cancelPendingSubscriptionDelete()
 bool WorkbenchViewModel::confirmPendingSubscriptionDelete()
 {
     const QString topic = m_pendingSubscriptionDeleteTopic;
-    if (topic.isEmpty() || !m_dependencies.subscriptionController) {
+    if (topic.isEmpty()) {
         clearPendingSubscriptionDelete();
         return false;
     }
 
-    m_dependencies.subscriptionController->removeCurrentSubscription(topic);
+    m_subscriptionService.removeCurrentSubscription(topic);
     clearPendingSubscriptionDelete();
     return true;
 }
 
 void WorkbenchViewModel::copyMessageTopic(const QString &topic) const
 {
-    m_platformActions.copyTextToClipboard(topic);
+    if (QClipboard *clipboard = QGuiApplication::clipboard()) {
+        clipboard->setText(topic);
+    }
 }
 
 QString WorkbenchViewModel::messagePayloadForDisplay(
@@ -490,13 +463,9 @@ QString WorkbenchViewModel::messagePayloadForDisplay(
     const QString &fallbackPayload,
     int format) const
 {
-    if (!m_dependencies.eventController) {
-        return fallbackPayload;
-    }
-
     bool ok = false;
     const qint64 parsedHistoryId = historyId.toLongLong(&ok);
-    return m_dependencies.eventController->messagePayloadForDisplay(
+    return m_eventHistoryService.messagePayloadForDisplay(
         ok ? parsedHistoryId : 0,
         fallbackPayload,
         format);
@@ -508,7 +477,9 @@ void WorkbenchViewModel::copyMessagePayload(
     const QString &testPayload,
     int format) const
 {
-    m_platformActions.copyTextToClipboard(reusableMessagePayload(historyId, payload, testPayload, format));
+    if (QClipboard *clipboard = QGuiApplication::clipboard()) {
+        clipboard->setText(reusableMessagePayload(historyId, payload, testPayload, format));
+    }
 }
 
 void WorkbenchViewModel::useMessageAsDraft(
@@ -527,86 +498,64 @@ void WorkbenchViewModel::useMessageAsDraft(
 
 void WorkbenchViewModel::clearMessages()
 {
-    if (m_dependencies.eventController) {
-        m_dependencies.eventController->clearCurrentMessages();
-    }
+    m_eventHistoryService.clearCurrentMessages();
 }
 
 void WorkbenchViewModel::setMessageStreamFrozen(bool frozen)
 {
-    if (m_dependencies.eventController) {
-        m_dependencies.eventController->setMessageStreamFrozen(frozen);
-    }
+    m_eventHistoryService.setMessageStreamFrozen(frozen);
 }
 
 int WorkbenchViewModel::loadOlderMessages()
 {
-    return m_dependencies.eventController ? m_dependencies.eventController->loadOlderCurrentSessionMessages() : 0;
+    return m_eventHistoryService.loadOlderCurrentSessionMessages();
 }
 
 void WorkbenchViewModel::setMessageTopicFilter(const QString &topic)
 {
-    if (!m_dependencies.filteredMessages) {
-        return;
-    }
     const QString trimmed = topic.trimmed();
-    m_dependencies.filteredMessages->setSelectedTopics(
+    m_filteredMessagesModel.setSelectedTopics(
         trimmed.isEmpty() ? QStringList {} : QStringList {trimmed});
 }
 
 void WorkbenchViewModel::setMessageSearchText(const QString &text)
 {
-    if (m_dependencies.filteredMessages) {
-        m_dependencies.filteredMessages->setFilterText(text);
-    }
+    m_filteredMessagesModel.setFilterText(text);
 }
 
 void WorkbenchViewModel::addMessageTopicFilter(const QString &topic)
 {
-    if (!m_dependencies.filteredMessages) {
-        return;
-    }
     const QString trimmed = topic.trimmed();
     if (trimmed.isEmpty()) {
         return;
     }
-    QStringList topics = m_dependencies.filteredMessages->selectedTopics();
+    QStringList topics = m_filteredMessagesModel.selectedTopics();
     if (!topics.contains(trimmed)) {
         topics.append(trimmed);
-        m_dependencies.filteredMessages->setSelectedTopics(topics);
+        m_filteredMessagesModel.setSelectedTopics(topics);
     }
 }
 
 void WorkbenchViewModel::clearMessageFilters()
 {
-    if (!m_dependencies.filteredMessages) {
-        return;
-    }
-    m_dependencies.filteredMessages->setFilterText({});
-    m_dependencies.filteredMessages->setSelectedTopics({});
-    m_dependencies.filteredMessages->setDirection(QStringLiteral("all"));
+    m_filteredMessagesModel.setFilterText({});
+    m_filteredMessagesModel.setSelectedTopics({});
+    m_filteredMessagesModel.setDirection(QStringLiteral("all"));
 }
 
 QVariantMap WorkbenchViewModel::messageDetails(const QString &historyId) const
 {
     bool ok = false;
     const qint64 id = historyId.toLongLong(&ok);
-    if (!ok || id <= 0 || !m_dependencies.eventController) {
+    if (!ok || id <= 0) {
         return {};
     }
-    return m_dependencies.eventController->messageDetails(id);
+    return m_eventHistoryService.messageDetails(id);
 }
 
 void WorkbenchViewModel::setAllCurrentSubscriptionsPaused(bool paused)
 {
-    if (m_dependencies.subscriptionController) {
-        m_dependencies.subscriptionController->setAllCurrentSubscriptionsPaused(paused);
-    }
-}
-
-ScriptLibraryModel *WorkbenchViewModel::scriptLibrary() const
-{
-    return m_dependencies.scripts;
+    m_subscriptionService.setAllCurrentSubscriptionsPaused(paused);
 }
 
 QString WorkbenchViewModel::reusableMessagePayload(
@@ -615,12 +564,9 @@ QString WorkbenchViewModel::reusableMessagePayload(
     const QString &testPayload,
     int format) const
 {
-    if (!m_dependencies.eventController) {
-        return testPayload.isEmpty() ? payload : testPayload;
-    }
     bool ok = false;
     const qint64 parsedHistoryId = historyId.toLongLong(&ok);
-    return m_dependencies.eventController->messagePayloadForReuse(
+    return m_eventHistoryService.messagePayloadForReuse(
         ok ? parsedHistoryId : 0,
         payload,
         testPayload,

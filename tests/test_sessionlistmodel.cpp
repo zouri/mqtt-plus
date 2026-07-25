@@ -10,7 +10,8 @@ class SessionListModelTest : public QObject
 
 private slots:
     void exposesConnectionDetails();
-    void notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable();
+    void setSessionsOwnsRowsAndUpdatesWithoutResetWhenCountIsStable();
+    void setSessionsResetsWhenCountChanges();
 };
 
 void SessionListModelTest::exposesConnectionDetails()
@@ -29,7 +30,7 @@ void SessionListModelTest::exposesConnectionDetails()
 
     QVector<SessionState> sessions {session};
     SessionListModel model;
-    model.setSource(&sessions);
+    model.setSessions(sessions);
 
     const QModelIndex index = model.index(0, 0);
     QCOMPARE(model.data(index, SessionListModel::HostRole).toString(), QStringLiteral("mqtt.example.com"));
@@ -44,7 +45,7 @@ void SessionListModelTest::exposesConnectionDetails()
     QCOMPARE(row.value(QStringLiteral("unreadMessageCount")).toLongLong(), qint64(4));
 }
 
-void SessionListModelTest::notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable()
+void SessionListModelTest::setSessionsOwnsRowsAndUpdatesWithoutResetWhenCountIsStable()
 {
     SessionState session;
     session.id = QStringLiteral("session-1");
@@ -52,14 +53,16 @@ void SessionListModelTest::notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable
     QVector<SessionState> sessions {session};
 
     SessionListModel model;
-    model.setSource(&sessions);
+    model.setSessions(sessions);
 
     QSignalSpy dataSpy(&model, &SessionListModel::dataChanged);
     QSignalSpy resetSpy(&model, &SessionListModel::modelReset);
     QSignalSpy countSpy(&model, &SessionListModel::countChanged);
 
     sessions[0].name = QStringLiteral("Staging");
-    model.notifyRefresh();
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("name")).toString(), QStringLiteral("Production"));
+
+    model.setSessions(sessions);
 
     QCOMPARE(model.rowAt(0).value(QStringLiteral("name")).toString(), QStringLiteral("Staging"));
     QCOMPARE(resetSpy.count(), 0);
@@ -67,6 +70,31 @@ void SessionListModelTest::notifyRefreshUpdatesRowsWithoutResetWhenCountIsStable
     QCOMPARE(dataSpy.count(), 1);
     QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 0);
     QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 0);
+}
+
+void SessionListModelTest::setSessionsResetsWhenCountChanges()
+{
+    SessionState first;
+    first.id = QStringLiteral("session-1");
+    first.name = QStringLiteral("Production");
+    QVector<SessionState> sessions {first};
+
+    SessionListModel model;
+    model.setSessions(sessions);
+    QSignalSpy dataSpy(&model, &SessionListModel::dataChanged);
+    QSignalSpy resetSpy(&model, &SessionListModel::modelReset);
+    QSignalSpy countSpy(&model, &SessionListModel::countChanged);
+
+    SessionState second;
+    second.id = QStringLiteral("session-2");
+    second.name = QStringLiteral("Staging");
+    sessions.append(second);
+    model.setSessions(sessions);
+
+    QCOMPARE(model.count(), 2);
+    QCOMPARE(resetSpy.count(), 1);
+    QCOMPARE(countSpy.count(), 1);
+    QCOMPARE(dataSpy.count(), 0);
 }
 
 QTEST_MAIN(SessionListModelTest)

@@ -1,35 +1,49 @@
 #include "viewmodels/applicationviewmodel.h"
 
-ApplicationViewModel::ApplicationViewModel(QObject *parent)
-    : ApplicationViewModel(
-          WorkbenchViewModel::Dependencies {},
-          LogsViewModel::Dependencies {},
-          ScriptsViewModel::Dependencies {},
-          SettingsViewModel::Dependencies {},
-          nullptr,
-          parent)
-{
-}
+#include "usecases/sessionservice.h"
 
 ApplicationViewModel::ApplicationViewModel(
-    const WorkbenchViewModel::Dependencies &workbenchDependencies,
-    const LogsViewModel::Dependencies &logsDependencies,
-    const ScriptsViewModel::Dependencies &scriptsDependencies,
-    const SettingsViewModel::Dependencies &settingsDependencies,
-    QSettings *settings,
+    SessionService &sessionService,
+    MqttSessionService &mqttService,
+    SubscriptionService &subscriptionService,
+    EventHistoryService &eventHistoryService,
+    ScriptService &scriptService,
+    PreferencesController &preferences,
+    HistoryStore &historyStore,
+    SessionListModel &sessions,
+    SubscriptionFilterModel &filteredSubscriptions,
+    SubscriptionFilterModel &messageFilterSubscriptions,
+    EventStreamModel &messages,
+    MessageFilterModel &filteredMessages,
+    EventStreamModel &logs,
+    ScriptLibraryModel &scripts,
+    QSettings &settings,
     QObject *parent)
     : QObject(parent)
-    , m_navigation(this)
-    , m_workbench(workbenchDependencies, this)
-    , m_logs(logsDependencies, this)
-    , m_scripts(scriptsDependencies, this)
-    , m_settings(settingsDependencies, settings, this)
+    , m_workbench(
+          sessionService,
+          mqttService,
+          subscriptionService,
+          eventHistoryService,
+          sessions,
+          filteredSubscriptions,
+          messageFilterSubscriptions,
+          messages,
+          filteredMessages,
+          scripts,
+          this)
+    , m_logs(eventHistoryService, logs, this)
+    , m_scripts(scriptService, scripts, this)
+    , m_settings(
+          preferences,
+          eventHistoryService,
+          historyStore,
+          sessionService.sessions(),
+          messages,
+          logs,
+          settings,
+          this)
 {
-}
-
-NavigationViewModel *ApplicationViewModel::navigation()
-{
-    return &m_navigation;
 }
 
 WorkbenchViewModel *ApplicationViewModel::workbench()

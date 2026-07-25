@@ -574,19 +574,6 @@ bool parseMsgPackValue(QByteArrayView data, int &offset, QVariant &out, QString 
     }
 }
 
-int topicSpecificityScore(const QString &filter)
-{
-    int score = filter.count('/');
-    for (const QChar character : filter) {
-        if (character != QLatin1Char('#')
-                && character != QLatin1Char('+')
-                && character != QLatin1Char('/')) {
-            ++score;
-        }
-    }
-    return score;
-}
-
 QByteArray decodeHexString(const QString &value, QString &error)
 {
     QString text = value;
@@ -870,6 +857,19 @@ bool PayloadCodec::topicFilterMatches(const QString &filter, const QString &topi
         return true;
     }
     return false;
+}
+
+int PayloadCodec::topicSpecificityScore(const QString &filter)
+{
+    int score = filter.count('/');
+    for (const auto character : filter) {
+        if (character != QLatin1Char('#')
+                && character != QLatin1Char('+')
+                && character != QLatin1Char('/')) {
+            ++score;
+        }
+    }
+    return score;
 }
 
 PayloadFormat PayloadCodec::resolveTopicFormat(

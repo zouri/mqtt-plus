@@ -1,7 +1,6 @@
 #pragma once
 
 #include "domain/session.h"
-#include "domain/subscription.h"
 
 #include <QByteArray>
 #include <QList>
@@ -32,11 +31,6 @@ QString subscriptionStateName(QMqttSubscription::SubscriptionState state);
 QString clientErrorName(QMqttClient::ClientError error);
 QString messageStatusName(QMqtt::MessageStatus status);
 QString socketDiagnostic(QMqttClient *client);
-int topicSpecificityScore(const QString &filter);
-QString subscriptionDisplayState(
-    const SessionState &session,
-    const SubscriptionEntry &entry,
-    const QMqttClient *client);
 QString sessionStateName(const SessionState &session, const QMqttClient *client);
 void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs);
 int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs);

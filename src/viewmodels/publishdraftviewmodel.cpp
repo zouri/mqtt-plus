@@ -1,23 +1,32 @@
 #include "viewmodels/publishdraftviewmodel.h"
 
+#include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
+#include "usecases/mqttsessionservice.h"
+#include "usecases/sessionservice.h"
 
 #include <QDateTime>
 
-PublishDraftViewModel::PublishDraftViewModel(QObject *parent)
-    : PublishDraftViewModel(Dependencies {}, parent)
-{
-}
+using namespace AppUtils;
 
-PublishDraftViewModel::PublishDraftViewModel(const Dependencies &dependencies, QObject *parent)
+PublishDraftViewModel::PublishDraftViewModel(
+    SessionService &sessionService,
+    MqttSessionService &mqttService,
+    QObject *parent)
     : QObject(parent)
-    , m_dependencies(dependencies)
+    , m_sessionService(sessionService)
+    , m_mqttService(mqttService)
 {
-    if (m_dependencies.bindPublishAvailabilityChanged) {
-        m_dependencies.bindPublishAvailabilityChanged(this, [this]() {
-            emit canPublishChanged();
-        });
-    }
+    connect(
+        &m_sessionService,
+        &SessionService::currentSessionChanged,
+        this,
+        &PublishDraftViewModel::canPublishChanged);
+    connect(
+        &m_mqttService,
+        &MqttSessionService::sessionStateChanged,
+        this,
+        &PublishDraftViewModel::canPublishChanged);
 }
 
 QStringList PublishDraftViewModel::payloadFormats() const { return PayloadCodec::formatNames(); }
@@ -30,8 +39,9 @@ QVariantList PublishDraftViewModel::recentPublishes() const { return m_recentPub
 
 bool PublishDraftViewModel::canPublish() const
 {
-    return m_dependencies.canPublishToCurrentSession
-        && m_dependencies.canPublishToCurrentSession()
+    const SessionState *session = m_sessionService.currentSession();
+    return session
+        && sessionStateName(*session, session->runtime.client) == QStringLiteral("connected")
         && !m_topic.trimmed().isEmpty();
 }
 
@@ -124,17 +134,12 @@ void PublishDraftViewModel::clearRecentPublishes()
 
 bool PublishDraftViewModel::publishDraft()
 {
-    if (!canPublish() || !m_dependencies.publishCurrentSession) {
+    if (!canPublish()) {
         return false;
     }
 
     const QString topic = m_topic.trimmed();
-    if (!m_dependencies.publishCurrentSession(
-            topic,
-            m_payload,
-            m_format,
-            m_qos,
-            m_retain)) {
+    if (!m_mqttService.publishCurrentSession(topic, m_payload, m_format, m_qos, m_retain)) {
         return false;
     }
 

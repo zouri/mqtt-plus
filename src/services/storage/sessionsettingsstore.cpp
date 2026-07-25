@@ -106,10 +106,7 @@ QVariantMap duplicateConfigFromState(const SessionState &session)
     return config;
 }
 
-LoadedSession readSession(
-    QSettings &settings,
-    int index,
-    const std::function<bool(const QString &)> &scriptExists)
+LoadedSession readSession(QSettings &settings, int index)
 {
     settings.setArrayIndex(index);
 
@@ -135,8 +132,7 @@ LoadedSession readSession(
         entry.alias = row.value(QStringLiteral("alias")).toString().trimmed();
         entry.requestedQos = SessionConfig::sanitizeQos(row.value(QStringLiteral("qos"), 0).toInt());
         entry.format = row.value(QStringLiteral("format"), 0).toInt();
-        const QString scriptId = row.value(QStringLiteral("scriptId")).toString();
-        entry.scriptId = scriptExists(scriptId) ? scriptId : QString();
+        entry.scriptId = row.value(QStringLiteral("scriptId")).toString();
         entry.color = row.value(QStringLiteral("color")).toString().trimmed();
         entry.paused = row.value(QStringLiteral("paused"), false).toBool();
         session.subscriptions.append(entry);

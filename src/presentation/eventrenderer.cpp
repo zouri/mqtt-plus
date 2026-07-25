@@ -26,7 +26,7 @@ QString resolveTopicValue(const QHash<QString, QString> &values, const QString &
             continue;
         }
 
-        const int score = topicSpecificityScore(it.key());
+        const int score = PayloadCodec::topicSpecificityScore(it.key());
         if (score > bestScore || (score == bestScore && (bestFilter.isEmpty() || it.key() < bestFilter))) {
             bestScore = score;
             bestFilter = it.key();

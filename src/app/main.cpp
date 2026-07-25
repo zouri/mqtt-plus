@@ -5,34 +5,34 @@
 #include <QQuickStyle>
 #include <QVariant>
 
-#include "app/applicationobjectgraph.h"
+#include "app/application.h"
 
 int main(int argc, char *argv[])
 {
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
-    QGuiApplication app(argc, argv);
-    auto applicationFont = app.font();
+    QGuiApplication guiApplication(argc, argv);
+    auto applicationFont = guiApplication.font();
     applicationFont.setFamily(QFontDatabase::systemFont(QFontDatabase::FixedFont).family());
-    app.setFont(applicationFont);
-    app.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app-icon.png")));
+    guiApplication.setFont(applicationFont);
+    guiApplication.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app-icon.png")));
 
-    ApplicationObjectGraph objectGraph;
+    Application application;
 
     QQmlApplicationEngine engine;
-    QObject::connect(objectGraph.settingsViewModel(), &SettingsViewModel::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
+    QObject::connect(application.viewModel()->settings(), &SettingsViewModel::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
     engine.setInitialProperties({
-        {QStringLiteral("app"), QVariant::fromValue(objectGraph.viewModel())},
+        {QStringLiteral("app"), QVariant::fromValue(application.viewModel())},
     });
 
     QObject::connect(
         &engine,
         &QQmlApplicationEngine::objectCreationFailed,
-        &app,
+        &guiApplication,
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
     engine.loadFromModule("MqttPlusApp", "Main");
 
-    return app.exec();
+    return guiApplication.exec();
 }

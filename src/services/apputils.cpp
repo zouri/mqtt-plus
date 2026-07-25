@@ -158,33 +158,6 @@ QString socketDiagnostic(QMqttClient *client)
     return socket->errorString();
 }
 
-int topicSpecificityScore(const QString &filter)
-{
-    int score = filter.count('/');
-    for (const QChar character : filter) {
-        if (character != QLatin1Char('#')
-                && character != QLatin1Char('+')
-                && character != QLatin1Char('/')) {
-            ++score;
-        }
-    }
-    return score;
-}
-
-QString subscriptionDisplayState(
-    const SessionState &session,
-    const SubscriptionEntry &entry,
-    const QMqttClient *client)
-{
-    if (entry.paused) {
-        return QStringLiteral("paused");
-    }
-    if (!client || client->state() != QMqttClient::Connected) {
-        return QStringLiteral("saved");
-    }
-    return entry.runtimeState.isEmpty() ? QStringLiteral("saved") : entry.runtimeState;
-}
-
 QString sessionStateName(const SessionState &session, const QMqttClient *client)
 {
     if (session.runtime.disconnectRequested && client

@@ -5,7 +5,8 @@
 #include <QStringList>
 #include <QVariantList>
 
-#include <functional>
+class MqttSessionService;
+class SessionService;
 
 class PublishDraftViewModel : public QObject
 {
@@ -20,15 +21,10 @@ class PublishDraftViewModel : public QObject
     Q_PROPERTY(QVariantList recentPublishes READ recentPublishes NOTIFY recentPublishesChanged)
 
 public:
-    struct Dependencies
-    {
-        std::function<void(QObject *, std::function<void()>)> bindPublishAvailabilityChanged;
-        std::function<bool()> canPublishToCurrentSession;
-        std::function<bool(const QString &, const QString &, int, int, bool)> publishCurrentSession;
-    };
-
-    explicit PublishDraftViewModel(QObject *parent = nullptr);
-    explicit PublishDraftViewModel(const Dependencies &dependencies, QObject *parent = nullptr);
+    explicit PublishDraftViewModel(
+        SessionService &sessionService,
+        MqttSessionService &mqttService,
+        QObject *parent = nullptr);
 
     QStringList payloadFormats() const;
     QString topic() const;
@@ -60,7 +56,8 @@ signals:
     void recentPublishesChanged();
 
 private:
-    Dependencies m_dependencies;
+    SessionService &m_sessionService;
+    MqttSessionService &m_mqttService;
     QString m_topic;
     QString m_payload;
     int m_format = 1;
