@@ -1,58 +1,58 @@
 #include "domain/script.h"
 #include "models/scriptlibrarymodel.h"
+#include "usecases/scriptservice.h"
 #include "viewmodels/scriptsviewmodel.h"
 
 #include <QtTest/QtTest>
 
-#include <functional>
-#include <utility>
+#include <QDir>
+#include <QStandardPaths>
 
-class FakeScriptsDeps
+namespace {
+
+QString scriptStoragePath()
 {
-public:
-    ScriptsViewModel::Dependencies dependencies()
-    {
-        return {
-            &model,
-            [this](QObject *, std::function<void()> handler) {
-                scriptLibraryChanged = std::move(handler);
-            },
-            [this](
-                const QString &id,
-                const QString &name,
-                const QString &description,
-                const QString &code) {
-                ++upsertCalls;
-                lastId = id;
-                lastName = name;
-                lastDescription = description;
-                lastCode = code;
-                return savedId;
-            },
-        };
-    }
+    return QDir(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation))
+        .filePath(QStringLiteral("mqtt_plus/scripts"));
+}
 
-    ScriptLibraryModel model;
-    std::function<void()> scriptLibraryChanged;
-    QString savedId = QStringLiteral("saved-script");
-    QString lastId;
-    QString lastName;
-    QString lastDescription;
-    QString lastCode;
-    int upsertCalls = 0;
-};
+bool clearScriptStorage()
+{
+    QDir directory(scriptStoragePath());
+    return !directory.exists() || directory.removeRecursively();
+}
+
+} // namespace
 
 class ScriptsViewModelTest : public QObject
 {
     Q_OBJECT
 
 private slots:
+    void initTestCase();
+    void init();
+    void cleanup();
     void matchesScriptFilter();
     void ownsEditorWorkflowCommands();
-    void delegatesSaveToDependencies();
+    void savesThroughScriptService();
     void forwardsScriptLibrarySignal();
-    void readsScriptListThroughDependencies();
+    void readsConcreteScriptModel();
 };
+
+void ScriptsViewModelTest::initTestCase()
+{
+    QStandardPaths::setTestModeEnabled(true);
+}
+
+void ScriptsViewModelTest::init()
+{
+    QVERIFY2(clearScriptStorage(), qPrintable(QStringLiteral("Cannot clear %1").arg(scriptStoragePath())));
+}
+
+void ScriptsViewModelTest::cleanup()
+{
+    QVERIFY2(clearScriptStorage(), qPrintable(QStringLiteral("Cannot clear %1").arg(scriptStoragePath())));
+}
 
 void ScriptsViewModelTest::matchesScriptFilter()
 {
@@ -75,7 +75,9 @@ void ScriptsViewModelTest::matchesScriptFilter()
 
 void ScriptsViewModelTest::ownsEditorWorkflowCommands()
 {
-    ScriptsViewModel viewModel;
+    ScriptService service;
+    ScriptLibraryModel model;
+    ScriptsViewModel viewModel(service, model);
 
     viewModel.newScript();
 
@@ -87,60 +89,73 @@ void ScriptsViewModelTest::ownsEditorWorkflowCommands()
     QCOMPARE(viewModel.editor()->validationStatus(), QStringLiteral("Structure invalid: define function parse(ctx) ... end"));
 }
 
-void ScriptsViewModelTest::delegatesSaveToDependencies()
+void ScriptsViewModelTest::savesThroughScriptService()
 {
-    FakeScriptsDeps deps;
-    ScriptsViewModel viewModel(deps.dependencies());
+    ScriptService service;
+    ScriptLibraryModel model;
+    ScriptsViewModel viewModel(service, model);
+    QSignalSpy librarySpy(&viewModel, &ScriptsViewModel::scriptLibraryChanged);
+    QSignalSpy storageSpy(&service, &ScriptService::storageError);
 
     viewModel.newScript();
     viewModel.editor()->setName(QStringLiteral("Decoder"));
     viewModel.editor()->setDescription(QStringLiteral("Binary payload"));
     viewModel.editor()->setCode(QStringLiteral("function parse(ctx)\n    return ctx.payload\nend"));
 
-    QVERIFY(viewModel.saveEditor());
-    QCOMPARE(deps.upsertCalls, 1);
-    QCOMPARE(deps.lastName, QStringLiteral("Decoder"));
-    QCOMPARE(deps.lastDescription, QStringLiteral("Binary payload"));
-    QCOMPARE(deps.lastCode, QStringLiteral("function parse(ctx)\n    return ctx.payload\nend"));
-    QCOMPARE(viewModel.editor()->currentScriptId(), QStringLiteral("saved-script"));
+    const bool saved = viewModel.saveEditor();
+    const QString storageError = storageSpy.isEmpty()
+        ? QStringLiteral("ScriptService rejected the save without an error")
+        : storageSpy.constLast().at(0).toString();
+    QVERIFY2(saved, qPrintable(storageError));
+    QCOMPARE(librarySpy.count(), 1);
+    QCOMPARE(model.count(), 1);
+
+    const QString savedId = viewModel.editor()->currentScriptId();
+    QVERIFY(!savedId.isEmpty());
+    const ScriptEntry *savedScript = service.scriptById(savedId);
+    QVERIFY(savedScript);
+    QCOMPARE(savedScript->name, QStringLiteral("Decoder"));
+    QCOMPARE(savedScript->description, QStringLiteral("Binary payload"));
+    QCOMPARE(savedScript->code, QStringLiteral("function parse(ctx)\n    return ctx.payload\nend"));
     QVERIFY(!viewModel.editor()->hasUnsavedChanges());
 }
 
 void ScriptsViewModelTest::forwardsScriptLibrarySignal()
 {
-    FakeScriptsDeps deps;
-    ScriptsViewModel viewModel(deps.dependencies());
+    ScriptService service;
+    ScriptLibraryModel model;
+    ScriptsViewModel viewModel(service, model);
     QSignalSpy spy(&viewModel, &ScriptsViewModel::scriptLibraryChanged);
 
-    QVERIFY(deps.scriptLibraryChanged);
-    deps.scriptLibraryChanged();
+    service.scriptsChanged();
     QCOMPARE(spy.count(), 1);
+    QCOMPARE(model.count(), service.scripts().size());
 }
 
-void ScriptsViewModelTest::readsScriptListThroughDependencies()
+void ScriptsViewModelTest::readsConcreteScriptModel()
 {
-    FakeScriptsDeps deps;
-    QVector<ScriptEntry> scripts {
-        {
-            QStringLiteral("decoder"),
-            QStringLiteral("Decoder"),
-            QStringLiteral("Binary payload"),
-            QStringLiteral("function parse(ctx)\nend"),
-        },
-        {
-            QStringLiteral("logger"),
-            QStringLiteral("Logger"),
-            QStringLiteral("Debug event"),
-            QStringLiteral("function parse(ctx)\nend"),
-        },
-    };
-    deps.model.setSource(&scripts);
-    ScriptsViewModel viewModel(deps.dependencies());
+    ScriptService service;
+    const QString decoderId = service.upsertScript(
+        {},
+        QStringLiteral("Decoder"),
+        QStringLiteral("Binary payload"),
+        QStringLiteral("function parse(ctx)\nend"));
+    const QString loggerId = service.upsertScript(
+        {},
+        QStringLiteral("Logger"),
+        QStringLiteral("Debug event"),
+        QStringLiteral("function parse(ctx)\nend"));
+    QVERIFY(!decoderId.isEmpty());
+    QVERIFY(!loggerId.isEmpty());
 
-    QCOMPARE(viewModel.scripts(), &deps.model);
+    ScriptLibraryModel model;
+    ScriptsViewModel viewModel(service, model);
+
+    QCOMPARE(viewModel.scripts(), &model);
+    QCOMPARE(model.count(), 2);
     QCOMPARE(viewModel.visibleScriptCount(QStringLiteral("binary")), 1);
     QVERIFY(viewModel.selectScriptAt(1));
-    QCOMPARE(viewModel.editor()->currentScriptId(), QStringLiteral("logger"));
+    QCOMPARE(viewModel.editor()->currentScriptId(), loggerId);
 }
 
 QTEST_MAIN(ScriptsViewModelTest)

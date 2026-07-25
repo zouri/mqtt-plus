@@ -6,33 +6,20 @@
 #include <QObject>
 #include <QMqttSubscription>
 
-#include <functional>
-
 class EventHistoryService;
-class QTimer;
 class ScriptService;
-class SubscriptionListModel;
+class SessionService;
 
 class SubscriptionService : public QObject
 {
     Q_OBJECT
 
 public:
-    struct Dependencies
-    {
-        SubscriptionListModel *subscriptionsModel = nullptr;
-        ScriptService *scriptController = nullptr;
-        EventHistoryService *eventController = nullptr;
-        QTimer *subscriptionFpsRefreshTimer = nullptr;
-        std::function<SessionState *()> currentSessionState;
-        std::function<SessionState *(const QString &)> sessionById;
-        std::function<bool()> saveSessions;
-        std::function<void()> refreshSubscriptionsModel;
-    };
-
-    explicit SubscriptionService(QObject *parent = nullptr);
-
-    void setDependencies(const Dependencies &dependencies);
+    explicit SubscriptionService(
+        SessionService &sessionService,
+        ScriptService &scriptService,
+        EventHistoryService &eventHistoryService,
+        QObject *parent = nullptr);
 
     bool upsertCurrentSubscription(
         const QString &topic,
@@ -53,20 +40,16 @@ public:
     void setCurrentSubscriptionPaused(const QString &topic, bool paused);
     void setAllCurrentSubscriptionsPaused(bool paused);
 
-    SubscriptionEntry *subscriptionByTopic(SessionState *session, const QString &topic);
-    const SubscriptionEntry *subscriptionByTopic(const SessionState *session, const QString &topic) const;
-    const SubscriptionEntry *bestSubscriptionForTopic(const SessionState &session, const QString &topic) const;
     void resetRuntimeSubscriptions(SessionState &session);
     void restoreActiveSubscriptions(SessionState &session, bool emitEvents);
-    void ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents);
-    qreal subscriptionFps(const SubscriptionEntry &entry, qint64 nowMs) const;
     bool currentSessionHasActiveSubscriptionFps(qint64 nowMs) const;
-    void refreshSubscriptionFps();
 
 signals:
     void subscriptionsChanged();
 
 private:
+    SubscriptionEntry *subscriptionByTopic(SessionState *session, const QString &topic);
+    void ensureSubscriptionActive(SessionState &session, SubscriptionEntry &entry, bool emitEvents);
     void observeSubscription(SessionState &session, SubscriptionEntry &entry, QMqttSubscription *subscription);
     void updateSubscriptionState(
         const QString &sessionId,
@@ -74,5 +57,7 @@ private:
         const QPointer<QMqttSubscription> &subscription,
         QMqttSubscription::SubscriptionState state);
 
-    Dependencies m_dependencies;
+    SessionService &m_sessionService;
+    ScriptService &m_scriptService;
+    EventHistoryService &m_eventHistoryService;
 };

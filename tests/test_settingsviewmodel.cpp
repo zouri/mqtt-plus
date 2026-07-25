@@ -2,73 +2,43 @@
 #include "models/eventstreammodel.h"
 #include "services/storage/historystore.h"
 #include "usecases/eventhistoryservice.h"
+#include "usecases/scriptservice.h"
+#include "usecases/sessionservice.h"
 #include "viewmodels/settingsviewmodel.h"
 
 #include <QtTest/QtTest>
 
 #include <QTemporaryDir>
 
-#include <utility>
-
-class FakeSettingsDeps
+class SettingsFixture
 {
 public:
-    FakeSettingsDeps()
-        : settings(QStringLiteral("mqtt-plus-test"), QStringLiteral("settings-viewmodel-test"))
+    SettingsFixture()
+        : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
         , preferencesController(&settings)
+        , historyStore(dataDir.path())
+        , sessionService(settings, scriptService, historyStore, preferencesController)
+        , eventHistoryService(
+              sessionService,
+              historyStore,
+              messages,
+              logs,
+              scriptService,
+              launchTimestamp,
+              preferencesController)
     {
-        settings.clear();
     }
 
-    SettingsViewModel::Dependencies dependencies()
-    {
-        return {
-            &preferencesController,
-            nullptr,
-            nullptr,
-            &sessions,
-            &messages,
-            &logs,
-            [this](QObject *, std::function<void()> handler) { messageRetentionLimitChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { logRetentionLimitChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { historyPageSizeChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { maxIncomingPayloadBytesChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { deleteHistoryWithSessionChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { saveMessagesWhenOutputPausedChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { autoCollapseConnectionListOnConnectChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { clearMessagesOnExitChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { clearLogsOnExitChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { windowWidthChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { windowHeightChanged = std::move(handler); },
-            [this](QObject *, std::function<void()> handler) { windowMaximizedChanged = std::move(handler); },
-            [this]() { ++reloadHistoryCalls; },
-            [this]() { ++refreshScriptSamplesCalls; },
-            [this]() { ++messageStreamChangedCalls; },
-            [this]() { ++logStreamChangedCalls; },
-        };
-    }
-
+    QTemporaryDir dataDir;
     QSettings settings;
     PreferencesController preferencesController;
-    QVector<SessionState> sessions;
+    HistoryStore historyStore;
+    ScriptService scriptService;
+    SessionService sessionService;
     EventStreamModel messages;
     EventStreamModel logs;
-    std::function<void()> messageRetentionLimitChanged;
-    std::function<void()> logRetentionLimitChanged;
-    std::function<void()> historyPageSizeChanged;
-    std::function<void()> maxIncomingPayloadBytesChanged;
-    std::function<void()> deleteHistoryWithSessionChanged;
-    std::function<void()> saveMessagesWhenOutputPausedChanged;
-    std::function<void()> autoCollapseConnectionListOnConnectChanged;
-    std::function<void()> clearMessagesOnExitChanged;
-    std::function<void()> clearLogsOnExitChanged;
-    std::function<void()> windowWidthChanged;
-    std::function<void()> windowHeightChanged;
-    std::function<void()> windowMaximizedChanged;
-    int reloadHistoryCalls = 0;
-    int refreshScriptSamplesCalls = 0;
-    int messageStreamChangedCalls = 0;
-    int logStreamChangedCalls = 0;
+    QString launchTimestamp = QStringLiteral("2026-07-25T00:00:00.000Z");
+    EventHistoryService eventHistoryService;
 };
 
 class SettingsOptionsViewModelTest : public QObject
@@ -77,10 +47,10 @@ class SettingsOptionsViewModelTest : public QObject
 
 private slots:
     void exposesDefaultSettingIndexes();
-    void readsSettingsThroughDependencies();
+    void readsSettings();
     void messageRetentionChangeDefersCleanup();
-    void writesSettingsThroughDependencies();
-    void forwardsDependencySignals();
+    void writesSettingsAndClearsHistory();
+    void forwardsPreferenceSignals();
     void themeChangesEmitSignals();
     void themeColorPersistsAndEmitsSignal();
     void languageChangesEmitSignals();
@@ -89,8 +59,15 @@ private slots:
 
 void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
 {
-    FakeSettingsDeps deps;
-    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 0);
     QCOMPARE(settings.themeColor(), QStringLiteral("mint"));
@@ -108,9 +85,9 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(settings.connectionPaneCollapsed(), false);
 }
 
-void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
+void SettingsOptionsViewModelTest::readsSettings()
 {
-    FakeSettingsDeps deps;
+    SettingsFixture deps;
     deps.preferencesController.setMessageRetentionLimit(10000);
     deps.preferencesController.setLogRetentionLimit(5000);
     deps.preferencesController.setWindowGeometry(1200, 700);
@@ -120,7 +97,14 @@ void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
     deps.settings.setValue(QStringLiteral("appearance/themeColor"), QStringLiteral("violet"));
     deps.settings.setValue(QStringLiteral("appearance/languageMode"), QStringLiteral("zh_CN"));
     deps.settings.setValue(QStringLiteral("workbench/messagePayloadDisplayMode"), QStringLiteral("full"));
-    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
 
     QCOMPARE(settings.themeModeIndex(), 2);
     QCOMPARE(settings.effectiveTheme(), QStringLiteral("dark"));
@@ -136,63 +120,72 @@ void SettingsOptionsViewModelTest::readsSettingsThroughDependencies()
 
 void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
 {
-    FakeSettingsDeps deps;
-    QTemporaryDir dataDir;
-    QVERIFY(dataDir.isValid());
+    SettingsFixture deps;
+    QVERIFY(deps.dataDir.isValid());
+    QVERIFY2(deps.historyStore.isReady(), qPrintable(deps.historyStore.lastError()));
 
-    HistoryStore historyStore(dataDir.path());
-    QVERIFY2(historyStore.isReady(), qPrintable(historyStore.lastError()));
-
-    deps.sessions.resize(1);
-    SessionState &session = deps.sessions[0];
+    deps.sessionService.sessions().append(SessionState {});
+    deps.sessionService.setCurrentSessionIndex(0);
+    SessionState &session = *deps.sessionService.currentSession();
     session.id = QStringLiteral("session-1");
 
     for (int index = 0; index < 1001; ++index) {
-        QVERIFY(historyStore.enqueueMessage(
+        QVERIFY(deps.historyStore.enqueueMessage(
                     session.id,
                     QString::number(index),
                     QStringLiteral("topic"),
                     QByteArray::number(index))
                 > 0);
     }
-    QVERIFY(!historyStore.flushPendingMessages().isEmpty());
-    QCOMPARE(historyStore.loadMessages(session.id, 2000).size(), 1001);
+    QVERIFY(!deps.historyStore.flushPendingMessages().isEmpty());
+    QCOMPARE(deps.historyStore.loadMessages(session.id, 2000).size(), 1001);
 
-    EventHistoryService eventHistoryService;
-    EventHistoryService::Dependencies eventHistoryDependencies;
-    eventHistoryDependencies.historyStore = &historyStore;
-    eventHistoryDependencies.currentSessionState = [&session]() { return &session; };
-    eventHistoryService.setDependencies(eventHistoryDependencies);
-
-    QVERIFY(historyStore.enqueueMessage(
+    QVERIFY(deps.historyStore.enqueueMessage(
                 session.id,
                 QStringLiteral("pending"),
                 QStringLiteral("topic"),
                 QByteArrayLiteral("pending"))
             > 0);
-    QCOMPARE(historyStore.pendingMessageCount(), 1);
+    QCOMPARE(deps.historyStore.pendingMessageCount(), 1);
 
-    SettingsViewModel::Dependencies settingsDependencies = deps.dependencies();
-    settingsDependencies.eventController = &eventHistoryService;
-    settingsDependencies.historyStore = &historyStore;
-    SettingsViewModel settings(settingsDependencies, &deps.settings);
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
+    QSignalSpy messageSpy(&deps.eventHistoryService, &EventHistoryService::messageStreamChanged);
 
     settings.setMessageRetentionLimitIndex(0);
 
     QCOMPARE(deps.preferencesController.messageRetentionLimit(), 1000);
-    QCOMPARE(historyStore.pendingMessageCount(), 1);
-    QCOMPARE(historyStore.loadMessages(session.id, 2000).size(), 1001);
-    QCOMPARE(deps.reloadHistoryCalls, 0);
-    QCOMPARE(deps.messageStreamChangedCalls, 0);
+    QCOMPARE(deps.historyStore.pendingMessageCount(), 1);
+    QCOMPARE(deps.historyStore.loadMessages(session.id, 2000).size(), 1001);
+    QCOMPARE(messageSpy.count(), 0);
 }
 
-void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
+void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
 {
-    FakeSettingsDeps deps;
-    deps.sessions.resize(1);
-    deps.sessions[0].runtime.totalMessageCount = 12;
-    deps.sessions[0].runtime.viewedMessageCount = 8;
-    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    SettingsFixture deps;
+    deps.sessionService.sessions().append(SessionState {});
+    deps.sessionService.setCurrentSessionIndex(0);
+    SessionState &session = *deps.sessionService.currentSession();
+    session.id = QStringLiteral("session-1");
+    session.runtime.totalMessageCount = 12;
+    session.runtime.viewedMessageCount = 8;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
+    QSignalSpy reloadSpy(&deps.eventHistoryService, &EventHistoryService::totalMessageCountChanged);
+    QSignalSpy messageSpy(&deps.eventHistoryService, &EventHistoryService::messageStreamChanged);
+    QSignalSpy logSpy(&deps.eventHistoryService, &EventHistoryService::logStreamChanged);
 
     settings.setThemeModeIndex(1);
     settings.setThemeColor(QStringLiteral("blue"));
@@ -238,34 +231,44 @@ void SettingsOptionsViewModelTest::writesSettingsThroughDependencies()
     QCOMPARE(deps.settings.value(QStringLiteral("workspace/subscriptionPaneWidth")).toInt(), 410);
     QCOMPARE(deps.settings.value(QStringLiteral("workspace/publishComposerHeight")).toInt(), 230);
     QVERIFY(!deps.settings.contains(QStringLiteral("workspace/subscriptionPaneCollapsed")));
-    QCOMPARE(deps.sessions[0].runtime.totalMessageCount, 0);
-    QCOMPARE(deps.sessions[0].runtime.viewedMessageCount, 0);
-    QCOMPARE(deps.reloadHistoryCalls, 1);
-    QCOMPARE(deps.refreshScriptSamplesCalls, 2);
-    QCOMPARE(deps.messageStreamChangedCalls, 2);
-    QCOMPARE(deps.logStreamChangedCalls, 3);
+    QCOMPARE(session.runtime.totalMessageCount, 0);
+    QCOMPARE(session.runtime.viewedMessageCount, 0);
+    QCOMPARE(reloadSpy.count(), 1);
+    QCOMPARE(messageSpy.count(), 3);
+    QCOMPARE(logSpy.count(), 3);
 }
 
-void SettingsOptionsViewModelTest::forwardsDependencySignals()
+void SettingsOptionsViewModelTest::forwardsPreferenceSignals()
 {
-    FakeSettingsDeps deps;
-    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
     QSignalSpy windowSpy(&settings, &SettingsViewModel::windowMaximizedChanged);
     QSignalSpy autoCollapseSpy(&settings, &SettingsViewModel::autoCollapseConnectionListOnConnectChanged);
 
-    QVERIFY(deps.windowMaximizedChanged);
-    QVERIFY(deps.autoCollapseConnectionListOnConnectChanged);
-
-    deps.windowMaximizedChanged();
-    deps.autoCollapseConnectionListOnConnectChanged();
+    deps.preferencesController.setWindowMaximized(true);
+    deps.preferencesController.setAutoCollapseConnectionListOnConnect(false);
     QCOMPARE(windowSpy.count(), 1);
     QCOMPARE(autoCollapseSpy.count(), 1);
 }
 
 void SettingsOptionsViewModelTest::themeChangesEmitSignals()
 {
-    FakeSettingsDeps deps;
-    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
 
     settings.setThemeModeIndex(1);
     QSignalSpy themeSpy(&settings, &SettingsViewModel::themeModeChanged);
@@ -279,8 +282,15 @@ void SettingsOptionsViewModelTest::themeChangesEmitSignals()
 
 void SettingsOptionsViewModelTest::themeColorPersistsAndEmitsSignal()
 {
-    FakeSettingsDeps deps;
-    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
     QSignalSpy colorSpy(&settings, &SettingsViewModel::themeColorChanged);
 
     settings.setThemeColor(QStringLiteral("rose"));
@@ -295,8 +305,15 @@ void SettingsOptionsViewModelTest::themeColorPersistsAndEmitsSignal()
 
 void SettingsOptionsViewModelTest::languageChangesEmitSignals()
 {
-    FakeSettingsDeps deps;
-    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
     QSignalSpy modeSpy(&settings, &SettingsViewModel::languageModeChanged);
     QSignalSpy langSpy(&settings, &SettingsViewModel::languageChanged);
 
@@ -307,8 +324,15 @@ void SettingsOptionsViewModelTest::languageChangesEmitSignals()
 
 void SettingsOptionsViewModelTest::messagePayloadDisplayModePersistsAndEmitsSignal()
 {
-    FakeSettingsDeps deps;
-    SettingsViewModel settings(deps.dependencies(), &deps.settings);
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
     QSignalSpy modeSpy(&settings, &SettingsViewModel::messagePayloadDisplayModeChanged);
 
     settings.setMessagePayloadDisplayModeIndex(2);
@@ -317,7 +341,14 @@ void SettingsOptionsViewModelTest::messagePayloadDisplayModePersistsAndEmitsSign
     QCOMPARE(modeSpy.count(), 1);
     QCOMPARE(deps.settings.value(QStringLiteral("workbench/messagePayloadDisplayMode")).toString(), QStringLiteral("full"));
 
-    SettingsViewModel restoredSettings(deps.dependencies(), &deps.settings);
+    SettingsViewModel restoredSettings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.messages,
+        deps.logs,
+        deps.settings);
     QCOMPARE(restoredSettings.messagePayloadDisplayModeIndex(), 2);
 }
 

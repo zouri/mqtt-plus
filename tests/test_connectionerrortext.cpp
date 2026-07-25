@@ -1,12 +1,22 @@
-#include "app/applicationsessionruntime.h"
+#include "models/eventstreammodel.h"
 #include "services/apputils.h"
+#include "services/storage/historystore.h"
+#include "usecases/eventhistoryservice.h"
 #include "usecases/mqttsessionservice.h"
+#include "usecases/preferencescontroller.h"
+#include "usecases/scriptservice.h"
+#include "usecases/sessionservice.h"
+#include "usecases/subscriptionservice.h"
 
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QMqttClient>
+#include <QSettings>
+#include <QTemporaryDir>
 #include <QTranslator>
 #include <QtTest/QtTest>
+
+#include <cstring>
 
 namespace {
 
@@ -45,6 +55,103 @@ private:
     ErrorTextTranslator m_translator;
 };
 
+class TestMqttTransport final : public QIODevice
+{
+public:
+    void appendIncoming(const QByteArray &data)
+    {
+        m_incoming.append(data);
+        emit readyRead();
+    }
+
+    qint64 bytesAvailable() const override
+    {
+        return m_incoming.size() + QIODevice::bytesAvailable();
+    }
+
+protected:
+    qint64 readData(char *data, qint64 maxSize) override
+    {
+        const qint64 bytesToRead = qMin<qint64>(maxSize, m_incoming.size());
+        if (bytesToRead == 0) {
+            return 0;
+        }
+        std::memcpy(data, m_incoming.constData(), static_cast<size_t>(bytesToRead));
+        m_incoming.remove(0, bytesToRead);
+        return bytesToRead;
+    }
+
+    qint64 writeData(const char *, qint64 maxSize) override
+    {
+        return maxSize;
+    }
+
+private:
+    QByteArray m_incoming;
+};
+
+struct MqttFixture
+{
+    QTemporaryDir dataDir;
+    QSettings settings;
+    HistoryStore historyStore;
+    PreferencesController preferences;
+    ScriptService scripts;
+    SessionService sessions;
+    EventStreamModel messages;
+    EventStreamModel logs;
+    QString launchTimestamp = QStringLiteral("2026-07-25T00:00:00.000Z");
+    EventHistoryService events;
+    SubscriptionService subscriptions;
+    MqttSessionService mqtt;
+
+    explicit MqttFixture(bool bindMqttSignals = true)
+        : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
+        , historyStore(dataDir.path())
+        , preferences(&settings)
+        , sessions(settings, scripts, historyStore, preferences)
+        , events(
+              sessions,
+              historyStore,
+              messages,
+              logs,
+              scripts,
+              launchTimestamp,
+              preferences)
+        , subscriptions(sessions, scripts, events)
+        , mqtt(sessions, subscriptions, events)
+    {
+        if (bindMqttSignals) {
+            QObject::connect(
+                &sessions,
+                &SessionService::sessionRuntimeReady,
+                &mqtt,
+                &MqttSessionService::bindSessionSignals);
+        }
+        QObject::connect(
+            &sessions,
+            &SessionService::runtimeError,
+            &events,
+            [this](
+                const QString &sessionId,
+                const QString &channel,
+                const QString &message) {
+                if (auto *session = sessions.sessionById(sessionId)) {
+                    events.appendEvent(*session, channel, message);
+                }
+            });
+    }
+
+    bool initialize()
+    {
+        if (!historyStore.isReady() || !sessions.loadSessions()) {
+            return false;
+        }
+        sessions.setCurrentSessionIndex(0);
+        return sessions.currentSession() != nullptr;
+    }
+};
+
 } // namespace
 
 class ConnectionErrorTextTest : public QObject
@@ -58,6 +165,7 @@ private slots:
     void connectionValidationErrorsIgnoreApplicationTranslator();
     void clientErrorUsesSameRawTextForSessionAndLog();
     void connectionTimeoutIgnoresApplicationTranslator();
+    void qosZeroPublishDoesNotRemainQueued();
 };
 
 void ConnectionErrorTextTest::clientErrorNamesIgnoreApplicationTranslator_data()
@@ -120,109 +228,98 @@ void ConnectionErrorTextTest::connectionValidationErrorsIgnoreApplicationTransla
     QFETCH(QString, expected);
 
     TranslatorGuard translatorGuard;
-    QMqttClient client;
-    client.setHostname(host);
-    client.setClientId(clientId);
+    MqttFixture fixture(false);
+    QVERIFY2(fixture.initialize(), qPrintable(fixture.historyStore.lastError()));
+    SessionState &session = *fixture.sessions.currentSession();
+    session.runtime.client->setHostname(host);
+    session.runtime.client->setClientId(clientId);
+    QSignalSpy logSpy(&fixture.events, &EventHistoryService::logAppended);
 
-    SessionState session;
-    session.id = QStringLiteral("session-1");
-    session.runtime.client = &client;
-
-    QString eventChannel;
-    QString eventMessage;
-    MqttSessionService service;
-    MqttSessionService::Dependencies dependencies;
-    dependencies.currentSessionState = [&session]() { return &session; };
-    dependencies.appendEvent = [&eventChannel, &eventMessage](
-                                   SessionState &,
-                                   const QString &channel,
-                                   const QString &message) {
-        eventChannel = channel;
-        eventMessage = message;
-    };
-    service.setDependencies(dependencies);
-
-    service.connectCurrentSession();
+    fixture.mqtt.connectCurrentSession();
 
     QCOMPARE(session.runtime.lastError, expected);
-    QCOMPARE(eventChannel, QStringLiteral("Connection"));
-    QCOMPARE(eventMessage, expected);
+    QCOMPARE(logSpy.count(), 1);
+    const QVariantMap row = logSpy.takeFirst().at(0).toMap();
+    QCOMPARE(row.value(QStringLiteral("title")).toString(), QStringLiteral("Connection"));
+    QCOMPARE(row.value(QStringLiteral("payload")).toString(), expected);
 }
 
 void ConnectionErrorTextTest::clientErrorUsesSameRawTextForSessionAndLog()
 {
     TranslatorGuard translatorGuard;
-    QMqttClient client;
-    SessionState session;
-    session.id = QStringLiteral("session-1");
-    session.runtime.client = &client;
+    MqttFixture fixture;
+    QVERIFY2(fixture.initialize(), qPrintable(fixture.historyStore.lastError()));
+    SessionState &session = *fixture.sessions.currentSession();
+    QSignalSpy logSpy(&fixture.events, &EventHistoryService::logAppended);
 
-    QString eventChannel;
-    QString eventMessage;
-    MqttSessionService service;
-    MqttSessionService::Dependencies dependencies;
-    dependencies.sessionById = [&session](const QString &sessionId) {
-        return sessionId == session.id ? &session : nullptr;
-    };
-    dependencies.appendEvent = [&eventChannel, &eventMessage](
-                                   SessionState &,
-                                   const QString &channel,
-                                   const QString &message) {
-        eventChannel = channel;
-        eventMessage = message;
-    };
-    service.setDependencies(dependencies);
-    service.bindSessionSignals(&session);
-
-    client.errorChanged(QMqttClient::TransportInvalid);
+    session.runtime.client->errorChanged(QMqttClient::TransportInvalid);
 
     QVERIFY2(session.runtime.lastError.startsWith(QStringLiteral("Invalid transport")),
         qPrintable(session.runtime.lastError));
-    QCOMPARE(eventChannel, QStringLiteral("Error"));
-    QCOMPARE(eventMessage, session.runtime.lastError);
+    QCOMPARE(logSpy.count(), 1);
+    const QVariantMap row = logSpy.takeFirst().at(0).toMap();
+    QCOMPARE(row.value(QStringLiteral("title")).toString(), QStringLiteral("Error"));
+    QCOMPARE(row.value(QStringLiteral("payload")).toString(), session.runtime.lastError);
 }
 
 void ConnectionErrorTextTest::connectionTimeoutIgnoresApplicationTranslator()
 {
     TranslatorGuard translatorGuard;
-    QObject owner;
     QBuffer transport;
     QVERIFY(transport.open(QIODevice::ReadWrite));
+    MqttFixture fixture(false);
+    QVERIFY2(fixture.initialize(), qPrintable(fixture.historyStore.lastError()));
+    SessionState &session = *fixture.sessions.currentSession();
+    auto *client = session.runtime.client;
+    QVERIFY(client);
+    QVERIFY(session.runtime.connectTimeoutTimer);
+    client->setTransport(&transport, QMqttClient::IODevice);
+    QSignalSpy runtimeErrorSpy(&fixture.sessions, &SessionService::runtimeError);
+    QSignalSpy logSpy(&fixture.events, &EventHistoryService::logAppended);
 
-    QMqttClient client;
-    client.setTransport(&transport, QMqttClient::IODevice);
-
-    SessionState session;
-    session.id = QStringLiteral("session-1");
-    session.runtime.client = &client;
-
-    QString eventChannel;
-    QString eventMessage;
-    ApplicationSessionRuntime runtime(
-        &owner,
-        {
-            [&session](const QString &sessionId) {
-                return sessionId == session.id ? &session : nullptr;
-            },
-            [&eventChannel, &eventMessage](
-                SessionState &,
-                const QString &channel,
-                const QString &message) {
-                eventChannel = channel;
-                eventMessage = message;
-            },
-            {},
-            {},
-        });
-    runtime.initialize(&session);
-
-    client.connectToHost();
-    QCOMPARE(client.state(), QMqttClient::Connecting);
+    client->connectToHost();
+    QCOMPARE(client->state(), QMqttClient::Connecting);
     session.runtime.connectTimeoutTimer->start(0);
 
     QTRY_COMPARE(session.runtime.lastError, QStringLiteral("Connection timed out."));
-    QCOMPARE(eventChannel, QStringLiteral("Error"));
-    QCOMPARE(eventMessage, session.runtime.lastError);
+    QCOMPARE(runtimeErrorSpy.count(), 1);
+    const QList<QVariant> arguments = runtimeErrorSpy.takeFirst();
+    QCOMPARE(arguments.at(0).toString(), session.id);
+    QCOMPARE(arguments.at(1).toString(), QStringLiteral("Error"));
+    QCOMPARE(arguments.at(2).toString(), session.runtime.lastError);
+    QVERIFY(logSpy.count() >= 1);
+    const QVariantMap row = logSpy.takeFirst().at(0).toMap();
+    QCOMPARE(row.value(QStringLiteral("title")).toString(), QStringLiteral("Error"));
+    QCOMPARE(row.value(QStringLiteral("payload")).toString(), session.runtime.lastError);
+}
+
+void ConnectionErrorTextTest::qosZeroPublishDoesNotRemainQueued()
+{
+    TestMqttTransport transport;
+    QVERIFY(transport.open(QIODevice::ReadWrite));
+    MqttFixture fixture;
+    QVERIFY2(fixture.initialize(), qPrintable(fixture.historyStore.lastError()));
+    SessionState &session = *fixture.sessions.currentSession();
+    auto *client = session.runtime.client;
+    QVERIFY(client);
+    client->setTransport(&transport, QMqttClient::IODevice);
+    client->setProtocolVersion(QMqttClient::MQTT_5_0);
+
+    fixture.mqtt.connectCurrentSession();
+    QCOMPARE(client->state(), QMqttClient::Connecting);
+    transport.appendIncoming(QByteArray::fromHex("2003000000"));
+    QTRY_COMPARE(client->state(), QMqttClient::Connected);
+    QSignalSpy messageSentSpy(client, &QMqttClient::messageSent);
+
+    QVERIFY(fixture.mqtt.publishCurrentSession(
+        QStringLiteral("mqtt-plus/test"),
+        QStringLiteral("payload"),
+        0,
+        0,
+        false));
+    QCOMPARE(session.runtime.publishStatus.messageId, 0);
+    QCOMPARE(session.runtime.publishStatus.state, QStringLiteral("sent"));
+    QCOMPARE(messageSentSpy.count(), 0);
 }
 
 QTEST_GUILESS_MAIN(ConnectionErrorTextTest)

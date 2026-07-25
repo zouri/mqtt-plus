@@ -20,8 +20,8 @@ struct LuaScriptResult {
     QString error;
 };
 
-class LuaRunner
-{
-public:
-    static LuaScriptResult run(const QString &code, const LuaScriptContext &context);
-};
+namespace LuaRunner {
+
+LuaScriptResult run(const QString &code, const LuaScriptContext &context);
+
+} // namespace LuaRunner

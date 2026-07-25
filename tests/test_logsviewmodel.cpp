@@ -1,41 +1,64 @@
+#include "domain/session.h"
 #include "models/eventstreammodel.h"
+#include "services/storage/historystore.h"
+#include "usecases/eventhistoryservice.h"
+#include "usecases/preferencescontroller.h"
+#include "usecases/scriptservice.h"
+#include "usecases/sessionservice.h"
 #include "viewmodels/logsviewmodel.h"
 
 #include <QtTest/QtTest>
 
-#include <functional>
-#include <utility>
+#include <QSettings>
+#include <QTemporaryDir>
 
-class FakeLogsDeps
+namespace {
+
+SessionState &initializeSession(SessionService &sessions)
 {
-public:
-    LogsViewModel::Dependencies dependencies()
-    {
-        return {
-            &model,
-            [this](QObject *, std::function<void()> handler) {
-                logStreamChanged = std::move(handler);
-            },
-            [this](QObject *, std::function<void(const QVariantMap &)> handler) {
-                logStreamRowAppended = std::move(handler);
-            },
-            [this]() {
-                clearCalled = true;
-            },
-            [this]() {
-                ++loadCalls;
-                return loadResult;
-            },
-        };
-    }
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    sessions.sessions().append(session);
+    sessions.setCurrentSessionIndex(0);
+    return *sessions.currentSession();
+}
 
-    EventStreamModel model;
-    std::function<void()> logStreamChanged;
-    std::function<void(const QVariantMap &)> logStreamRowAppended;
-    bool clearCalled = false;
-    int loadCalls = 0;
-    int loadResult = 0;
+struct LogsFixture
+{
+    QTemporaryDir dataDir;
+    QSettings settings;
+    HistoryStore historyStore;
+    PreferencesController preferences;
+    EventStreamModel messages;
+    EventStreamModel logs;
+    ScriptService scripts;
+    QString launchTimestamp = QStringLiteral("2026-07-25T00:00:00.000Z");
+    SessionService sessions;
+    SessionState &session;
+    EventHistoryService history;
+    LogsViewModel viewModel;
+
+    LogsFixture()
+        : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
+        , historyStore(dataDir.path())
+        , preferences(&settings)
+        , sessions(settings, scripts, historyStore, preferences)
+        , session(initializeSession(sessions))
+        , history(
+              sessions,
+              historyStore,
+              messages,
+              logs,
+              scripts,
+              launchTimestamp,
+              preferences)
+        , viewModel(history, logs)
+    {
+    }
 };
+
+} // namespace
 
 class LogsViewModelTest : public QObject
 {
@@ -44,8 +67,8 @@ class LogsViewModelTest : public QObject
 private slots:
     void formatsLogRows();
     void rendersLogTextFromModel();
-    void delegatesCommandsToDependencies();
-    void forwardsDependencySignals();
+    void routesCommandsToEventHistoryService();
+    void forwardsEventHistorySignals();
 };
 
 void LogsViewModelTest::formatsLogRows()
@@ -93,28 +116,50 @@ void LogsViewModelTest::rendersLogTextFromModel()
         QStringLiteral("[10:00:00] [DEBUG] packet received\n[10:00:01] [ERROR] [broker] timeout"));
 }
 
-void LogsViewModelTest::delegatesCommandsToDependencies()
+void LogsViewModelTest::routesCommandsToEventHistoryService()
 {
-    FakeLogsDeps deps;
-    deps.loadResult = 3;
-    LogsViewModel viewModel(deps.dependencies());
+    LogsFixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
 
-    viewModel.clearCurrentLogs();
-    QCOMPARE(deps.clearCalled, true);
-    QCOMPARE(viewModel.loadOlderCurrentSessionLogs(), 3);
-    QCOMPARE(deps.loadCalls, 1);
+    fixture.historyStore.appendEvent(
+        fixture.session.id,
+        QStringLiteral("2026-07-24T10:00:00.000Z"),
+        QStringLiteral("mqtt"),
+        QStringLiteral("first"));
+    fixture.historyStore.appendEvent(
+        fixture.session.id,
+        QStringLiteral("2026-07-24T10:00:01.000Z"),
+        QStringLiteral("mqtt"),
+        QStringLiteral("second"));
+    const qint64 newestId = fixture.historyStore.appendEvent(
+        fixture.session.id,
+        QStringLiteral("2026-07-24T10:00:02.000Z"),
+        QStringLiteral("mqtt"),
+        QStringLiteral("third"));
+    QVERIFY(newestId > 0);
+
+    fixture.session.runtime.oldestLoadedLogId = newestId + 1;
+    fixture.session.runtime.loadedAllLogHistory = false;
+
+    QCOMPARE(fixture.viewModel.logs(), &fixture.logs);
+    QCOMPARE(fixture.viewModel.loadOlderCurrentSessionLogs(), 3);
+    QCOMPARE(fixture.logs.count(), 3);
+    QCOMPARE(fixture.session.runtime.logRows.size(), 3);
+
+    fixture.viewModel.clearCurrentLogs();
+    QCOMPARE(fixture.logs.count(), 0);
+    QCOMPARE(fixture.session.runtime.logRows.size(), 0);
+    QCOMPARE(fixture.historyStore.loadLogs(fixture.session.id, 10).size(), 0);
 }
 
-void LogsViewModelTest::forwardsDependencySignals()
+void LogsViewModelTest::forwardsEventHistorySignals()
 {
-    FakeLogsDeps deps;
-    LogsViewModel viewModel(deps.dependencies());
-    QSignalSpy streamSpy(&viewModel, &LogsViewModel::logStreamChanged);
-    QSignalSpy rowSpy(&viewModel, &LogsViewModel::logStreamRowAppended);
-    QSignalSpy textSpy(&viewModel, &LogsViewModel::logTextChanged);
+    LogsFixture fixture;
+    QSignalSpy streamSpy(&fixture.viewModel, &LogsViewModel::logStreamChanged);
+    QSignalSpy rowSpy(&fixture.viewModel, &LogsViewModel::logStreamRowAppended);
+    QSignalSpy textSpy(&fixture.viewModel, &LogsViewModel::logTextChanged);
 
-    QVERIFY(deps.logStreamChanged);
-    deps.logStreamChanged();
+    fixture.history.logStreamChanged();
     QCOMPARE(streamSpy.count(), 1);
     QCOMPARE(textSpy.count(), 1);
 
@@ -123,8 +168,10 @@ void LogsViewModelTest::forwardsDependencySignals()
         {QStringLiteral("title"), QStringLiteral("broker")},
         {QStringLiteral("payload"), QStringLiteral("connected")},
     };
-    QVERIFY(deps.logStreamRowAppended);
-    deps.logStreamRowAppended(row);
+    fixture.logs.appendRow(row);
+    QCOMPARE(textSpy.count(), 2);
+
+    fixture.history.logAppended(row);
     QCOMPARE(rowSpy.count(), 1);
     QCOMPARE(rowSpy.takeFirst().at(0).toMap(), row);
     QCOMPARE(textSpy.count(), 2);

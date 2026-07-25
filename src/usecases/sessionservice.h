@@ -6,57 +6,34 @@
 #include <QVariantMap>
 #include <QVector>
 
-#include <functional>
-
 class HistoryStore;
-class MqttSessionService;
-class QTimer;
-class SubscriptionService;
+class PreferencesController;
+class QSettings;
+class ScriptService;
 
 class SessionService : public QObject
 {
     Q_OBJECT
 
 public:
-    struct Dependencies
-    {
-        HistoryStore *historyStore = nullptr;
-        SubscriptionService *subscriptionController = nullptr;
-        MqttSessionService *mqttController = nullptr;
-        QTimer *subscriptionFpsRefreshTimer = nullptr;
-        std::function<bool()> deleteHistoryWithSession;
-        std::function<bool()> saveSessions;
-        std::function<void(SessionState &, const QVariantMap &, bool)> configureSession;
-        std::function<void(SessionState *)> initializeSessionRuntime;
-        std::function<void(SessionState &)> destroySessionRuntime;
-        std::function<SessionState(const QString &)> createDefaultSession;
-        std::function<void()> reloadCurrentSessionHistory;
-        std::function<void()> refreshSessionsModel;
-        std::function<void()> refreshAllModels;
-        std::function<void()> refreshSessionAndSubscriptionModels;
-        std::function<void()> refreshCurrentSessionModels;
-        std::function<void()> refreshScriptsModel;
-    };
-
-    explicit SessionService(QObject *parent = nullptr);
-
-    void setDependencies(const Dependencies &dependencies);
+    explicit SessionService(
+        QSettings &settings,
+        ScriptService &scriptService,
+        HistoryStore &historyStore,
+        PreferencesController &preferences,
+        QObject *parent = nullptr);
 
     QVector<SessionState> &sessions();
     const QVector<SessionState> &sessions() const;
     int currentIndex() const;
-    void setCurrentIndex(int index);
 
     SessionState *currentSession();
     const SessionState *currentSession() const;
     SessionState *sessionById(const QString &sessionId);
     const SessionState *sessionById(const QString &sessionId) const;
 
-    void appendSession(const SessionState &session);
-    SessionState takeSessionAt(int index);
-    void clear();
-    bool isValidIndex(int index) const;
-
+    bool loadSessions();
+    bool saveSessions();
     void setCurrentSessionIndex(int index);
     QVariantMap defaultSessionConfig() const;
     QVariantMap sessionConfigAt(int index) const;
@@ -67,11 +44,29 @@ public:
     void setCurrentOutputPaused(bool paused);
 
 signals:
+    void sessionsChanged();
     void currentSessionIndexChanged();
     void currentSessionChanged();
+    void currentSessionHistoryReloadRequested();
+    void sessionRuntimeReady(SessionState *session);
+    void reconnectRequested(SessionState *session);
+    void runtimeError(
+        const QString &sessionId,
+        const QString &channel,
+        const QString &message);
+    void storageError(const QString &message);
 
 private:
-    Dependencies m_dependencies;
+    bool isValidIndex(int index) const;
+    void applyConfig(SessionState &session, const QVariantMap &config, bool keepNameFallback) const;
+    void initializeSessionRuntime(SessionState &session);
+    void destroySessionRuntime(SessionState &session);
+    SessionState createDefaultSession(const QString &name);
+
+    QSettings &m_settings;
+    ScriptService &m_scriptService;
+    HistoryStore &m_historyStore;
+    PreferencesController &m_preferences;
     QVector<SessionState> m_sessions;
     int m_currentIndex = -1;
 };

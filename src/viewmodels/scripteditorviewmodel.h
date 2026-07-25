@@ -33,7 +33,6 @@ public:
     void setDescription(const QString &description);
     void setCode(const QString &code);
 
-    QString defaultCode() const;
     void loadScript(const QVariantMap &row);
     void newScript();
     bool validateStructure();
@@ -49,9 +48,9 @@ signals:
     void editorStateChanged();
 
 private:
+    static QString defaultCode();
     void setValidationStatus(const QString &status);
     void setValidationOk(bool ok);
-    void emitEditorStateChanged();
 
     QString m_currentScriptId;
     QString m_name;

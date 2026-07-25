@@ -1,12 +1,13 @@
 #include "subscriptionlistmodel.h"
 
-#include "domain/session.h"
+#include "domain/script.h"
 #include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
 
 #include <QDateTime>
 
 #include <algorithm>
+#include <utility>
 
 using namespace AppUtils;
 
@@ -27,7 +28,7 @@ SubscriptionListModel::SubscriptionListModel(QObject *parent)
 
 int SubscriptionListModel::rowCount(const QModelIndex &parent) const
 {
-    return parent.isValid() || !m_subs ? 0 : m_subs->size();
+    return parent.isValid() ? 0 : m_rows.size();
 }
 
 int SubscriptionListModel::count() const
@@ -37,43 +38,42 @@ int SubscriptionListModel::count() const
 
 QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || !m_subs || index.row() < 0 || index.row() >= m_subs->size()) {
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
         return {};
     }
 
-    const auto &sub = m_subs->at(index.row());
-    const int row = index.row();
+    const SubscriptionRow &row = m_rows.at(index.row());
     switch (role) {
     case TopicRole:
-        return sub.topic;
+        return row.topic;
     case AliasRole:
-        return sub.alias;
+        return row.alias;
     case DisplayNameRole:
-        return displayNameForSub(sub);
+        return displayName(row);
     case RequestedQosRole:
-        return sub.requestedQos;
+        return row.requestedQos;
     case GrantedQosRole:
-        return sub.grantedQos;
+        return row.grantedQos;
     case TopicFpsRole:
-        return row < m_fpsCache.size() ? m_fpsCache.at(row) : 0.0;
+        return row.topicFps;
     case TopicRateHistoryRole:
-        return row < m_rateHistoryCache.size() ? m_rateHistoryCache.at(row) : QVariantList {};
+        return row.topicRateHistory;
     case FormatRole:
-        return sub.format;
+        return row.format;
     case FormatNameRole:
-        return PayloadCodec::formatName(PayloadCodec::formatFromInt(sub.format));
+        return PayloadCodec::formatName(PayloadCodec::formatFromInt(row.format));
     case ScriptIdRole:
-        return sub.scriptId;
+        return row.scriptId;
     case ScriptNameRole:
-        return row < m_scriptNameCache.size() ? m_scriptNameCache.at(row) : QString();
+        return row.scriptName;
     case ColorRole:
-        return sub.color;
+        return row.color;
     case PausedRole:
-        return sub.paused;
+        return row.paused;
     case StateRole:
-        return sub.runtimeState;
+        return row.state;
     case LastErrorRole:
-        return sub.lastError;
+        return row.lastError;
     default:
         return {};
     }
@@ -103,142 +103,49 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
 
 QVariantMap SubscriptionListModel::rowAt(int row) const
 {
-    if (!m_subs || row < 0 || row >= m_subs->size()) {
+    if (row < 0 || row >= m_rows.size()) {
         return {};
     }
 
-    return rowToMap(m_subs->at(row), row);
+    return rowToMap(m_rows.at(row));
 }
 
-void SubscriptionListModel::setSource(const SessionState *session)
+void SubscriptionListModel::setSubscriptions(
+    const QString &sourceSessionId,
+    const QVector<SubscriptionEntry> &subscriptions,
+    const QVector<ScriptEntry> &scripts)
 {
-    const QVector<SubscriptionEntry> *nextSubscriptions = session
-        ? &session->subscriptions
-        : &m_empty;
-    if (m_subs != nextSubscriptions) {
-        m_rateHistoryCache.clear();
-        m_rateHistoryTopicCache.clear();
-    }
-    m_subs = nextSubscriptions;
-    rebuildCache();
-}
-
-void SubscriptionListModel::setScriptNameLookup(std::function<QString(const QString &)> lookup)
-{
-    m_scriptNameLookup = std::move(lookup);
-}
-
-void SubscriptionListModel::notifyRefresh()
-{
-    rebuildCache();
-}
-
-bool SubscriptionListModel::updateTopicFps(qint64 nowMs)
-{
-    if (!m_subs || m_subs->isEmpty()) {
-        return false;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    QVector<SubscriptionRow> rows;
+    rows.reserve(subscriptions.size());
+    for (const SubscriptionEntry &subscription : subscriptions) {
+        rows.append(rowFromSubscription(subscription, scripts, nowMs));
     }
 
-    bool hasRateHistory = false;
-    const qsizetype n = m_subs->size();
-    m_fpsCache.resize(n);
-    m_rateHistoryCache.resize(n);
-    m_rateHistoryTopicCache.resize(n);
-    for (qsizetype i = 0; i < n; ++i) {
-        const SubscriptionEntry &subscription = m_subs->at(i);
-        if (m_rateHistoryTopicCache.at(i) != subscription.topic) {
-            m_rateHistoryCache[i].clear();
-            m_rateHistoryTopicCache[i] = subscription.topic;
-        }
-
-        QVariantList &history = m_rateHistoryCache[i];
-        if (subscription.paused) {
-            m_fpsCache[i] = 0.0;
-            history.clear();
-        } else {
-            m_fpsCache[i] = static_cast<qreal>(
-                recentMessageCount(subscription.recentMessageTimestampsMs, nowMs));
-            const qreal currentRate = m_fpsCache.at(i);
-            if (history.isEmpty() && currentRate > 0.0) {
-                history.reserve(kSubscriptionRateHistorySampleCount);
-                for (int sample = 1; sample < kSubscriptionRateHistorySampleCount; ++sample) {
-                    history.append(0.0);
-                }
-                history.append(currentRate);
-            } else if (!history.isEmpty()) {
-                history.append(currentRate);
-                while (history.size() > kSubscriptionRateHistorySampleCount) {
-                    history.removeFirst();
-                }
-                if (!hasPositiveRateSample(history)) {
-                    history.clear();
-                }
-            }
-        }
-        hasRateHistory = hasRateHistory || !history.isEmpty();
-    }
-
-    for (qsizetype i = 0; i < n; ++i) {
-        const QModelIndex rowIndex = index(static_cast<int>(i), 0);
-        emit dataChanged(rowIndex, rowIndex, {TopicFpsRole, TopicRateHistoryRole});
-    }
-
-    return hasRateHistory;
-}
-
-void SubscriptionListModel::rebuildCache()
-{
-    const bool countWillChange = !m_subs || m_fpsCache.size() != static_cast<qsizetype>(m_subs->size());
-    const auto rebuildRows = [this]() {
-        if (!m_subs) {
-            m_fpsCache.clear();
-            m_rateHistoryCache.clear();
-            m_rateHistoryTopicCache.clear();
-            m_scriptNameCache.clear();
-            return;
-        }
-
-        const qsizetype rowCount = m_subs->size();
-        const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-        m_fpsCache.resize(rowCount);
-        m_rateHistoryCache.resize(rowCount);
-        m_rateHistoryTopicCache.resize(rowCount);
-
-        m_scriptNameCache.resize(rowCount);
-        for (qsizetype i = 0; i < rowCount; ++i) {
-            const SubscriptionEntry &subscription = m_subs->at(i);
-            if (m_rateHistoryTopicCache.at(i) != subscription.topic) {
-                m_rateHistoryCache[i].clear();
-                m_rateHistoryTopicCache[i] = subscription.topic;
-            }
-            if (subscription.paused) {
-                m_fpsCache[i] = 0.0;
-                m_rateHistoryCache[i].clear();
-            } else {
-                m_fpsCache[i] = static_cast<qreal>(
-                    recentMessageCount(subscription.recentMessageTimestampsMs, nowMs));
-            }
-            m_scriptNameCache[i] = m_scriptNameLookup
-                ? m_scriptNameLookup(subscription.scriptId)
-                : QString();
-        }
-    };
-
-    if (countWillChange) {
+    const bool sourceChanged = sourceSessionId != m_sourceSessionId;
+    const bool countWillChange = rows.size() != m_rows.size();
+    m_sourceSessionId = sourceSessionId;
+    if (sourceChanged || countWillChange) {
         beginResetModel();
-        m_rateHistoryCache.clear();
-        m_rateHistoryTopicCache.clear();
-        rebuildRows();
+        m_rows = std::move(rows);
         endResetModel();
-        emit countChanged();
+        if (countWillChange) {
+            emit countChanged();
+        }
         return;
     }
 
-    rebuildRows();
-    if (m_subs && !m_subs->isEmpty()) {
+    for (qsizetype i = 0; i < rows.size(); ++i) {
+        if (!rows[i].paused
+            && rows[i].topic == m_rows.at(i).topic) {
+            rows[i].topicRateHistory = m_rows.at(i).topicRateHistory;
+        }
+    }
+    m_rows = std::move(rows);
+    if (!m_rows.isEmpty()) {
         emit dataChanged(
             index(0, 0),
-            index(static_cast<int>(m_subs->size() - 1), 0),
+            index(static_cast<int>(m_rows.size() - 1), 0),
             {
                 TopicRole,
                 AliasRole,
@@ -259,32 +166,113 @@ void SubscriptionListModel::rebuildCache()
     }
 }
 
-QVariantMap SubscriptionListModel::rowToMap(const SubscriptionEntry &sub, int row) const
+bool SubscriptionListModel::updateTopicFps(
+    const QVector<SubscriptionEntry> &subscriptions,
+    qint64 nowMs)
+{
+    if (subscriptions.size() != m_rows.size() || m_rows.isEmpty()) {
+        return false;
+    }
+
+    bool hasRateHistory = false;
+    for (qsizetype i = 0; i < m_rows.size(); ++i) {
+        const SubscriptionEntry &subscription = subscriptions.at(i);
+        SubscriptionRow &row = m_rows[i];
+        if (row.topic != subscription.topic) {
+            row.topicFps = 0.0;
+            row.topicRateHistory.clear();
+            continue;
+        }
+
+        QVariantList &history = row.topicRateHistory;
+        if (subscription.paused) {
+            row.topicFps = 0.0;
+            history.clear();
+        } else {
+            row.topicFps = static_cast<qreal>(
+                recentMessageCount(subscription.recentMessageTimestampsMs, nowMs));
+            const qreal currentRate = row.topicFps;
+            if (history.isEmpty() && currentRate > 0.0) {
+                history.reserve(kSubscriptionRateHistorySampleCount);
+                for (int sample = 1; sample < kSubscriptionRateHistorySampleCount; ++sample) {
+                    history.append(0.0);
+                }
+                history.append(currentRate);
+            } else if (!history.isEmpty()) {
+                history.append(currentRate);
+                while (history.size() > kSubscriptionRateHistorySampleCount) {
+                    history.removeFirst();
+                }
+                if (!hasPositiveRateSample(history)) {
+                    history.clear();
+                }
+            }
+        }
+        hasRateHistory = hasRateHistory || !history.isEmpty();
+    }
+
+    emit dataChanged(
+        index(0, 0),
+        index(static_cast<int>(m_rows.size() - 1), 0),
+        {TopicFpsRole, TopicRateHistoryRole});
+
+    return hasRateHistory;
+}
+
+SubscriptionListModel::SubscriptionRow SubscriptionListModel::rowFromSubscription(
+    const SubscriptionEntry &subscription,
+    const QVector<ScriptEntry> &scripts,
+    qint64 nowMs)
+{
+    QString scriptName;
+    for (const ScriptEntry &script : scripts) {
+        if (script.id == subscription.scriptId) {
+            scriptName = script.name;
+            break;
+        }
+    }
+
+    return {
+        subscription.topic,
+        subscription.alias,
+        subscription.requestedQos,
+        subscription.grantedQos,
+        subscription.paused
+            ? 0.0
+            : static_cast<qreal>(recentMessageCount(subscription.recentMessageTimestampsMs, nowMs)),
+        {},
+        subscription.format,
+        subscription.scriptId,
+        scriptName,
+        subscription.color,
+        subscription.paused,
+        subscription.runtimeState,
+        subscription.lastError,
+    };
+}
+
+QVariantMap SubscriptionListModel::rowToMap(const SubscriptionRow &row)
 {
     QVariantMap map;
-    const qreal fps = row >= 0 && row < m_fpsCache.size() ? m_fpsCache.at(row) : 0.0;
-    const QString scriptName = row >= 0 && row < m_scriptNameCache.size() ? m_scriptNameCache.at(row) : QString();
-    map.insert(QStringLiteral("topic"), sub.topic);
-    map.insert(QStringLiteral("alias"), sub.alias);
-    map.insert(QStringLiteral("displayName"), displayNameForSub(sub));
-    map.insert(QStringLiteral("requestedQos"), sub.requestedQos);
-    map.insert(QStringLiteral("grantedQos"), sub.grantedQos);
-    map.insert(QStringLiteral("topicFps"), fps);
-    map.insert(
-        QStringLiteral("topicRateHistory"),
-        row >= 0 && row < m_rateHistoryCache.size() ? m_rateHistoryCache.at(row) : QVariantList {});
-    map.insert(QStringLiteral("format"), sub.format);
-    map.insert(QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(sub.format)));
-    map.insert(QStringLiteral("scriptId"), sub.scriptId);
-    map.insert(QStringLiteral("scriptName"), scriptName);
-    map.insert(QStringLiteral("color"), sub.color);
-    map.insert(QStringLiteral("paused"), sub.paused);
-    map.insert(QStringLiteral("state"), sub.runtimeState);
-    map.insert(QStringLiteral("lastError"), sub.lastError);
+    map.insert(QStringLiteral("topic"), row.topic);
+    map.insert(QStringLiteral("alias"), row.alias);
+    map.insert(QStringLiteral("displayName"), displayName(row));
+    map.insert(QStringLiteral("requestedQos"), row.requestedQos);
+    map.insert(QStringLiteral("grantedQos"), row.grantedQos);
+    map.insert(QStringLiteral("topicFps"), row.topicFps);
+    map.insert(QStringLiteral("topicRateHistory"), row.topicRateHistory);
+    map.insert(QStringLiteral("format"), row.format);
+    map.insert(QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(row.format)));
+    map.insert(QStringLiteral("scriptId"), row.scriptId);
+    map.insert(QStringLiteral("scriptName"), row.scriptName);
+    map.insert(QStringLiteral("color"), row.color);
+    map.insert(QStringLiteral("paused"), row.paused);
+    map.insert(QStringLiteral("state"), row.state);
+    map.insert(QStringLiteral("lastError"), row.lastError);
     return map;
 }
 
-QString SubscriptionListModel::displayNameForSub(const SubscriptionEntry &sub) const
+QString SubscriptionListModel::displayName(const SubscriptionRow &row)
 {
-    return sub.alias.isEmpty() ? sub.topic : sub.alias;
+    return row.alias.isEmpty() ? row.topic : row.alias;
 }

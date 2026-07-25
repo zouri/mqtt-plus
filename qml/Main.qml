@@ -112,7 +112,7 @@ ApplicationWindow {
 
     Shortcut {
         sequences: [StandardKey.Preferences]
-        onActivated: root.navigationViewModel.currentView = "settings"
+        onActivated: root.currentAppView = "settings"
     }
 
     Material.theme: appUi.materialTheme
@@ -124,9 +124,8 @@ ApplicationWindow {
         color: appUi.themePalette.windowBg
     }
 
-    readonly property var navigationViewModel: root.app.navigation
     readonly property var settingsViewModel: root.app.settings
-    readonly property string currentAppView: root.navigationViewModel.currentView
+    property string currentAppView: "workbench"
     readonly property int navigationRailWidth: 52
 
     component RailButton: ToolButton {
@@ -215,7 +214,7 @@ ApplicationWindow {
                         text: qsTr("Workbench")
                         active: root.currentAppView === "workbench"
                         accessibleLabel: qsTr("Workbench")
-                        onClicked: root.navigationViewModel.currentView = "workbench"
+                        onClicked: root.currentAppView = "workbench"
                     }
 
                     RailButton {
@@ -224,7 +223,7 @@ ApplicationWindow {
                         text: qsTr("Logs")
                         active: root.currentAppView === "logs"
                         accessibleLabel: qsTr("Logs")
-                        onClicked: root.navigationViewModel.currentView = "logs"
+                        onClicked: root.currentAppView = "logs"
                     }
 
                     RailButton {
@@ -233,7 +232,7 @@ ApplicationWindow {
                         text: qsTr("Scripts")
                         active: root.currentAppView === "scripts"
                         accessibleLabel: qsTr("Lua scripts")
-                        onClicked: root.navigationViewModel.currentView = "scripts"
+                        onClicked: root.currentAppView = "scripts"
                     }
 
                     Rectangle {
@@ -254,7 +253,7 @@ ApplicationWindow {
                         text: qsTr("Settings")
                         active: root.currentAppView === "settings"
                         accessibleLabel: qsTr("Settings")
-                        onClicked: root.navigationViewModel.currentView = "settings"
+                        onClicked: root.currentAppView = "settings"
                     }
                 }
             }

@@ -5,14 +5,11 @@
 #include <QStringList>
 #include <QVariantMap>
 
-#include <functional>
-
 #include "models/eventstreammodel.h"
 #include "models/messagefiltermodel.h"
 #include "models/scriptlibrarymodel.h"
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
-#include "platform/platformactions.h"
 #include "viewmodels/publishdraftviewmodel.h"
 #include "viewmodels/sessioneditorviewmodel.h"
 #include "viewmodels/subscriptioneditorviewmodel.h"
@@ -45,30 +42,18 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(qint64 totalMessageCount READ totalMessageCount NOTIFY totalMessageCountChanged)
 
 public:
-    struct Dependencies {
-        std::function<void(QObject *, std::function<void()>)> bindCurrentSessionIndexChanged;
-        std::function<void(QObject *, std::function<void()>)> bindCurrentSessionChanged;
-        std::function<void(QObject *, std::function<void()>)> bindSessionRuntimeStateChanged;
-        std::function<void(QObject *, std::function<void()>)> bindMessageStreamChanged;
-        std::function<void(QObject *, std::function<void()>)> bindTotalMessageCountChanged;
-        std::function<void(QObject *, std::function<void(const QVariantMap &)>)> bindMessageStreamRowAppended;
-        std::function<void(QObject *, std::function<void(int)>)> bindMessageStreamRowsAppended;
-        std::function<void(QObject *, std::function<void()>)> bindScriptLibraryChanged;
-        std::function<void(QObject *, std::function<void()>)> bindSubscriptionsChanged;
-        SessionService *sessionController = nullptr;
-        MqttSessionService *mqttController = nullptr;
-        SubscriptionService *subscriptionController = nullptr;
-        EventHistoryService *eventController = nullptr;
-        SessionListModel *sessions = nullptr;
-        SubscriptionFilterModel *filteredSubscriptions = nullptr;
-        SubscriptionFilterModel *messageFilterSubscriptions = nullptr;
-        EventStreamModel *messages = nullptr;
-        MessageFilterModel *filteredMessages = nullptr;
-        ScriptLibraryModel *scripts = nullptr;
-    };
-
-    explicit WorkbenchViewModel(QObject *parent = nullptr);
-    explicit WorkbenchViewModel(const Dependencies &dependencies, QObject *parent = nullptr);
+    explicit WorkbenchViewModel(
+        SessionService &sessionService,
+        MqttSessionService &mqttService,
+        SubscriptionService &subscriptionService,
+        EventHistoryService &eventHistoryService,
+        SessionListModel &sessionsModel,
+        SubscriptionFilterModel &filteredSubscriptionsModel,
+        SubscriptionFilterModel &messageFilterSubscriptionsModel,
+        EventStreamModel &messagesModel,
+        MessageFilterModel &filteredMessagesModel,
+        ScriptLibraryModel &scriptsModel,
+        QObject *parent = nullptr);
 
     SessionListModel *sessions() const;
     SubscriptionFilterModel *filteredSubscriptions() const;
@@ -140,16 +125,13 @@ signals:
     void publishStatusChanged();
     void messageStreamChanged();
     void totalMessageCountChanged();
-    void messageStreamRowAppended();
     void messageStreamRowsAppended(int count);
     void pendingSubscriptionDeleteChanged();
-    void sessionEditRequested(int index);
     void subscriptionDeleteRequested(const QString &topic, const QString &displayName);
     void subscriptionsStateChanged();
     void messageTopicFilterStateChanged();
 
 private:
-    ScriptLibraryModel *scriptLibrary() const;
     QString reusableMessagePayload(
         const QString &historyId,
         const QString &payload,
@@ -158,8 +140,16 @@ private:
     void refreshSubscriptionEditorScriptOptions();
     void clearPendingSubscriptionDelete();
 
-    Dependencies m_dependencies;
-    PlatformActions m_platformActions;
+    SessionService &m_sessionService;
+    MqttSessionService &m_mqttService;
+    SubscriptionService &m_subscriptionService;
+    EventHistoryService &m_eventHistoryService;
+    SessionListModel &m_sessionsModel;
+    SubscriptionFilterModel &m_filteredSubscriptionsModel;
+    SubscriptionFilterModel &m_messageFilterSubscriptionsModel;
+    EventStreamModel &m_messagesModel;
+    MessageFilterModel &m_filteredMessagesModel;
+    ScriptLibraryModel &m_scriptsModel;
     PublishDraftViewModel m_publisher;
     QString m_pendingSubscriptionDeleteTopic;
     QString m_pendingSubscriptionDeleteDisplayName;
