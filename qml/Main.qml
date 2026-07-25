@@ -150,12 +150,16 @@ ApplicationWindow {
         padding: 0
         spacing: 0
         Accessible.name: railButton.accessibleLabel
-        ToolTip.visible: railButton.hovered
-        ToolTip.delay: 400
-        ToolTip.text: railButton.accessibleLabel
 
         HoverHandler {
             cursorShape: Qt.PointingHandCursor
+        }
+
+        AppToolTip {
+            ui: railButton.ui
+            text: railButton.accessibleLabel
+            position: AppToolTip.Position.Right
+            active: railButton.hovered
         }
 
         background: Rectangle {
