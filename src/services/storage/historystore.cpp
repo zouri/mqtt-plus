@@ -568,77 +568,111 @@ QVariantList HistoryStore::loadLogsBefore(const QString &sessionId, qint64 befor
     return result;
 }
 
-void HistoryStore::clearMessages(const QString &sessionId)
+bool HistoryStore::clearMessages(const QString &sessionId)
 {
-    if (!isReady()) {
-        return;
-    }
-    flushPendingMessages();
-
-    QSqlQuery query(m_db);
-    query.prepare(QStringLiteral("DELETE FROM mqtt_messages WHERE session_id = ?"));
-    query.addBindValue(sessionId);
-    if (!query.exec()) {
-        m_lastError = query.lastError().text();
-        return;
-    }
-
-    query.prepare(QStringLiteral("DELETE FROM mqtt_message_totals WHERE session_id = ?"));
-    query.addBindValue(sessionId);
-    if (!query.exec()) {
-        m_lastError = query.lastError().text();
-    }
+    return flushPendingMessagesForClear()
+        && executeDeletes(
+            {
+                QStringLiteral("DELETE FROM mqtt_messages WHERE session_id = ?"),
+                QStringLiteral("DELETE FROM mqtt_message_totals WHERE session_id = ?"),
+            },
+            sessionId);
 }
 
-void HistoryStore::clearLogs(const QString &sessionId)
+bool HistoryStore::clearLogs(const QString &sessionId)
 {
-    if (!isReady()) {
-        return;
-    }
-    flushPendingMessages();
-
-    QSqlQuery query(m_db);
-    query.prepare(QStringLiteral("DELETE FROM event_logs WHERE session_id = ?"));
-    query.addBindValue(sessionId);
-    if (!query.exec()) {
-        m_lastError = query.lastError().text();
-    }
+    return executeDeletes(
+        {QStringLiteral("DELETE FROM event_logs WHERE session_id = ?")},
+        sessionId);
 }
 
-void HistoryStore::clearAllMessages()
+bool HistoryStore::clearAllMessages()
 {
-    if (!isReady()) {
-        return;
-    }
-    flushPendingMessages();
-
-    QSqlQuery query(m_db);
-    if (!query.exec(QStringLiteral("DELETE FROM mqtt_messages"))) {
-        m_lastError = query.lastError().text();
-        return;
-    }
-    if (!query.exec(QStringLiteral("DELETE FROM mqtt_message_totals"))) {
-        m_lastError = query.lastError().text();
-    }
+    return flushPendingMessagesForClear()
+        && executeDeletes(
+            {
+                QStringLiteral("DELETE FROM mqtt_messages"),
+                QStringLiteral("DELETE FROM mqtt_message_totals"),
+            });
 }
 
-void HistoryStore::clearAllLogs()
+bool HistoryStore::clearAllLogs()
 {
-    if (!isReady()) {
-        return;
-    }
-    flushPendingMessages();
-
-    QSqlQuery query(m_db);
-    if (!query.exec(QStringLiteral("DELETE FROM event_logs"))) {
-        m_lastError = query.lastError().text();
-    }
+    return executeDeletes({QStringLiteral("DELETE FROM event_logs")});
 }
 
-void HistoryStore::clearSessionHistory(const QString &sessionId)
+bool HistoryStore::clearSessionHistory(const QString &sessionId)
 {
-    clearMessages(sessionId);
-    clearLogs(sessionId);
+    return flushPendingMessagesForClear()
+        && executeDeletes(
+            {
+                QStringLiteral("DELETE FROM mqtt_messages WHERE session_id = ?"),
+                QStringLiteral("DELETE FROM mqtt_message_totals WHERE session_id = ?"),
+                QStringLiteral("DELETE FROM event_logs WHERE session_id = ?"),
+            },
+            sessionId);
+}
+
+bool HistoryStore::clearAllHistory()
+{
+    return flushPendingMessagesForClear()
+        && executeDeletes(
+            {
+                QStringLiteral("DELETE FROM mqtt_messages"),
+                QStringLiteral("DELETE FROM mqtt_message_totals"),
+                QStringLiteral("DELETE FROM event_logs"),
+            });
+}
+
+bool HistoryStore::flushPendingMessagesForClear()
+{
+    if (m_pendingMessages.isEmpty()) {
+        return true;
+    }
+
+    flushPendingMessages();
+    return m_pendingMessages.isEmpty();
+}
+
+bool HistoryStore::executeDeletes(const QStringList &statements, const QString &sessionId)
+{
+    if (!isReady()) {
+        if (m_lastError.isEmpty()) {
+            m_lastError = QStringLiteral("History database is not open.");
+        }
+        return false;
+    }
+
+    if (!m_db.transaction()) {
+        m_lastError = m_db.lastError().text();
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+    for (const QString &statement : statements) {
+        if (!query.prepare(statement)) {
+            m_lastError = query.lastError().text();
+            m_db.rollback();
+            return false;
+        }
+        if (!sessionId.isNull()) {
+            query.addBindValue(sessionId);
+        }
+        if (!query.exec()) {
+            m_lastError = query.lastError().text();
+            m_db.rollback();
+            return false;
+        }
+    }
+
+    if (!m_db.commit()) {
+        m_lastError = m_db.lastError().text();
+        m_db.rollback();
+        return false;
+    }
+
+    m_lastError.clear();
+    return true;
 }
 
 void HistoryStore::pruneMessages(const QString &sessionId, int keepCount)

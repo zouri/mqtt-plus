@@ -103,6 +103,21 @@ bool SessionService::loadSessions()
     }
     m_settings.endArray();
 
+    if (m_settings.status() != QSettings::NoError) {
+        for (SessionState &session : m_sessions) {
+            destroySessionRuntime(session);
+        }
+        m_sessions.clear();
+        m_sessions.append(createDefaultSession(tr("Session 1")));
+        emit sessionRuntimeReady(&m_sessions.last());
+        emit sessionsChanged();
+        emit storageError(
+            m_settings.status() == QSettings::AccessError
+                ? tr("Cannot read session settings: access denied.")
+                : tr("Cannot read session settings: invalid settings format."));
+        return false;
+    }
+
     bool loaded = true;
     if (m_sessions.isEmpty()) {
         m_sessions.append(createDefaultSession(tr("Session 1")));
@@ -163,33 +178,50 @@ bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
         return false;
     }
 
+    const QVariantMap previousConfig = SessionSettingsStore::configFromState(session);
     const bool reconnect = client->state() != QMqttClient::Disconnected;
     if (reconnect) {
+        session.runtime.reconnectPending = false;
         session.runtime.disconnectRequested = true;
         client->disconnectFromHost();
     }
 
     applyConfig(session, config, true);
+
+    QString errorMessage;
+    if (!SessionSettingsStore::writeSessions(m_settings, m_sessions, errorMessage)) {
+        applyConfig(session, previousConfig, true);
+
+        QString ignoredError;
+        SessionSettingsStore::writeSessions(m_settings, m_sessions, ignoredError);
+
+        if (reconnect) {
+            requestReconnect(session);
+        }
+
+        emit storageError(
+            errorMessage.isEmpty() ? tr("Cannot save sessions.") : errorMessage);
+        return false;
+    }
+
     session.runtime.lastError.clear();
     session.runtime.sessionRestored = false;
     session.runtime.publishStatus.state = QStringLiteral("idle");
     session.runtime.publishStatus.reason.clear();
     session.runtime.publishStatus.updatedAt = timestampNow();
-    const bool saved = saveSessions();
 
     if (reconnect) {
-        session.runtime.disconnectRequested = false;
-        emit reconnectRequested(&session);
+        requestReconnect(session);
     }
 
     emit sessionsChanged();
     if (index == m_currentIndex) {
         emit currentSessionChanged();
     }
-    return saved;
+    return true;
 }
 
-void SessionService::addSessionWithConfig(const QVariantMap &config)
+bool SessionService::addSessionWithConfig(const QVariantMap &config)
 {
     const QString configuredName = config.value(QStringLiteral("name")).toString().trimmed();
     const QString fallbackName = configuredName.isEmpty()
@@ -199,13 +231,25 @@ void SessionService::addSessionWithConfig(const QVariantMap &config)
     SessionState session = createDefaultSession(fallbackName);
     applyConfig(session, config, false);
     m_sessions.append(std::move(session));
+
+    QString errorMessage;
+    if (!SessionSettingsStore::writeSessions(m_settings, m_sessions, errorMessage)) {
+        SessionState failedSession = m_sessions.takeLast();
+        QString ignoredError;
+        SessionSettingsStore::writeSessions(m_settings, m_sessions, ignoredError);
+        destroySessionRuntime(failedSession);
+        emit storageError(
+            errorMessage.isEmpty() ? tr("Cannot save sessions.") : errorMessage);
+        return false;
+    }
+
     m_currentIndex = m_sessions.size() - 1;
     emit sessionRuntimeReady(&m_sessions.last());
     emit currentSessionHistoryReloadRequested();
-    saveSessions();
     emit sessionsChanged();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
+    return true;
 }
 
 void SessionService::duplicateSessionAt(int index)
@@ -247,8 +291,10 @@ void SessionService::removeSessionAt(int index)
     }
 
     SessionState removed = m_sessions.takeAt(index);
-    if (m_preferences.deleteHistoryWithSession()) {
-        m_historyStore.clearSessionHistory(removed.id);
+    if (m_preferences.deleteHistoryWithSession()
+        && !m_historyStore.clearSessionHistory(removed.id)) {
+        emit storageError(
+            tr("Cannot delete session history: %1").arg(m_historyStore.lastError()));
     }
     destroySessionRuntime(removed);
 
@@ -284,6 +330,22 @@ void SessionService::setCurrentOutputPaused(bool paused)
 bool SessionService::isValidIndex(int index) const
 {
     return index >= 0 && index < m_sessions.size();
+}
+
+void SessionService::requestReconnect(SessionState &session)
+{
+    auto *client = session.runtime.client;
+    if (!client) {
+        return;
+    }
+    if (client->state() != QMqttClient::Disconnected) {
+        session.runtime.reconnectPending = true;
+        return;
+    }
+
+    session.runtime.reconnectPending = false;
+    session.runtime.disconnectRequested = false;
+    emit reconnectRequested(&session);
 }
 
 void SessionService::applyConfig(

@@ -249,6 +249,23 @@
 <context>
     <name>EventHistoryService</name>
     <message>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="281"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="328"/>
+        <source>Cannot clear message history: %1</source>
+        <translation>无法清除消息历史：%1</translation>
+    </message>
+    <message>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="311"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="355"/>
+        <source>Cannot clear log history: %1</source>
+        <translation>无法清除日志历史：%1</translation>
+    </message>
+    <message>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="375"/>
+        <source>Cannot clear history: %1</source>
+        <translation>无法清除历史记录：%1</translation>
+    </message>
+    <message>
         <location filename="../src/usecases/eventhistoryservice.cpp" line="523"/>
         <source>Selected Lua script is missing.</source>
         <translation>选择的 Lua 脚本不存在。</translation>
@@ -1262,6 +1279,27 @@
 </context>
 <context>
     <name>SessionService</name>
+    <message>
+        <location filename="../src/usecases/sessionservice.cpp" line="111"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="123"/>
+        <source>Session 1</source>
+        <translation>会话 1</translation>
+    </message>
+    <message>
+        <location filename="../src/usecases/sessionservice.cpp" line="116"/>
+        <source>Cannot read session settings: access denied.</source>
+        <translation>无法读取会话设置：访问被拒绝。</translation>
+    </message>
+    <message>
+        <location filename="../src/usecases/sessionservice.cpp" line="117"/>
+        <source>Cannot read session settings: invalid settings format.</source>
+        <translation>无法读取会话设置：设置格式无效。</translation>
+    </message>
+    <message>
+        <location filename="../src/usecases/sessionservice.cpp" line="297"/>
+        <source>Cannot delete session history: %1</source>
+        <translation>无法删除会话历史：%1</translation>
+    </message>
     <message>
         <location filename="../src/usecases/sessionservice.cpp" line="160"/>
         <source>Connecting to</source>

@@ -39,8 +39,6 @@ ApplicationViewModel::ApplicationViewModel(
           eventHistoryService,
           historyStore,
           sessionService.sessions(),
-          messages,
-          logs,
           settings,
           this)
 {
