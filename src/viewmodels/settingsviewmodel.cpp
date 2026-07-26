@@ -167,14 +167,8 @@ SettingsViewModel::SettingsViewModel(
     connect(&m_preferencesController, &PreferencesController::logRetentionLimitChanged, this, &SettingsViewModel::logRetentionLimitChanged);
     connect(&m_preferencesController, &PreferencesController::historyPageSizeChanged, this, &SettingsViewModel::historyPageSizeChanged);
     connect(&m_preferencesController, &PreferencesController::maxIncomingPayloadBytesChanged, this, &SettingsViewModel::maxIncomingPayloadBytesChanged);
-    connect(&m_preferencesController, &PreferencesController::deleteHistoryWithSessionChanged, this, &SettingsViewModel::deleteHistoryWithSessionChanged);
-    connect(&m_preferencesController, &PreferencesController::saveMessagesWhenOutputPausedChanged, this, &SettingsViewModel::saveMessagesWhenOutputPausedChanged);
-    connect(&m_preferencesController, &PreferencesController::autoCollapseConnectionListOnConnectChanged, this, &SettingsViewModel::autoCollapseConnectionListOnConnectChanged);
     connect(&m_preferencesController, &PreferencesController::clearMessagesOnExitChanged, this, &SettingsViewModel::clearMessagesOnExitChanged);
     connect(&m_preferencesController, &PreferencesController::clearLogsOnExitChanged, this, &SettingsViewModel::clearLogsOnExitChanged);
-    connect(&m_preferencesController, &PreferencesController::windowWidthChanged, this, &SettingsViewModel::windowWidthChanged);
-    connect(&m_preferencesController, &PreferencesController::windowHeightChanged, this, &SettingsViewModel::windowHeightChanged);
-    connect(&m_preferencesController, &PreferencesController::windowMaximizedChanged, this, &SettingsViewModel::windowMaximizedChanged);
 }
 
 QString SettingsViewModel::themeMode() const { return m_themeMode; }
@@ -195,17 +189,8 @@ int SettingsViewModel::messageRetentionLimit() const { return m_preferencesContr
 int SettingsViewModel::logRetentionLimit() const { return m_preferencesController.logRetentionLimit(); }
 int SettingsViewModel::historyPageSize() const { return m_preferencesController.historyPageSize(); }
 int SettingsViewModel::maxIncomingPayloadBytes() const { return m_preferencesController.maxIncomingPayloadBytes(); }
-bool SettingsViewModel::deleteHistoryWithSession() const { return m_preferencesController.deleteHistoryWithSession(); }
-bool SettingsViewModel::saveMessagesWhenOutputPaused() const { return m_preferencesController.saveMessagesWhenOutputPaused(); }
-bool SettingsViewModel::autoCollapseConnectionListOnConnect() const { return m_preferencesController.autoCollapseConnectionListOnConnect(); }
 QString SettingsViewModel::clearMessagesOnExit() const { return m_preferencesController.clearMessagesOnExit(); }
 QString SettingsViewModel::clearLogsOnExit() const { return m_preferencesController.clearLogsOnExit(); }
-int SettingsViewModel::windowWidth() const { return m_preferencesController.windowWidth(); }
-int SettingsViewModel::windowHeight() const { return m_preferencesController.windowHeight(); }
-bool SettingsViewModel::windowMaximized() const { return m_preferencesController.windowMaximized(); }
-int SettingsViewModel::subscriptionPaneWidth() const { return m_preferencesController.subscriptionPaneWidth(); }
-int SettingsViewModel::publishComposerHeight() const { return m_preferencesController.publishComposerHeight(); }
-bool SettingsViewModel::connectionPaneCollapsed() const { return m_preferencesController.connectionPaneCollapsed(); }
 int SettingsViewModel::themeModeIndex() const { return optionIndex(SettingsOption::ThemeMode, themeMode()); }
 int SettingsViewModel::languageModeIndex() const { return optionIndex(SettingsOption::LanguageMode, languageMode()); }
 int SettingsViewModel::messagePayloadDisplayModeIndex() const { return optionIndex(SettingsOption::MessagePayloadDisplayMode, m_messagePayloadDisplayMode); }
@@ -292,42 +277,6 @@ void SettingsViewModel::setLogRetentionLimit(int limit)
     emit m_eventController.logStreamChanged();
 }
 
-void SettingsViewModel::setDeleteHistoryWithSession(bool enabled)
-{
-    m_preferencesController.setDeleteHistoryWithSession(enabled);
-}
-
-void SettingsViewModel::setSaveMessagesWhenOutputPaused(bool enabled)
-{
-    m_preferencesController.setSaveMessagesWhenOutputPaused(enabled);
-}
-
-void SettingsViewModel::setAutoCollapseConnectionListOnConnect(bool enabled)
-{
-    m_preferencesController.setAutoCollapseConnectionListOnConnect(enabled);
-}
-
-void SettingsViewModel::setWindowMaximized(bool maximized)
-{
-    m_preferencesController.setWindowMaximized(maximized);
-}
-
-void SettingsViewModel::saveWindowGeometry(int width, int height)
-{
-    m_preferencesController.setWindowGeometry(width, height);
-}
-
-void SettingsViewModel::saveWorkbenchLayout(
-    int subscriptionPaneWidth,
-    int publishComposerHeight,
-    bool connectionPaneCollapsed)
-{
-    m_preferencesController.setWorkbenchLayout(
-        subscriptionPaneWidth,
-        publishComposerHeight,
-        connectionPaneCollapsed);
-}
-
 void SettingsViewModel::setThemeModeIndex(int index) { setThemeMode(optionValue(SettingsOption::ThemeMode, index).toString()); }
 void SettingsViewModel::setLanguageModeIndex(int index) { setLanguageMode(optionValue(SettingsOption::LanguageMode, index).toString()); }
 void SettingsViewModel::setMessagePayloadDisplayModeIndex(int index) { setMessagePayloadDisplayMode(optionValue(SettingsOption::MessagePayloadDisplayMode, index).toString()); }
@@ -337,21 +286,6 @@ void SettingsViewModel::setHistoryPageSizeIndex(int index) { m_preferencesContro
 void SettingsViewModel::setMaxIncomingPayloadBytesIndex(int index) { m_preferencesController.setMaxIncomingPayloadBytes(optionValue(SettingsOption::MaxIncomingPayloadBytes, index).toInt()); }
 void SettingsViewModel::setClearMessagesOnExitIndex(int index) { m_preferencesController.setClearMessagesOnExit(optionValue(SettingsOption::CleanupMode, index).toString()); }
 void SettingsViewModel::setClearLogsOnExitIndex(int index) { m_preferencesController.setClearLogsOnExit(optionValue(SettingsOption::CleanupMode, index).toString()); }
-
-void SettingsViewModel::clearAllMessages()
-{
-    m_eventController.clearAllMessages();
-}
-
-void SettingsViewModel::clearAllLogs()
-{
-    m_eventController.clearAllLogs();
-}
-
-void SettingsViewModel::clearAllHistory()
-{
-    m_eventController.clearAllHistory();
-}
 
 void SettingsViewModel::refreshSystemColorScheme()
 {

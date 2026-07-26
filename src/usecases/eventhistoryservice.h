@@ -10,6 +10,8 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+#include <optional>
+
 class EventStreamModel;
 class HistoryStore;
 class PreferencesController;
@@ -27,19 +29,18 @@ public:
         EventStreamModel &messages,
         EventStreamModel &logs,
         ScriptService &scriptService,
-        QString &launchTimestamp,
+        QString launchTimestamp,
         PreferencesController &preferencesController,
         QObject *parent = nullptr);
 
-    bool clearCurrentMessages();
-    bool clearCurrentLogs();
-    bool clearAllMessages();
-    bool clearAllLogs();
-    bool clearAllHistory();
-    int loadOlderCurrentSessionMessages();
-    int loadOlderCurrentSessionLogs();
-    bool messageStreamFrozen() const;
-    void setMessageStreamFrozen(bool frozen);
+    Q_INVOKABLE bool clearCurrentMessages();
+    Q_INVOKABLE bool clearCurrentLogs();
+    Q_INVOKABLE bool clearAllMessages();
+    Q_INVOKABLE bool clearAllLogs();
+    Q_INVOKABLE bool clearAllHistory();
+    Q_INVOKABLE int loadOlderCurrentSessionMessages();
+    Q_INVOKABLE int loadOlderCurrentSessionLogs();
+    Q_INVOKABLE void setMessageStreamFrozen(bool frozen);
     void appendEvent(SessionState &session, const QString &channel, const QString &message);
     void appendPublishedMessage(
         const QString &sessionId,
@@ -68,6 +69,12 @@ signals:
     void subscriptionActivityChanged();
 
 private:
+    enum class Stream { Message, Log };
+
+    static QVariantList &streamRows(SessionState &session, Stream kind);
+    static qint64 &oldestLoadedId(SessionState &session, Stream kind);
+    static bool &loadedAllHistory(SessionState &session, Stream kind);
+
     void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
     void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
     LuaScriptResult parseIncomingPayload(
@@ -76,10 +83,12 @@ private:
         const QString &topic,
         const QByteArray &payloadBytes,
         const QString &timestamp,
-        QString &scriptNameOut,
-        QString &decodedPayloadOut) const;
-    void trimVisibleMessageRows(SessionState &session);
-    void trimVisibleLogRows(SessionState &session);
+        QString &scriptNameOut) const;
+    bool clearStream(Stream kind, bool allSessions);
+    void resetMessageStreamTransientState(bool allSessions, const SessionState *current);
+    int loadOlderCurrentSession(Stream kind);
+    std::optional<QString> decodedStoredPayload(qint64 messageId, int format, QString &parseErrorOut) const;
+    void trimVisibleRows(SessionState &session, Stream kind);
     void flushPendingVisibleMessageRows();
     void reportMessageStorageError(SessionState &session, const QString &message);
     void scheduleMessageHistoryFlush();
@@ -90,7 +99,7 @@ private:
     EventStreamModel &m_messages;
     EventStreamModel &m_logs;
     ScriptService &m_scriptService;
-    QString &m_launchTimestamp;
+    const QString m_launchTimestamp;
     PreferencesController &m_preferencesController;
     QTimer m_messageHistoryFlushTimer;
     QTimer m_visibleMessageRowsFlushTimer;

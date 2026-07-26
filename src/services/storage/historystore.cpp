@@ -193,40 +193,6 @@ qint64 HistoryStore::enqueueMessage(const MessageRecord &message)
     return reservedId;
 }
 
-qint64 HistoryStore::enqueueMessage(
-    const QString &sessionId,
-    const QString &timestamp,
-    const QString &topic,
-    const QByteArray &payloadBytes,
-    const QString &parsedPayload,
-    const QString &parsedFormat,
-    const QString &parseError,
-    const QString &scriptId,
-    const QString &scriptName,
-    const QString &payloadPreview,
-    const QString &payloadState,
-    qint64 payloadSize,
-    const QString &payloadHash,
-    int payloadFormat)
-{
-    MessageRecord message;
-    message.sessionId = sessionId;
-    message.timestamp = timestamp;
-    message.topic = topic;
-    message.payloadBytes = payloadBytes;
-    message.parsedPayload = parsedPayload;
-    message.parsedFormat = parsedFormat;
-    message.parseError = parseError;
-    message.scriptId = scriptId;
-    message.scriptName = scriptName;
-    message.payloadPreview = payloadPreview;
-    message.payloadState = payloadState;
-    message.payloadSize = payloadSize >= 0 ? payloadSize : payloadBytes.size();
-    message.payloadHash = payloadHash;
-    message.payloadFormat = payloadFormat;
-    return enqueueMessage(message);
-}
-
 QStringList HistoryStore::flushPendingMessages()
 {
     QStringList flushedSessionIds;

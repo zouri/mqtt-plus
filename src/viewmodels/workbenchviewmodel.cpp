@@ -357,11 +357,6 @@ void WorkbenchViewModel::toggleCurrentSessionConnection()
     m_mqttService.connectCurrentSession();
 }
 
-void WorkbenchViewModel::toggleCurrentOutputPaused(bool currentlyPaused)
-{
-    m_sessionService.setCurrentOutputPaused(!currentlyPaused);
-}
-
 void WorkbenchViewModel::refreshSubscriptionEditorScriptOptions()
 {
     QVariantList options;
@@ -413,10 +408,6 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
         submission.value(QStringLiteral("scriptId")).toString(),
         submission.value(QStringLiteral("color")).toString(),
         submission.value(QStringLiteral("alias")).toString());
-}
-void WorkbenchViewModel::toggleCurrentSubscriptionPaused(const QString &topic, bool currentlyPaused)
-{
-    m_subscriptionService.setCurrentSubscriptionPaused(topic, !currentlyPaused);
 }
 
 void WorkbenchViewModel::requestSubscriptionDelete(const QString &topic, const QString &displayName)
@@ -495,21 +486,6 @@ void WorkbenchViewModel::useMessageAsDraft(
         format);
 }
 
-void WorkbenchViewModel::clearMessages()
-{
-    m_eventHistoryService.clearCurrentMessages();
-}
-
-void WorkbenchViewModel::setMessageStreamFrozen(bool frozen)
-{
-    m_eventHistoryService.setMessageStreamFrozen(frozen);
-}
-
-int WorkbenchViewModel::loadOlderMessages()
-{
-    return m_eventHistoryService.loadOlderCurrentSessionMessages();
-}
-
 void WorkbenchViewModel::setMessageTopicFilter(const QString &topic)
 {
     const QString trimmed = topic.trimmed();
@@ -550,11 +526,6 @@ QVariantMap WorkbenchViewModel::messageDetails(const QString &historyId) const
         return {};
     }
     return m_eventHistoryService.messageDetails(id);
-}
-
-void WorkbenchViewModel::setAllCurrentSubscriptionsPaused(bool paused)
-{
-    m_subscriptionService.setAllCurrentSubscriptionsPaused(paused);
 }
 
 QString WorkbenchViewModel::reusableMessagePayload(

@@ -50,7 +50,6 @@ private:
     EventStreamModel m_logsModel;
     ScriptLibraryModel m_scriptsModel;
     QTimer m_subscriptionFpsTimer;
-    QString m_launchTimestamp;
     EventHistoryService m_eventHistoryService;
     SubscriptionService m_subscriptionService;
     MqttSessionService m_mqttService;

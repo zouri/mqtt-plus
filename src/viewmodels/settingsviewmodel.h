@@ -17,15 +17,6 @@ class SettingsViewModel : public QObject
     Q_OBJECT
     Q_PROPERTY(QString effectiveTheme READ effectiveTheme NOTIFY effectiveThemeChanged)
     Q_PROPERTY(QString themeColor READ themeColor NOTIFY themeColorChanged)
-    Q_PROPERTY(bool deleteHistoryWithSession READ deleteHistoryWithSession WRITE setDeleteHistoryWithSession NOTIFY deleteHistoryWithSessionChanged)
-    Q_PROPERTY(bool saveMessagesWhenOutputPaused READ saveMessagesWhenOutputPaused WRITE setSaveMessagesWhenOutputPaused NOTIFY saveMessagesWhenOutputPausedChanged)
-    Q_PROPERTY(bool autoCollapseConnectionListOnConnect READ autoCollapseConnectionListOnConnect WRITE setAutoCollapseConnectionListOnConnect NOTIFY autoCollapseConnectionListOnConnectChanged)
-    Q_PROPERTY(int windowWidth READ windowWidth NOTIFY windowWidthChanged)
-    Q_PROPERTY(int windowHeight READ windowHeight NOTIFY windowHeightChanged)
-    Q_PROPERTY(bool windowMaximized READ windowMaximized WRITE setWindowMaximized NOTIFY windowMaximizedChanged)
-    Q_PROPERTY(int subscriptionPaneWidth READ subscriptionPaneWidth CONSTANT)
-    Q_PROPERTY(int publishComposerHeight READ publishComposerHeight CONSTANT)
-    Q_PROPERTY(bool connectionPaneCollapsed READ connectionPaneCollapsed CONSTANT)
     Q_PROPERTY(int themeModeIndex READ themeModeIndex NOTIFY themeModeChanged)
     Q_PROPERTY(int languageModeIndex READ languageModeIndex NOTIFY languageModeChanged)
     Q_PROPERTY(int messagePayloadDisplayModeIndex READ messagePayloadDisplayModeIndex NOTIFY messagePayloadDisplayModeChanged)
@@ -53,17 +44,8 @@ public:
     int logRetentionLimit() const;
     int historyPageSize() const;
     int maxIncomingPayloadBytes() const;
-    bool deleteHistoryWithSession() const;
-    bool saveMessagesWhenOutputPaused() const;
-    bool autoCollapseConnectionListOnConnect() const;
     QString clearMessagesOnExit() const;
     QString clearLogsOnExit() const;
-    int windowWidth() const;
-    int windowHeight() const;
-    bool windowMaximized() const;
-    int subscriptionPaneWidth() const;
-    int publishComposerHeight() const;
-    bool connectionPaneCollapsed() const;
     int themeModeIndex() const;
     int languageModeIndex() const;
     int messagePayloadDisplayModeIndex() const;
@@ -74,16 +56,6 @@ public:
     int clearMessagesOnExitIndex() const;
     int clearLogsOnExitIndex() const;
 
-    void setDeleteHistoryWithSession(bool enabled);
-    void setSaveMessagesWhenOutputPaused(bool enabled);
-    void setAutoCollapseConnectionListOnConnect(bool enabled);
-    void setWindowMaximized(bool maximized);
-
-    Q_INVOKABLE void saveWindowGeometry(int width, int height);
-    Q_INVOKABLE void saveWorkbenchLayout(
-        int subscriptionPaneWidth,
-        int publishComposerHeight,
-        bool connectionPaneCollapsed);
     Q_INVOKABLE void setThemeModeIndex(int index);
     Q_INVOKABLE void setThemeColor(const QString &color);
     Q_INVOKABLE void setLanguageModeIndex(int index);
@@ -94,9 +66,6 @@ public:
     Q_INVOKABLE void setMaxIncomingPayloadBytesIndex(int index);
     Q_INVOKABLE void setClearMessagesOnExitIndex(int index);
     Q_INVOKABLE void setClearLogsOnExitIndex(int index);
-    Q_INVOKABLE void clearAllMessages();
-    Q_INVOKABLE void clearAllLogs();
-    Q_INVOKABLE void clearAllHistory();
 
 signals:
     void themeModeChanged();
@@ -109,14 +78,8 @@ signals:
     void logRetentionLimitChanged();
     void historyPageSizeChanged();
     void maxIncomingPayloadBytesChanged();
-    void deleteHistoryWithSessionChanged();
-    void saveMessagesWhenOutputPausedChanged();
-    void autoCollapseConnectionListOnConnectChanged();
     void clearMessagesOnExitChanged();
     void clearLogsOnExitChanged();
-    void windowWidthChanged();
-    void windowHeightChanged();
-    void windowMaximizedChanged();
 
 private:
     void setThemeMode(const QString &mode);

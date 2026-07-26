@@ -39,11 +39,7 @@ LogsViewModel::LogsViewModel(
     , m_logs(logs)
 {
     connect(&m_history, &EventHistoryService::logStreamChanged,
-        this, &LogsViewModel::logStreamChanged);
-    connect(&m_history, &EventHistoryService::logStreamChanged,
         this, &LogsViewModel::logTextChanged);
-    connect(&m_history, &EventHistoryService::logAppended,
-        this, &LogsViewModel::logStreamRowAppended);
     connect(&m_logs, &EventStreamModel::countChanged,
         this, &LogsViewModel::logTextChanged);
 }
@@ -93,14 +89,4 @@ QString LogsViewModel::renderedLogText(const EventStreamModel *model)
         rows.append(formattedLogRow(model->rowAt(row)));
     }
     return rows.join(QLatin1Char('\n'));
-}
-
-void LogsViewModel::clearCurrentLogs()
-{
-    m_history.clearCurrentLogs();
-}
-
-int LogsViewModel::loadOlderCurrentSessionLogs()
-{
-    return m_history.loadOlderCurrentSessionLogs();
 }

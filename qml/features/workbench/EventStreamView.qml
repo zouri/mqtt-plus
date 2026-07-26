@@ -10,6 +10,8 @@ Item {
 
     required property var viewModel
     required property var publisher
+    required property var eventHistory
+    required property var sessionService
     required property QtObject streamModel
     required property var session
     required property var status
@@ -90,7 +92,7 @@ Item {
             eventList.programmaticScroll = true
         }
 
-        root.viewModel.setMessageStreamFrozen(false)
+        root.eventHistory.setMessageStreamFrozen(false)
         root.requestFollowScroll()
     }
 
@@ -198,7 +200,7 @@ Item {
         eventList.bottomAnchorActive = false
         const previousContentHeight = eventList.contentHeight
         const previousContentY = eventList.contentY
-        const insertedRows = root.viewModel.loadOlderMessages()
+        const insertedRows = root.eventHistory.loadOlderCurrentSessionMessages()
         if (insertedRows === 0) {
             root.reachedHistoryStart = true
             root.loadingOlderEvents = false
@@ -245,13 +247,13 @@ Item {
         if (mode === "manual") {
             eventList.bottomAnchorActive = false
             eventList.shouldFollowOutput = false
-            root.viewModel.setMessageStreamFrozen(true)
+            root.eventHistory.setMessageStreamFrozen(true)
             return
         }
 
         eventList.programmaticScroll = true
         eventList.shouldFollowOutput = true
-        root.viewModel.setMessageStreamFrozen(false)
+        root.eventHistory.setMessageStreamFrozen(false)
         root.requestFollowScroll()
     }
 
@@ -423,7 +425,7 @@ Item {
                     restBg: root.ui.themePalette.itemBg
                     outlineColor: root.ui.themePalette.panelBorder
                     accessibleName: root.session.outputPaused ? qsTr("Resume output") : qsTr("Pause output")
-                    onClicked: root.viewModel.toggleCurrentOutputPaused(root.session.outputPaused)
+                    onClicked: root.sessionService.setCurrentOutputPaused(!root.session.outputPaused)
                 }
 
                 AppIconButton {
@@ -1137,7 +1139,7 @@ Item {
                     minimumWidth: 78
                     danger: true
                     onClicked: {
-                        root.viewModel.clearMessages()
+                        root.eventHistory.clearCurrentMessages()
                         root.clearMessageSelection()
                         root.messagesCleared()
                         clearMessagesDialog.close()

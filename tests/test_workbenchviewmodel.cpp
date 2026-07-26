@@ -130,7 +130,7 @@ private slots:
     void rejectsPublishWithoutConnectedSession();
     void forwardsSessionAndRuntimeStateNotificationsSeparately();
     void forwardsMessageBatchNotifications();
-    void exposesTotalMessageCountAndForwardsFreeze();
+    void exposesTotalMessageCount();
     void exposesConnectionTimingAndAggregateRates();
     void ownsSubscriptionFilterState();
     void ownsPendingSubscriptionDeleteState();
@@ -398,7 +398,7 @@ void WorkbenchViewModelTest::forwardsMessageBatchNotifications()
     QCOMPARE(appendSpy.first().at(0).toInt(), 4);
 }
 
-void WorkbenchViewModelTest::exposesTotalMessageCountAndForwardsFreeze()
+void WorkbenchViewModelTest::exposesTotalMessageCount()
 {
     SessionState session;
     session.runtime.totalMessageCount = 1201;
@@ -409,8 +409,6 @@ void WorkbenchViewModelTest::exposesTotalMessageCountAndForwardsFreeze()
     QSignalSpy totalSpy(&viewModel, &WorkbenchViewModel::totalMessageCountChanged);
 
     QCOMPARE(viewModel.totalMessageCount(), 1201);
-    viewModel.setMessageStreamFrozen(true);
-    QVERIFY(fixture.eventHistoryService.messageStreamFrozen());
 
     fixture.sessionService.currentSession()->runtime.totalMessageCount = 1202;
     emit fixture.eventHistoryService.totalMessageCountChanged();
@@ -594,12 +592,12 @@ void WorkbenchViewModelTest::handlesIntentCommandsWithoutCurrentSession()
     WorkbenchViewModel &viewModel = fixture.viewModel;
 
     viewModel.toggleCurrentSessionConnection();
-    viewModel.toggleCurrentOutputPaused(false);
-    viewModel.toggleCurrentSubscriptionPaused(QStringLiteral("devices/temp"), false);
+    fixture.sessionService.setCurrentOutputPaused(true);
+    fixture.subscriptionService.setCurrentSubscriptionPaused(QStringLiteral("devices/temp"), true);
     viewModel.copyMessageTopic(QStringLiteral("devices/temp"));
     viewModel.copyMessagePayload(QStringLiteral("0"), QStringLiteral("raw"), QStringLiteral("decoded"), 0);
-    viewModel.clearMessages();
-    QCOMPARE(viewModel.loadOlderMessages(), 0);
+    fixture.eventHistoryService.clearCurrentMessages();
+    QCOMPARE(fixture.eventHistoryService.loadOlderCurrentSessionMessages(), 0);
 
     QVERIFY(!viewModel.publisher()->canPublish());
 }

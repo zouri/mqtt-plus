@@ -11,9 +11,13 @@ Item {
     required property AppUi ui
     required property var viewModel
     required property var settingsViewModel
+    required property var preferences
+    required property var eventHistory
+    required property var sessionService
+    required property var subscriptionService
     required property string fontFamily
     required property bool autoCollapseConnectionListOnConnect
-    property bool connectionPaneCollapsed: root.settingsViewModel.connectionPaneCollapsed
+    property bool connectionPaneCollapsed: root.preferences.connectionPaneCollapsed
     readonly property var session: root.viewModel.currentSession
     readonly property var status: root.viewModel.sessionStatus
     readonly property int collapsedConnectionPaneWidth: 34
@@ -34,7 +38,7 @@ Item {
                                           : root.effectiveExpandedConnectionPaneWidth)
     readonly property int subscriptionPaneMinWidth: 300
     readonly property int subscriptionPaneMaxWidth: 520
-    property int subscriptionPaneWidth: root.settingsViewModel.subscriptionPaneWidth
+    property int subscriptionPaneWidth: root.preferences.subscriptionPaneWidth
     property bool layoutReady: false
     readonly property int compactSubscriptionPaneWidth: 286
     readonly property int effectiveSubscriptionPaneWidth: root.compactPaneWidths
@@ -138,7 +142,7 @@ Item {
             return;
         }
         layoutSaveTimer.stop();
-        root.settingsViewModel.saveWorkbenchLayout(
+        root.preferences.setWorkbenchLayout(
             root.subscriptionPaneWidth,
             sessionActivityPanel.composerHeight,
             root.connectionPaneCollapsed);
@@ -360,6 +364,7 @@ Item {
                     id: subscriptionsPanel
                     ui: root.ui
                     viewModel: root.viewModel
+                    subscriptionService: root.subscriptionService
                     onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
                     onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
                     onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
@@ -372,13 +377,15 @@ Item {
             id: sessionActivityPanel
             ui: root.ui
             viewModel: root.viewModel
+            eventHistory: root.eventHistory
+            sessionService: root.sessionService
             session: root.session
             status: root.status
             publishStatus: root.viewModel.publishStatus
             publisher: root.viewModel.publisher
             fontFamily: root.fontFamily
             messagePayloadDisplayMode: root.settingsViewModel.messagePayloadDisplayModeIndex
-            composerHeight: root.settingsViewModel.publishComposerHeight
+            composerHeight: root.preferences.publishComposerHeight
             onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
             onComposerHeightChanged: root.scheduleLayoutSave()
             SplitView.fillWidth: true

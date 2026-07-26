@@ -24,12 +24,7 @@ public:
     static QString formattedLogRow(const QVariantMap &row);
     static QString renderedLogText(const EventStreamModel *model);
 
-    Q_INVOKABLE void clearCurrentLogs();
-    Q_INVOKABLE int loadOlderCurrentSessionLogs();
-
 signals:
-    void logStreamChanged();
-    void logStreamRowAppended(const QVariantMap &row);
     void logTextChanged();
 
 private:

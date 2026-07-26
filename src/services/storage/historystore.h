@@ -23,21 +23,6 @@ public:
     QString lastError() const;
 
     qint64 enqueueMessage(const MessageRecord &message);
-    qint64 enqueueMessage(
-        const QString &sessionId,
-        const QString &timestamp,
-        const QString &topic,
-        const QByteArray &payloadBytes,
-        const QString &parsedPayload = QString(),
-        const QString &parsedFormat = QString(),
-        const QString &parseError = QString(),
-        const QString &scriptId = QString(),
-        const QString &scriptName = QString(),
-        const QString &payloadPreview = QString(),
-        const QString &payloadState = QString(),
-        qint64 payloadSize = -1,
-        const QString &payloadHash = QString(),
-        int payloadFormat = -1);
     QStringList flushPendingMessages();
     int pendingMessageCount() const;
     qint64 totalMessageCount(const QString &sessionId) const;
