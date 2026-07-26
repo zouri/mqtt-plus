@@ -371,6 +371,7 @@ void PreferencesController::setWorkbenchLayout(
         m_settings->setValue(QStringLiteral("workspace/connectionPaneCollapsed"), m_connectionPaneCollapsed);
         m_settings->sync();
     }
+    emit workbenchLayoutChanged();
 }
 
 void PreferencesController::syncValue(const QString &key, const QVariant &value)

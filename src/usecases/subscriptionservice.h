@@ -37,8 +37,8 @@ public:
         const QString &scriptId,
         const QString &color);
     void removeCurrentSubscription(const QString &topic);
-    void setCurrentSubscriptionPaused(const QString &topic, bool paused);
-    void setAllCurrentSubscriptionsPaused(bool paused);
+    Q_INVOKABLE void setCurrentSubscriptionPaused(const QString &topic, bool paused);
+    Q_INVOKABLE void setAllCurrentSubscriptionsPaused(bool paused);
 
     void resetRuntimeSubscriptions(SessionState &session);
     void restoreActiveSubscriptions(SessionState &session, bool emitEvents);

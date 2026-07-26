@@ -27,14 +27,13 @@ Application::Application()
     , m_logsModel(&m_owner)
     , m_scriptsModel(&m_owner)
     , m_subscriptionFpsTimer(&m_owner)
-    , m_launchTimestamp(timestampNow())
     , m_eventHistoryService(
           m_sessionService,
           m_historyStore,
           m_messagesModel,
           m_logsModel,
           m_scriptService,
-          m_launchTimestamp,
+          timestampNow(),
           m_preferences,
           &m_owner)
     , m_subscriptionService(

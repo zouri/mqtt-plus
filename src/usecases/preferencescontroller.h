@@ -8,6 +8,15 @@
 class PreferencesController : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool deleteHistoryWithSession READ deleteHistoryWithSession WRITE setDeleteHistoryWithSession NOTIFY deleteHistoryWithSessionChanged)
+    Q_PROPERTY(bool saveMessagesWhenOutputPaused READ saveMessagesWhenOutputPaused WRITE setSaveMessagesWhenOutputPaused NOTIFY saveMessagesWhenOutputPausedChanged)
+    Q_PROPERTY(bool autoCollapseConnectionListOnConnect READ autoCollapseConnectionListOnConnect WRITE setAutoCollapseConnectionListOnConnect NOTIFY autoCollapseConnectionListOnConnectChanged)
+    Q_PROPERTY(int windowWidth READ windowWidth NOTIFY windowWidthChanged)
+    Q_PROPERTY(int windowHeight READ windowHeight NOTIFY windowHeightChanged)
+    Q_PROPERTY(bool windowMaximized READ windowMaximized WRITE setWindowMaximized NOTIFY windowMaximizedChanged)
+    Q_PROPERTY(int subscriptionPaneWidth READ subscriptionPaneWidth NOTIFY workbenchLayoutChanged)
+    Q_PROPERTY(int publishComposerHeight READ publishComposerHeight NOTIFY workbenchLayoutChanged)
+    Q_PROPERTY(bool connectionPaneCollapsed READ connectionPaneCollapsed NOTIFY workbenchLayoutChanged)
 
 public:
     explicit PreferencesController(QSettings *settings, QObject *parent = nullptr);
@@ -58,6 +67,7 @@ signals:
     void windowWidthChanged();
     void windowHeightChanged();
     void windowMaximizedChanged();
+    void workbenchLayoutChanged();
 
 private:
     void syncValue(const QString &key, const QVariant &value);

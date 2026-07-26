@@ -10,6 +10,8 @@ Rectangle {
 
     required property AppUi ui
     required property var viewModel
+    required property var preferences
+    required property var eventHistory
 
     readonly property var themeLabels: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
     readonly property var themeColorOptions: [
@@ -357,8 +359,8 @@ Rectangle {
 
                         SettingSwitch {
                             ui: root.ui
-                            checked: root.viewModel.autoCollapseConnectionListOnConnect
-                            onToggled: root.viewModel.autoCollapseConnectionListOnConnect = checked
+                            checked: root.preferences.autoCollapseConnectionListOnConnect
+                            onToggled: root.preferences.autoCollapseConnectionListOnConnect = checked
                         }
                     }
 
@@ -449,8 +451,8 @@ Rectangle {
 
                         SettingSwitch {
                             ui: root.ui
-                            checked: root.viewModel.deleteHistoryWithSession
-                            onToggled: root.viewModel.deleteHistoryWithSession = checked
+                            checked: root.preferences.deleteHistoryWithSession
+                            onToggled: root.preferences.deleteHistoryWithSession = checked
                         }
                     }
                 }
@@ -470,8 +472,8 @@ Rectangle {
 
                         SettingSwitch {
                             ui: root.ui
-                            checked: root.viewModel.saveMessagesWhenOutputPaused
-                            onToggled: root.viewModel.saveMessagesWhenOutputPaused = checked
+                            checked: root.preferences.saveMessagesWhenOutputPaused
+                            onToggled: root.preferences.saveMessagesWhenOutputPaused = checked
                         }
                     }
                 }
@@ -521,14 +523,14 @@ Rectangle {
                             ui: root.ui
                             text: qsTr("Messages")
                             minimumWidth: 96
-                            onClicked: root.viewModel.clearAllMessages()
+                            onClicked: root.eventHistory.clearAllMessages()
                         }
 
                         AppButton {
                             ui: root.ui
                             text: qsTr("Logs")
                             minimumWidth: 74
-                            onClicked: root.viewModel.clearAllLogs()
+                            onClicked: root.eventHistory.clearAllLogs()
                         }
 
                         AppButton {
@@ -536,7 +538,7 @@ Rectangle {
                             text: qsTr("All")
                             danger: true
                             minimumWidth: 70
-                            onClicked: root.viewModel.clearAllHistory()
+                            onClicked: root.eventHistory.clearAllHistory()
                         }
                     }
                 }

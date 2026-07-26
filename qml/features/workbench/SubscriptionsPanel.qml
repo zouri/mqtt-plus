@@ -10,6 +10,7 @@ AppPanel {
     id: control
 
     required property var viewModel
+    required property var subscriptionService
 
     property string subscriptionActionVisualKey: ""
     property int subscriptionContextIndex: -1
@@ -234,7 +235,7 @@ AppPanel {
                 accessibleName: control.allSubscriptionsPaused ? qsTr("Resume all topics") : qsTr("Pause all topics")
                 toolTipText: accessibleName
                 toolTipPosition: AppToolTip.Position.Bottom
-                onClicked: control.viewModel.setAllCurrentSubscriptionsPaused(!control.allSubscriptionsPaused)
+                onClicked: control.subscriptionService.setAllCurrentSubscriptionsPaused(!control.allSubscriptionsPaused)
             }
 
             AppIconButton {
@@ -637,7 +638,7 @@ AppPanel {
                                 onClicked: {
                                     control.subscriptionActionVisualKey = visualKey;
                                     subscriptionActionVisualResetTimer.restart();
-                                    control.viewModel.toggleCurrentSubscriptionPaused(subscriptionDelegate.topic, subscriptionDelegate.paused);
+                                    control.subscriptionService.setCurrentSubscriptionPaused(subscriptionDelegate.topic, !subscriptionDelegate.paused);
                                 }
                             }
 

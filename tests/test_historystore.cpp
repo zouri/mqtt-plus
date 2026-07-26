@@ -42,20 +42,15 @@ void HistoryStoreTest::flushesRawPayloadWithoutLegacyColumns()
     payload.append(char(0xff));
     payload.append("raw");
 
-    const qint64 reservedId = store.enqueueMessage(
-        sessionId,
-        QStringLiteral("2026-07-02 15:02:20.304"),
-        QStringLiteral("111111/ros_to_android"),
-        payload,
-        QString(),
-        QString(),
-        QString(),
-        QString(),
-        QString(),
-        QStringLiteral("raw preview"),
-        QStringLiteral("full"),
-        payload.size(),
-        QStringLiteral("hash"));
+    MessageRecord record;
+    record.sessionId = sessionId;
+    record.timestamp = QStringLiteral("2026-07-02 15:02:20.304");
+    record.topic = QStringLiteral("111111/ros_to_android");
+    record.payloadBytes = payload;
+    record.payloadPreview = QStringLiteral("raw preview");
+    record.payloadSize = payload.size();
+    record.payloadHash = QStringLiteral("hash");
+    const qint64 reservedId = store.enqueueMessage(record);
 
     QVERIFY(reservedId > 0);
     QCOMPARE(store.pendingMessageCount(), 1);
@@ -125,20 +120,15 @@ void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
     QCOMPARE(logs.first().toMap().value(QStringLiteral("payload")).toString(), QStringLiteral("kept log"));
 
     const QString newSessionId = QStringLiteral("new-session");
-    const qint64 reservedId = store.enqueueMessage(
-        newSessionId,
-        QStringLiteral("2026-07-02T15:02:22.000Z"),
-        QStringLiteral("devices/current"),
-        QByteArrayLiteral("current"),
-        QString(),
-        QString(),
-        QString(),
-        QString(),
-        QString(),
-        QStringLiteral("current"),
-        QStringLiteral("full"),
-        7,
-        QStringLiteral("hash"));
+    MessageRecord record;
+    record.sessionId = newSessionId;
+    record.timestamp = QStringLiteral("2026-07-02T15:02:22.000Z");
+    record.topic = QStringLiteral("devices/current");
+    record.payloadBytes = QByteArrayLiteral("current");
+    record.payloadPreview = QStringLiteral("current");
+    record.payloadSize = 7;
+    record.payloadHash = QStringLiteral("hash");
+    const qint64 reservedId = store.enqueueMessage(record);
 
     QVERIFY(reservedId > 0);
     QCOMPARE(store.flushPendingMessages(), QStringList({newSessionId}));
@@ -157,20 +147,15 @@ void HistoryStoreTest::loadMessagesExcludePayloadBytes()
                                   .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
     const QByteArray payload(1024 * 32, 'x');
 
-    const qint64 reservedId = store.enqueueMessage(
-        sessionId,
-        QStringLiteral("2026-07-02T15:02:20.304Z"),
-        QStringLiteral("devices/large"),
-        payload,
-        QString(),
-        QString(),
-        QString(),
-        QString(),
-        QString(),
-        QStringLiteral("preview only"),
-        QStringLiteral("full"),
-        payload.size(),
-        QStringLiteral("hash"));
+    MessageRecord record;
+    record.sessionId = sessionId;
+    record.timestamp = QStringLiteral("2026-07-02T15:02:20.304Z");
+    record.topic = QStringLiteral("devices/large");
+    record.payloadBytes = payload;
+    record.payloadPreview = QStringLiteral("preview only");
+    record.payloadSize = payload.size();
+    record.payloadHash = QStringLiteral("hash");
+    const qint64 reservedId = store.enqueueMessage(record);
 
     QVERIFY(reservedId > 0);
     QCOMPARE(store.flushPendingMessages(), QStringList({sessionId}));
@@ -416,20 +401,15 @@ void HistoryStoreTest::loadsPayloadBytesByMessageId()
                                   .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
     const QByteArray payload("full payload");
 
-    const qint64 reservedId = store.enqueueMessage(
-        sessionId,
-        QStringLiteral("2026-07-02T15:02:20.304Z"),
-        QStringLiteral("devices/payload"),
-        payload,
-        QString(),
-        QString(),
-        QString(),
-        QString(),
-        QString(),
-        QStringLiteral("preview"),
-        QStringLiteral("full"),
-        payload.size(),
-        QStringLiteral("hash"));
+    MessageRecord record;
+    record.sessionId = sessionId;
+    record.timestamp = QStringLiteral("2026-07-02T15:02:20.304Z");
+    record.topic = QStringLiteral("devices/payload");
+    record.payloadBytes = payload;
+    record.payloadPreview = QStringLiteral("preview");
+    record.payloadSize = payload.size();
+    record.payloadHash = QStringLiteral("hash");
+    const qint64 reservedId = store.enqueueMessage(record);
 
     QVERIFY(reservedId > 0);
     QCOMPARE(store.flushPendingMessages(), QStringList({sessionId}));

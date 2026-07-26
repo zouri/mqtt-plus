@@ -34,14 +34,14 @@ public:
 
     bool loadSessions();
     bool saveSessions();
-    void setCurrentSessionIndex(int index);
+    Q_INVOKABLE void setCurrentSessionIndex(int index);
     QVariantMap defaultSessionConfig() const;
     QVariantMap sessionConfigAt(int index) const;
     bool updateSessionConfigAt(int index, const QVariantMap &config);
     bool addSessionWithConfig(const QVariantMap &config);
     void duplicateSessionAt(int index);
     void removeSessionAt(int index);
-    void setCurrentOutputPaused(bool paused);
+    Q_INVOKABLE void setCurrentOutputPaused(bool paused);
 
 signals:
     void sessionsChanged();

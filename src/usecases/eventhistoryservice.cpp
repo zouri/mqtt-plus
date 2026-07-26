@@ -214,22 +214,21 @@ MessageSubscriptionMatch matchSubscriptionsForMessage(
 
     return match;
 }
-
-void clearMessageRuntime(SessionState &session)
-{
-    session.runtime.messageRows.clear();
-    session.runtime.totalMessageCount = 0;
-    session.runtime.viewedMessageCount = 0;
-    session.runtime.oldestLoadedMessageId = 0;
-    session.runtime.loadedAllMessageHistory = true;
 }
 
-void clearLogRuntime(SessionState &session)
+QVariantList &EventHistoryService::streamRows(SessionState &session, Stream kind)
 {
-    session.runtime.logRows.clear();
-    session.runtime.oldestLoadedLogId = 0;
-    session.runtime.loadedAllLogHistory = true;
+    return kind == Stream::Message ? session.runtime.messageRows : session.runtime.logRows;
 }
+
+qint64 &EventHistoryService::oldestLoadedId(SessionState &session, Stream kind)
+{
+    return kind == Stream::Message ? session.runtime.oldestLoadedMessageId : session.runtime.oldestLoadedLogId;
+}
+
+bool &EventHistoryService::loadedAllHistory(SessionState &session, Stream kind)
+{
+    return kind == Stream::Message ? session.runtime.loadedAllMessageHistory : session.runtime.loadedAllLogHistory;
 }
 
 EventHistoryService::EventHistoryService(
@@ -238,7 +237,7 @@ EventHistoryService::EventHistoryService(
     EventStreamModel &messages,
     EventStreamModel &logs,
     ScriptService &scriptService,
-    QString &launchTimestamp,
+    QString launchTimestamp,
     PreferencesController &preferencesController,
     QObject *parent)
     : QObject(parent)
@@ -247,7 +246,7 @@ EventHistoryService::EventHistoryService(
     , m_messages(messages)
     , m_logs(logs)
     , m_scriptService(scriptService)
-    , m_launchTimestamp(launchTimestamp)
+    , m_launchTimestamp(std::move(launchTimestamp))
     , m_preferencesController(preferencesController)
 {
     m_messageHistoryFlushTimer.setInterval(kMessageHistoryFlushIntervalMs);
@@ -268,125 +267,116 @@ EventHistoryService::EventHistoryService(
         Qt::UniqueConnection);
 }
 
-bool EventHistoryService::clearCurrentMessages()
+bool EventHistoryService::clearStream(Stream kind, bool allSessions)
 {
-    auto *session = m_sessionService.currentSession();
-    if (!session) {
+    auto *current = m_sessionService.currentSession();
+    const bool isMessage = kind == Stream::Message;
+
+    bool ok;
+    if (allSessions) {
+        ok = isMessage ? m_historyStore.clearAllMessages() : m_historyStore.clearAllLogs();
+    } else {
+        if (!current) {
+            return false;
+        }
+        ok = isMessage ? m_historyStore.clearMessages(current->id) : m_historyStore.clearLogs(current->id);
+    }
+    if (!ok) {
+        if (current) {
+            const QString message = isMessage
+                ? tr("Cannot clear message history: %1").arg(m_historyStore.lastError())
+                : tr("Cannot clear log history: %1").arg(m_historyStore.lastError());
+            reportMessageStorageError(*current, message);
+        }
         return false;
     }
 
-    if (!m_historyStore.clearMessages(session->id)) {
-        reportMessageStorageError(
-            *session,
-            tr("Cannot clear message history: %1").arg(m_historyStore.lastError()));
-        return false;
+    auto clearRuntime = [kind](SessionState &session) {
+        streamRows(session, kind).clear();
+        if (kind == Stream::Message) {
+            session.runtime.totalMessageCount = 0;
+            session.runtime.viewedMessageCount = 0;
+        }
+        oldestLoadedId(session, kind) = 0;
+        loadedAllHistory(session, kind) = true;
+    };
+    if (allSessions) {
+        for (SessionState &session : m_sessionService.sessions()) {
+            clearRuntime(session);
+        }
+    } else {
+        clearRuntime(*current);
     }
 
-    clearMessageRuntime(*session);
-    emit totalMessageCountChanged();
+    if (isMessage) {
+        resetMessageStreamTransientState(allSessions, current);
+    }
+    (isMessage ? m_messages : m_logs).clear();
+    m_lastMessageStorageError.clear();
+    if (isMessage) {
+        emit totalMessageCountChanged();
+        emit messageStreamChanged();
+    } else {
+        emit logStreamChanged();
+    }
+    return true;
+}
+
+void EventHistoryService::resetMessageStreamTransientState(bool allSessions, const SessionState *current)
+{
     m_messageHistoryFlushTimer.stop();
     m_messageStreamFrozen = false;
     m_frozenOldestLoadedMessageId = 0;
-    if (m_pendingVisibleMessageSessionId == session->id) {
+    if (allSessions || (current && m_pendingVisibleMessageSessionId == current->id)) {
         m_pendingVisibleMessageRows.clear();
         m_pendingVisibleMessageSessionId.clear();
         m_visibleMessageRowsFlushTimer.stop();
     }
-    m_messages.clear();
-    m_lastMessageStorageError.clear();
-    emit messageStreamChanged();
-    return true;
+}
+
+bool EventHistoryService::clearCurrentMessages()
+{
+    return clearStream(Stream::Message, false);
 }
 
 bool EventHistoryService::clearCurrentLogs()
 {
-    auto *session = m_sessionService.currentSession();
-    if (!session) {
-        return false;
-    }
-
-    if (!m_historyStore.clearLogs(session->id)) {
-        reportMessageStorageError(
-            *session,
-            tr("Cannot clear log history: %1").arg(m_historyStore.lastError()));
-        return false;
-    }
-
-    clearLogRuntime(*session);
-    m_logs.clear();
-    m_lastMessageStorageError.clear();
-    emit logStreamChanged();
-    return true;
+    return clearStream(Stream::Log, false);
 }
 
 bool EventHistoryService::clearAllMessages()
 {
-    if (!m_historyStore.clearAllMessages()) {
-        if (auto *session = m_sessionService.currentSession()) {
-            reportMessageStorageError(
-                *session,
-                tr("Cannot clear message history: %1").arg(m_historyStore.lastError()));
-        }
-        return false;
-    }
-
-    for (SessionState &session : m_sessionService.sessions()) {
-        clearMessageRuntime(session);
-    }
-    m_messageHistoryFlushTimer.stop();
-    m_visibleMessageRowsFlushTimer.stop();
-    m_pendingVisibleMessageRows.clear();
-    m_pendingVisibleMessageSessionId.clear();
-    m_messageStreamFrozen = false;
-    m_frozenOldestLoadedMessageId = 0;
-    m_messages.clear();
-    m_lastMessageStorageError.clear();
-    emit totalMessageCountChanged();
-    emit messageStreamChanged();
-    return true;
+    return clearStream(Stream::Message, true);
 }
 
 bool EventHistoryService::clearAllLogs()
 {
-    if (!m_historyStore.clearAllLogs()) {
-        if (auto *session = m_sessionService.currentSession()) {
-            reportMessageStorageError(
-                *session,
-                tr("Cannot clear log history: %1").arg(m_historyStore.lastError()));
-        }
-        return false;
-    }
-
-    for (SessionState &session : m_sessionService.sessions()) {
-        clearLogRuntime(session);
-    }
-    m_logs.clear();
-    m_lastMessageStorageError.clear();
-    emit logStreamChanged();
-    return true;
+    return clearStream(Stream::Log, true);
 }
 
 bool EventHistoryService::clearAllHistory()
 {
+    auto *current = m_sessionService.currentSession();
     if (!m_historyStore.clearAllHistory()) {
-        if (auto *session = m_sessionService.currentSession()) {
+        if (current) {
             reportMessageStorageError(
-                *session,
+                *current,
                 tr("Cannot clear history: %1").arg(m_historyStore.lastError()));
         }
         return false;
     }
 
     for (SessionState &session : m_sessionService.sessions()) {
-        clearMessageRuntime(session);
-        clearLogRuntime(session);
+        streamRows(session, Stream::Message).clear();
+        streamRows(session, Stream::Log).clear();
+        session.runtime.totalMessageCount = 0;
+        session.runtime.viewedMessageCount = 0;
+        oldestLoadedId(session, Stream::Message) = 0;
+        oldestLoadedId(session, Stream::Log) = 0;
+        loadedAllHistory(session, Stream::Message) = true;
+        loadedAllHistory(session, Stream::Log) = true;
     }
-    m_messageHistoryFlushTimer.stop();
-    m_visibleMessageRowsFlushTimer.stop();
-    m_pendingVisibleMessageRows.clear();
-    m_pendingVisibleMessageSessionId.clear();
-    m_messageStreamFrozen = false;
-    m_frozenOldestLoadedMessageId = 0;
+    resetMessageStreamTransientState(true, nullptr);
     m_messages.clear();
     m_logs.clear();
     m_lastMessageStorageError.clear();
@@ -396,101 +386,68 @@ bool EventHistoryService::clearAllHistory()
     return true;
 }
 
-int EventHistoryService::loadOlderCurrentSessionMessages()
+int EventHistoryService::loadOlderCurrentSession(Stream kind)
 {
     auto *session = m_sessionService.currentSession();
-    const qint64 oldestLoadedMessageId = m_messageStreamFrozen
+    const bool isMessage = kind == Stream::Message;
+    const bool frozen = isMessage && m_messageStreamFrozen;
+    const qint64 oldestId = frozen
         ? m_frozenOldestLoadedMessageId
-        : (session ? session->runtime.oldestLoadedMessageId : 0);
-    if (!session || session->runtime.loadedAllMessageHistory || oldestLoadedMessageId <= 0) {
+        : (session ? oldestLoadedId(*session, kind) : 0);
+    if (!session || loadedAllHistory(*session, kind) || oldestId <= 0) {
         return 0;
     }
 
-    flushPendingMessageHistory();
-    flushPendingVisibleMessageRows();
+    if (isMessage) {
+        flushPendingMessageHistory();
+        flushPendingVisibleMessageRows();
+    }
 
     const int pageSize = m_preferencesController.historyPageSize();
     QVariantList rows = EventRenderer::loadHistoryRows(
-        m_historyStore.loadMessagesBefore(session->id, oldestLoadedMessageId, pageSize),
+        isMessage
+            ? m_historyStore.loadMessagesBefore(session->id, oldestId, pageSize)
+            : m_historyStore.loadLogsBefore(session->id, oldestId, pageSize),
         session->runtime.subscriptionFormats,
-        subscriptionColors(*session),
-        subscriptionAliases(*session),
+        isMessage ? subscriptionColors(*session) : QHash<QString, QString> {},
+        isMessage ? subscriptionAliases(*session) : QHash<QString, QString> {},
         m_launchTimestamp,
         false);
     if (rows.isEmpty()) {
-        session->runtime.loadedAllMessageHistory = true;
+        loadedAllHistory(*session, kind) = true;
         return 0;
     }
 
+    auto &currentRows = streamRows(*session, kind);
     if (EventRenderer::containsRowsBeforeLaunch(rows, m_launchTimestamp)
-            && EventRenderer::startsWithCurrentLaunchRows(session->runtime.messageRows, m_launchTimestamp)
-            && !EventRenderer::containsLaunchDivider(session->runtime.messageRows)) {
+            && EventRenderer::startsWithCurrentLaunchRows(currentRows, m_launchTimestamp)
+            && !EventRenderer::containsLaunchDivider(currentRows)) {
         rows.append(EventRenderer::launchDividerRow(m_launchTimestamp));
     }
 
-    if (m_messageStreamFrozen) {
+    auto &model = isMessage ? m_messages : m_logs;
+    if (frozen) {
         m_frozenOldestLoadedMessageId = EventRenderer::firstHistoryId(rows);
-        m_messages.prependRows(rows);
+        model.prependRows(rows);
         return rows.size();
     }
 
-    QVariantList merged;
-    merged.reserve(rows.size() + session->runtime.messageRows.size());
-    for (const QVariant &item : rows) {
-        merged.append(item);
-    }
-    for (const QVariant &item : session->runtime.messageRows) {
-        merged.append(item);
-    }
-    session->runtime.messageRows = merged;
-    session->runtime.oldestLoadedMessageId = EventRenderer::firstHistoryId(session->runtime.messageRows);
-    m_messages.prependRows(rows);
+    QVariantList merged = rows;
+    merged.append(currentRows);
+    currentRows = merged;
+    oldestLoadedId(*session, kind) = EventRenderer::firstHistoryId(currentRows);
+    model.prependRows(rows);
     return rows.size();
+}
+
+int EventHistoryService::loadOlderCurrentSessionMessages()
+{
+    return loadOlderCurrentSession(Stream::Message);
 }
 
 int EventHistoryService::loadOlderCurrentSessionLogs()
 {
-    auto *session = m_sessionService.currentSession();
-    if (!session || session->runtime.loadedAllLogHistory || session->runtime.oldestLoadedLogId <= 0) {
-        return 0;
-    }
-
-    const int pageSize = m_preferencesController.historyPageSize();
-    QVariantList rows = EventRenderer::loadHistoryRows(
-        m_historyStore.loadLogsBefore(session->id, session->runtime.oldestLoadedLogId, pageSize),
-        session->runtime.subscriptionFormats,
-        {},
-        {},
-        m_launchTimestamp,
-        false);
-    if (rows.isEmpty()) {
-        session->runtime.loadedAllLogHistory = true;
-        return 0;
-    }
-
-    if (EventRenderer::containsRowsBeforeLaunch(rows, m_launchTimestamp)
-            && EventRenderer::startsWithCurrentLaunchRows(session->runtime.logRows, m_launchTimestamp)
-            && !EventRenderer::containsLaunchDivider(session->runtime.logRows)) {
-        rows.append(EventRenderer::launchDividerRow(m_launchTimestamp));
-    }
-
-    QVariantList merged;
-    merged.reserve(rows.size() + session->runtime.logRows.size());
-    for (const QVariant &item : rows) {
-        merged.append(item);
-    }
-    for (const QVariant &item : session->runtime.logRows) {
-        merged.append(item);
-    }
-    session->runtime.logRows = merged;
-    session->runtime.oldestLoadedLogId = EventRenderer::firstHistoryId(session->runtime.logRows);
-    m_logs.prependRows(rows);
-    return rows.size();
-}
-
-bool EventHistoryService::messageStreamFrozen() const
-{
-    return m_messageStreamFrozen;
+    return loadOlderCurrentSession(Stream::Log);
 }
 
 void EventHistoryService::setMessageStreamFrozen(bool frozen)
@@ -534,7 +491,7 @@ void EventHistoryService::appendRenderedMessageRow(SessionState &session, const 
     }
 
     session.runtime.messageRows.append(row);
-    trimVisibleMessageRows(session);
+    trimVisibleRows(session, Stream::Message);
 
     if (!m_pendingVisibleMessageSessionId.isEmpty()
             && m_pendingVisibleMessageSessionId != session.id) {
@@ -586,7 +543,7 @@ void EventHistoryService::appendRenderedLogRow(SessionState &session, const QVar
     }
 
     session.runtime.logRows.append(row);
-    trimVisibleLogRows(session);
+    trimVisibleRows(session, Stream::Log);
     m_logs.appendRow(row);
     m_logs.trimToLimit(kMaxVisibleEventRows);
     emit logAppended(row);
@@ -607,15 +564,14 @@ LuaScriptResult EventHistoryService::parseIncomingPayload(
     const QString &topic,
     const QByteArray &payloadBytes,
     const QString &timestamp,
-    QString &scriptNameOut,
-    QString &decodedPayloadOut) const
+    QString &scriptNameOut) const
 {
     const PayloadFormat format = subscription
         ? PayloadCodec::formatFromInt(subscription->format)
         : PayloadCodec::resolveTopicFormat(session.runtime.subscriptionFormats, topic);
 
     QString decodeError;
-    decodedPayloadOut = PayloadCodec::decodeForDisplay(format, payloadBytes, decodeError);
+    const QString decodedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, decodeError);
 
     if (!subscription || subscription->scriptId.isEmpty()) {
         return {};
@@ -633,7 +589,7 @@ LuaScriptResult EventHistoryService::parseIncomingPayload(
     LuaScriptContext context;
     context.topic = topic;
     context.payloadBytes = payloadBytes;
-    context.decodedPayload = decodedPayloadOut;
+    context.decodedPayload = decodedPayload;
     context.decodeError = decodeError;
     context.format = format;
     context.timestamp = timestamp;
@@ -675,7 +631,6 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     }
 
     QString scriptDisplayName;
-    QString decodedPayload;
     const bool processPayloadForVisibleOutput = !session->outputPaused;
     const bool hasScript = processPayloadForVisibleOutput && displaySubscription && !displaySubscription->scriptId.isEmpty();
     LuaScriptResult scriptResult;
@@ -686,8 +641,7 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
             topic,
             payloadBytes,
             timestamp,
-            scriptDisplayName,
-            decodedPayload);
+            scriptDisplayName);
     } else if (hasScript) {
         scriptResult.error = QStringLiteral("Lua script skipped because payload exceeds the configured size limit.");
         scriptDisplayName = m_scriptService.scriptName(displaySubscription->scriptId);
@@ -818,6 +772,20 @@ void EventHistoryService::appendPublishedMessage(
             subscriptionAliases(*session)));
 }
 
+std::optional<QString> EventHistoryService::decodedStoredPayload(qint64 messageId, int format, QString &parseErrorOut) const
+{
+    if (messageId <= 0) {
+        return std::nullopt;
+    }
+
+    const QByteArray payloadBytes = m_historyStore.loadMessagePayloadBytes(messageId);
+    if (payloadBytes.isEmpty()) {
+        return std::nullopt;
+    }
+
+    return PayloadCodec::decodeForDisplay(PayloadCodec::formatFromInt(format), payloadBytes, parseErrorOut);
+}
+
 QString EventHistoryService::messagePayloadForReuse(
     qint64 messageId,
     const QString &fallbackPayload,
@@ -825,21 +793,9 @@ QString EventHistoryService::messagePayloadForReuse(
     int format) const
 {
     const QString fallback = fallbackTestPayload.isEmpty() ? fallbackPayload : fallbackTestPayload;
-    if (messageId <= 0) {
-        return fallback;
-    }
-
-    const QByteArray payloadBytes = m_historyStore.loadMessagePayloadBytes(messageId);
-    if (payloadBytes.isEmpty()) {
-        return fallback;
-    }
-
     QString parseError;
-    const QString decoded = PayloadCodec::decodeForDisplay(
-        PayloadCodec::formatFromInt(format),
-        payloadBytes,
-        parseError);
-    return parseError.isEmpty() ? decoded : fallback;
+    const auto decoded = decodedStoredPayload(messageId, format, parseError);
+    return decoded && parseError.isEmpty() ? *decoded : fallback;
 }
 
 QString EventHistoryService::messagePayloadForDisplay(
@@ -847,17 +803,9 @@ QString EventHistoryService::messagePayloadForDisplay(
     const QString &fallbackPayload,
     int format) const
 {
-    if (messageId <= 0) {
-        return fallbackPayload;
-    }
-
-    const QByteArray payloadBytes = m_historyStore.loadMessagePayloadBytes(messageId);
-    if (payloadBytes.isEmpty()) {
-        return fallbackPayload;
-    }
-
     QString parseError;
-    return PayloadCodec::decodeForDisplay(PayloadCodec::formatFromInt(format), payloadBytes, parseError);
+    const auto decoded = decodedStoredPayload(messageId, format, parseError);
+    return decoded ? *decoded : fallbackPayload;
 }
 
 QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
@@ -908,28 +856,17 @@ QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
     return details;
 }
 
-void EventHistoryService::trimVisibleMessageRows(SessionState &session)
+void EventHistoryService::trimVisibleRows(SessionState &session, Stream kind)
 {
-    const qsizetype overflow = session.runtime.messageRows.size() - kMaxVisibleEventRows;
+    auto &rows = streamRows(session, kind);
+    const qsizetype overflow = rows.size() - kMaxVisibleEventRows;
     if (overflow <= 0) {
         return;
     }
 
-    session.runtime.messageRows.remove(0, overflow);
-    session.runtime.oldestLoadedMessageId = EventRenderer::firstHistoryId(session.runtime.messageRows);
-    session.runtime.loadedAllMessageHistory = false;
-}
-
-void EventHistoryService::trimVisibleLogRows(SessionState &session)
-{
-    const qsizetype overflow = session.runtime.logRows.size() - kMaxVisibleEventRows;
-    if (overflow <= 0) {
-        return;
-    }
-
-    session.runtime.logRows.remove(0, overflow);
-    session.runtime.oldestLoadedLogId = EventRenderer::firstHistoryId(session.runtime.logRows);
-    session.runtime.loadedAllLogHistory = false;
+    rows.remove(0, overflow);
+    oldestLoadedId(session, kind) = EventRenderer::firstHistoryId(rows);
+    loadedAllHistory(session, kind) = false;
 }
 
 void EventHistoryService::reloadCurrentSessionHistory()

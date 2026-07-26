@@ -8,6 +8,11 @@
 #include "viewmodels/settingsviewmodel.h"
 #include "viewmodels/workbenchviewmodel.h"
 
+class EventHistoryService;
+class PreferencesController;
+class SessionService;
+class SubscriptionService;
+
 class ApplicationViewModel : public QObject
 {
     Q_OBJECT
@@ -15,6 +20,10 @@ class ApplicationViewModel : public QObject
     Q_PROPERTY(LogsViewModel* logs READ logs CONSTANT)
     Q_PROPERTY(ScriptsViewModel* scripts READ scripts CONSTANT)
     Q_PROPERTY(SettingsViewModel* settings READ settings CONSTANT)
+    Q_PROPERTY(PreferencesController* preferences READ preferences CONSTANT)
+    Q_PROPERTY(EventHistoryService* eventHistory READ eventHistory CONSTANT)
+    Q_PROPERTY(SessionService* sessionService READ sessionService CONSTANT)
+    Q_PROPERTY(SubscriptionService* subscriptionService READ subscriptionService CONSTANT)
 
 public:
     explicit ApplicationViewModel(
@@ -39,10 +48,18 @@ public:
     LogsViewModel *logs();
     ScriptsViewModel *scripts();
     SettingsViewModel *settings();
+    PreferencesController *preferences();
+    EventHistoryService *eventHistory();
+    SessionService *sessionService();
+    SubscriptionService *subscriptionService();
 
 private:
     WorkbenchViewModel m_workbench;
     LogsViewModel m_logs;
     ScriptsViewModel m_scripts;
     SettingsViewModel m_settings;
+    PreferencesController *m_preferences;
+    EventHistoryService *m_eventHistory;
+    SessionService *m_sessionService;
+    SubscriptionService *m_subscriptionService;
 };
