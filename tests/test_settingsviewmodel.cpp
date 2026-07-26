@@ -50,7 +50,6 @@ private slots:
     void readsSettings();
     void messageRetentionChangeDefersCleanup();
     void writesSettingsAndClearsHistory();
-    void forwardsPreferenceSignals();
     void themeChangesEmitSignals();
     void themeColorPersistsAndEmitsSignal();
     void languageChangesEmitSignals();
@@ -75,12 +74,12 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(settings.logRetentionLimitIndex(), 1);
     QCOMPARE(settings.historyPageSizeIndex(), 1);
     QCOMPARE(settings.maxIncomingPayloadBytesIndex(), 1);
-    QCOMPARE(settings.autoCollapseConnectionListOnConnect(), true);
+    QCOMPARE(deps.preferencesController.autoCollapseConnectionListOnConnect(), true);
     QCOMPARE(settings.clearMessagesOnExitIndex(), 0);
     QCOMPARE(settings.clearLogsOnExitIndex(), 0);
-    QCOMPARE(settings.subscriptionPaneWidth(), 320);
-    QCOMPARE(settings.publishComposerHeight(), 168);
-    QCOMPARE(settings.connectionPaneCollapsed(), false);
+    QCOMPARE(deps.preferencesController.subscriptionPaneWidth(), 320);
+    QCOMPARE(deps.preferencesController.publishComposerHeight(), 168);
+    QCOMPARE(deps.preferencesController.connectionPaneCollapsed(), false);
 }
 
 void SettingsOptionsViewModelTest::readsSettings()
@@ -109,9 +108,9 @@ void SettingsOptionsViewModelTest::readsSettings()
     QCOMPARE(settings.messagePayloadDisplayModeIndex(), 2);
     QCOMPARE(settings.messageRetentionLimitIndex(), 2);
     QCOMPARE(settings.logRetentionLimitIndex(), 2);
-    QCOMPARE(settings.windowWidth(), 1200);
-    QCOMPARE(settings.windowHeight(), 700);
-    QCOMPARE(settings.windowMaximized(), true);
+    QCOMPARE(deps.preferencesController.windowWidth(), 1200);
+    QCOMPARE(deps.preferencesController.windowHeight(), 700);
+    QCOMPARE(deps.preferencesController.windowMaximized(), true);
 }
 
 void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
@@ -126,22 +125,22 @@ void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
     session.id = QStringLiteral("session-1");
 
     for (int index = 0; index < 1001; ++index) {
-        QVERIFY(deps.historyStore.enqueueMessage(
-                    session.id,
-                    QString::number(index),
-                    QStringLiteral("topic"),
-                    QByteArray::number(index))
-                > 0);
+        MessageRecord record;
+        record.sessionId = session.id;
+        record.timestamp = QString::number(index);
+        record.topic = QStringLiteral("topic");
+        record.payloadBytes = QByteArray::number(index);
+        QVERIFY(deps.historyStore.enqueueMessage(record) > 0);
     }
     QVERIFY(!deps.historyStore.flushPendingMessages().isEmpty());
     QCOMPARE(deps.historyStore.loadMessages(session.id, 2000).size(), 1001);
 
-    QVERIFY(deps.historyStore.enqueueMessage(
-                session.id,
-                QStringLiteral("pending"),
-                QStringLiteral("topic"),
-                QByteArrayLiteral("pending"))
-            > 0);
+    MessageRecord pendingRecord;
+    pendingRecord.sessionId = session.id;
+    pendingRecord.timestamp = QStringLiteral("pending");
+    pendingRecord.topic = QStringLiteral("topic");
+    pendingRecord.payloadBytes = QByteArrayLiteral("pending");
+    QVERIFY(deps.historyStore.enqueueMessage(pendingRecord) > 0);
     QCOMPARE(deps.historyStore.pendingMessageCount(), 1);
 
     SettingsViewModel settings(
@@ -189,15 +188,15 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     settings.setMaxIncomingPayloadBytesIndex(2);
     settings.setClearMessagesOnExitIndex(2);
     settings.setClearLogsOnExitIndex(1);
-    settings.setDeleteHistoryWithSession(false);
-    settings.setSaveMessagesWhenOutputPaused(false);
-    settings.setAutoCollapseConnectionListOnConnect(false);
-    settings.setWindowMaximized(true);
-    settings.saveWindowGeometry(1600, 900);
-    settings.saveWorkbenchLayout(410, 230, true);
-    settings.clearAllMessages();
-    settings.clearAllLogs();
-    settings.clearAllHistory();
+    deps.preferencesController.setDeleteHistoryWithSession(false);
+    deps.preferencesController.setSaveMessagesWhenOutputPaused(false);
+    deps.preferencesController.setAutoCollapseConnectionListOnConnect(false);
+    deps.preferencesController.setWindowMaximized(true);
+    deps.preferencesController.setWindowGeometry(1600, 900);
+    deps.preferencesController.setWorkbenchLayout(410, 230, true);
+    deps.eventHistoryService.clearAllMessages();
+    deps.eventHistoryService.clearAllLogs();
+    deps.eventHistoryService.clearAllHistory();
 
     QCOMPARE(settings.themeMode(), QStringLiteral("light"));
     QCOMPARE(settings.themeColor(), QStringLiteral("blue"));
@@ -228,24 +227,6 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     QCOMPARE(reloadSpy.count(), 3);
     QCOMPARE(messageSpy.count(), 3);
     QCOMPARE(logSpy.count(), 3);
-}
-
-void SettingsOptionsViewModelTest::forwardsPreferenceSignals()
-{
-    SettingsFixture deps;
-    SettingsViewModel settings(
-        deps.preferencesController,
-        deps.eventHistoryService,
-        deps.historyStore,
-        deps.sessionService.sessions(),
-        deps.settings);
-    QSignalSpy windowSpy(&settings, &SettingsViewModel::windowMaximizedChanged);
-    QSignalSpy autoCollapseSpy(&settings, &SettingsViewModel::autoCollapseConnectionListOnConnectChanged);
-
-    deps.preferencesController.setWindowMaximized(true);
-    deps.preferencesController.setAutoCollapseConnectionListOnConnect(false);
-    QCOMPARE(windowSpy.count(), 1);
-    QCOMPARE(autoCollapseSpy.count(), 1);
 }
 
 void SettingsOptionsViewModelTest::themeChangesEmitSignals()

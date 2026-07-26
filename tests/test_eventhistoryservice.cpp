@@ -495,7 +495,6 @@ void EventHistoryServiceTest::frozenVisibleRowsWaitForResume()
     QTRY_COMPARE(fixture.messages.count(), 1);
 
     fixture.service.setMessageStreamFrozen(true);
-    QVERIFY(fixture.service.messageStreamFrozen());
     QSignalSpy appendSpy(&fixture.service, &EventHistoryService::messageRowsAppended);
 
     fixture.service.appendPublishedMessage(
@@ -516,7 +515,6 @@ void EventHistoryServiceTest::frozenVisibleRowsWaitForResume()
     QCOMPARE(fixture.session.runtime.totalMessageCount, 3);
 
     fixture.service.setMessageStreamFrozen(false);
-    QVERIFY(!fixture.service.messageStreamFrozen());
     QCOMPARE(fixture.messages.count(), 3);
     QCOMPARE(fixture.messages.rowAt(2).value(QStringLiteral("topic")).toString(), QStringLiteral("devices/three"));
 }

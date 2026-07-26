@@ -9,6 +9,7 @@ AppPanel {
     id: root
 
     required property var viewModel
+    required property var eventHistory
     property bool loadingOlderLogs: false
     property bool reachedLogStart: false
     property bool shouldFollowOutput: true
@@ -56,7 +57,7 @@ AppPanel {
         root.loadingOlderLogs = true
         const previousContentHeight = logTextArea.contentHeight
         const previousContentY = logTextArea.contentY
-        const insertedRows = root.viewModel.loadOlderCurrentSessionLogs()
+        const insertedRows = root.eventHistory.loadOlderCurrentSessionLogs()
         if (insertedRows === 0) {
             root.reachedLogStart = true
             root.loadingOlderLogs = false
@@ -72,13 +73,13 @@ AppPanel {
     Component.onCompleted: root.resetStreamPosition()
 
     Connections {
-        target: root.viewModel
+        target: root.eventHistory
 
         function onLogStreamChanged() {
             root.resetStreamPosition()
         }
 
-        function onLogStreamRowAppended(row) {
+        function onLogAppended(row) {
             root.noteStreamRowAppended(row)
         }
     }
@@ -135,7 +136,7 @@ AppPanel {
                     text: qsTr("Clear Log")
                     minimumWidth: 88
                     enabled: root.viewModel.logs.count > 0
-                    onClicked: root.viewModel.clearCurrentLogs()
+                    onClicked: root.eventHistory.clearCurrentLogs()
                 }
             }
 

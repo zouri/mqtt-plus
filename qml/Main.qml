@@ -44,15 +44,15 @@ ApplicationWindow {
             return;
         }
 
-        root.settingsViewModel.saveWindowGeometry(root.width, root.height);
+        root.preferences.setWindowGeometry(root.width, root.height);
     }
 
     function restoreWindowGeometry() {
-        root.width = root.clampWindowWidth(root.settingsViewModel.windowWidth);
-        root.height = root.clampWindowHeight(root.settingsViewModel.windowHeight);
+        root.width = root.clampWindowWidth(root.preferences.windowWidth);
+        root.height = root.clampWindowHeight(root.preferences.windowHeight);
         root.windowGeometryReady = true;
 
-        if (root.settingsViewModel.windowMaximized) {
+        if (root.preferences.windowMaximized) {
             Qt.callLater(function () {
                 root.showMaximized();
             });
@@ -67,7 +67,7 @@ ApplicationWindow {
             return;
         }
 
-        root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized;
+        root.preferences.windowMaximized = root.visibility === Window.Maximized;
         if (root.visibility === Window.Windowed) {
             windowGeometrySaveTimer.restart();
         }
@@ -76,7 +76,7 @@ ApplicationWindow {
         windowGeometrySaveTimer.stop();
         root.persistWindowGeometry();
         workbenchPage.persistLayout();
-        root.settingsViewModel.windowMaximized = root.visibility === Window.Maximized;
+        root.preferences.windowMaximized = root.visibility === Window.Maximized;
     }
 
     Timer {
@@ -125,6 +125,7 @@ ApplicationWindow {
     }
 
     readonly property var settingsViewModel: root.app.settings
+    readonly property var preferences: root.app.preferences
     property string currentAppView: "workbench"
     readonly property int navigationRailWidth: 52
 
@@ -269,14 +270,19 @@ ApplicationWindow {
                     ui: appUi
                     viewModel: root.app.workbench
                     settingsViewModel: root.settingsViewModel
+                    preferences: root.preferences
+                    eventHistory: root.app.eventHistory
+                    sessionService: root.app.sessionService
+                    subscriptionService: root.app.subscriptionService
                     fontFamily: root.font.family
-                    autoCollapseConnectionListOnConnect: root.settingsViewModel.autoCollapseConnectionListOnConnect
+                    autoCollapseConnectionListOnConnect: root.preferences.autoCollapseConnectionListOnConnect
                 }
 
                 LogsView {
                     id: logsPage
                     ui: appUi
                     viewModel: root.app.logs
+                    eventHistory: root.app.eventHistory
                 }
 
                 ScriptsView {
@@ -289,6 +295,8 @@ ApplicationWindow {
                     id: settingsPage
                     ui: appUi
                     viewModel: root.app.settings
+                    preferences: root.preferences
+                    eventHistory: root.app.eventHistory
                 }
             }
         }

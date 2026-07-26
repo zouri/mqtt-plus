@@ -82,11 +82,9 @@ public:
     Q_INVOKABLE void requestSessionDuplicate(int index);
     Q_INVOKABLE void requestSessionDelete(int index);
     Q_INVOKABLE void toggleCurrentSessionConnection();
-    Q_INVOKABLE void toggleCurrentOutputPaused(bool currentlyPaused);
     Q_INVOKABLE void openSubscriptionEditorForCreate();
     Q_INVOKABLE bool openSubscriptionEditorForEdit(int filteredIndex);
     Q_INVOKABLE bool submitSubscriptionEditor();
-    Q_INVOKABLE void toggleCurrentSubscriptionPaused(const QString &topic, bool currentlyPaused);
     Q_INVOKABLE void requestSubscriptionDelete(const QString &topic, const QString &displayName);
     Q_INVOKABLE void cancelPendingSubscriptionDelete();
     Q_INVOKABLE bool confirmPendingSubscriptionDelete();
@@ -106,15 +104,11 @@ public:
         const QString &payload,
         const QString &testPayload,
         int format);
-    Q_INVOKABLE void clearMessages();
-    Q_INVOKABLE void setMessageStreamFrozen(bool frozen);
-    Q_INVOKABLE int loadOlderMessages();
     Q_INVOKABLE void setMessageTopicFilter(const QString &topic);
     Q_INVOKABLE void setMessageSearchText(const QString &text);
     Q_INVOKABLE void addMessageTopicFilter(const QString &topic);
     Q_INVOKABLE void clearMessageFilters();
     Q_INVOKABLE QVariantMap messageDetails(const QString &historyId) const;
-    Q_INVOKABLE void setAllCurrentSubscriptionsPaused(bool paused);
     Q_INVOKABLE qreal currentIncomingMessageRate() const;
     Q_INVOKABLE qreal currentOutgoingMessageRate() const;
 

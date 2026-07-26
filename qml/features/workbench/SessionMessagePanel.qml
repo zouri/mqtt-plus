@@ -10,6 +10,8 @@ AppPanel {
 
     required property var viewModel
     required property var publisher
+    required property var eventHistory
+    required property var sessionService
     required property var session
     required property var status
     required property var publishStatus
@@ -76,6 +78,8 @@ AppPanel {
             ui: root.ui
             viewModel: root.viewModel
             publisher: root.publisher
+            eventHistory: root.eventHistory
+            sessionService: root.sessionService
             streamModel: root.viewModel.filteredMessages
             session: root.session
             status: root.status

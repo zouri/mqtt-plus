@@ -1,6 +1,9 @@
 #include "viewmodels/applicationviewmodel.h"
 
+#include "usecases/eventhistoryservice.h"
+#include "usecases/preferencescontroller.h"
 #include "usecases/sessionservice.h"
+#include "usecases/subscriptionservice.h"
 
 ApplicationViewModel::ApplicationViewModel(
     SessionService &sessionService,
@@ -41,6 +44,10 @@ ApplicationViewModel::ApplicationViewModel(
           sessionService.sessions(),
           settings,
           this)
+    , m_preferences(&preferences)
+    , m_eventHistory(&eventHistoryService)
+    , m_sessionService(&sessionService)
+    , m_subscriptionService(&subscriptionService)
 {
 }
 
@@ -62,4 +69,24 @@ ScriptsViewModel *ApplicationViewModel::scripts()
 SettingsViewModel *ApplicationViewModel::settings()
 {
     return &m_settings;
+}
+
+PreferencesController *ApplicationViewModel::preferences()
+{
+    return m_preferences;
+}
+
+EventHistoryService *ApplicationViewModel::eventHistory()
+{
+    return m_eventHistory;
+}
+
+SessionService *ApplicationViewModel::sessionService()
+{
+    return m_sessionService;
+}
+
+SubscriptionService *ApplicationViewModel::subscriptionService()
+{
+    return m_subscriptionService;
 }

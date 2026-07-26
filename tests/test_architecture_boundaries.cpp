@@ -180,9 +180,9 @@ void ArchitectureBoundariesTest::eventStreamFollowModeUsesSingleCycleButton()
         "Follow mode button should visually keep the pressed state while smart follow is active");
     QVERIFY2(source.contains(QStringLiteral("onClicked: root.setFollowMode(\"smart\")")),
         "Follow mode button should restore following and scroll to the latest message");
-    QVERIFY2(source.contains(QStringLiteral("root.viewModel.setMessageStreamFrozen(true)")),
+    QVERIFY2(source.contains(QStringLiteral("root.eventHistory.setMessageStreamFrozen(true)")),
         "Manual mode should freeze live mutations of the rendered message model");
-    QVERIFY2(source.contains(QStringLiteral("root.viewModel.setMessageStreamFrozen(false)")),
+    QVERIFY2(source.contains(QStringLiteral("root.eventHistory.setMessageStreamFrozen(false)")),
         "Smart mode should synchronize and resume the rendered message model");
     QVERIFY2(source.contains(QStringLiteral("allowResume && eventList.userScrollActive")),
         "Only an active user scroll should automatically resume at the snapshot bottom");
@@ -441,8 +441,8 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QString workbenchSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/WorkbenchView.qml"), workbenchSource));
     QVERIFY(workbenchSource.contains(QStringLiteral("expandedConnectionPaneWidth: 208")));
-    QVERIFY(workbenchSource.contains(QStringLiteral("subscriptionPaneWidth: root.settingsViewModel.subscriptionPaneWidth")));
-    QVERIFY(workbenchSource.contains(QStringLiteral("saveWorkbenchLayout")));
+    QVERIFY(workbenchSource.contains(QStringLiteral("subscriptionPaneWidth: root.preferences.subscriptionPaneWidth")));
+    QVERIFY(workbenchSource.contains(QStringLiteral("setWorkbenchLayout")));
     QVERIFY(workbenchSource.contains(QStringLiteral("function persistLayout()")));
 
     QString mainSource;
@@ -803,7 +803,6 @@ void ArchitectureBoundariesTest::workbenchViewsUseIntentCommands()
         {
             QStringLiteral("qml/features/workbench/EventStreamView.qml"),
             {
-                QStringLiteral("setCurrentOutputPaused("),
                 QStringLiteral("copyTextToClipboard("),
                 QStringLiteral("loadOlderRows"),
                 QStringLiteral("clearRows"),
@@ -821,15 +820,7 @@ void ArchitectureBoundariesTest::workbenchViewsUseIntentCommands()
             {
                 QStringLiteral("loadOlderRows"),
                 QStringLiteral("clearRows"),
-                QStringLiteral("loadOlderCurrentSessionMessages("),
-                QStringLiteral("clearCurrentMessages("),
                 QStringLiteral("setDraft("),
-            },
-        },
-        {
-            QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"),
-            {
-                QStringLiteral("setCurrentSubscriptionPaused("),
             },
         },
     };
