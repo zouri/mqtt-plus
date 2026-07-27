@@ -87,8 +87,7 @@ void SettingsOptionsViewModelTest::readsSettings()
     SettingsFixture deps;
     deps.preferencesController.setMessageRetentionLimit(10000);
     deps.preferencesController.setLogRetentionLimit(5000);
-    deps.preferencesController.setWindowGeometry(1200, 700);
-    deps.preferencesController.setWindowMaximized(true);
+    deps.preferencesController.setWindowState(QSize(1200, 700), true);
 
     deps.settings.setValue(QStringLiteral("appearance/themeMode"), QStringLiteral("dark"));
     deps.settings.setValue(QStringLiteral("appearance/themeColor"), QStringLiteral("violet"));
@@ -108,8 +107,7 @@ void SettingsOptionsViewModelTest::readsSettings()
     QCOMPARE(settings.messagePayloadDisplayModeIndex(), 2);
     QCOMPARE(settings.messageRetentionLimitIndex(), 2);
     QCOMPARE(settings.logRetentionLimitIndex(), 2);
-    QCOMPARE(deps.preferencesController.windowWidth(), 1200);
-    QCOMPARE(deps.preferencesController.windowHeight(), 700);
+    QCOMPARE(deps.preferencesController.windowSize(), QSize(1200, 700));
     QCOMPARE(deps.preferencesController.windowMaximized(), true);
 }
 
@@ -191,8 +189,7 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     deps.preferencesController.setDeleteHistoryWithSession(false);
     deps.preferencesController.setSaveMessagesWhenOutputPaused(false);
     deps.preferencesController.setAutoCollapseConnectionListOnConnect(false);
-    deps.preferencesController.setWindowMaximized(true);
-    deps.preferencesController.setWindowGeometry(1600, 900);
+    deps.preferencesController.setWindowState(QSize(1600, 900), true);
     deps.preferencesController.setWorkbenchLayout(410, 230, true);
     deps.eventHistoryService.clearAllMessages();
     deps.eventHistoryService.clearAllLogs();
@@ -213,9 +210,8 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     QCOMPARE(deps.preferencesController.deleteHistoryWithSession(), false);
     QCOMPARE(deps.preferencesController.saveMessagesWhenOutputPaused(), false);
     QCOMPARE(deps.preferencesController.autoCollapseConnectionListOnConnect(), false);
+    QCOMPARE(deps.preferencesController.windowSize(), QSize(1600, 900));
     QCOMPARE(deps.preferencesController.windowMaximized(), true);
-    QCOMPARE(deps.preferencesController.windowWidth(), 1600);
-    QCOMPARE(deps.preferencesController.windowHeight(), 900);
     QCOMPARE(deps.preferencesController.subscriptionPaneWidth(), 410);
     QCOMPARE(deps.preferencesController.publishComposerHeight(), 230);
     QCOMPARE(deps.preferencesController.connectionPaneCollapsed(), true);
