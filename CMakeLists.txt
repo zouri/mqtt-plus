@@ -63,7 +63,11 @@ file(
 )
 list(SORT MQTT_PLUS_APP_SOURCES)
 set(MQTT_PLUS_APP_LIBRARY_SOURCES ${MQTT_PLUS_APP_SOURCES})
-list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES "src/app/main.cpp")
+list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES
+    "src/app/main.cpp"
+    "src/app/windowgeometrymanager.cpp"
+    "src/app/windowgeometrymanager.h"
+)
 
 qt_add_executable(mqtt_plus_app
     ${MQTT_PLUS_APP_SOURCES}
@@ -304,6 +308,12 @@ if(BUILD_TESTING)
     add_mqtt_plus_qt_test(test_settingsviewmodel
         tests/test_settingsviewmodel.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
+    add_mqtt_plus_qt_test(test_windowgeometrymanager
+        tests/test_windowgeometrymanager.cpp
+        src/app/windowgeometrymanager.cpp
+        src/usecases/preferencescontroller.cpp
     )
 
     add_mqtt_plus_qt_test(test_logsviewmodel
