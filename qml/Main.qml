@@ -18,72 +18,19 @@ ApplicationWindow {
     readonly property int defaultWindowHeight: 820
     readonly property int minimumWindowWidth: 1100
     readonly property int minimumWindowHeight: 600
-    property bool windowGeometryReady: false
-
     width: root.defaultWindowWidth
     height: root.defaultWindowHeight
     minimumWidth: root.minimumWindowWidth
     minimumHeight: root.minimumWindowHeight
-    visible: true
+    visible: false
     flags: Qt.Window
     title: root.appTitle
     topPadding: 0
 
-    function clampWindowWidth(value) {
-        const availableWidth = Screen.desktopAvailableWidth > 0 ? Screen.desktopAvailableWidth : root.defaultWindowWidth;
-        return Math.max(root.minimumWidth, Math.min(Math.round(value), availableWidth));
-    }
+    // C++ sizes and centers the window on the primary screen before showing it.
 
-    function clampWindowHeight(value) {
-        const availableHeight = Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : root.defaultWindowHeight;
-        return Math.max(root.minimumHeight, Math.min(Math.round(value), availableHeight));
-    }
-
-    function persistWindowGeometry() {
-        if (!root.windowGeometryReady || root.visibility !== Window.Windowed) {
-            return;
-        }
-
-        root.preferences.setWindowGeometry(root.width, root.height);
-    }
-
-    function restoreWindowGeometry() {
-        root.width = root.clampWindowWidth(root.preferences.windowWidth);
-        root.height = root.clampWindowHeight(root.preferences.windowHeight);
-        root.windowGeometryReady = true;
-
-        if (root.preferences.windowMaximized) {
-            Qt.callLater(function () {
-                root.showMaximized();
-            });
-        }
-    }
-
-    Component.onCompleted: root.restoreWindowGeometry()
-    onWidthChanged: windowGeometrySaveTimer.restart()
-    onHeightChanged: windowGeometrySaveTimer.restart()
-    onVisibilityChanged: {
-        if (!root.windowGeometryReady) {
-            return;
-        }
-
-        root.preferences.windowMaximized = root.visibility === Window.Maximized;
-        if (root.visibility === Window.Windowed) {
-            windowGeometrySaveTimer.restart();
-        }
-    }
     onClosing: function () {
-        windowGeometrySaveTimer.stop();
-        root.persistWindowGeometry();
         workbenchPage.persistLayout();
-        root.preferences.windowMaximized = root.visibility === Window.Maximized;
-    }
-
-    Timer {
-        id: windowGeometrySaveTimer
-        interval: 250
-        repeat: false
-        onTriggered: root.persistWindowGeometry()
     }
 
     AppUi {

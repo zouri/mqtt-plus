@@ -41,26 +41,6 @@ int sanitizePayloadLimit(const QVariant &value, int fallback)
     return (std::clamp)(bytes, 64 * 1024, 16 * 1024 * 1024);
 }
 
-int sanitizeWindowWidth(const QVariant &value, int fallback)
-{
-    bool ok = false;
-    const int width = value.toInt(&ok);
-    if (!ok) {
-        return fallback;
-    }
-    return (std::clamp)(width, 1100, 10000);
-}
-
-int sanitizeWindowHeight(const QVariant &value, int fallback)
-{
-    bool ok = false;
-    const int height = value.toInt(&ok);
-    if (!ok) {
-        return fallback;
-    }
-    return (std::clamp)(height, 700, 10000);
-}
-
 int sanitizeSubscriptionPaneWidth(const QVariant &value, int fallback)
 {
     bool ok = false;
@@ -115,12 +95,10 @@ PreferencesController::PreferencesController(QSettings *settings, QObject *paren
         m_settings->value(QStringLiteral("cleanup/clearMessagesOnExit"), m_clearMessagesOnExit).toString());
     m_clearLogsOnExit = sanitizeCleanupMode(
         m_settings->value(QStringLiteral("cleanup/clearLogsOnExit"), m_clearLogsOnExit).toString());
-    m_windowWidth =
-        sanitizeWindowWidth(m_settings->value(QStringLiteral("window/width"), m_windowWidth), m_windowWidth);
-    m_windowHeight =
-        sanitizeWindowHeight(m_settings->value(QStringLiteral("window/height"), m_windowHeight), m_windowHeight);
-    m_windowMaximized =
-        m_settings->value(QStringLiteral("window/maximized"), m_windowMaximized).toBool();
+    const QSize storedWindowSize =
+        m_settings->value(QStringLiteral("window/size"), m_windowSize).toSize();
+    m_windowSize = storedWindowSize.isEmpty() ? QSize {} : storedWindowSize;
+    m_windowMaximized = m_settings->value(QStringLiteral("window/maximized"), m_windowMaximized).toBool();
     m_subscriptionPaneWidth = sanitizeSubscriptionPaneWidth(
         m_settings->value(QStringLiteral("workspace/subscriptionPaneWidth"), m_subscriptionPaneWidth),
         m_subscriptionPaneWidth);
@@ -176,14 +154,9 @@ QString PreferencesController::clearLogsOnExit() const
     return m_clearLogsOnExit;
 }
 
-int PreferencesController::windowWidth() const
+QSize PreferencesController::windowSize() const
 {
-    return m_windowWidth;
-}
-
-int PreferencesController::windowHeight() const
-{
-    return m_windowHeight;
+    return m_windowSize;
 }
 
 bool PreferencesController::windowMaximized() const
@@ -311,42 +284,20 @@ void PreferencesController::setClearLogsOnExit(const QString &mode)
     emit clearLogsOnExitChanged();
 }
 
-void PreferencesController::setWindowGeometry(int width, int height)
+void PreferencesController::setWindowState(const QSize &size, bool maximized)
 {
-    const int sanitizedWidth = sanitizeWindowWidth(width, m_windowWidth);
-    const int sanitizedHeight = sanitizeWindowHeight(height, m_windowHeight);
-    if (sanitizedWidth == m_windowWidth && sanitizedHeight == m_windowHeight) {
+    if (size.isEmpty()
+        || (size == m_windowSize && maximized == m_windowMaximized)) {
         return;
     }
 
-    const bool widthChanged = sanitizedWidth != m_windowWidth;
-    const bool heightChanged = sanitizedHeight != m_windowHeight;
-    m_windowWidth = sanitizedWidth;
-    m_windowHeight = sanitizedHeight;
-
+    m_windowSize = size;
+    m_windowMaximized = maximized;
     if (m_settings) {
-        m_settings->setValue(QStringLiteral("window/width"), m_windowWidth);
-        m_settings->setValue(QStringLiteral("window/height"), m_windowHeight);
+        m_settings->setValue(QStringLiteral("window/size"), m_windowSize);
+        m_settings->setValue(QStringLiteral("window/maximized"), m_windowMaximized);
         m_settings->sync();
     }
-
-    if (widthChanged) {
-        emit windowWidthChanged();
-    }
-    if (heightChanged) {
-        emit windowHeightChanged();
-    }
-}
-
-void PreferencesController::setWindowMaximized(bool maximized)
-{
-    if (maximized == m_windowMaximized) {
-        return;
-    }
-
-    m_windowMaximized = maximized;
-    syncValue(QStringLiteral("window/maximized"), m_windowMaximized);
-    emit windowMaximizedChanged();
 }
 
 void PreferencesController::setWorkbenchLayout(
