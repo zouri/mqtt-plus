@@ -52,6 +52,7 @@ private slots:
     void writesSettingsAndClearsHistory();
     void themeChangesEmitSignals();
     void themeColorPersistsAndEmitsSignal();
+    void animationsSettingPersistsAndEmitsSignal();
     void languageChangesEmitSignals();
     void messagePayloadDisplayModePersistsAndEmitsSignal();
 };
@@ -68,6 +69,7 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
 
     QCOMPARE(settings.themeModeIndex(), 0);
     QCOMPARE(settings.themeColor(), QStringLiteral("mint"));
+    QCOMPARE(settings.animationsEnabled(), true);
     QCOMPARE(settings.languageModeIndex(), 0);
     QCOMPARE(settings.messagePayloadDisplayModeIndex(), 1);
     QCOMPARE(settings.messageRetentionLimitIndex(), 1);
@@ -91,6 +93,7 @@ void SettingsOptionsViewModelTest::readsSettings()
 
     deps.settings.setValue(QStringLiteral("appearance/themeMode"), QStringLiteral("dark"));
     deps.settings.setValue(QStringLiteral("appearance/themeColor"), QStringLiteral("violet"));
+    deps.settings.setValue(QStringLiteral("appearance/animationsEnabled"), false);
     deps.settings.setValue(QStringLiteral("appearance/languageMode"), QStringLiteral("zh_CN"));
     deps.settings.setValue(QStringLiteral("workbench/messagePayloadDisplayMode"), QStringLiteral("full"));
     SettingsViewModel settings(
@@ -103,6 +106,7 @@ void SettingsOptionsViewModelTest::readsSettings()
     QCOMPARE(settings.themeModeIndex(), 2);
     QCOMPARE(settings.effectiveTheme(), QStringLiteral("dark"));
     QCOMPARE(settings.themeColor(), QStringLiteral("violet"));
+    QCOMPARE(settings.animationsEnabled(), false);
     QCOMPARE(settings.languageModeIndex(), 2);
     QCOMPARE(settings.messagePayloadDisplayModeIndex(), 2);
     QCOMPARE(settings.messageRetentionLimitIndex(), 2);
@@ -264,6 +268,32 @@ void SettingsOptionsViewModelTest::themeColorPersistsAndEmitsSignal()
     settings.setThemeColor(QStringLiteral("unsupported"));
     QCOMPARE(settings.themeColor(), QStringLiteral("mint"));
     QCOMPARE(colorSpy.count(), 2);
+}
+
+void SettingsOptionsViewModelTest::animationsSettingPersistsAndEmitsSignal()
+{
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.settings);
+    QSignalSpy animationsSpy(&settings, &SettingsViewModel::animationsEnabledChanged);
+
+    settings.setAnimationsEnabled(false);
+    settings.setAnimationsEnabled(false);
+    QCOMPARE(settings.animationsEnabled(), false);
+    QCOMPARE(animationsSpy.count(), 1);
+    QCOMPARE(deps.settings.value(QStringLiteral("appearance/animationsEnabled")).toBool(), false);
+
+    SettingsViewModel restoredSettings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.settings);
+    QCOMPARE(restoredSettings.animationsEnabled(), false);
 }
 
 void SettingsOptionsViewModelTest::languageChangesEmitSignals()

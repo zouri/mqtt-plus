@@ -89,6 +89,8 @@ Rectangle {
     }
 
     Behavior on slideOffset {
+        enabled: control.ui.animationsEnabled
+
         NumberAnimation {
             duration: 200
             easing.type: Easing.OutCubic

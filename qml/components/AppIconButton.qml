@@ -61,6 +61,8 @@ ToolButton {
     }
 
     Behavior on scale {
+        enabled: control.ui.animationsEnabled
+
         NumberAnimation {
             duration: 110
             easing.type: Easing.OutCubic
@@ -78,6 +80,8 @@ ToolButton {
         border.width: 0
 
         Behavior on color {
+            enabled: control.ui.animationsEnabled
+
             ColorAnimation {
                 duration: 120
                 easing.type: Easing.OutCubic

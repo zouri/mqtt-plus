@@ -108,7 +108,7 @@ Dialog {
             property: "opacity"
             from: 0
             to: 1
-            duration: 200
+            duration: root.ui.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
 
@@ -116,7 +116,7 @@ Dialog {
             property: "scale"
             from: 0.92
             to: 1
-            duration: 200
+            duration: root.ui.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
     }
@@ -126,7 +126,7 @@ Dialog {
             property: "opacity"
             from: 1
             to: 0
-            duration: 160
+            duration: root.ui.animationsEnabled ? 160 : 0
             easing.type: Easing.InCubic
         }
 
@@ -134,7 +134,7 @@ Dialog {
             property: "scale"
             from: 1
             to: 0.96
-            duration: 160
+            duration: root.ui.animationsEnabled ? 160 : 0
             easing.type: Easing.InCubic
         }
     }

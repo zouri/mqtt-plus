@@ -41,6 +41,8 @@ Button {
         border.width: 0
 
         Behavior on color {
+            enabled: control.ui.animationsEnabled
+
             ColorAnimation {
                 duration: 120
                 easing.type: Easing.OutCubic

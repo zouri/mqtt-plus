@@ -20,13 +20,36 @@ ColumnLayout {
     Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
     spacing: ui.spaceMd
 
-    BusyIndicator {
+    Item {
         visible: root.mode === "loading"
-        running: root.mode === "loading"
         Layout.alignment: Qt.AlignHCenter
         Layout.preferredWidth: 36
         Layout.preferredHeight: 36
-        palette.dark: root.ui.themePalette.infoText
+
+        BusyIndicator {
+            anchors.fill: parent
+            visible: root.ui.animationsEnabled
+            running: visible
+            palette.dark: root.ui.themePalette.infoText
+        }
+
+        Row {
+            anchors.centerIn: parent
+            visible: !root.ui.animationsEnabled
+            spacing: 4
+            Accessible.ignored: true
+
+            Repeater {
+                model: 3
+
+                Rectangle {
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    color: root.ui.themePalette.infoText
+                }
+            }
+        }
     }
 
     Image {
