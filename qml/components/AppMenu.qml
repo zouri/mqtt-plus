@@ -83,14 +83,14 @@ Menu {
             OpacityAnimator {
                 from: 0
                 to: 1
-                duration: 100
+                duration: control.ui.animationsEnabled ? 100 : 0
                 easing.type: Easing.OutCubic
             }
 
             ScaleAnimator {
                 from: 0.97
                 to: 1
-                duration: 120
+                duration: control.ui.animationsEnabled ? 120 : 0
                 easing.type: Easing.OutCubic
             }
         }
@@ -100,7 +100,7 @@ Menu {
         OpacityAnimator {
             from: 1
             to: 0
-            duration: 80
+            duration: control.ui.animationsEnabled ? 80 : 0
             easing.type: Easing.OutCubic
         }
     }

@@ -57,7 +57,7 @@ Item {
 
         target: root
         property: "expansionProgress"
-        duration: 180
+        duration: root.ui.animationsEnabled ? 180 : 0
         easing.type: Easing.OutCubic
     }
 

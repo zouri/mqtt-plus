@@ -213,6 +213,8 @@ AppPanel {
                     border.color: control.ui.themePalette.fieldBorder
 
                     Behavior on border.color {
+                        enabled: control.ui.animationsEnabled
+
                         ColorAnimation {
                             duration: 120
                             easing.type: Easing.OutCubic
@@ -696,7 +698,7 @@ AppPanel {
                 property: "opacity"
                 from: 0
                 to: 1
-                duration: 200
+                duration: control.ui.animationsEnabled ? 200 : 0
                 easing.type: Easing.OutCubic
             }
 
@@ -704,7 +706,7 @@ AppPanel {
                 property: "scale"
                 from: 0.92
                 to: 1
-                duration: 200
+                duration: control.ui.animationsEnabled ? 200 : 0
                 easing.type: Easing.OutCubic
             }
         }
@@ -714,7 +716,7 @@ AppPanel {
                 property: "opacity"
                 from: 1
                 to: 0
-                duration: 160
+                duration: control.ui.animationsEnabled ? 160 : 0
                 easing.type: Easing.InCubic
             }
 
@@ -722,7 +724,7 @@ AppPanel {
                 property: "scale"
                 from: 1
                 to: 0.96
-                duration: 160
+                duration: control.ui.animationsEnabled ? 160 : 0
                 easing.type: Easing.InCubic
             }
         }

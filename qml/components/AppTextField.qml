@@ -25,6 +25,8 @@ TextField {
         border.color: control.ui.themePalette.fieldBorder
 
         Behavior on border.color {
+            enabled: control.ui.animationsEnabled
+
             ColorAnimation {
                 duration: 120
                 easing.type: Easing.OutCubic

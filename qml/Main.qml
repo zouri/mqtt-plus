@@ -37,6 +37,7 @@ ApplicationWindow {
         id: appUi
         isDarkTheme: root.settingsViewModel.effectiveTheme === "dark"
         themeColor: root.settingsViewModel.themeColor
+        animationsEnabled: root.settingsViewModel.animationsEnabled
     }
 
     Shortcut {

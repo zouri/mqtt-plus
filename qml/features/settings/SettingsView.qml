@@ -162,6 +162,8 @@ Rectangle {
                 color: "#ffffff"
 
                 Behavior on x {
+                    enabled: settingSwitch.ui.animationsEnabled
+
                     NumberAnimation {
                         duration: 150
                         easing.type: Easing.OutCubic
@@ -170,6 +172,8 @@ Rectangle {
             }
 
             Behavior on color {
+                enabled: settingSwitch.ui.animationsEnabled
+
                 ColorAnimation {
                     duration: 150
                     easing.type: Easing.OutCubic
@@ -326,6 +330,18 @@ Rectangle {
                                 selected: root.viewModel.themeColor === colorKey
                                 onColorSelected: color => root.viewModel.setThemeColor(color)
                             }
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Animations")
+                        detail: qsTr("Enable motion effects throughout the interface.")
+
+                        SettingSwitch {
+                            ui: root.ui
+                            checked: root.viewModel.animationsEnabled
+                            onToggled: root.viewModel.setAnimationsEnabled(checked)
                         }
                     }
 
