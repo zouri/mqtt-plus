@@ -1011,6 +1011,8 @@ Item {
                 }
 
                 Behavior on opacity {
+                    enabled: root.ui.animationsEnabled
+
                     NumberAnimation {
                         duration: 140
                         easing.type: Easing.OutCubic
@@ -1018,6 +1020,8 @@ Item {
                 }
 
                 Behavior on scale {
+                    enabled: root.ui.animationsEnabled
+
                     NumberAnimation {
                         duration: 160
                         easing.type: Easing.OutBack
@@ -1025,6 +1029,8 @@ Item {
                 }
 
                 Behavior on anchors.bottomMargin {
+                    enabled: root.ui.animationsEnabled
+
                     NumberAnimation {
                         duration: 160
                         easing.type: Easing.OutCubic

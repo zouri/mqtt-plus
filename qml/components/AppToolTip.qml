@@ -303,14 +303,14 @@ ToolTip {
                 property: "opacity"
                 from: 0
                 to: 1
-                duration: 120
+                duration: control.ui.animationsEnabled ? 120 : 0
                 easing.type: Easing.OutCubic
             }
             NumberAnimation {
                 property: "scale"
                 from: 0.96
                 to: 1
-                duration: 140
+                duration: control.ui.animationsEnabled ? 140 : 0
                 easing.type: Easing.OutCubic
             }
         }
@@ -320,7 +320,7 @@ ToolTip {
         NumberAnimation {
             property: "opacity"
             to: 0
-            duration: 90
+            duration: control.ui.animationsEnabled ? 90 : 0
             easing.type: Easing.OutCubic
         }
     }

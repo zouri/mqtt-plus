@@ -6,7 +6,7 @@ Rectangle {
     id: control
 
     required property AppUi ui
-    property bool animationsEnabled: true
+    property bool animationsEnabled: control.ui.animationsEnabled
     property int enterDelay: 0
     property int enterDuration: 200
 

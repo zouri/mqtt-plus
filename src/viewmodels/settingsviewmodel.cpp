@@ -148,6 +148,8 @@ SettingsViewModel::SettingsViewModel(
         m_settings.value(QStringLiteral("appearance/themeMode"), QStringLiteral("system")).toString());
     m_themeColor = sanitizeThemeColor(
         m_settings.value(QStringLiteral("appearance/themeColor"), QStringLiteral("mint")).toString());
+    m_animationsEnabled =
+        m_settings.value(QStringLiteral("appearance/animationsEnabled"), m_animationsEnabled).toBool();
     m_languageMode = sanitizeLanguageMode(
         m_settings.value(QStringLiteral("appearance/languageMode"), QStringLiteral("system")).toString());
     m_messagePayloadDisplayMode = sanitizeMessagePayloadDisplayMode(
@@ -182,6 +184,8 @@ QString SettingsViewModel::effectiveTheme() const
     }
     return m_systemDarkMode ? QStringLiteral("dark") : QStringLiteral("light");
 }
+
+bool SettingsViewModel::animationsEnabled() const { return m_animationsEnabled; }
 
 QString SettingsViewModel::languageMode() const { return m_languageMode; }
 
@@ -230,6 +234,18 @@ void SettingsViewModel::setThemeColor(const QString &color)
     m_settings.setValue(QStringLiteral("appearance/themeColor"), m_themeColor);
     m_settings.sync();
     emit themeColorChanged();
+}
+
+void SettingsViewModel::setAnimationsEnabled(bool enabled)
+{
+    if (enabled == m_animationsEnabled) {
+        return;
+    }
+
+    m_animationsEnabled = enabled;
+    m_settings.setValue(QStringLiteral("appearance/animationsEnabled"), m_animationsEnabled);
+    m_settings.sync();
+    emit animationsEnabledChanged();
 }
 
 void SettingsViewModel::setLanguageMode(const QString &mode)

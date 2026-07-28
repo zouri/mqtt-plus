@@ -60,6 +60,8 @@ Item {
     Layout.fillHeight: true
 
     Behavior on connectionPaneWidth {
+        enabled: root.ui.animationsEnabled
+
         NumberAnimation {
             duration: 180
             easing.type: Easing.OutCubic

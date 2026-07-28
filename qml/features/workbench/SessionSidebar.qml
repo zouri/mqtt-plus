@@ -348,6 +348,8 @@ Rectangle {
         Accessible.name: qsTr("Show connection list")
 
         Behavior on color {
+            enabled: control.ui.animationsEnabled
+
             ColorAnimation {
                 duration: 120
                 easing.type: Easing.OutCubic

@@ -8,6 +8,7 @@ QtObject {
 
     required property bool isDarkTheme
     required property string themeColor
+    required property bool animationsEnabled
 
     readonly property int panelRadius: 10
     readonly property int innerRadius: 10

@@ -17,6 +17,7 @@ class SettingsViewModel : public QObject
     Q_OBJECT
     Q_PROPERTY(QString effectiveTheme READ effectiveTheme NOTIFY effectiveThemeChanged)
     Q_PROPERTY(QString themeColor READ themeColor NOTIFY themeColorChanged)
+    Q_PROPERTY(bool animationsEnabled READ animationsEnabled NOTIFY animationsEnabledChanged)
     Q_PROPERTY(int themeModeIndex READ themeModeIndex NOTIFY themeModeChanged)
     Q_PROPERTY(int languageModeIndex READ languageModeIndex NOTIFY languageModeChanged)
     Q_PROPERTY(int messagePayloadDisplayModeIndex READ messagePayloadDisplayModeIndex NOTIFY messagePayloadDisplayModeChanged)
@@ -39,6 +40,7 @@ public:
     QString themeMode() const;
     QString effectiveTheme() const;
     QString themeColor() const;
+    bool animationsEnabled() const;
     QString languageMode() const;
     int messageRetentionLimit() const;
     int logRetentionLimit() const;
@@ -58,6 +60,7 @@ public:
 
     Q_INVOKABLE void setThemeModeIndex(int index);
     Q_INVOKABLE void setThemeColor(const QString &color);
+    Q_INVOKABLE void setAnimationsEnabled(bool enabled);
     Q_INVOKABLE void setLanguageModeIndex(int index);
     Q_INVOKABLE void setMessagePayloadDisplayModeIndex(int index);
     Q_INVOKABLE void setMessageRetentionLimitIndex(int index);
@@ -71,6 +74,7 @@ signals:
     void themeModeChanged();
     void effectiveThemeChanged();
     void themeColorChanged();
+    void animationsEnabledChanged();
     void languageModeChanged();
     void languageChanged();
     void messagePayloadDisplayModeChanged();
@@ -98,6 +102,7 @@ private:
 
     QString m_themeMode = QStringLiteral("system");
     QString m_themeColor = QStringLiteral("mint");
+    bool m_animationsEnabled = true;
     bool m_systemDarkMode = false;
 
     QString m_languageMode = QStringLiteral("system");
