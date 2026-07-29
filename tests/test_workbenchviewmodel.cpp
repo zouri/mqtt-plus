@@ -423,8 +423,16 @@ void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
     session.connectTimeoutSeconds = 8;
     session.runtime.connectedAtMs = nowMs - 5000;
     session.runtime.connectionStartedAtMs = nowMs - 1000;
-    session.runtime.recentReceivedTimestampsMs = {nowMs - 100, nowMs - 200, nowMs - 300};
-    session.runtime.recentPublishedTimestampsMs = {nowMs - 100, nowMs - 200};
+    session.runtime.recentReceivedTraffic = {
+        {nowMs - 100, 1024},
+        {nowMs - 200, 2048},
+        {nowMs - 300, 0},
+        {nowMs - 1500, 8192},
+    };
+    session.runtime.recentPublishedTraffic = {
+        {nowMs - 100, 512},
+        {nowMs - 200, 0},
+    };
     SubscriptionEntry first;
     first.topic = QStringLiteral("devices/one");
     first.recentMessageTimestampsMs = {nowMs - 100, nowMs - 200};
@@ -444,6 +452,8 @@ void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
     QCOMPARE(status.value(QStringLiteral("connectTimeoutSeconds")).toInt(), 8);
     QCOMPARE(viewModel.currentIncomingMessageRate(), 3.0);
     QCOMPARE(viewModel.currentOutgoingMessageRate(), 2.0);
+    QCOMPARE(viewModel.currentIncomingByteRate(), qint64(3072));
+    QCOMPARE(viewModel.currentOutgoingByteRate(), qint64(512));
 }
 
 void WorkbenchViewModelTest::ownsSubscriptionFilterState()

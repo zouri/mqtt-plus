@@ -148,11 +148,10 @@ bool MqttSessionService::publishCurrentSession(
             QStringLiteral("Publish rejected for %1").arg(trimmedTopic));
     } else {
         const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-        session->runtime.recentPublishedTimestampsMs.append(nowMs);
-        while (!session->runtime.recentPublishedTimestampsMs.isEmpty()
-               && session->runtime.recentPublishedTimestampsMs.constFirst() < nowMs - 1000) {
-            session->runtime.recentPublishedTimestampsMs.removeFirst();
-        }
+        appendRecentTrafficSample(
+            session->runtime.recentPublishedTraffic,
+            nowMs,
+            payloadBytes.size());
         updatePublishStatus(
             *session,
             publishQos == 0 ? QStringLiteral("sent") : QStringLiteral("queued"),

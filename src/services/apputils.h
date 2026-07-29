@@ -34,5 +34,8 @@ QString socketDiagnostic(QMqttClient *client);
 QString sessionStateName(const SessionState &session, const QMqttClient *client);
 void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs);
 int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs);
+void appendRecentTrafficSample(QVector<TrafficSample> &samples, qint64 nowMs, qint64 byteCount);
+int recentTrafficSampleCount(const QVector<TrafficSample> &samples, qint64 nowMs);
+qint64 recentTrafficByteCount(const QVector<TrafficSample> &samples, qint64 nowMs);
 
 } // namespace AppUtils

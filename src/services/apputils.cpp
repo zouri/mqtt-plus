@@ -200,4 +200,37 @@ int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs)
         [cutoffMs](qint64 timestampMs) { return timestampMs >= cutoffMs; }));
 }
 
+void appendRecentTrafficSample(QVector<TrafficSample> &samples, qint64 nowMs, qint64 byteCount)
+{
+    samples.append({nowMs, (std::max)(qint64(0), byteCount)});
+    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
+    samples.erase(
+        std::remove_if(
+            samples.begin(),
+            samples.end(),
+            [cutoffMs](const TrafficSample &sample) { return sample.timestampMs < cutoffMs; }),
+        samples.end());
+}
+
+int recentTrafficSampleCount(const QVector<TrafficSample> &samples, qint64 nowMs)
+{
+    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
+    return static_cast<int>(std::count_if(
+        samples.cbegin(),
+        samples.cend(),
+        [cutoffMs](const TrafficSample &sample) { return sample.timestampMs >= cutoffMs; }));
+}
+
+qint64 recentTrafficByteCount(const QVector<TrafficSample> &samples, qint64 nowMs)
+{
+    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
+    qint64 totalBytes = 0;
+    for (const TrafficSample &sample : samples) {
+        if (sample.timestampMs >= cutoffMs) {
+            totalBytes += sample.byteCount;
+        }
+    }
+    return totalBytes;
+}
+
 } // namespace AppUtils

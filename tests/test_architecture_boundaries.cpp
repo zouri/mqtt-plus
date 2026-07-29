@@ -513,13 +513,41 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
         "Publish completion must provide short-lived button feedback");
 
     QVERIFY2(workbenchSource.contains(QStringLiteral("id: workbenchStatusBar"))
-            && workbenchSource.contains(QStringLiteral("currentIncomingMessageRate"))
-            && workbenchSource.contains(QStringLiteral("currentOutgoingMessageRate")),
+            && workbenchSource.contains(QStringLiteral("currentIncomingByteRate"))
+            && workbenchSource.contains(QStringLiteral("currentOutgoingByteRate"))
+            && !workbenchSource.contains(QStringLiteral("currentIncomingMessageRate"))
+            && !workbenchSource.contains(QStringLiteral("currentOutgoingMessageRate"))
+            && workbenchSource.contains(QStringLiteral("id: trafficStatusGroup"))
+            && workbenchSource.contains(QStringLiteral("id: incomingTrafficStatus"))
+            && workbenchSource.contains(QStringLiteral("id: outgoingTrafficStatus"))
+            && workbenchSource.contains(QStringLiteral("incomingTrafficActive"))
+            && workbenchSource.contains(QStringLiteral("outgoingTrafficActive"))
+            && workbenchSource.contains(QStringLiteral("themePalette.messageTitle"))
+            && workbenchSource.contains(QStringLiteral("themePalette.eventTitle"))
+            && workbenchSource.contains(QStringLiteral("text: qsTr(\"↓\")"))
+            && workbenchSource.contains(QStringLiteral("text: qsTr(\"↑\")"))
+            && !workbenchSource.contains(QStringLiteral("text: qsTr(\"RX\")"))
+            && !workbenchSource.contains(QStringLiteral("text: qsTr(\"TX\")"))
+            && !workbenchSource.contains(QStringLiteral("compactMessageRate"))
+            && workbenchSource.contains(QStringLiteral("return qsTr(\"/s\")"))
+            && !workbenchSource.contains(QStringLiteral("FPS"))
+            && workbenchSource.count(QStringLiteral("height: 20")) == 2
+            && workbenchSource.contains(QStringLiteral("spacing: 8"))
+            && !workbenchSource.contains(QStringLiteral("Layout.preferredHeight: 10"))
+            && !workbenchSource.contains(QStringLiteral("anchors.verticalCenter: parent.verticalCenter"))
+            && !workbenchSource.contains(QStringLiteral("width: 126"))
+            && !workbenchSource.contains(QStringLiteral("horizontalAlignment: Text.AlignRight"))
+            && !workbenchSource.contains(QStringLiteral("rowSpacing:")),
         "The workbench must expose aggregate traffic and history state");
     QVERIFY2(workbenchSource.contains(QStringLiteral("text: root.liveConnectionStatusText"))
+            && workbenchSource.contains(QStringLiteral("connectionEndpointText"))
+            && workbenchSource.contains(QStringLiteral("text: root.connectionEndpointText"))
+            && workbenchSource.contains(QStringLiteral("qsTr(\"%1:%2\")"))
+            && workbenchSource.contains(QStringLiteral("root.session.host"))
+            && workbenchSource.contains(QStringLiteral("root.session.port"))
             && workbenchSource.contains(QStringLiteral("connectedAtMs"))
             && workbenchSource.contains(QStringLiteral("connectionStartedAtMs")),
-        "The bottom status bar must include live connection duration or timeout context");
+        "The bottom status bar must include the endpoint plus live connection duration or timeout context");
 
     QString filterSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageFilterPopover.qml"), filterSource));
