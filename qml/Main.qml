@@ -140,23 +140,6 @@ ApplicationWindow {
                     anchors.bottomMargin: 10
                     spacing: 6
 
-                    Rectangle {
-                        Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: 38
-                        Layout.preferredHeight: 38
-                        Layout.bottomMargin: 8
-                        radius: 11
-                        color: appUi.themePalette.buttonPrimaryBg
-
-                        Label {
-                            anchors.centerIn: parent
-                            text: qsTr("M")
-                            color: appUi.themePalette.buttonPrimaryText
-                            font.pixelSize: 18
-                            font.bold: true
-                        }
-                    }
-
                     RailButton {
                         ui: appUi
                         iconSource: appUi.materialIcon("workbench")

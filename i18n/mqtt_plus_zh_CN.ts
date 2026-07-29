@@ -508,35 +508,30 @@
         <translation>MQTT Plus</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="153"/>
-        <source>M</source>
-        <translation>M</translation>
-    </message>
-    <message>
-        <location filename="../qml/Main.qml" line="163"/>
-        <location filename="../qml/Main.qml" line="165"/>
+        <location filename="../qml/Main.qml" line="146"/>
+        <location filename="../qml/Main.qml" line="148"/>
         <source>Workbench</source>
         <translation>工作台</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="172"/>
-        <location filename="../qml/Main.qml" line="174"/>
+        <location filename="../qml/Main.qml" line="155"/>
+        <location filename="../qml/Main.qml" line="157"/>
         <source>Logs</source>
         <translation>日志</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="181"/>
+        <location filename="../qml/Main.qml" line="164"/>
         <source>Scripts</source>
         <translation>脚本</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="183"/>
+        <location filename="../qml/Main.qml" line="166"/>
         <source>Lua scripts</source>
         <translation>脚本管理</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="202"/>
-        <location filename="../qml/Main.qml" line="204"/>
+        <location filename="../qml/Main.qml" line="185"/>
+        <location filename="../qml/Main.qml" line="187"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
@@ -1890,57 +1885,87 @@
 <context>
     <name>WorkbenchView</name>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="104"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="52"/>
+        <source>%1:%2</source>
+        <translation>%1:%2</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="101"/>
         <source>%1K</source>
         <translation>%1K</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="106"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="103"/>
         <source>%1M</source>
         <translation>%1M</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="112"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="109"/>
         <source>%1s</source>
         <translation>%1 秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="116"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="113"/>
         <source>%1m</source>
         <translation>%1 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="119"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="116"/>
         <source>%1h %2m</source>
         <translation>%1 小时 %2 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="125"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="123"/>
+        <source>/s</source>
+        <translation>/s</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="126"/>
+        <source>%1 B/s</source>
+        <translation>%1 B/s</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="130"/>
+        <source>%1 KB/s</source>
+        <translation>%1 KB/s</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="134"/>
+        <source>%1 MB/s</source>
+        <translation>%1 MB/s</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="137"/>
+        <source>%1 GB/s</source>
+        <translation>%1 GB/s</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="143"/>
         <source>Connected · %1</source>
         <translation>已连接 · %1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="131"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="148"/>
         <source>Connecting · %1 left</source>
         <translation>连接中 · 剩余 %1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="424"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="446"/>
         <source>No session</source>
         <translation>无会话</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="444"/>
-        <source>↓ %1/s</source>
-        <translation>↓ %1/秒</translation>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="500"/>
+        <source>↓</source>
+        <translation>↓</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="451"/>
-        <source>↑ %1/s</source>
-        <translation>↑ %1/秒</translation>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="533"/>
+        <source>↑</source>
+        <translation>↑</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="462"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="555"/>
         <source>%1 messages</source>
         <translation>%1 条消息</translation>
     </message>

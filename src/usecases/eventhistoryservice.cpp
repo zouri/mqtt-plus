@@ -605,8 +605,10 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
 
     const QString timestamp = timestampNow();
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    session->runtime.recentReceivedTimestampsMs.append(nowMs);
-    pruneRecentMessageTimestamps(session->runtime.recentReceivedTimestampsMs, nowMs);
+    appendRecentTrafficSample(
+        session->runtime.recentReceivedTraffic,
+        nowMs,
+        payloadBytes.size());
     const bool isCurrentSession = session == m_sessionService.currentSession();
     const MessageSubscriptionMatch subscriptionMatch = matchSubscriptionsForMessage(*session, topic, nowMs, isCurrentSession);
     if (subscriptionMatch.currentSubscriptionActivity) {
