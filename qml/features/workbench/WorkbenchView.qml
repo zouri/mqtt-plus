@@ -28,22 +28,14 @@ Item {
     readonly property bool compactPaneWidths: root.width <= 1208
     readonly property bool connectionPaneAutoHidden: root.width <= 988
     readonly property bool subscriptionPaneAutoHidden: root.width <= 708
-    readonly property int effectiveExpandedConnectionPaneWidth: root.compactPaneWidths
-                                                                ? root.compactConnectionPaneWidth
-                                                                : root.expandedConnectionPaneWidth
-    property real connectionPaneWidth: root.connectionPaneAutoHidden
-                                       ? 0
-                                       : (root.connectionPaneCollapsed
-                                          ? root.collapsedConnectionPaneWidth
-                                          : root.effectiveExpandedConnectionPaneWidth)
+    readonly property int effectiveExpandedConnectionPaneWidth: root.compactPaneWidths ? root.compactConnectionPaneWidth : root.expandedConnectionPaneWidth
+    property real connectionPaneWidth: root.connectionPaneAutoHidden ? 0 : (root.connectionPaneCollapsed ? root.collapsedConnectionPaneWidth : root.effectiveExpandedConnectionPaneWidth)
     readonly property int subscriptionPaneMinWidth: 300
     readonly property int subscriptionPaneMaxWidth: 520
     property int subscriptionPaneWidth: root.preferences.subscriptionPaneWidth
     property bool layoutReady: false
     readonly property int compactSubscriptionPaneWidth: 286
-    readonly property int effectiveSubscriptionPaneWidth: root.compactPaneWidths
-                                                          ? root.compactSubscriptionPaneWidth
-                                                          : root.subscriptionPaneWidth
+    readonly property int effectiveSubscriptionPaneWidth: root.compactPaneWidths ? root.compactSubscriptionPaneWidth : root.subscriptionPaneWidth
     property bool collapseConnectionPaneOnConnect: false
     property int trackedConnectionSessionIndex: -1
     property string trackedConnectionState: ""
@@ -51,9 +43,14 @@ Item {
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
     property int pendingSubscriptionIndex: -1
-    property real incomingMessageRate: 0
-    property real outgoingMessageRate: 0
+    property double incomingByteRate: 0
+    property double outgoingByteRate: 0
+    readonly property bool incomingTrafficActive: root.incomingByteRate > 0
+    readonly property bool outgoingTrafficActive: root.outgoingByteRate > 0
     property double nowMs: Date.now()
+    readonly property string connectionEndpointText: root.session.host
+                                                        ? qsTr("%1:%2").arg(root.session.host).arg(root.session.port || "-")
+                                                        : ""
     readonly property string liveConnectionStatusText: root.connectionStatusText()
 
     Layout.fillWidth: true
@@ -90,9 +87,9 @@ Item {
         root.openSessionEditorForCreate();
     }
 
-    function refreshMessageRates() {
-        root.incomingMessageRate = root.viewModel.currentIncomingMessageRate();
-        root.outgoingMessageRate = root.viewModel.currentOutgoingMessageRate();
+    function refreshTrafficRates() {
+        root.incomingByteRate = root.viewModel.currentIncomingByteRate();
+        root.outgoingByteRate = root.viewModel.currentOutgoingByteRate();
     }
 
     function compactMessageCount(count) {
@@ -119,11 +116,31 @@ Item {
         return qsTr("%1h %2m").arg(hours).arg(totalMinutes % 60);
     }
 
+    function compactByteRate(bytesPerSecond) {
+        const numericRate = Number(bytesPerSecond);
+        const rate = Number.isFinite(numericRate) ? Math.max(0, numericRate) : 0;
+        if (rate === 0) {
+            return qsTr("/s");
+        }
+        if (rate < 1000) {
+            return qsTr("%1 B/s").arg(rate.toFixed(0));
+        }
+        if (rate < 1000 * 1000) {
+            const kilobytes = rate / 1000;
+            return qsTr("%1 KB/s").arg(kilobytes.toFixed(kilobytes < 10 ? 1 : 0));
+        }
+        if (rate < 1000 * 1000 * 1000) {
+            const megabytes = rate / 1000 / 1000;
+            return qsTr("%1 MB/s").arg(megabytes.toFixed(megabytes < 10 ? 1 : 0));
+        }
+        const gigabytes = rate / 1000 / 1000 / 1000;
+        return qsTr("%1 GB/s").arg(gigabytes.toFixed(gigabytes < 10 ? 1 : 0));
+    }
+
     function connectionStatusText() {
         const state = root.status.state || "idle";
         if (state === "connected" && Number(root.status.connectedAtMs || 0) > 0) {
-            return qsTr("Connected · %1").arg(
-                        root.compactDuration(root.nowMs - Number(root.status.connectedAtMs)));
+            return qsTr("Connected · %1").arg(root.compactDuration(root.nowMs - Number(root.status.connectedAtMs)));
         }
         if (state === "connecting" && Number(root.status.connectionStartedAtMs || 0) > 0) {
             const timeoutMs = Number(root.status.connectTimeoutSeconds || 10) * 1000;
@@ -144,10 +161,7 @@ Item {
             return;
         }
         layoutSaveTimer.stop();
-        root.preferences.setWorkbenchLayout(
-            root.subscriptionPaneWidth,
-            sessionActivityPanel.composerHeight,
-            root.connectionPaneCollapsed);
+        root.preferences.setWorkbenchLayout(root.subscriptionPaneWidth, sessionActivityPanel.composerHeight, root.connectionPaneCollapsed);
     }
 
     function handleConnectionStateChanged() {
@@ -255,7 +269,7 @@ Item {
         triggeredOnStart: true
         onTriggered: {
             root.nowMs = Date.now();
-            root.refreshMessageRates();
+            root.refreshTrafficRates();
         }
     }
 
@@ -401,15 +415,23 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        height: 24
+        height: 28
         color: root.ui.themePalette.innerPanelBg
-        border.color: root.ui.themePalette.separator
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 1
+            color: root.ui.themePalette.separator
+            Accessible.ignored: true
+        }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
-            spacing: 10
+            anchors.leftMargin: 8
+            anchors.rightMargin: 8
+            spacing: 8
 
             Rectangle {
                 Layout.preferredWidth: 7
@@ -420,18 +442,30 @@ Item {
             }
 
             Label {
-                Layout.maximumWidth: 240
+                Layout.maximumWidth: 180
                 text: root.session.name || qsTr("No session")
                 color: root.ui.textMuted
                 font.pixelSize: 10
                 elide: Label.ElideRight
+                visible: root.width >= 760
             }
 
             Label {
+                Layout.maximumWidth: 220
+                text: root.connectionEndpointText
+                color: root.ui.textMuted
+                font.pixelSize: 10
+                elide: Label.ElideMiddle
+                visible: root.connectionEndpointText.length > 0 && root.width >= 700
+            }
+
+            Label {
+                Layout.maximumWidth: 190
                 text: root.liveConnectionStatusText
                 color: root.ui.stateColor(root.status.hasError ? "error" : (root.status.state || "idle"))
                 font.pixelSize: 10
                 font.bold: root.status.state === "connected" || root.status.state === "connecting"
+                elide: Label.ElideRight
             }
 
             Rectangle {
@@ -440,18 +474,77 @@ Item {
                 color: root.ui.themePalette.separator
             }
 
-            Label {
-                text: qsTr("↓ %1/s").arg(Number(root.incomingMessageRate).toFixed(0))
-                color: root.incomingMessageRate > 0 ? root.ui.textStrong : root.ui.textMuted
-                font.pixelSize: 10
-                font.bold: root.incomingMessageRate > 0
-            }
+            Row {
+                id: trafficStatusGroup
 
-            Label {
-                text: qsTr("↑ %1/s").arg(Number(root.outgoingMessageRate).toFixed(0))
-                color: root.outgoingMessageRate > 0 ? root.ui.textStrong : root.ui.textMuted
-                font.pixelSize: 10
-                font.bold: root.outgoingMessageRate > 0
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 8
+
+                RowLayout {
+                    id: incomingTrafficStatus
+
+                    height: 20
+                    spacing: 4
+
+                    Rectangle {
+                        Layout.preferredWidth: 5
+                        Layout.preferredHeight: 5
+                        radius: 3
+                        color: root.incomingTrafficActive
+                               ? root.ui.themePalette.messageTitle
+                               : root.ui.themePalette.textSubtle
+                        Accessible.ignored: true
+                    }
+
+                    Label {
+                        text: qsTr("↓")
+                        color: root.incomingTrafficActive
+                               ? root.ui.themePalette.messageTitle
+                               : root.ui.textMuted
+                        font.pixelSize: 10
+                        font.bold: root.incomingTrafficActive
+                    }
+
+                    Label {
+                        text: root.compactByteRate(root.incomingByteRate)
+                        color: root.incomingTrafficActive ? root.ui.textStrong : root.ui.themePalette.textSubtle
+                        font.pixelSize: 10
+                        font.bold: root.incomingTrafficActive
+                    }
+                }
+
+                RowLayout {
+                    id: outgoingTrafficStatus
+
+                    height: 20
+                    spacing: 4
+
+                    Rectangle {
+                        Layout.preferredWidth: 5
+                        Layout.preferredHeight: 5
+                        radius: 3
+                        color: root.outgoingTrafficActive
+                               ? root.ui.themePalette.eventTitle
+                               : root.ui.themePalette.textSubtle
+                        Accessible.ignored: true
+                    }
+
+                    Label {
+                        text: qsTr("↑")
+                        color: root.outgoingTrafficActive
+                               ? root.ui.themePalette.eventTitle
+                               : root.ui.textMuted
+                        font.pixelSize: 10
+                        font.bold: root.outgoingTrafficActive
+                    }
+
+                    Label {
+                        text: root.compactByteRate(root.outgoingByteRate)
+                        color: root.outgoingTrafficActive ? root.ui.textStrong : root.ui.themePalette.textSubtle
+                        font.pixelSize: 10
+                        font.bold: root.outgoingTrafficActive
+                    }
+                }
             }
 
             Item {

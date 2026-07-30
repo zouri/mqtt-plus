@@ -379,7 +379,8 @@ void EventHistoryServiceTest::aggregateReceiveRateCountsOverlappingSubscriptions
         QStringLiteral("devices/room/temp"),
         QByteArrayLiteral("23"));
 
-    QCOMPARE(fixture.session.runtime.recentReceivedTimestampsMs.size(), 1);
+    QCOMPARE(fixture.session.runtime.recentReceivedTraffic.size(), 1);
+    QCOMPARE(fixture.session.runtime.recentReceivedTraffic.constFirst().byteCount, qint64(2));
     QCOMPARE(fixture.session.subscriptions.at(0).recentMessageTimestampsMs.size(), 1);
     QCOMPARE(fixture.session.subscriptions.at(1).recentMessageTimestampsMs.size(), 1);
     QCOMPARE(activitySpy.count(), 1);

@@ -278,8 +278,8 @@ qreal WorkbenchViewModel::currentIncomingMessageRate() const
         return 0;
     }
 
-    return recentMessageCount(
-        session->runtime.recentReceivedTimestampsMs,
+    return recentTrafficSampleCount(
+        session->runtime.recentReceivedTraffic,
         QDateTime::currentMSecsSinceEpoch());
 }
 
@@ -289,8 +289,32 @@ qreal WorkbenchViewModel::currentOutgoingMessageRate() const
     if (!session) {
         return 0;
     }
-    return recentMessageCount(
-        session->runtime.recentPublishedTimestampsMs,
+    return recentTrafficSampleCount(
+        session->runtime.recentPublishedTraffic,
+        QDateTime::currentMSecsSinceEpoch());
+}
+
+qint64 WorkbenchViewModel::currentIncomingByteRate() const
+{
+    const SessionState *session = m_sessionService.currentSession();
+    if (!session) {
+        return 0;
+    }
+
+    return recentTrafficByteCount(
+        session->runtime.recentReceivedTraffic,
+        QDateTime::currentMSecsSinceEpoch());
+}
+
+qint64 WorkbenchViewModel::currentOutgoingByteRate() const
+{
+    const SessionState *session = m_sessionService.currentSession();
+    if (!session) {
+        return 0;
+    }
+
+    return recentTrafficByteCount(
+        session->runtime.recentPublishedTraffic,
         QDateTime::currentMSecsSinceEpoch());
 }
 

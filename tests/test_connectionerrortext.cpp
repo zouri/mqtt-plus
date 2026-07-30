@@ -341,6 +341,8 @@ void ConnectionErrorTextTest::qosZeroPublishDoesNotRemainQueued()
         false));
     QCOMPARE(session.runtime.publishStatus.messageId, 0);
     QCOMPARE(session.runtime.publishStatus.state, QStringLiteral("sent"));
+    QCOMPARE(session.runtime.recentPublishedTraffic.size(), 1);
+    QCOMPARE(session.runtime.recentPublishedTraffic.constFirst().byteCount, qint64(7));
     QCOMPARE(messageSentSpy.count(), 0);
 }
 

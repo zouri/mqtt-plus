@@ -111,6 +111,8 @@ public:
     Q_INVOKABLE QVariantMap messageDetails(const QString &historyId) const;
     Q_INVOKABLE qreal currentIncomingMessageRate() const;
     Q_INVOKABLE qreal currentOutgoingMessageRate() const;
+    Q_INVOKABLE qint64 currentIncomingByteRate() const;
+    Q_INVOKABLE qint64 currentOutgoingByteRate() const;
 
 signals:
     void currentSessionIndexChanged();
