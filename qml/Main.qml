@@ -25,6 +25,7 @@ ApplicationWindow {
     visible: false
     flags: Qt.Window
     title: root.appTitle
+    font.family: root.settingsViewModel.effectiveFontFamily
     topPadding: 0
 
     // C++ sizes and centers the window on the primary screen before showing it.
@@ -205,7 +206,7 @@ ApplicationWindow {
                     eventHistory: root.app.eventHistory
                     sessionService: root.app.sessionService
                     subscriptionService: root.app.subscriptionService
-                    fontFamily: root.font.family
+                    fontFamily: root.settingsViewModel.effectiveFontFamily
                     autoCollapseConnectionListOnConnect: root.preferences.autoCollapseConnectionListOnConnect
                 }
 

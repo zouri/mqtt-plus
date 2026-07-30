@@ -1,5 +1,5 @@
 #include <QDebug>
-#include <QFontDatabase>
+#include <QFont>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -10,20 +10,38 @@
 #include "app/application.h"
 #include "app/windowgeometrymanager.h"
 
+namespace {
+QFont applicationFont(const QFont &baseFont, const QString &family)
+{
+    auto font = baseFont;
+    font.setFamily(family);
+    return font;
+} // namespace
+}
+
 int main(int argc, char *argv[])
 {
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
     QGuiApplication guiApplication(argc, argv);
-    auto applicationFont = guiApplication.font();
-    applicationFont.setFamily(QFontDatabase::systemFont(QFontDatabase::FixedFont).family());
-    guiApplication.setFont(applicationFont);
+    const QFont baseApplicationFont = guiApplication.font();
     guiApplication.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app-icon.png")));
 
     Application application;
+    SettingsViewModel *settingsViewModel = application.viewModel()->settings();
+    const auto applyConfiguredFont = [&guiApplication, &baseApplicationFont, settingsViewModel]() {
+        guiApplication.setFont(
+            applicationFont(baseApplicationFont, settingsViewModel->effectiveFontFamily()));
+    };
+    applyConfiguredFont();
+    QObject::connect(
+        settingsViewModel,
+        &SettingsViewModel::fontFamilyChanged,
+        &guiApplication,
+        applyConfiguredFont);
 
     QQmlApplicationEngine engine;
-    QObject::connect(application.viewModel()->settings(), &SettingsViewModel::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
+    QObject::connect(settingsViewModel, &SettingsViewModel::languageChanged, &engine, &QQmlApplicationEngine::retranslate);
     engine.setInitialProperties({
         {QStringLiteral("app"), QVariant::fromValue(application.viewModel())},
     });

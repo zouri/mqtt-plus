@@ -8,6 +8,7 @@
 
 #include <QtTest/QtTest>
 
+#include <QFontDatabase>
 #include <QTemporaryDir>
 
 class SettingsFixture
@@ -53,6 +54,7 @@ private slots:
     void themeChangesEmitSignals();
     void themeColorPersistsAndEmitsSignal();
     void animationsSettingPersistsAndEmitsSignal();
+    void fontSettingPersistsAndEmitsSignal();
     void languageChangesEmitSignals();
     void messagePayloadDisplayModePersistsAndEmitsSignal();
 };
@@ -70,6 +72,12 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(settings.themeModeIndex(), 0);
     QCOMPARE(settings.themeColor(), QStringLiteral("mint"));
     QCOMPARE(settings.animationsEnabled(), true);
+    QVERIFY(!settings.effectiveFontFamily().isEmpty());
+    QCOMPARE(settings.fontFamilyIndex(),
+        settings.availableFontFamilies().indexOf(settings.effectiveFontFamily()));
+    if (settings.fontFamilyIndex() >= 0) {
+        QVERIFY(QFontDatabase::isFixedPitch(settings.effectiveFontFamily()));
+    }
     QCOMPARE(settings.languageModeIndex(), 0);
     QCOMPARE(settings.messagePayloadDisplayModeIndex(), 1);
     QCOMPARE(settings.messageRetentionLimitIndex(), 1);
@@ -94,6 +102,17 @@ void SettingsOptionsViewModelTest::readsSettings()
     deps.settings.setValue(QStringLiteral("appearance/themeMode"), QStringLiteral("dark"));
     deps.settings.setValue(QStringLiteral("appearance/themeColor"), QStringLiteral("violet"));
     deps.settings.setValue(QStringLiteral("appearance/animationsEnabled"), false);
+    QString configuredFontFamily;
+    for (const QString &family : QFontDatabase::families()) {
+        if (!QFontDatabase::isPrivateFamily(family)
+            && QFontDatabase::isFixedPitch(family)) {
+            configuredFontFamily = family;
+            break;
+        }
+    }
+    if (!configuredFontFamily.isEmpty()) {
+        deps.settings.setValue(QStringLiteral("appearance/fontFamily"), configuredFontFamily);
+    }
     deps.settings.setValue(QStringLiteral("appearance/languageMode"), QStringLiteral("zh_CN"));
     deps.settings.setValue(QStringLiteral("workbench/messagePayloadDisplayMode"), QStringLiteral("full"));
     SettingsViewModel settings(
@@ -107,6 +126,11 @@ void SettingsOptionsViewModelTest::readsSettings()
     QCOMPARE(settings.effectiveTheme(), QStringLiteral("dark"));
     QCOMPARE(settings.themeColor(), QStringLiteral("violet"));
     QCOMPARE(settings.animationsEnabled(), false);
+    if (!configuredFontFamily.isEmpty()) {
+        QCOMPARE(settings.effectiveFontFamily(), configuredFontFamily);
+    }
+    QCOMPARE(settings.fontFamilyIndex(),
+        settings.availableFontFamilies().indexOf(settings.effectiveFontFamily()));
     QCOMPARE(settings.languageModeIndex(), 2);
     QCOMPARE(settings.messagePayloadDisplayModeIndex(), 2);
     QCOMPARE(settings.messageRetentionLimitIndex(), 2);
@@ -294,6 +318,45 @@ void SettingsOptionsViewModelTest::animationsSettingPersistsAndEmitsSignal()
         deps.sessionService.sessions(),
         deps.settings);
     QCOMPARE(restoredSettings.animationsEnabled(), false);
+}
+
+void SettingsOptionsViewModelTest::fontSettingPersistsAndEmitsSignal()
+{
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.settings);
+    if (settings.availableFontFamilies().size() < 2) {
+        QSKIP("At least two installed fixed-width fonts are required");
+    }
+
+    QSignalSpy fontSpy(&settings, &SettingsViewModel::fontFamilyChanged);
+    const int selectedIndex = settings.fontFamilyIndex() == 0 ? 1 : 0;
+    const QString selectedFamily = settings.availableFontFamilies().at(selectedIndex);
+
+    settings.setFontFamilyIndex(selectedIndex);
+    settings.setFontFamilyIndex(selectedIndex);
+    QCOMPARE(settings.effectiveFontFamily(), selectedFamily);
+    QCOMPARE(settings.fontFamilyIndex(), selectedIndex);
+    QCOMPARE(fontSpy.count(), 1);
+    QCOMPARE(deps.settings.value(QStringLiteral("appearance/fontFamily")).toString(), selectedFamily);
+
+    SettingsViewModel restoredSettings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.settings);
+    QCOMPARE(restoredSettings.effectiveFontFamily(), selectedFamily);
+    QCOMPARE(restoredSettings.fontFamilyIndex(), selectedIndex);
+
+    settings.setFontFamilyIndex(-1);
+    QCOMPARE(settings.effectiveFontFamily(), selectedFamily);
+    QCOMPARE(settings.fontFamilyIndex(), selectedIndex);
+    QCOMPARE(fontSpy.count(), 1);
 }
 
 void SettingsOptionsViewModelTest::languageChangesEmitSignals()

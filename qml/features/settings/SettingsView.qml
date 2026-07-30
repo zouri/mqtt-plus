@@ -347,6 +347,20 @@ Rectangle {
 
                     SettingRow {
                         ui: root.ui
+                        title: qsTr("Font")
+                        detail: qsTr("Choose an installed monospace font. Missing characters use the system fallback.")
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 220
+                            model: root.viewModel.availableFontFamilies
+                            currentIndex: root.viewModel.fontFamilyIndex
+                            onActivated: (index) => root.viewModel.setFontFamilyIndex(index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
                         title: qsTr("Language")
                         detail: qsTr("Switch the interface language.")
                         showDivider: false
