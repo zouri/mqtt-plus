@@ -508,30 +508,30 @@
         <translation>MQTT Plus</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="146"/>
-        <location filename="../qml/Main.qml" line="148"/>
+        <location filename="../qml/Main.qml" line="147"/>
+        <location filename="../qml/Main.qml" line="149"/>
         <source>Workbench</source>
         <translation>工作台</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="155"/>
-        <location filename="../qml/Main.qml" line="157"/>
+        <location filename="../qml/Main.qml" line="156"/>
+        <location filename="../qml/Main.qml" line="158"/>
         <source>Logs</source>
         <translation>日志</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="164"/>
+        <location filename="../qml/Main.qml" line="165"/>
         <source>Scripts</source>
         <translation>脚本</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="166"/>
+        <location filename="../qml/Main.qml" line="167"/>
         <source>Lua scripts</source>
         <translation>脚本管理</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="185"/>
-        <location filename="../qml/Main.qml" line="187"/>
+        <location filename="../qml/Main.qml" line="186"/>
+        <location filename="../qml/Main.qml" line="188"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
@@ -1588,156 +1588,166 @@
     </message>
     <message>
         <location filename="../qml/features/settings/SettingsView.qml" line="350"/>
+        <source>Font</source>
+        <translation>字体</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="351"/>
+        <source>Choose an installed monospace font. Missing characters use the system fallback.</source>
+        <translation>选择系统中已安装的等宽字体；缺少的字符将使用系统回退字体。</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="364"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="351"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="365"/>
         <source>Switch the interface language.</source>
         <translation>切换界面语言。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="366"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="380"/>
         <source>Workbench</source>
         <translation>工作台</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="373"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="387"/>
         <source>Auto-collapse connections</source>
         <translation>自动收起连接列表</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="374"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="388"/>
         <source>Collapse the connection list after a connection succeeds.</source>
         <translation>连接成功后收起连接列表。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="385"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="399"/>
         <source>Message content</source>
         <translation>消息内容</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="386"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="400"/>
         <source>Choose how much payload text is shown in the message list.</source>
         <translation>选择消息列表中显示的 Payload 内容量。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="401"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="415"/>
         <source>History</source>
         <translation>历史</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="408"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="422"/>
         <source>Saved messages</source>
         <translation>保存的消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="409"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="423"/>
         <source>Maximum MQTT messages kept per connection. Cleanup runs when the app starts or exits.</source>
         <translation>每个连接最多保留的 MQTT 消息数；应用将在启动或退出时执行清理。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="422"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="436"/>
         <source>Saved logs</source>
         <translation>保存的日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="423"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="437"/>
         <source>Maximum event log entries retained per connection.</source>
         <translation>每个连接最多保留的事件日志条数。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="436"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="450"/>
         <source>History page size</source>
         <translation>历史分页大小</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="437"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="451"/>
         <source>Rows loaded when opening a connection or scrolling back.</source>
         <translation>打开连接或向上滚动时加载的行数。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="450"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="464"/>
         <source>Max payload size</source>
         <translation>最大 Payload 大小</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="451"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="465"/>
         <source>Largest incoming MQTT payload decoded, scripted, and fully stored.</source>
         <translation>会被解码、脚本处理并完整保存的最大传入 MQTT Payload。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="464"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="478"/>
         <source>Delete connection history</source>
         <translation>删除连接历史</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="465"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="479"/>
         <source>Remove stored messages and logs when a connection is deleted.</source>
         <translation>删除连接时移除保存的消息和日志。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="478"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="492"/>
         <source>Output</source>
         <translation>输出</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="485"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="499"/>
         <source>Save while paused</source>
         <translation>暂停时保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="486"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="500"/>
         <source>Keep storing incoming messages when output is paused.</source>
         <translation>输出暂停时继续保存收到的消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="499"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="513"/>
         <source>Cleanup</source>
         <translation>清理</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="506"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="520"/>
         <source>Messages on exit</source>
         <translation>退出时处理消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="507"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="521"/>
         <source>Choose whether MQTT messages are cleared when the app closes.</source>
         <translation>选择应用关闭时是否清空 MQTT 消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="520"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="534"/>
         <source>Logs on exit</source>
         <translation>退出时处理日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="521"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="535"/>
         <source>Choose whether event logs are cleared when the app closes.</source>
         <translation>选择应用关闭时是否清空事件日志。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="534"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="548"/>
         <source>Manual cleanup</source>
         <translation>手动清理</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="535"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="549"/>
         <source>Clear stored data immediately.</source>
         <translation>立即清空保存的数据。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="540"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="554"/>
         <source>Messages</source>
         <translation>消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="547"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="561"/>
         <source>Logs</source>
         <translation>日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="554"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="568"/>
         <source>All</source>
         <translation>全部</translation>
     </message>
