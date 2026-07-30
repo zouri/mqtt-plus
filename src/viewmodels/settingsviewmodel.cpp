@@ -6,6 +6,7 @@
 #include "services/storage/historystore.h"
 
 #include <QCoreApplication>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QLocale>
 #include <QStyleHints>
@@ -128,6 +129,57 @@ QString sanitizeMessagePayloadDisplayMode(const QString &value)
     return QStringLiteral("hover");
 }
 
+QStringList availableFixedFontFamilies()
+{
+    QStringList fixedFontFamilies;
+    const QStringList families = QFontDatabase::families();
+    for (const QString &family : families) {
+        if (!QFontDatabase::isPrivateFamily(family)
+            && QFontDatabase::isFixedPitch(family)) {
+            fixedFontFamilies.append(family);
+        }
+    }
+    fixedFontFamilies.sort(Qt::CaseInsensitive);
+    return fixedFontFamilies;
+}
+
+QString preferredFixedFontFamily(const QStringList &fixedFontFamilies)
+{
+    const QString platformFixedFamily =
+        QFontDatabase::systemFont(QFontDatabase::FixedFont).defaultFamily();
+    if (fixedFontFamilies.contains(platformFixedFamily)) {
+        return platformFixedFamily;
+    }
+
+#if defined(Q_OS_MACOS)
+    const QStringList preferredFamilies {
+        QStringLiteral("SF Mono"),
+        QStringLiteral("Menlo"),
+        QStringLiteral("Monaco"),
+    };
+#elif defined(Q_OS_WIN)
+    const QStringList preferredFamilies {
+        QStringLiteral("Cascadia Mono"),
+        QStringLiteral("Consolas"),
+        QStringLiteral("Courier New"),
+    };
+#else
+    const QStringList preferredFamilies {
+        QStringLiteral("DejaVu Sans Mono"),
+        QStringLiteral("Noto Sans Mono"),
+        QStringLiteral("Liberation Mono"),
+    };
+#endif
+
+    for (const QString &family : preferredFamilies) {
+        if (fixedFontFamilies.contains(family)) {
+            return family;
+        }
+    }
+
+    return fixedFontFamilies.value(0, platformFixedFamily);
+}
+
 } // namespace
 
 SettingsViewModel::SettingsViewModel(
@@ -150,6 +202,14 @@ SettingsViewModel::SettingsViewModel(
         m_settings.value(QStringLiteral("appearance/themeColor"), QStringLiteral("mint")).toString());
     m_animationsEnabled =
         m_settings.value(QStringLiteral("appearance/animationsEnabled"), m_animationsEnabled).toBool();
+    m_availableFontFamilies = availableFixedFontFamilies();
+    const QString storedFontFamily =
+        m_settings.value(QStringLiteral("appearance/fontFamily")).toString().trimmed();
+    if (m_availableFontFamilies.contains(storedFontFamily)) {
+        m_fontFamily = storedFontFamily;
+    } else {
+        m_fontFamily = preferredFixedFontFamily(m_availableFontFamilies);
+    }
     m_languageMode = sanitizeLanguageMode(
         m_settings.value(QStringLiteral("appearance/languageMode"), QStringLiteral("system")).toString());
     m_messagePayloadDisplayMode = sanitizeMessagePayloadDisplayMode(
@@ -186,6 +246,18 @@ QString SettingsViewModel::effectiveTheme() const
 }
 
 bool SettingsViewModel::animationsEnabled() const { return m_animationsEnabled; }
+
+QString SettingsViewModel::effectiveFontFamily() const
+{
+    return m_fontFamily;
+}
+
+QStringList SettingsViewModel::availableFontFamilies() const { return m_availableFontFamilies; }
+
+int SettingsViewModel::fontFamilyIndex() const
+{
+    return m_availableFontFamilies.indexOf(m_fontFamily);
+}
 
 QString SettingsViewModel::languageMode() const { return m_languageMode; }
 
@@ -246,6 +318,23 @@ void SettingsViewModel::setAnimationsEnabled(bool enabled)
     m_settings.setValue(QStringLiteral("appearance/animationsEnabled"), m_animationsEnabled);
     m_settings.sync();
     emit animationsEnabledChanged();
+}
+
+void SettingsViewModel::setFontFamilyIndex(int index)
+{
+    if (index < 0 || index >= m_availableFontFamilies.size()) {
+        return;
+    }
+
+    const QString family = m_availableFontFamilies.at(index);
+    if (family == m_fontFamily) {
+        return;
+    }
+
+    m_fontFamily = family;
+    m_settings.setValue(QStringLiteral("appearance/fontFamily"), m_fontFamily);
+    m_settings.sync();
+    emit fontFamilyChanged();
 }
 
 void SettingsViewModel::setLanguageMode(const QString &mode)

@@ -19,7 +19,7 @@ private slots:
     void messagePanelUsesSplitViewForComposerResize();
     void eventStreamFollowModeUsesSingleCycleButton();
     void qmlUsesApplicationViewModelRootOnly();
-    void applicationUsesSystemFixedFont();
+    void applicationUsesConfigurableMonospaceFont();
     void translationsDoNotReferenceLegacyFacade();
     void settingsExplainDeferredMessageRetention();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
@@ -262,13 +262,38 @@ void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()
         "main.cpp must not inject the legacy appController root property");
 }
 
-void ArchitectureBoundariesTest::applicationUsesSystemFixedFont()
+void ArchitectureBoundariesTest::applicationUsesConfigurableMonospaceFont()
 {
     QString mainSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/main.cpp"), mainSource));
     QVERIFY2(mainSource.contains(
-                 QStringLiteral("QFontDatabase::systemFont(QFontDatabase::FixedFont)")),
-        "The application must use the platform fixed-width font globally");
+                 QStringLiteral("settingsViewModel->effectiveFontFamily()")),
+        "The application must apply the persisted font before loading QML");
+    QVERIFY2(mainSource.contains(QStringLiteral("&SettingsViewModel::fontFamilyChanged")),
+        "The application must apply font changes immediately");
+    QVERIFY2(!mainSource.contains(QStringLiteral("addApplicationFont")),
+        "The application must not bundle a large font file");
+
+    QString settingsSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/settingsviewmodel.cpp"), settingsSource));
+    QVERIFY2(settingsSource.contains(QStringLiteral("preferredFixedFontFamily"))
+            && settingsSource.contains(QStringLiteral("QFontDatabase::isFixedPitch")),
+        "The configurable font must resolve to a concrete installed fixed-width family");
+    QVERIFY2(settingsSource.contains(QStringLiteral("appearance/fontFamily")),
+        "The configured font family must persist through QSettings");
+
+    QString qmlMain;
+    QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), qmlMain));
+    QVERIFY2(qmlMain.contains(
+                 QStringLiteral("font.family: root.settingsViewModel.effectiveFontFamily")),
+        "The existing QML window must update when the configured font changes");
+
+    QString settingsQml;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/settings/SettingsView.qml"), settingsQml));
+    QVERIFY2(!settingsQml.contains(QStringLiteral("System monospace"))
+            && settingsQml.contains(
+                QStringLiteral("model: root.viewModel.availableFontFamilies")),
+        "The font selector must display concrete installed family names only");
 
     QDirIterator qmlFiles(
         QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/qml"),
@@ -281,7 +306,7 @@ void ArchitectureBoundariesTest::applicationUsesSystemFixedFont()
             qPrintable(QStringLiteral("Cannot read %1").arg(file.fileName())));
         const QString source = QString::fromUtf8(file.readAll());
         QVERIFY2(!source.contains(QStringLiteral("\"Menlo\"")),
-            qPrintable(QStringLiteral("%1 must inherit the platform fixed-width font")
+            qPrintable(QStringLiteral("%1 must inherit the application fixed-width font")
                            .arg(file.fileName())));
     }
 }
