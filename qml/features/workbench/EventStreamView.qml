@@ -316,7 +316,7 @@ Item {
                     // qmllint disable missing-property
                     label: root.streamModel.filterActive
                            ? qsTr("%1/%2").arg(root.streamModel.filteredMessageCount)
-                                           .arg(root.viewModel.totalMessageCount)
+                                           .arg(root.streamModel.totalMessageCount)
                            : String(root.viewModel.totalMessageCount)
                     // qmllint enable missing-property
                     badgeRadius: 11

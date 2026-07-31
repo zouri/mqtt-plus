@@ -265,6 +265,11 @@ EventHistoryService::EventHistoryService(
         this,
         &EventHistoryService::flushPendingVisibleMessageRows,
         Qt::UniqueConnection);
+    connect(
+        &m_scriptService,
+        &ScriptService::scriptsChanged,
+        this,
+        [this]() { m_luaRuntimeCache.clear(); });
 }
 
 bool EventHistoryService::clearStream(Stream kind, bool allSessions)
@@ -564,7 +569,7 @@ LuaScriptResult EventHistoryService::parseIncomingPayload(
     const QString &topic,
     const QByteArray &payloadBytes,
     const QString &timestamp,
-    QString &scriptNameOut) const
+    QString &scriptNameOut)
 {
     const PayloadFormat format = subscription
         ? PayloadCodec::formatFromInt(subscription->format)
@@ -593,7 +598,7 @@ LuaScriptResult EventHistoryService::parseIncomingPayload(
     context.decodeError = decodeError;
     context.format = format;
     context.timestamp = timestamp;
-    return LuaRunner::run(script->code, context);
+    return m_luaRuntimeCache.run(script->id, script->code, context);
 }
 
 void EventHistoryService::appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes)

@@ -83,7 +83,7 @@ private:
         const QString &topic,
         const QByteArray &payloadBytes,
         const QString &timestamp,
-        QString &scriptNameOut) const;
+        QString &scriptNameOut);
     bool clearStream(Stream kind, bool allSessions);
     void resetMessageStreamTransientState(bool allSessions, const SessionState *current);
     int loadOlderCurrentSession(Stream kind);
@@ -99,6 +99,7 @@ private:
     EventStreamModel &m_messages;
     EventStreamModel &m_logs;
     ScriptService &m_scriptService;
+    LuaRunner::RuntimeCache m_luaRuntimeCache;
     const QString m_launchTimestamp;
     PreferencesController &m_preferencesController;
     QTimer m_messageHistoryFlushTimer;

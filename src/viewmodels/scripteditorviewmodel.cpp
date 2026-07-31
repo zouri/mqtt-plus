@@ -64,7 +64,14 @@ void ScriptEditorViewModel::setCode(const QString &code)
 
 QString ScriptEditorViewModel::defaultCode()
 {
-    return QStringLiteral("function parse(ctx)\n    return ctx.decoded\nend\n");
+    return QStringLiteral(
+        "function constants()\n"
+        "    return {}\n"
+        "end\n"
+        "\n"
+        "function parse(ctx, const)\n"
+        "    return ctx.decoded\n"
+        "end\n");
 }
 
 void ScriptEditorViewModel::loadScript(const QVariantMap &row)
