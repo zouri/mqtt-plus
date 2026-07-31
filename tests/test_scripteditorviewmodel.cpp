@@ -24,6 +24,8 @@ void ScriptEditorViewModelTest::newScriptStartsUnsaved()
     QVERIFY(editor.canSave());
     QVERIFY(!editor.hasUnsavedChanges());
     QCOMPARE(editor.validationStatus(), QStringLiteral("Unsaved"));
+    QVERIFY(editor.code().contains(QStringLiteral("function constants()")));
+    QVERIFY(editor.code().contains(QStringLiteral("function parse(ctx, const)")));
 }
 
 void ScriptEditorViewModelTest::tracksUnsavedChanges()
