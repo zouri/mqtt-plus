@@ -233,6 +233,16 @@ if(BUILD_TESTING)
     )
     add_test(NAME payloadcodec COMMAND test_payloadcodec)
 
+    add_mqtt_plus_qt_test(test_luarunner
+        tests/test_luarunner.cpp
+        src/services/scripting/luarunner.cpp
+        src/services/payload/payloadcodec.cpp
+    )
+    target_compile_definitions(test_luarunner
+        PRIVATE
+            MQTT_PLUS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+
     add_mqtt_plus_qt_test(test_sessioneditorviewmodel
         tests/test_sessioneditorviewmodel.cpp
         src/domain/sessionconfig.cpp

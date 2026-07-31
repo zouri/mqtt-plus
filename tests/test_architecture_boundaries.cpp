@@ -507,6 +507,9 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(streamSource.contains(QStringLiteral("MessageFilterPopover")));
     QVERIFY(streamSource.contains(QStringLiteral("filteredMessageCount")));
     QVERIFY(streamSource.contains(QStringLiteral("totalMessageCount")));
+    QVERIFY2(streamSource.contains(
+                 QStringLiteral(".arg(root.streamModel.totalMessageCount)")),
+        "Filtered and total message counts must use the same loaded-model scope");
     QVERIFY(streamSource.contains(QStringLiteral("filterSummaryText")));
     QVERIFY(streamSource.contains(QStringLiteral("Accessible.role: Accessible.Button")));
     QVERIFY(streamSource.contains(QStringLiteral("Keys.onPressed")));
