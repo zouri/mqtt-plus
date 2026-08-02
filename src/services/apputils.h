@@ -15,9 +15,10 @@ namespace AppUtils {
 constexpr int kMaxVisibleEventRows = 1200;
 constexpr qint64 kSubscriptionFpsWindowMs = 1000;
 constexpr int kSubscriptionFpsRefreshIntervalMs = 250;
+constexpr int kSubscriptionRateHistorySampleIntervalMs = 1000;
 constexpr int kSubscriptionRateHistoryDurationMs = 10'000;
 constexpr int kSubscriptionRateHistorySampleCount =
-    kSubscriptionRateHistoryDurationMs / kSubscriptionFpsRefreshIntervalMs;
+    kSubscriptionRateHistoryDurationMs / kSubscriptionRateHistorySampleIntervalMs;
 
 QString timestampNow();
 QString displayTimestamp(const QString &timestamp);

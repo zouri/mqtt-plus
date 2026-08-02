@@ -55,7 +55,7 @@ Item {
 
                 AppBadge {
                     ui: control.ui
-                    label: `${control.viewModel.scripts.count}`
+                    label: `${control.viewModel.filteredScripts.count}`
                     badgeRadius: 11
                     horizontalPadding: 8
                     verticalPadding: 4
@@ -95,7 +95,7 @@ Item {
                 ui: control.ui
                 viewModel: control.viewModel
                 currentScriptId: control.editor.currentScriptId
-                onScriptRequested: (index) => control.viewModel.selectScriptAt(index)
+                onScriptRequested: (index) => control.viewModel.selectFilteredScriptAt(index)
             }
 
             Rectangle {

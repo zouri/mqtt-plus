@@ -32,8 +32,8 @@ private slots:
     void initTestCase();
     void init();
     void cleanup();
-    void matchesScriptFilter();
     void ownsEditorWorkflowCommands();
+    void repeatedSelectionInitializationPreservesUnsavedDraft();
     void savesThroughScriptService();
     void forwardsScriptLibrarySignal();
     void readsConcreteScriptModel();
@@ -54,25 +54,6 @@ void ScriptsViewModelTest::cleanup()
     QVERIFY2(clearScriptStorage(), qPrintable(QStringLiteral("Cannot clear %1").arg(scriptStoragePath())));
 }
 
-void ScriptsViewModelTest::matchesScriptFilter()
-{
-    QVERIFY(ScriptsViewModel::scriptMatchesFilter(
-        QStringLiteral("Decoder"),
-        QStringLiteral("Binary payload"),
-        QStringLiteral("function parse(ctx)\nend\n"),
-        QStringLiteral("decode")));
-    QVERIFY(ScriptsViewModel::scriptMatchesFilter(
-        QStringLiteral("Decoder"),
-        QStringLiteral("Binary payload"),
-        QStringLiteral("function parse(ctx)\nend\n"),
-        QStringLiteral(" parse ")));
-    QVERIFY(!ScriptsViewModel::scriptMatchesFilter(
-        QStringLiteral("Decoder"),
-        QStringLiteral("Binary payload"),
-        QStringLiteral("function parse(ctx)\nend\n"),
-        QStringLiteral("temperature")));
-}
-
 void ScriptsViewModelTest::ownsEditorWorkflowCommands()
 {
     ScriptService service;
@@ -87,6 +68,26 @@ void ScriptsViewModelTest::ownsEditorWorkflowCommands()
     viewModel.editor()->setCode(QStringLiteral("return 1"));
     QVERIFY(!viewModel.validateEditorStructure());
     QCOMPARE(viewModel.editor()->validationStatus(), QStringLiteral("Structure invalid: define function parse(ctx) ... end"));
+}
+
+void ScriptsViewModelTest::repeatedSelectionInitializationPreservesUnsavedDraft()
+{
+    ScriptService service;
+    ScriptLibraryModel model;
+    ScriptsViewModel viewModel(service, model);
+
+    viewModel.newScript();
+    viewModel.editor()->setName({});
+    viewModel.editor()->setDescription(QStringLiteral("Draft description"));
+    viewModel.editor()->setCode(QStringLiteral("draft code"));
+    QVERIFY(viewModel.editor()->hasUnsavedChanges());
+
+    viewModel.ensureEditorSelection();
+
+    QVERIFY(viewModel.editor()->currentScriptId().isEmpty());
+    QVERIFY(viewModel.editor()->name().isEmpty());
+    QCOMPARE(viewModel.editor()->description(), QStringLiteral("Draft description"));
+    QCOMPARE(viewModel.editor()->code(), QStringLiteral("draft code"));
 }
 
 void ScriptsViewModelTest::savesThroughScriptService()
@@ -153,8 +154,15 @@ void ScriptsViewModelTest::readsConcreteScriptModel()
 
     QCOMPARE(viewModel.scripts(), &model);
     QCOMPARE(model.count(), 2);
-    QCOMPARE(viewModel.visibleScriptCount(QStringLiteral("binary")), 1);
-    QVERIFY(viewModel.selectScriptAt(1));
+    QCOMPARE(viewModel.filteredScripts()->count(), 2);
+    viewModel.setScriptFilterText(QStringLiteral(" decoder binary "));
+    QCOMPARE(viewModel.filteredScripts()->count(), 1);
+    QCOMPARE(viewModel.filteredScripts()->rowAt(0).value(QStringLiteral("name")).toString(), QStringLiteral("Decoder"));
+    QVERIFY(viewModel.selectFilteredScriptAt(0));
+    QCOMPARE(viewModel.editor()->currentScriptId(), decoderId);
+
+    viewModel.setScriptFilterText({});
+    QVERIFY(viewModel.selectFilteredScriptAt(1));
     QCOMPARE(viewModel.editor()->currentScriptId(), loggerId);
 }
 

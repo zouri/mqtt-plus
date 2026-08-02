@@ -6,7 +6,7 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import "../../components"
 
-Rectangle {
+Item {
     id: control
 
     required property AppUi ui
@@ -17,6 +17,8 @@ Rectangle {
     property string displayedPayload: ""
     property bool opened: false
     property real slideOffset: opened ? 0 : width
+    readonly property int payloadTextMaximumHeight: 220
+    readonly property int parsedTextMaximumHeight: 180
 
     signal closeRequested
     signal draftUsed
@@ -41,16 +43,6 @@ Rectangle {
     }
 
     width: Math.min(400, parent ? parent.width * 0.88 : 400)
-    color: control.ui.themePalette.panelBg
-    border.color: control.ui.themePalette.panelBorder
-    layer.enabled: control.visible
-    layer.effect: MultiEffect {
-        shadowEnabled: true
-        shadowBlur: 0.48
-        shadowColor: control.ui.isDarkTheme ? "#80000000" : "#30000000"
-        shadowHorizontalOffset: -8
-        shadowVerticalOffset: 0
-    }
     transform: Translate { x: control.slideOffset }
     visible: control.opened || control.slideOffset < control.width
     Accessible.role: Accessible.Pane
@@ -94,6 +86,20 @@ Rectangle {
         NumberAnimation {
             duration: 200
             easing.type: Easing.OutCubic
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        color: control.ui.themePalette.panelBg
+        border.color: control.ui.themePalette.panelBorder
+        layer.enabled: control.visible
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowBlur: 0.48
+            shadowColor: control.ui.isDarkTheme ? "#80000000" : "#30000000"
+            shadowHorizontalOffset: -8
+            shadowVerticalOffset: 0
         }
     }
 
@@ -219,27 +225,43 @@ Rectangle {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Math.max(40, payloadBodyText.contentHeight + 20)
+                        Layout.preferredHeight: Math.min(
+                                                    control.payloadTextMaximumHeight,
+                                                    Math.max(40, payloadBodyText.contentHeight + 20))
                         radius: control.ui.radiusSm
                         color: control.ui.themePalette.innerPanelBg
                         border.color: control.ui.themePalette.fieldBorder
                         border.width: 1
 
-                        TextEdit {
-                            id: payloadBodyText
+                        ScrollView {
+                            id: payloadScroll
 
                             anchors.fill: parent
-                            anchors.margins: 10
-                            text: control.displayedPayload
-                            color: control.ui.textStrong
-                            font.pixelSize: 11
-                            textFormat: TextEdit.PlainText
-                            readOnly: true
-                            selectByMouse: true
-                            wrapMode: TextEdit.WrapAnywhere
+                            anchors.margins: 1
+                            contentWidth: availableWidth
+                            clip: true
+                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                            ContextMenu.menu: AppNativeTextMenu {
-                                editor: payloadBodyText
+                            TextEdit {
+                                id: payloadBodyText
+
+                                width: payloadScroll.availableWidth
+                                leftPadding: 10
+                                rightPadding: 10
+                                topPadding: 10
+                                bottomPadding: 10
+                                text: control.displayedPayload
+                                color: control.ui.textStrong
+                                font.pixelSize: 11
+                                textFormat: TextEdit.PlainText
+                                readOnly: true
+                                selectByMouse: true
+                                wrapMode: TextEdit.WrapAnywhere
+
+                                ContextMenu.menu: AppNativeTextMenu {
+                                    editor: payloadBodyText
+                                }
                             }
                         }
                     }
@@ -270,27 +292,43 @@ Rectangle {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: Math.max(40, parsedResultText.contentHeight + 20)
+                        Layout.preferredHeight: Math.min(
+                                                    control.parsedTextMaximumHeight,
+                                                    Math.max(40, parsedResultText.contentHeight + 20))
                         radius: control.ui.radiusSm
                         color: control.ui.themePalette.innerPanelBg
                         border.color: control.ui.themePalette.fieldBorder
                         border.width: 1
 
-                        TextEdit {
-                            id: parsedResultText
+                        ScrollView {
+                            id: parsedResultScroll
 
                             anchors.fill: parent
-                            anchors.margins: 10
-                            text: String(control.details.parsedPayload || "")
-                            color: control.ui.textStrong
-                            font.pixelSize: 11
-                            textFormat: TextEdit.PlainText
-                            readOnly: true
-                            selectByMouse: true
-                            wrapMode: TextEdit.WrapAnywhere
+                            anchors.margins: 1
+                            contentWidth: availableWidth
+                            clip: true
+                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                            ContextMenu.menu: AppNativeTextMenu {
-                                editor: parsedResultText
+                            TextEdit {
+                                id: parsedResultText
+
+                                width: parsedResultScroll.availableWidth
+                                leftPadding: 10
+                                rightPadding: 10
+                                topPadding: 10
+                                bottomPadding: 10
+                                text: String(control.details.parsedPayload || "")
+                                color: control.ui.textStrong
+                                font.pixelSize: 11
+                                textFormat: TextEdit.PlainText
+                                readOnly: true
+                                selectByMouse: true
+                                wrapMode: TextEdit.WrapAnywhere
+
+                                ContextMenu.menu: AppNativeTextMenu {
+                                    editor: parsedResultText
+                                }
                             }
                         }
                     }

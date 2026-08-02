@@ -31,9 +31,19 @@ AppPanel {
         root.shouldFollowOutput = root.isNearBottom()
     }
 
-    function rebuildLogText(scrollToEnd) {
+    function scheduleFollowScroll() {
+        if (root.shouldFollowOutput && !root.loadingOlderLogs) {
+            followScrollTimer.restart()
+        }
+    }
+
+    function syncLogText(scrollToEnd) {
+        const text = root.viewModel.logText
+        if (logTextArea.text !== text) {
+            logTextArea.text = text
+        }
         if (scrollToEnd) {
-            logTextArea.scrollToBottom()
+            root.scheduleFollowScroll()
         }
     }
 
@@ -41,11 +51,7 @@ AppPanel {
         root.loadingOlderLogs = false
         root.reachedLogStart = false
         root.shouldFollowOutput = true
-        root.rebuildLogText(true)
-    }
-
-    function noteStreamRowAppended(row) {
-        root.rebuildLogText(root.shouldFollowOutput)
+        root.syncLogText(true)
     }
 
     function loadOlderLogs() {
@@ -72,25 +78,37 @@ AppPanel {
 
     Component.onCompleted: root.resetStreamPosition()
 
+    Timer {
+        id: followScrollTimer
+
+        interval: 0
+        repeat: false
+        onTriggered: logTextArea.scrollToBottom()
+    }
+
     Connections {
         target: root.eventHistory
 
         function onLogStreamChanged() {
             root.resetStreamPosition()
         }
-
-        function onLogAppended(row) {
-            root.noteStreamRowAppended(row)
-        }
     }
 
     Connections {
-        target: root.viewModel.logs
+        target: root.viewModel
 
-        function onCountChanged() {
-            if (!root.loadingOlderLogs) {
-                root.rebuildLogText(root.shouldFollowOutput)
-            }
+        function onLogTextInserted(position, text) {
+            logTextArea.insertText(position, text)
+            root.scheduleFollowScroll()
+        }
+
+        function onLogTextRemoved(start, end) {
+            logTextArea.removeText(start, end)
+            root.scheduleFollowScroll()
+        }
+
+        function onLogTextReset() {
+            root.syncLogText(root.shouldFollowOutput)
         }
     }
 
@@ -164,7 +182,7 @@ AppPanel {
                 ui: root.ui
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                text: root.viewModel.logText
+                text: ""
                 readOnly: true
                 color: root.ui.textStrong
                 placeholderText: qsTr("No logs yet.")

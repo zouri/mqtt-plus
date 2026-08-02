@@ -11,13 +11,14 @@ Rectangle {
     property bool showRightBorder: true
     property bool showBottomBorder: true
     property bool showLeftBorder: true
+    property bool clipContent: false
     readonly property color panelBorderColor: inner ? control.ui.themePalette.innerPanelBorder : control.ui.panelBorder
     default property alias panelContent: panelContentItem.data
 
     radius: inner ? control.ui.innerRadius : control.ui.panelRadius
     color: inner ? control.ui.themePalette.innerPanelBg : control.ui.themePalette.windowBg
     border.width: 0
-    clip: true
+    clip: control.clipContent
 
     Item {
         id: panelContentItem
