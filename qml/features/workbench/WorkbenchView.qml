@@ -44,8 +44,8 @@ Item {
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
     property int pendingSubscriptionIndex: -1
-    property double incomingByteRate: 0
-    property double outgoingByteRate: 0
+    readonly property double incomingByteRate: root.viewModel.incomingByteRate
+    readonly property double outgoingByteRate: root.viewModel.outgoingByteRate
     readonly property var messagePressure: root.viewModel.messagePressure
     readonly property string messagePressureState: String(root.messagePressure.state || "normal")
     readonly property bool messagePressureVisible: root.messagePressureState !== "normal"
@@ -122,11 +122,6 @@ Item {
 
     function createSession() {
         root.openSessionEditorForCreate();
-    }
-
-    function refreshTrafficRates() {
-        root.incomingByteRate = root.viewModel.currentIncomingByteRate();
-        root.outgoingByteRate = root.viewModel.currentOutgoingByteRate();
     }
 
     function compactMessageCount(count) {
@@ -345,7 +340,6 @@ Item {
         if (root.active) {
             root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
             root.trackedConnectionState = root.status.state || "";
-            root.refreshTrafficRates();
         }
     }
 
@@ -371,10 +365,7 @@ Item {
         repeat: true
         running: root.active && root.visible
         triggeredOnStart: true
-        onTriggered: {
-            root.nowMs = Date.now();
-            root.refreshTrafficRates();
-        }
+        onTriggered: root.nowMs = Date.now()
     }
 
     onAutoCollapseConnectionListOnConnectChanged: {
@@ -725,7 +716,7 @@ Item {
             }
 
             Label {
-                text: qsTr("%1 messages").arg(root.compactMessageCount(root.viewModel.totalMessageCount))
+                text: qsTr("%1 messages").arg(root.compactMessageCount(root.viewModel.displayTotalMessageCount))
                 color: root.ui.textMuted
                 font.pixelSize: 10
             }

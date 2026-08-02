@@ -274,8 +274,8 @@ void ArchitectureBoundariesTest::eventStreamFollowModeUsesSingleCycleButton()
     QVERIFY2(source.contains(
                  QStringLiteral("PointerDevice.Mouse | PointerDevice.TouchPad")),
         "Wheel handling should cover both mouse wheels and touchpads");
-    QVERIFY2(source.contains(QStringLiteral("root.viewModel.totalMessageCount")),
-        "The message badge should use the session total instead of the capped visible model count");
+    QVERIFY2(source.contains(QStringLiteral("root.viewModel.displayTotalMessageCount")),
+        "The message badge should use the coalesced session total instead of the capped visible model count");
     QVERIFY2(!source.contains(QStringLiteral("checkable: true")),
         "Follow mode button should not let the toolbar disable following directly");
     QVERIFY2(source.contains(QStringLiteral("eventList.shouldFollowOutput = false")),
@@ -616,6 +616,8 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(streamSource.contains(QStringLiteral("MessageFilterPopover")));
     QVERIFY(streamSource.contains(QStringLiteral("filteredMessageCount")));
     QVERIFY(streamSource.contains(QStringLiteral("totalMessageCount")));
+    QVERIFY2(streamSource.contains(QStringLiteral("root.viewModel.displayTotalMessageCount")),
+        "The unfiltered message badge should use the coalesced UI-facing session total");
     QVERIFY2(streamSource.contains(
                  QStringLiteral(".arg(root.streamModel.totalMessageCount)")),
         "Filtered and total message counts must use the same loaded-model scope");
@@ -665,8 +667,10 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
         "Publish completion must provide short-lived button feedback");
 
     QVERIFY2(workbenchSource.contains(QStringLiteral("id: workbenchStatusBar"))
-            && workbenchSource.contains(QStringLiteral("currentIncomingByteRate"))
-            && workbenchSource.contains(QStringLiteral("currentOutgoingByteRate"))
+            && workbenchSource.contains(QStringLiteral("root.viewModel.incomingByteRate"))
+            && workbenchSource.contains(QStringLiteral("root.viewModel.outgoingByteRate"))
+            && !workbenchSource.contains(QStringLiteral("currentIncomingByteRate"))
+            && !workbenchSource.contains(QStringLiteral("currentOutgoingByteRate"))
             && !workbenchSource.contains(QStringLiteral("currentIncomingMessageRate"))
             && !workbenchSource.contains(QStringLiteral("currentOutgoingMessageRate"))
             && workbenchSource.contains(QStringLiteral("id: trafficStatusGroup"))

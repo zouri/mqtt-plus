@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 #include <QVariantMap>
 
 #include "models/eventstreammodel.h"
@@ -40,6 +41,9 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(bool allSubscriptionsPaused READ allSubscriptionsPaused NOTIFY subscriptionsStateChanged)
     Q_PROPERTY(QVariantMap messageTopicFilterState READ messageTopicFilterState NOTIFY messageTopicFilterStateChanged)
     Q_PROPERTY(qint64 totalMessageCount READ totalMessageCount NOTIFY totalMessageCountChanged)
+    Q_PROPERTY(qint64 displayTotalMessageCount READ displayTotalMessageCount NOTIFY displayTotalMessageCountChanged)
+    Q_PROPERTY(qint64 incomingByteRate READ incomingByteRate NOTIFY trafficRatesChanged)
+    Q_PROPERTY(qint64 outgoingByteRate READ outgoingByteRate NOTIFY trafficRatesChanged)
     Q_PROPERTY(QVariantMap messagePressure READ messagePressure NOTIFY messagePressureChanged)
     Q_PROPERTY(QVariantMap messageCapturePolicy READ messageCapturePolicy NOTIFY messageCapturePolicyChanged)
 
@@ -75,6 +79,9 @@ public:
     bool allSubscriptionsPaused() const;
     QVariantMap messageTopicFilterState() const;
     qint64 totalMessageCount() const;
+    qint64 displayTotalMessageCount() const;
+    qint64 incomingByteRate() const;
+    qint64 outgoingByteRate() const;
     QVariantMap messagePressure() const;
     QVariantMap messageCapturePolicy() const;
 
@@ -130,6 +137,8 @@ signals:
     void publishStatusChanged();
     void messageStreamChanged();
     void totalMessageCountChanged();
+    void displayTotalMessageCountChanged();
+    void trafficRatesChanged();
     void messageStreamRowsAppended(int count);
     void messageDetailsChanged(const QString &historyId);
     void pendingSubscriptionDeleteChanged();
@@ -147,6 +156,9 @@ private:
         int format) const;
     void refreshSubscriptionEditorScriptOptions();
     void clearPendingSubscriptionDelete();
+    void scheduleDisplayTotalMessageCountUpdate();
+    void syncDisplayTotalMessageCount();
+    void refreshTrafficRates();
 
     SessionService &m_sessionService;
     MqttSessionService &m_mqttService;
@@ -159,6 +171,11 @@ private:
     MessageFilterModel &m_filteredMessagesModel;
     ScriptLibraryModel &m_scriptsModel;
     PublishDraftViewModel m_publisher;
+    QTimer m_displayTotalMessageCountTimer;
+    QTimer m_trafficRateTimer;
+    qint64 m_displayTotalMessageCount = 0;
+    qint64 m_incomingByteRate = 0;
+    qint64 m_outgoingByteRate = 0;
     QString m_pendingSubscriptionDeleteTopic;
     QString m_pendingSubscriptionDeleteDisplayName;
     SessionEditorViewModel m_sessionEditor;
