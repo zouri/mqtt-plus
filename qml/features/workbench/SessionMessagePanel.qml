@@ -59,13 +59,26 @@ AppPanel {
         handle: Item {
             implicitWidth: messageSplit.width
             implicitHeight: 6
+            z: 2
 
             Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: 1
-                color: root.ui.themePalette.separator
+                anchors.fill: parent
+                Accessible.ignored: true
+                gradient: Gradient {
+                    orientation: Gradient.Vertical
+
+                    GradientStop {
+                        position: 0.0
+                        color: "transparent"
+                    }
+
+                    GradientStop {
+                        position: 1.0
+                        color: splitHandleHover.hovered
+                               ? (root.ui.isDarkTheme ? "#47000000" : "#1c000000")
+                               : (root.ui.isDarkTheme ? "#33000000" : "#12000000")
+                    }
+                }
             }
 
             HoverHandler {
@@ -89,6 +102,7 @@ AppPanel {
             payloadDisplayMode: root.messagePayloadDisplayMode
             title: qsTr("Messages")
             showOutputControls: true
+            bottomVisualOverflow: 6
             SplitView.fillWidth: true
             SplitView.fillHeight: true
             onPublishDraftRevealRequested: {
@@ -104,6 +118,7 @@ AppPanel {
 
         PublishComposer {
             id: publishComposer
+            z: 1
             ui: root.ui
             publisher: root.publisher
             publishStatus: root.publishStatus

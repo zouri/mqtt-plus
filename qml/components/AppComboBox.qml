@@ -7,10 +7,14 @@ ComboBox {
     id: control
 
     required property AppUi ui
+    readonly property color hoverBorderColor: control.ui.isDarkTheme
+                                                 ? Qt.lighter(control.ui.themePalette.fieldBorder, 1.25)
+                                                 : Qt.darker(control.ui.themePalette.fieldBorder, 1.12)
     implicitHeight: control.ui.compactControlHeight + 4
     font.pixelSize: control.ui.compactFontSize
     leftPadding: 12
     rightPadding: 32
+    hoverEnabled: true
 
     HoverHandler {
         cursorShape: control.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -96,19 +100,26 @@ ComboBox {
     background: Rectangle {
         radius: 8
         color: control.ui.themePalette.fieldBg
-        border.color: control.ui.themePalette.fieldBorder
+        border.color: !control.enabled
+                      ? control.ui.themePalette.fieldBorder
+                      : (control.activeFocus || control.popup.visible
+                         ? control.ui.themePalette.selectedBorder
+                         : (control.hovered
+                            ? control.hoverBorderColor
+                            : control.ui.themePalette.fieldBorder))
 
         Behavior on border.color {
             enabled: control.ui.animationsEnabled
 
             ColorAnimation {
-                duration: 120
-                easing.type: Easing.OutCubic
+                duration: control.ui.motionMicroDuration
+                easing.type: control.ui.motionEnterEasing
             }
         }
     }
 
-    popup: Popup {
+    popup: AppPopover {
+        ui: control.ui
         y: control.height + 6
         width: control.width
         implicitHeight: Math.min(contentItem.implicitHeight + 8, 220)

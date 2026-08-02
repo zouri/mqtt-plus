@@ -140,44 +140,74 @@ Rectangle {
         id: settingSwitch
 
         required property AppUi ui
+        property bool controlsGlobalMotion: false
+        property bool presentationReady: false
+        property real presentationProgress: 0.0
 
         implicitWidth: 40
         implicitHeight: 22
         text: ""
 
+        function syncPresentation(animate) {
+            const targetProgress = settingSwitch.checked ? 1.0 : 0.0;
+            settingSwitchAnimation.stop();
+            if (!animate
+                    || !settingSwitch.ui.animationsEnabled
+                    || (settingSwitch.controlsGlobalMotion && !settingSwitch.checked)
+                    || settingSwitch.ui.motionMicroDuration <= 0) {
+                settingSwitch.presentationProgress = targetProgress;
+                return;
+            }
+            settingSwitchAnimation.to = targetProgress;
+            settingSwitchAnimation.restart();
+        }
+
+        onCheckedChanged: settingSwitch.syncPresentation(settingSwitch.presentationReady)
+
+        Component.onCompleted: {
+            settingSwitch.presentationReady = true;
+            settingSwitch.syncPresentation(false);
+        }
+
+        Connections {
+            target: settingSwitch.ui
+
+            function onAnimationsEnabledChanged() {
+                if (!settingSwitch.ui.animationsEnabled) {
+                    settingSwitch.syncPresentation(false);
+                }
+            }
+        }
+
+        NumberAnimation {
+            id: settingSwitchAnimation
+
+            target: settingSwitch
+            property: "presentationProgress"
+            duration: settingSwitch.ui.motionMicroDuration
+            easing.type: settingSwitch.ui.motionEnterEasing
+        }
+
         indicator: Rectangle {
             implicitWidth: 40
             implicitHeight: 22
             radius: 11
-            color: settingSwitch.checked
-                   ? settingSwitch.ui.themePalette.buttonPrimaryBg
-                   : settingSwitch.ui.themePalette.innerPanelBorder
+            color: settingSwitch.ui.themePalette.innerPanelBorder
 
             Rectangle {
-                x: settingSwitch.checked ? 20 : 2
+                anchors.fill: parent
+                radius: parent.radius
+                color: settingSwitch.ui.themePalette.buttonPrimaryBg
+                opacity: settingSwitch.presentationProgress
+            }
+
+            Rectangle {
+                x: 2 + 18 * settingSwitch.presentationProgress
                 y: 2
                 width: 18
                 height: 18
                 radius: 9
                 color: "#ffffff"
-
-                Behavior on x {
-                    enabled: settingSwitch.ui.animationsEnabled
-
-                    NumberAnimation {
-                        duration: 150
-                        easing.type: Easing.OutCubic
-                    }
-                }
-            }
-
-            Behavior on color {
-                enabled: settingSwitch.ui.animationsEnabled
-
-                ColorAnimation {
-                    duration: 150
-                    easing.type: Easing.OutCubic
-                }
             }
         }
 
@@ -340,6 +370,7 @@ Rectangle {
 
                         SettingSwitch {
                             ui: root.ui
+                            controlsGlobalMotion: true
                             checked: root.viewModel.animationsEnabled
                             onToggled: root.viewModel.setAnimationsEnabled(checked)
                         }

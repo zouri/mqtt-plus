@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Effects
 import QtQuick.Layouts
 import "../../components"
 
@@ -16,7 +15,8 @@ Item {
     property int payloadViewFormat: 0
     property string displayedPayload: ""
     property bool opened: false
-    property real slideOffset: opened ? 0 : width
+    property real revealProgress: 0.0
+    readonly property bool motionEnabled: control.ui.animationsEnabled
     readonly property int payloadTextMaximumHeight: 220
     readonly property int parsedTextMaximumHeight: 180
 
@@ -43,9 +43,13 @@ Item {
     }
 
     width: Math.min(400, parent ? parent.width * 0.88 : 400)
-    transform: Translate { x: control.slideOffset }
-    visible: control.opened || control.slideOffset < control.width
+    transform: Translate {
+        x: (1.0 - control.revealProgress) * control.width
+    }
+    visible: control.opened || control.revealProgress > 0.0
+    enabled: control.opened
     Accessible.role: Accessible.Pane
+    Accessible.ignored: !control.opened
     Accessible.name: qsTr("Message inspector")
 
     onHistoryIdChanged: {
@@ -58,9 +62,27 @@ Item {
             control.payloadViewFormat = Number(control.details.testFormat || 0);
             control.refreshDisplayedPayload();
         }
+        control.syncRevealProgress();
     }
 
+    onMotionEnabledChanged: control.syncRevealProgress()
     onPayloadViewFormatChanged: control.refreshDisplayedPayload()
+    Component.onCompleted: control.syncRevealProgress()
+
+    function syncRevealProgress() {
+        const targetProgress = control.opened ? 1.0 : 0.0;
+        inspectorRevealAnimation.stop();
+        if (!control.motionEnabled
+                || Math.abs(control.revealProgress - targetProgress) < 0.001) {
+            control.revealProgress = targetProgress;
+            return;
+        }
+        inspectorRevealAnimation.to = targetProgress;
+        inspectorRevealAnimation.easing.type = control.opened
+                                                 ? control.ui.motionEnterEasing
+                                                 : control.ui.motionExitEasing;
+        inspectorRevealAnimation.restart();
+    }
 
     function refreshDisplayedPayload() {
         const fallback = String(control.details.fullPayload || qsTr("Select a message to inspect"));
@@ -80,27 +102,44 @@ Item {
         onActivated: control.closeRequested()
     }
 
-    Behavior on slideOffset {
-        enabled: control.ui.animationsEnabled
+    NumberAnimation {
+        id: inspectorRevealAnimation
 
-        NumberAnimation {
-            duration: 200
-            easing.type: Easing.OutCubic
-        }
+        target: control
+        property: "revealProgress"
+        duration: control.ui.motionPanelDuration
     }
 
     Rectangle {
+        id: inspectorEdgeShadow
+
+        anchors.top: parent.top
+        anchors.right: inspectorSurface.left
+        anchors.bottom: parent.bottom
+        width: 10
+        color: "transparent"
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+
+            GradientStop {
+                position: 0.0
+                color: "transparent"
+            }
+
+            GradientStop {
+                position: 1.0
+                color: control.ui.isDarkTheme ? "#52000000" : "#1f000000"
+            }
+        }
+        Accessible.ignored: true
+    }
+
+    Rectangle {
+        id: inspectorSurface
+
         anchors.fill: parent
         color: control.ui.themePalette.panelBg
         border.color: control.ui.themePalette.panelBorder
-        layer.enabled: control.visible
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowBlur: 0.48
-            shadowColor: control.ui.isDarkTheme ? "#80000000" : "#30000000"
-            shadowHorizontalOffset: -8
-            shadowVerticalOffset: 0
-        }
     }
 
     ColumnLayout {

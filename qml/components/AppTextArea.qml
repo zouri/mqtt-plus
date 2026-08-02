@@ -21,6 +21,10 @@ Control {
     property int backgroundBorderWidth: 1
     property color backgroundColor: control.ui.themePalette.fieldBg
 
+    readonly property color hoverBorderColor: control.ui.isDarkTheme
+                                                 ? Qt.lighter(control.ui.themePalette.fieldBorder, 1.25)
+                                                 : Qt.darker(control.ui.themePalette.fieldBorder, 1.12)
+    readonly property bool editorActiveFocus: textArea.activeFocus
     readonly property real contentY: contentRoot.editorContentY
     readonly property real contentHeight: contentRoot.editorContentHeight
     readonly property real viewportHeight: contentRoot.editorViewportHeight
@@ -31,6 +35,7 @@ Control {
 
     signal submitRequested
     clip: true
+    hoverEnabled: true
     font.pixelSize: 13
 
     function setContentY(value) {
@@ -67,14 +72,20 @@ Control {
         radius: control.backgroundRadius
         color: control.backgroundColor
         border.width: control.backgroundBorderWidth
-        border.color: control.ui.themePalette.fieldBorder
+        border.color: !control.enabled
+                      ? control.ui.themePalette.fieldBorder
+                      : (control.editorActiveFocus
+                         ? control.ui.themePalette.selectedBorder
+                         : (control.hovered
+                            ? control.hoverBorderColor
+                            : control.ui.themePalette.fieldBorder))
 
         Behavior on border.color {
             enabled: control.ui.animationsEnabled
 
             ColorAnimation {
-                duration: 120
-                easing.type: Easing.OutCubic
+                duration: control.ui.motionMicroDuration
+                easing.type: control.ui.motionEnterEasing
             }
         }
     }
