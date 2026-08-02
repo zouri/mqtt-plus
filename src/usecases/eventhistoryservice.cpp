@@ -1263,20 +1263,23 @@ qint64 EventHistoryService::droppedParseTaskCount() const
     return m_messageParser.droppedTaskCount();
 }
 
-void EventHistoryService::setMessageCapturePolicy(
+bool EventHistoryService::setMessageCapturePolicy(
     const QString &sessionId,
     const MessageCapturePolicy &policy)
 {
     if (sessionId.isEmpty()) {
-        return;
+        return false;
     }
-    m_capturePolicies.insert(sessionId, policy.normalized());
+    if (!m_sessionService.setMessageCapturePolicy(sessionId, policy)) {
+        return false;
+    }
     scheduleMessagePressureNotification();
+    return true;
 }
 
 MessageCapturePolicy EventHistoryService::messageCapturePolicy(const QString &sessionId) const
 {
-    return m_capturePolicies.value(sessionId);
+    return m_sessionService.messageCapturePolicy(sessionId);
 }
 
 qint64 EventHistoryService::captureFilteredMessageCount() const
@@ -1388,8 +1391,7 @@ bool EventHistoryService::shouldCaptureMessage(
     MessageDirection direction,
     const QString &topic) const
 {
-    const auto policy = m_capturePolicies.constFind(session.id);
-    return policy == m_capturePolicies.cend() || policy->accepts(direction, topic);
+    return m_sessionService.messageCapturePolicy(session.id).accepts(direction, topic);
 }
 
 bool EventHistoryService::shouldSkipParsingForPressure() const

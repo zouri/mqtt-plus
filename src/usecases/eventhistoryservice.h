@@ -74,7 +74,7 @@ public:
     int messageParserBacklog() const;
     qint64 messageParserBacklogBytes() const;
     qint64 droppedParseTaskCount() const;
-    void setMessageCapturePolicy(const QString &sessionId, const MessageCapturePolicy &policy);
+    bool setMessageCapturePolicy(const QString &sessionId, const MessageCapturePolicy &policy);
     MessageCapturePolicy messageCapturePolicy(const QString &sessionId) const;
     qint64 captureFilteredMessageCount() const;
     qint64 pressureSkippedParseCount() const;
@@ -143,7 +143,6 @@ private:
     qint64 m_frozenOldestLoadedMessageId = 0;
     QSet<QString> m_reportedPayloadStorageStates;
     QHash<QString, qint64> m_nextMessageSequence;
-    QHash<QString, MessageCapturePolicy> m_capturePolicies;
     QString m_lastMessageStorageError;
     qint64 m_captureFilteredMessages = 0;
     qint64 m_pressureSkippedParses = 0;

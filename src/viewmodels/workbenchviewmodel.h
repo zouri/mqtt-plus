@@ -41,6 +41,7 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(QVariantMap messageTopicFilterState READ messageTopicFilterState NOTIFY messageTopicFilterStateChanged)
     Q_PROPERTY(qint64 totalMessageCount READ totalMessageCount NOTIFY totalMessageCountChanged)
     Q_PROPERTY(QVariantMap messagePressure READ messagePressure NOTIFY messagePressureChanged)
+    Q_PROPERTY(QVariantMap messageCapturePolicy READ messageCapturePolicy NOTIFY messageCapturePolicyChanged)
 
 public:
     explicit WorkbenchViewModel(
@@ -75,6 +76,7 @@ public:
     QVariantMap messageTopicFilterState() const;
     qint64 totalMessageCount() const;
     QVariantMap messagePressure() const;
+    QVariantMap messageCapturePolicy() const;
 
     void setCurrentSessionIndex(int index);
 
@@ -110,6 +112,11 @@ public:
     Q_INVOKABLE void setMessageSearchText(const QString &text);
     Q_INVOKABLE void addMessageTopicFilter(const QString &topic);
     Q_INVOKABLE void clearMessageFilters();
+    Q_INVOKABLE bool setCurrentMessageCapturePolicy(
+        bool captureIncoming,
+        bool captureOutgoing,
+        const QString &includeTopicFilters,
+        const QString &excludeTopicFilters);
     Q_INVOKABLE QVariantMap messageDetails(const QString &historyId) const;
     Q_INVOKABLE qreal currentIncomingMessageRate() const;
     Q_INVOKABLE qreal currentOutgoingMessageRate() const;
@@ -130,6 +137,7 @@ signals:
     void subscriptionsStateChanged();
     void messageTopicFilterStateChanged();
     void messagePressureChanged();
+    void messageCapturePolicyChanged();
 
 private:
     QString reusableMessagePayload(

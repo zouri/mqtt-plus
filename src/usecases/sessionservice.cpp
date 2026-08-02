@@ -2,6 +2,7 @@
 
 #include "domain/sessionconfig.h"
 #include "services/apputils.h"
+#include "services/messaging/messagecapturepolicy.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
@@ -19,6 +20,37 @@
 #include <utility>
 
 using namespace AppUtils;
+
+namespace {
+MessageCapturePolicy capturePolicyFromSession(const SessionState &session)
+{
+    MessageCapturePolicy policy;
+    policy.captureIncoming = session.captureIncoming;
+    policy.captureOutgoing = session.captureOutgoing;
+    policy.includeTopicFilters = session.captureIncludeTopicFilters;
+    policy.excludeTopicFilters = session.captureExcludeTopicFilters;
+    return policy.normalized();
+}
+
+void applyCapturePolicy(SessionState &session, const MessageCapturePolicy &policy)
+{
+    const MessageCapturePolicy normalized = policy.normalized();
+    session.captureIncoming = normalized.captureIncoming;
+    session.captureOutgoing = normalized.captureOutgoing;
+    session.captureIncludeTopicFilters = normalized.includeTopicFilters;
+    session.captureExcludeTopicFilters = normalized.excludeTopicFilters;
+}
+
+bool capturePoliciesEqual(
+    const MessageCapturePolicy &left,
+    const MessageCapturePolicy &right)
+{
+    return left.captureIncoming == right.captureIncoming
+        && left.captureOutgoing == right.captureOutgoing
+        && left.includeTopicFilters == right.includeTopicFilters
+        && left.excludeTopicFilters == right.excludeTopicFilters;
+}
+} // namespace
 
 SessionService::SessionService(
     QSettings &settings,
@@ -77,6 +109,43 @@ const SessionState *SessionService::sessionById(const QString &sessionId) const
         }
     }
     return nullptr;
+}
+
+MessageCapturePolicy SessionService::messageCapturePolicy(const QString &sessionId) const
+{
+    const SessionState *session = sessionById(sessionId);
+    return session ? capturePolicyFromSession(*session) : MessageCapturePolicy {};
+}
+
+bool SessionService::setMessageCapturePolicy(
+    const QString &sessionId,
+    const MessageCapturePolicy &policy)
+{
+    SessionState *session = sessionById(sessionId);
+    if (!session) {
+        return false;
+    }
+
+    const MessageCapturePolicy previousPolicy = capturePolicyFromSession(*session);
+    const MessageCapturePolicy normalized = policy.normalized();
+    if (capturePoliciesEqual(previousPolicy, normalized)) {
+        return true;
+    }
+
+    applyCapturePolicy(*session, normalized);
+    QString errorMessage;
+    if (!SessionSettingsStore::writeSessions(m_settings, m_sessions, errorMessage)) {
+        applyCapturePolicy(*session, previousPolicy);
+        QString ignoredError;
+        SessionSettingsStore::writeSessions(m_settings, m_sessions, ignoredError);
+        emit storageError(
+            errorMessage.isEmpty() ? tr("Cannot save sessions.") : errorMessage);
+        return false;
+    }
+
+    emit sessionsChanged();
+    emit messageCapturePolicyChanged(sessionId);
+    return true;
 }
 
 bool SessionService::loadSessions()
@@ -266,6 +335,10 @@ void SessionService::duplicateSessionAt(int index)
     SessionState session = createDefaultSession(tr("%1 Copy").arg(source.name));
     applyConfig(session, config, false);
     session.outputPaused = source.outputPaused;
+    session.captureIncoming = source.captureIncoming;
+    session.captureOutgoing = source.captureOutgoing;
+    session.captureIncludeTopicFilters = source.captureIncludeTopicFilters;
+    session.captureExcludeTopicFilters = source.captureExcludeTopicFilters;
     session.runtime.subscriptionFormats = source.runtime.subscriptionFormats;
     session.subscriptions = source.subscriptions;
     for (auto &subscription : session.subscriptions) {

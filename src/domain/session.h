@@ -4,6 +4,7 @@
 #include "subscription.h"
 
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 struct SessionState {
@@ -27,6 +28,10 @@ struct SessionState {
     QString authenticationMethod;
     QString authenticationData;
     bool outputPaused = false;
+    bool captureIncoming = true;
+    bool captureOutgoing = true;
+    QStringList captureIncludeTopicFilters;
+    QStringList captureExcludeTopicFilters;
     QVector<SubscriptionEntry> subscriptions;
     SessionRuntimeState runtime;
 };

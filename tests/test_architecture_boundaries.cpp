@@ -40,6 +40,7 @@ private slots:
     void workbenchViewsDoNotInterpretContextMenuActions();
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
+    void messageWorkspaceSeparatesDisplayAndCaptureFilters();
     void eventStreamViewUsesLocalFollowScrollState();
     void workbenchViewModelDoesNotExposeLegacyCommands();
     void workbenchViewModelDoesNotExposeUnusedRawModels();
@@ -1104,6 +1105,31 @@ void ArchitectureBoundariesTest::workbenchViewsUseIntentCommands()
                 qPrintable(QStringLiteral("%1 must use an intent-style WorkbenchViewModel command instead of %2").arg(it.key(), token)));
         }
     }
+}
+
+void ArchitectureBoundariesTest::messageWorkspaceSeparatesDisplayAndCaptureFilters()
+{
+    QString filterSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/workbench/MessageFilterPopover.qml"),
+        filterSource));
+    QVERIFY2(filterSource.contains(QStringLiteral("qsTr(\"Display filter\")")),
+        "The message filter popover must label presentation-only filtering explicitly");
+    QVERIFY2(filterSource.contains(QStringLiteral("qsTr(\"Capture filter\")")),
+        "The message filter popover must label capture filtering explicitly");
+    QVERIFY2(filterSource.contains(QStringLiteral("setCurrentMessageCapturePolicy")),
+        "Capture policy changes must go through a WorkbenchViewModel intent command");
+    QVERIFY2(!filterSource.contains(QStringLiteral("eventHistory.")),
+        "QML must not mutate EventHistoryService capture policy directly");
+
+    QString workbenchSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/workbench/WorkbenchView.qml"),
+        workbenchSource));
+    QVERIFY2(workbenchSource.contains(QStringLiteral("id: pressureStatusButton")),
+        "The workbench status bar must expose bounded-pipeline pressure state");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("qsTr(\"Raw only\")")),
+        "Degraded capture must identify raw-only storage to the user");
 }
 
 void ArchitectureBoundariesTest::eventStreamViewUsesLocalFollowScrollState()

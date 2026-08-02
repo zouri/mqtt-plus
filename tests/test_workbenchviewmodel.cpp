@@ -2,6 +2,7 @@
 
 #include "domain/session.h"
 #include "models/subscriptionlistmodel.h"
+#include "services/messaging/messagecapturepolicy.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
@@ -130,6 +131,8 @@ class WorkbenchViewModelTest : public QObject
 private slots:
     void exposesDefaultPublishDraft();
     void exposesMessagePressureState();
+    void persistsAndDuplicatesMessageCapturePolicy();
+    void rollsBackMessageCapturePolicyWhenSettingsWriteFails();
     void recoversFromInvalidSessionSettingsWithoutOverwritingFile();
     void rejectsSessionCreateWhenSettingsWriteFails();
     void rollsBackSessionEditWhenSettingsWriteFails();
@@ -196,6 +199,89 @@ void WorkbenchViewModelTest::exposesMessagePressureState()
     pressure = fixture.viewModel.messagePressure();
     QCOMPARE(pressure.value(QStringLiteral("backlog")).toInt(), 1);
     QCOMPARE(pressure.value(QStringLiteral("backlogBytes")).toLongLong() > 0, true);
+}
+
+void WorkbenchViewModelTest::persistsAndDuplicatesMessageCapturePolicy()
+{
+    WorkbenchFixture fixture;
+    QVERIFY(fixture.sessionService.loadSessions());
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+    QSignalSpy policySpy(
+        &fixture.viewModel,
+        &WorkbenchViewModel::messageCapturePolicyChanged);
+
+    QVERIFY(fixture.viewModel.setCurrentMessageCapturePolicy(
+        true,
+        false,
+        QStringLiteral(" alerts/#, devices/+/state, alerts/# "),
+        QStringLiteral("devices/private/#\n diagnostics/+ ")));
+
+    const QVariantMap exposedPolicy = fixture.viewModel.messageCapturePolicy();
+    QCOMPARE(exposedPolicy.value(QStringLiteral("captureIncoming")).toBool(), true);
+    QCOMPARE(exposedPolicy.value(QStringLiteral("captureOutgoing")).toBool(), false);
+    QCOMPARE(
+        exposedPolicy.value(QStringLiteral("includeTopicFilters")).toStringList(),
+        QStringList({QStringLiteral("alerts/#"), QStringLiteral("devices/+/state")}));
+    QCOMPARE(
+        exposedPolicy.value(QStringLiteral("excludeTopicFilters")).toStringList(),
+        QStringList({QStringLiteral("devices/private/#"), QStringLiteral("diagnostics/+")}));
+    QCOMPARE(policySpy.size(), 1);
+
+    const QString sourceSessionId = fixture.sessionService.currentSession()->id;
+    fixture.viewModel.requestSessionDuplicate(0);
+    QCOMPARE(fixture.sessionService.sessions().size(), 2);
+    const QString duplicateSessionId = fixture.sessionService.currentSession()->id;
+    const MessageCapturePolicy sourcePolicy = fixture.sessionService.messageCapturePolicy(sourceSessionId);
+    const MessageCapturePolicy duplicatePolicy = fixture.sessionService.messageCapturePolicy(duplicateSessionId);
+    QCOMPARE(duplicatePolicy.captureIncoming, sourcePolicy.captureIncoming);
+    QCOMPARE(duplicatePolicy.captureOutgoing, sourcePolicy.captureOutgoing);
+    QCOMPARE(duplicatePolicy.includeTopicFilters, sourcePolicy.includeTopicFilters);
+    QCOMPARE(duplicatePolicy.excludeTopicFilters, sourcePolicy.excludeTopicFilters);
+
+    QSettings reloadedSettings(fixture.settings.fileName(), QSettings::IniFormat);
+    PreferencesController reloadedPreferences(&reloadedSettings);
+    SessionService reloadedService(
+        reloadedSettings,
+        fixture.scriptService,
+        fixture.historyStore,
+        reloadedPreferences);
+    QVERIFY(reloadedService.loadSessions());
+    QCOMPARE(reloadedService.sessions().size(), 2);
+    const MessageCapturePolicy reloadedPolicy = reloadedService.messageCapturePolicy(sourceSessionId);
+    QCOMPARE(reloadedPolicy.captureIncoming, true);
+    QCOMPARE(reloadedPolicy.captureOutgoing, false);
+    QCOMPARE(reloadedPolicy.includeTopicFilters, sourcePolicy.includeTopicFilters);
+    QCOMPARE(reloadedPolicy.excludeTopicFilters, sourcePolicy.excludeTopicFilters);
+}
+
+void WorkbenchViewModelTest::rollsBackMessageCapturePolicyWhenSettingsWriteFails()
+{
+    const QSettings::Format format = failingSettingsFormat();
+    QVERIFY(format != QSettings::InvalidFormat);
+    WorkbenchFixture fixture(format);
+    QVERIFY(!fixture.sessionService.loadSessions());
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+    const QVariantMap previousPolicy = fixture.viewModel.messageCapturePolicy();
+    QSignalSpy storageErrorSpy(&fixture.sessionService, &SessionService::storageError);
+    QSignalSpy sessionsChangedSpy(&fixture.sessionService, &SessionService::sessionsChanged);
+    QSignalSpy policySpy(
+        &fixture.viewModel,
+        &WorkbenchViewModel::messageCapturePolicyChanged);
+    failingSettingsWriteCount = 0;
+
+    QVERIFY(!fixture.viewModel.setCurrentMessageCapturePolicy(
+        false,
+        false,
+        QStringLiteral("alerts/#"),
+        QStringLiteral("alerts/private/#")));
+
+    QCOMPARE(fixture.viewModel.messageCapturePolicy(), previousPolicy);
+    QCOMPARE(storageErrorSpy.size(), 1);
+    QCOMPARE(sessionsChangedSpy.size(), 0);
+    QCOMPARE(policySpy.size(), 0);
+    QCOMPARE(failingSettingsWriteCount, 2);
 }
 
 void WorkbenchViewModelTest::recoversFromInvalidSessionSettingsWithoutOverwritingFile()
