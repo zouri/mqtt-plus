@@ -112,9 +112,58 @@ ApplicationWindow {
         }
 
         background: Rectangle {
+            id: railBackground
+
+            readonly property color targetColor: railButton.active
+                                                  ? railButton.ui.themePalette.selectedBg
+                                                  : (railButton.hovered
+                                                     ? railButton.ui.themePalette.rowHover
+                                                     : "transparent")
+            property color presentationColor: railBackground.targetColor
+            property bool presentationReady: false
+
             radius: 12
-            color: railButton.active ? railButton.ui.themePalette.selectedBg : (railButton.hovered ? railButton.ui.themePalette.rowHover : "transparent")
+            color: railBackground.presentationColor
             border.color: "transparent"
+
+            function syncPresentation(animate) {
+                railBackgroundAnimation.stop();
+                if (!animate
+                        || !railBackground.presentationReady
+                        || !railButton.ui.animationsEnabled
+                        || railButton.ui.motionMicroDuration <= 0) {
+                    railBackground.presentationColor = railBackground.targetColor;
+                    return;
+                }
+                railBackgroundAnimation.to = railBackground.targetColor;
+                railBackgroundAnimation.restart();
+            }
+
+            onTargetColorChanged: railBackground.syncPresentation(true)
+
+            Component.onCompleted: {
+                railBackground.presentationReady = true;
+                railBackground.syncPresentation(false);
+            }
+
+            Connections {
+                target: railButton.ui
+
+                function onAnimationsEnabledChanged() {
+                    if (!railButton.ui.animationsEnabled) {
+                        railBackground.syncPresentation(false);
+                    }
+                }
+            }
+
+            ColorAnimation {
+                id: railBackgroundAnimation
+
+                target: railBackground
+                property: "presentationColor"
+                duration: railButton.ui.motionMicroDuration
+                easing.type: railButton.ui.motionEnterEasing
+            }
         }
     }
 

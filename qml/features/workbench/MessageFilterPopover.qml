@@ -5,10 +5,9 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../../components"
 
-Popup {
+AppPopover {
     id: control
 
-    required property AppUi ui
     required property var filterModel
     required property var subscriptionsModel
     required property string receiveStateText

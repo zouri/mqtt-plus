@@ -212,14 +212,18 @@ AppPanel {
                 background: Rectangle {
                     radius: 8
                     color: control.ui.themePalette.innerPanelBg
-                    border.color: control.ui.themePalette.fieldBorder
+                    border.color: filterTopicField.activeFocus
+                                  ? control.ui.themePalette.selectedBorder
+                                  : (filterTopicField.hovered
+                                     ? control.ui.themePalette.panelBorder
+                                     : control.ui.themePalette.fieldBorder)
 
                     Behavior on border.color {
                         enabled: control.ui.animationsEnabled
 
                         ColorAnimation {
-                            duration: 120
-                            easing.type: Easing.OutCubic
+                            duration: control.ui.motionMicroDuration
+                            easing.type: control.ui.motionEnterEasing
                         }
                     }
                 }
@@ -684,56 +688,11 @@ AppPanel {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: deleteSubscriptionDialog
 
-        modal: true
-        dim: true
-        focus: true
-        standardButtons: Dialog.NoButton
-        anchors.centerIn: Overlay.overlay
-        transformOrigin: Popup.Center
+        ui: control.ui
         width: Math.min(340, Overlay.overlay.width - 32)
-
-        enter: Transition {
-            NumberAnimation {
-                property: "opacity"
-                from: 0
-                to: 1
-                duration: control.ui.animationsEnabled ? 200 : 0
-                easing.type: Easing.OutCubic
-            }
-
-            NumberAnimation {
-                property: "scale"
-                from: 0.92
-                to: 1
-                duration: control.ui.animationsEnabled ? 200 : 0
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        exit: Transition {
-            NumberAnimation {
-                property: "opacity"
-                from: 1
-                to: 0
-                duration: control.ui.animationsEnabled ? 160 : 0
-                easing.type: Easing.InCubic
-            }
-
-            NumberAnimation {
-                property: "scale"
-                from: 1
-                to: 0.96
-                duration: control.ui.animationsEnabled ? 160 : 0
-                easing.type: Easing.InCubic
-            }
-        }
-
-        Overlay.modal: AppDialogOverlay {
-            ui: control.ui
-        }
 
         header: Item {
             implicitHeight: 0

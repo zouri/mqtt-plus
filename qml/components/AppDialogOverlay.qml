@@ -8,13 +8,19 @@ Rectangle {
     required property AppUi ui
     property bool animationsEnabled: control.ui.animationsEnabled
     property int enterDelay: 0
-    property int enterDuration: 200
+    property int enterDuration: control.ui.motionModalEnterDuration
 
     color: control.ui.themePalette.dialogOverlay
-    opacity: control.animationsEnabled ? 0 : 1
+    opacity: 1
+
+    Component.onCompleted: {
+        if (control.animationsEnabled) {
+            enterAnimation.start()
+        }
+    }
 
     SequentialAnimation {
-        running: control.animationsEnabled
+        id: enterAnimation
 
         PauseAnimation {
             duration: control.enterDelay
@@ -25,7 +31,7 @@ Rectangle {
             from: 0
             to: 1
             duration: control.enterDuration
-            easing.type: Easing.OutCubic
+            easing.type: control.ui.motionEnterEasing
         }
     }
 }

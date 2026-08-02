@@ -6,10 +6,9 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../../components"
 
-Dialog {
+AppDialog {
     id: root
 
-    required property AppUi ui
     required property var viewModel
     readonly property var editor: root.viewModel.subscriptionEditor
     function openForCreate() {
@@ -36,53 +35,7 @@ Dialog {
         topicColorDialog.open()
     }
 
-    modal: true
-    dim: true
-    focus: true
     width: 420
-    anchors.centerIn: Overlay.overlay
-    transformOrigin: Popup.Center
-    standardButtons: Dialog.NoButton
-
-    enter: Transition {
-        NumberAnimation {
-            property: "opacity"
-            from: 0
-            to: 1
-            duration: root.ui.animationsEnabled ? 200 : 0
-            easing.type: Easing.OutCubic
-        }
-
-        NumberAnimation {
-            property: "scale"
-            from: 0.92
-            to: 1
-            duration: root.ui.animationsEnabled ? 200 : 0
-            easing.type: Easing.OutCubic
-        }
-    }
-
-    exit: Transition {
-        NumberAnimation {
-            property: "opacity"
-            from: 1
-            to: 0
-            duration: root.ui.animationsEnabled ? 160 : 0
-            easing.type: Easing.InCubic
-        }
-
-        NumberAnimation {
-            property: "scale"
-            from: 1
-            to: 0.96
-            duration: root.ui.animationsEnabled ? 160 : 0
-            easing.type: Easing.InCubic
-        }
-    }
-
-    Overlay.modal: AppDialogOverlay {
-        ui: root.ui
-    }
 
     header: Item {
         implicitHeight: 0

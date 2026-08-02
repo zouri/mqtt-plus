@@ -351,8 +351,8 @@ Rectangle {
             enabled: control.ui.animationsEnabled
 
             ColorAnimation {
-                duration: 120
-                easing.type: Easing.OutCubic
+                duration: control.ui.motionMicroDuration
+                easing.type: control.ui.motionEnterEasing
             }
         }
 

@@ -16,6 +16,16 @@ QtObject {
     readonly property int compactCheckHeight: 28
     readonly property int compactFontSize: 12
 
+    // ---- Motion tokens ----
+    readonly property int motionMicroDuration: root.animationsEnabled ? 100 : 0
+    readonly property int motionPopoverEnterDuration: root.animationsEnabled ? 120 : 0
+    readonly property int motionPopoverExitDuration: root.animationsEnabled ? 80 : 0
+    readonly property int motionPanelDuration: root.animationsEnabled ? 180 : 0
+    readonly property int motionModalEnterDuration: root.animationsEnabled ? 180 : 0
+    readonly property int motionModalExitDuration: root.animationsEnabled ? 140 : 0
+    readonly property int motionEnterEasing: Easing.OutCubic
+    readonly property int motionExitEasing: Easing.InCubic
+
     // ---- Design tokens: spacing scale (4pt base) ----
     readonly property int spaceXs: 4
     readonly property int spaceSm: 8

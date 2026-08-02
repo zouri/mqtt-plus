@@ -27,6 +27,7 @@ Item {
     property string followMode: "smart"
     property string selectedHistoryId: ""
     property string pendingMessageSearchText: ""
+    property int bottomVisualOverflow: 0
     readonly property bool connected: root.status.state === "connected"
     readonly property bool connecting: root.status.state === "connecting"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
@@ -289,6 +290,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.bottomMargin: -root.bottomVisualOverflow
         spacing: 0
 
         Rectangle {
@@ -532,8 +534,6 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 14
                 anchors.rightMargin: 14
-                anchors.topMargin: 8
-                anchors.bottomMargin: 8
                 clip: true
                 spacing: 2
                 model: root.active ? root.streamModel : null
@@ -1013,11 +1013,18 @@ Item {
 
             Rectangle {
                 id: followButton
-                visible: !eventList.shouldFollowOutput
-                         && (root.connected || eventList.unreadCount > 0)
+
+                readonly property bool targetShown: !eventList.shouldFollowOutput
+                                                    && (root.connected
+                                                        || eventList.unreadCount > 0)
+                readonly property bool motionEnabled: root.ui.animationsEnabled
+                property bool presentationVisible: false
+
+                visible: presentationVisible
+                enabled: targetShown
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: visible ? 14 : 8
+                anchors.bottomMargin: 14
                 radius: 19
                 height: 38
                 width: followButtonRow.implicitWidth + 26
@@ -1025,13 +1032,50 @@ Item {
                        ? root.ui.themePalette.buttonPrimaryHoverBg
                        : root.ui.themePalette.followBg
                 border.color: root.ui.themePalette.followBorder
-                opacity: visible ? 0.97 : 0
+                opacity: 0
                 z: 2
-                scale: visible ? 1.0 : 0.96
+                scale: 0.96
                 Accessible.role: Accessible.Button
+                Accessible.ignored: !targetShown
                 Accessible.name: eventList.unreadCount > 0
                                  ? qsTr("Scroll to latest, %1 unread").arg(eventList.unreadCount)
                                  : qsTr("Scroll to latest")
+
+                onTargetShownChanged: followButton.syncPresentation()
+                onMotionEnabledChanged: followButton.syncPresentation()
+                Component.onCompleted: followButton.syncPresentation()
+
+                function syncPresentation() {
+                    const targetOpacity = followButton.targetShown ? 0.97 : 0.0;
+                    const targetScale = followButton.targetShown ? 1.0 : 0.96;
+                    followTransition.stop();
+
+                    if (followButton.targetShown) {
+                        followButton.presentationVisible = true;
+                    }
+
+                    if (!followButton.motionEnabled
+                            || (!followButton.targetShown
+                                && !followButton.presentationVisible)) {
+                        followButton.opacity = targetOpacity;
+                        followButton.scale = targetScale;
+                        followButton.presentationVisible = followButton.targetShown;
+                        return;
+                    }
+
+                    if (Math.abs(followButton.opacity - targetOpacity) < 0.001
+                            && Math.abs(followButton.scale - targetScale) < 0.001) {
+                        followButton.opacity = targetOpacity;
+                        followButton.scale = targetScale;
+                        followButton.presentationVisible = followButton.targetShown;
+                        return;
+                    }
+
+                    followTransition.entering = followButton.targetShown;
+                    followOpacityAnimation.to = targetOpacity;
+                    followScaleAnimation.to = targetScale;
+                    followTransition.start();
+                }
 
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Return
@@ -1042,30 +1086,43 @@ Item {
                     }
                 }
 
-                Behavior on opacity {
-                    enabled: root.ui.animationsEnabled
+                ParallelAnimation {
+                    id: followTransition
+
+                    property bool entering: false
 
                     NumberAnimation {
-                        duration: 140
-                        easing.type: Easing.OutCubic
+                        id: followOpacityAnimation
+
+                        target: followButton
+                        property: "opacity"
+                        duration: followTransition.entering
+                                  ? root.ui.motionPopoverEnterDuration
+                                  : root.ui.motionPopoverExitDuration
+                        easing.type: followTransition.entering
+                                     ? root.ui.motionEnterEasing
+                                     : root.ui.motionExitEasing
                     }
-                }
-
-                Behavior on scale {
-                    enabled: root.ui.animationsEnabled
 
                     NumberAnimation {
-                        duration: 160
-                        easing.type: Easing.OutBack
+                        id: followScaleAnimation
+
+                        target: followButton
+                        property: "scale"
+                        duration: followTransition.entering
+                                  ? root.ui.motionPopoverEnterDuration
+                                  : root.ui.motionPopoverExitDuration
+                        easing.type: followTransition.entering
+                                     ? root.ui.motionEnterEasing
+                                     : root.ui.motionExitEasing
                     }
-                }
 
-                Behavior on anchors.bottomMargin {
-                    enabled: root.ui.animationsEnabled
-
-                    NumberAnimation {
-                        duration: 160
-                        easing.type: Easing.OutCubic
+                    onFinished: {
+                        if (!followButton.targetShown) {
+                            followButton.opacity = 0.0;
+                            followButton.scale = 0.96;
+                            followButton.presentationVisible = false;
+                        }
                     }
                 }
 
@@ -1111,20 +1168,14 @@ Item {
     }
 
 
-    Popup {
+    AppDialog {
         id: clearMessagesDialog
 
-        anchors.centerIn: Overlay.overlay
+        ui: root.ui
         width: Math.min(390, root.width - 32)
         height: clearMessagesDialogContent.implicitHeight + 36
-        modal: true
-        focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         padding: 0
-
-        Overlay.modal: AppDialogOverlay {
-            ui: root.ui
-        }
 
         background: Rectangle {
             radius: 10

@@ -30,7 +30,7 @@ Item {
     readonly property bool connectionPaneAutoHidden: root.width <= 988
     readonly property bool subscriptionPaneAutoHidden: root.width <= 708
     readonly property int effectiveExpandedConnectionPaneWidth: root.compactPaneWidths ? root.compactConnectionPaneWidth : root.expandedConnectionPaneWidth
-    property real connectionPaneWidth: root.connectionPaneAutoHidden ? 0 : (root.connectionPaneCollapsed ? root.collapsedConnectionPaneWidth : root.effectiveExpandedConnectionPaneWidth)
+    property real connectionPaneWidth: 0
     readonly property int subscriptionPaneMinWidth: 300
     readonly property int subscriptionPaneMaxWidth: 520
     property int subscriptionPaneWidth: root.preferences.subscriptionPaneWidth
@@ -56,6 +56,47 @@ Item {
 
     Layout.fillWidth: true
     Layout.fillHeight: true
+
+    function connectionPaneTargetWidth(collapsed) {
+        if (root.connectionPaneAutoHidden) {
+            return 0;
+        }
+        return collapsed
+                ? root.collapsedConnectionPaneWidth
+                : root.effectiveExpandedConnectionPaneWidth;
+    }
+
+    function settleConnectionPaneWidth() {
+        connectionPaneAnimation.stop();
+        root.connectionPaneWidth = root.connectionPaneTargetWidth(root.connectionPaneCollapsed);
+    }
+
+    function updateConnectionPaneWidth(animate) {
+        const targetWidth = root.connectionPaneTargetWidth(root.connectionPaneCollapsed);
+        connectionPaneAnimation.stop();
+        if (!animate
+                || !root.layoutReady
+                || !root.active
+                || !root.visible
+                || root.connectionPaneAutoHidden
+                || !root.ui.animationsEnabled
+                || root.ui.motionPanelDuration <= 0
+                || Math.abs(root.connectionPaneWidth - targetWidth) < 0.5) {
+            root.connectionPaneWidth = targetWidth;
+            return;
+        }
+        connectionPaneAnimation.to = targetWidth;
+        connectionPaneAnimation.restart();
+    }
+
+    NumberAnimation {
+        id: connectionPaneAnimation
+
+        target: root
+        property: "connectionPaneWidth"
+        duration: root.ui.motionPanelDuration
+        easing.type: root.ui.motionEnterEasing
+    }
 
     function resetStreamPosition() {
         sessionActivityPanel.resetStreamPosition();
@@ -239,6 +280,7 @@ Item {
     Component.onCompleted: {
         root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
         root.trackedConnectionState = root.status.state || "";
+        root.settleConnectionPaneWidth();
         if (root.active) {
             root.resetStreamPosition();
         }
@@ -246,6 +288,7 @@ Item {
     }
 
     onActiveChanged: {
+        root.settleConnectionPaneWidth();
         if (root.active) {
             root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
             root.trackedConnectionState = root.status.state || "";
@@ -253,7 +296,13 @@ Item {
         }
     }
 
-    onConnectionPaneCollapsedChanged: root.scheduleLayoutSave()
+    onVisibleChanged: root.settleConnectionPaneWidth()
+    onConnectionPaneAutoHiddenChanged: root.settleConnectionPaneWidth()
+    onEffectiveExpandedConnectionPaneWidthChanged: root.settleConnectionPaneWidth()
+    onConnectionPaneCollapsedChanged: {
+        root.scheduleLayoutSave();
+        root.updateConnectionPaneWidth(true);
+    }
     onSubscriptionPaneWidthChanged: root.scheduleLayoutSave()
 
     Timer {
@@ -302,6 +351,16 @@ Item {
 
         function onCurrentSessionIndexChanged() {
             root.collapseConnectionPaneOnConnect = false;
+        }
+    }
+
+    Connections {
+        target: root.ui
+
+        function onAnimationsEnabledChanged() {
+            if (!root.ui.animationsEnabled) {
+                root.settleConnectionPaneWidth();
+            }
         }
     }
 

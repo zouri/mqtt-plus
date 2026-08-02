@@ -31,6 +31,7 @@ private slots:
     void messageInspectorPreservesPayloadFormatting();
     void closingMessageInspectorClearsRowSelection();
     void messageInspectorUsesLeftEdgeShadow();
+    void qmlMotionPolicyUsesSharedTokens();
     void qmlUsesNativeFocusManagement();
     void qmlMenusAreApplicationRendered();
     void textEditorsUseNativeContextMenus();
@@ -662,14 +663,118 @@ void ArchitectureBoundariesTest::messageInspectorUsesLeftEdgeShadow()
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageInspector.qml"), source));
 
-    QVERIFY2(source.contains(QStringLiteral("import QtQuick.Effects")),
-        "The inspector should use the existing Qt Quick effect stack for elevation");
-    QVERIFY2(source.contains(QStringLiteral("layer.enabled: control.visible")),
-        "The inspector shadow layer should only be active while the panel is visible");
-    QVERIFY2(source.contains(QStringLiteral("shadowEnabled: true")),
-        "The inspector should render an elevation shadow");
-    QVERIFY2(source.contains(QStringLiteral("shadowHorizontalOffset: -8")),
-        "The inspector shadow should project toward the message list on its left");
+    QVERIFY2(!source.contains(QStringLiteral("import QtQuick.Effects"))
+            && !source.contains(QStringLiteral("layer.effect:")),
+        "The inspector must not allocate a full-panel offscreen effect merely to draw elevation");
+    QVERIFY2(source.contains(QStringLiteral("id: inspectorEdgeShadow"))
+            && source.contains(QStringLiteral("anchors.right: inspectorSurface.left"))
+            && source.contains(QStringLiteral("orientation: Gradient.Horizontal")),
+        "The inspector should render a narrow left-edge gradient toward the message list");
+}
+
+void ArchitectureBoundariesTest::qmlMotionPolicyUsesSharedTokens()
+{
+    QString uiSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/AppUi.qml"), uiSource));
+    const QStringList durationTokens {
+        QStringLiteral("motionMicroDuration"),
+        QStringLiteral("motionPopoverEnterDuration"),
+        QStringLiteral("motionPopoverExitDuration"),
+        QStringLiteral("motionPanelDuration"),
+        QStringLiteral("motionModalEnterDuration"),
+        QStringLiteral("motionModalExitDuration"),
+    };
+    for (const QString &token : durationTokens) {
+        QVERIFY2(uiSource.contains(token + QStringLiteral(": root.animationsEnabled ?")),
+            qPrintable(QStringLiteral("%1 must snap to zero duration when animations are disabled").arg(token)));
+    }
+
+    QString dialogSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppDialog.qml"), dialogSource));
+    QVERIFY2(dialogSource.contains(QStringLiteral("OpacityAnimator"))
+            && dialogSource.contains(QStringLiteral("ScaleAnimator"))
+            && dialogSource.contains(QStringLiteral("motionModalEnterDuration"))
+            && dialogSource.contains(QStringLiteral("motionModalExitDuration")),
+        "Application dialogs must share the lightweight modal transition");
+
+    QString popoverSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppPopover.qml"), popoverSource));
+    QVERIFY2(popoverSource.contains(QStringLiteral("OpacityAnimator"))
+            && popoverSource.contains(QStringLiteral("ScaleAnimator"))
+            && popoverSource.contains(QStringLiteral("motionPopoverEnterDuration"))
+            && popoverSource.contains(QStringLiteral("motionPopoverExitDuration")),
+        "Application popovers must share the lightweight transient-surface transition");
+
+    QString overlaySource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppDialogOverlay.qml"), overlaySource));
+    QVERIFY2(overlaySource.contains(QStringLiteral("opacity: 1"))
+            && overlaySource.contains(QStringLiteral("target: control")),
+        "Disabling animations must preserve the final modal overlay while its optional fade targets the overlay itself");
+
+    QString settingsSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/settings/SettingsView.qml"), settingsSource));
+    QVERIFY2(settingsSource.contains(QStringLiteral("property real presentationProgress"))
+            && settingsSource.contains(QStringLiteral("settingSwitchAnimation.to = targetProgress"))
+            && settingsSource.contains(QStringLiteral("controlsGlobalMotion: true"))
+            && settingsSource.contains(QStringLiteral("duration: settingSwitch.ui.motionMicroDuration")),
+        "Setting switches must use shared timing and explicitly snap the global motion control itself");
+
+    QString mainSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), mainSource));
+    QVERIFY2(mainSource.contains(QStringLiteral("railBackgroundAnimation.stop()"))
+            && mainSource.contains(QStringLiteral("railBackgroundAnimation.to = railBackground.targetColor"))
+            && !mainSource.contains(QStringLiteral("Behavior on color")),
+        "The navigation rail must stop an in-flight micro transition when motion is disabled");
+
+    QString composerSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/PublishComposer.qml"), composerSource));
+    QVERIFY2(composerSource.contains(QStringLiteral("property real expansionProgress"))
+            && composerSource.contains(QStringLiteral("SplitView.preferredHeight: root.animatedComposerHeight"))
+            && composerSource.contains(QStringLiteral("root.updateExpansion(false)"))
+            && composerSource.contains(QStringLiteral(
+                "root.ui.materialIcon(root.expanded ? \"chevron-down\" : \"chevron-up\")")),
+        "The publish composer is the bounded layout-animation exception and must still snap when motion is disabled");
+
+    QString workbenchSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/WorkbenchView.qml"), workbenchSource));
+    QVERIFY2(workbenchSource.contains(QStringLiteral("function connectionPaneTargetWidth(collapsed)"))
+            && workbenchSource.contains(QStringLiteral(
+                "const targetWidth = root.connectionPaneTargetWidth(root.connectionPaneCollapsed);"))
+            && workbenchSource.contains(QStringLiteral("onConnectionPaneAutoHiddenChanged: root.settleConnectionPaneWidth()"))
+            && workbenchSource.contains(QStringLiteral("onEffectiveExpandedConnectionPaneWidthChanged: root.settleConnectionPaneWidth()"))
+            && !workbenchSource.contains(QStringLiteral("targetConnectionPaneWidth"))
+            && !workbenchSource.contains(QStringLiteral("Behavior on connectionPaneWidth")),
+        "Connection-pane commands must resolve the new collapsed state directly while responsive changes snap");
+
+    QString streamSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), streamSource));
+    QVERIFY2(streamSource.contains(QStringLiteral("property bool presentationVisible"))
+            && streamSource.contains(QStringLiteral("Accessible.ignored: !targetShown"))
+            && !streamSource.contains(QStringLiteral("Behavior on anchors.bottomMargin")),
+        "The follow affordance must finish its exit without animating layout or remaining interactive");
+    QVERIFY2(streamSource.contains(QStringLiteral("AppDialog {\n        id: clearMessagesDialog")),
+        "Message-history confirmation must use the shared dialog motion");
+
+    QString inspectorSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/MessageInspector.qml"), inspectorSource));
+    QVERIFY2(inspectorSource.contains(QStringLiteral("property real revealProgress"))
+            && inspectorSource.contains(QStringLiteral("visible: control.opened || control.revealProgress > 0.0"))
+            && inspectorSource.contains(QStringLiteral("enabled: control.opened"))
+            && inspectorSource.contains(QStringLiteral("inspectorRevealAnimation.to = targetProgress")),
+        "The inspector must remain rendered for exit motion while disabling interaction immediately");
+
+    QString iconButtonSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppIconButton.qml"), iconButtonSource));
+    QVERIFY2(iconButtonSource.contains(QStringLiteral("control.forceActive ? control.hoverBg : control.effectiveRestBg"))
+            && iconButtonSource.contains(QStringLiteral("control.down || control.hovered) ? 1 : 0"))
+            && !iconButtonSource.contains(QStringLiteral("control.down || control.hovered || control.forceActive")),
+        "Reusable icon-button delegates must apply semantic active state immediately and animate pointer state only");
+
+    QString emptyStateSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppEmptyState.qml"), emptyStateSource));
+    QVERIFY2(emptyStateSource.contains(QStringLiteral("visible: root.ui.animationsEnabled"))
+            && emptyStateSource.contains(QStringLiteral("visible: !root.ui.animationsEnabled")),
+        "Loading feedback must retain a visible static fallback when motion is disabled");
 }
 
 void ArchitectureBoundariesTest::qmlUsesNativeFocusManagement()
