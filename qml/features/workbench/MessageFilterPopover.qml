@@ -10,9 +10,10 @@ AppPopover {
 
     required property var filterModel
     required property var subscriptionsModel
+    required property var viewModel
     required property string receiveStateText
 
-    width: 280
+    width: 340
     implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
     padding: 10
     modal: false
@@ -34,6 +35,44 @@ AppPopover {
         control.filterModel.selectedTopics = selected;
     }
 
+    function captureFiltersText(filters) {
+        return filters && filters.length > 0 ? filters.join(", ") : "";
+    }
+
+    function syncCaptureControls() {
+        const policy = control.viewModel.messageCapturePolicy || {};
+        captureIncomingCheck.checked = policy.captureIncoming !== false;
+        captureOutgoingCheck.checked = policy.captureOutgoing !== false;
+        if (!captureIncludeField.activeFocus) {
+            captureIncludeField.text = control.captureFiltersText(policy.includeTopicFilters);
+        }
+        if (!captureExcludeField.activeFocus) {
+            captureExcludeField.text = control.captureFiltersText(policy.excludeTopicFilters);
+        }
+    }
+
+    function applyCapturePolicy() {
+        if (!control.viewModel.setCurrentMessageCapturePolicy(
+                captureIncomingCheck.checked,
+                captureOutgoingCheck.checked,
+                captureIncludeField.text,
+                captureExcludeField.text)) {
+            control.syncCaptureControls();
+        }
+    }
+
+    onOpened: control.syncCaptureControls()
+
+    Connections {
+        target: control.viewModel
+
+        function onMessageCapturePolicyChanged() {
+            if (control.visible) {
+                control.syncCaptureControls();
+            }
+        }
+    }
+
     background: Rectangle {
         radius: 8
         color: control.ui.themePalette.dialogBg
@@ -42,6 +81,22 @@ AppPopover {
 
     contentItem: ColumnLayout {
         spacing: 8
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Display filter")
+            color: control.ui.textStrong
+            font.pixelSize: 12
+            font.bold: true
+        }
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Changes only the visible list. Stored history remains unchanged.")
+            color: control.ui.textMuted
+            font.pixelSize: 10
+            wrapMode: Text.Wrap
+        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -183,6 +238,100 @@ AppPopover {
             text: qsTr("Showing filtered messages")
             color: control.ui.textMuted
             font.pixelSize: 11
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: control.ui.themePalette.separator
+            Accessible.ignored: true
+        }
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Capture filter")
+            color: control.ui.textStrong
+            font.pixelSize: 12
+            font.bold: true
+        }
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Controls which messages are stored and parsed for this session.")
+            color: control.ui.textMuted
+            font.pixelSize: 10
+            wrapMode: Text.Wrap
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            AppCheckBox {
+                id: captureIncomingCheck
+
+                ui: control.ui
+                Layout.fillWidth: true
+                text: qsTr("Capture received")
+                checked: true
+                Accessible.name: text
+                onToggled: control.applyCapturePolicy()
+            }
+
+            AppCheckBox {
+                id: captureOutgoingCheck
+
+                ui: control.ui
+                Layout.fillWidth: true
+                text: qsTr("Capture sent")
+                checked: true
+                Accessible.name: text
+                onToggled: control.applyCapturePolicy()
+            }
+        }
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Include Topics")
+            color: control.ui.textStrong
+            font.pixelSize: 11
+            font.bold: true
+        }
+
+        AppTextField {
+            id: captureIncludeField
+
+            ui: control.ui
+            Layout.fillWidth: true
+            placeholderText: qsTr("e.g. sensors/#, alerts/+")
+            Accessible.name: qsTr("Capture Topic include filters")
+            onEditingFinished: control.applyCapturePolicy()
+        }
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Exclude Topics")
+            color: control.ui.textStrong
+            font.pixelSize: 11
+            font.bold: true
+        }
+
+        AppTextField {
+            id: captureExcludeField
+
+            ui: control.ui
+            Layout.fillWidth: true
+            placeholderText: qsTr("e.g. sensors/private/#")
+            Accessible.name: qsTr("Capture Topic exclude filters")
+            onEditingFinished: control.applyCapturePolicy()
+        }
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Use MQTT Topic filters separated by commas. Exclude filters take priority.")
+            color: control.ui.textMuted
+            font.pixelSize: 10
+            wrapMode: Text.Wrap
         }
     }
 }
