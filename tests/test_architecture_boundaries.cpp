@@ -22,6 +22,7 @@ private slots:
     void eventStreamFollowModeUsesSingleCycleButton();
     void qmlUsesApplicationViewModelRootOnly();
     void applicationUsesConfigurableMonospaceFont();
+    void messageProfilerUsesIsolatedApplicationData();
     void translationsDoNotReferenceLegacyFacade();
     void settingsExplainDeferredMessageRetention();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
@@ -389,6 +390,31 @@ void ArchitectureBoundariesTest::applicationUsesConfigurableMonospaceFont()
             qPrintable(QStringLiteral("%1 must inherit the application fixed-width font")
                            .arg(file.fileName())));
     }
+}
+
+void ArchitectureBoundariesTest::messageProfilerUsesIsolatedApplicationData()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/main.cpp"), source));
+
+    const int testModeIndex = source.indexOf(
+        QStringLiteral("QStandardPaths::setTestModeEnabled(true)"));
+    const int applicationIndex = source.indexOf(QStringLiteral("Application application"));
+    QVERIFY2(testModeIndex >= 0 && applicationIndex > testModeIndex,
+        "The profiler driver must redirect application data before constructing Application");
+    QVERIFY2(source.contains(QStringLiteral("#ifdef QT_QML_DEBUG")),
+        "Synthetic message profiling must remain gated behind QML debugging builds");
+    QVERIFY2(source.contains(QStringLiteral("--profile-message-stream")),
+        "The profiling build must expose an explicit opt-in message stream driver");
+
+    QString cmakeSource;
+    QVERIFY(readSourceFile(QStringLiteral("CMakeLists.txt"), cmakeSource));
+    QVERIFY2(cmakeSource.contains(QStringLiteral("\"src/app/messagestreamprofiledriver.cpp\"")),
+        "The application-only profiling driver must be excluded from shared test sources");
+    QVERIFY2(cmakeSource.contains(QStringLiteral("\"src/app/messagestreamprofiledriver.h\"")),
+        "The profiling driver header must be excluded from shared test sources");
+    QVERIFY2(cmakeSource.contains(QStringLiteral("$<$<CONFIG:Debug>:QT_QML_DEBUG>")),
+        "The profiling driver must be enabled by the repository debug preset");
 }
 
 void ArchitectureBoundariesTest::translationsDoNotReferenceLegacyFacade()

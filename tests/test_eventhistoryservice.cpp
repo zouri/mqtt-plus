@@ -33,6 +33,7 @@ private slots:
     void rejectedParseResultDoesNotPublishTransientState();
     void parserDrainTimeoutStillFlushesWriter();
     void capturePolicyFiltersBeforePayloadPlanning();
+    void parserPressureMapsToRawOnlyAndRecovers();
     void elevatedWriterSkipsParsingAndRecovers();
     void writerHardLimitReportsDroppingAndRecovers();
     void rawOnlyRowsKeepPayloadBodyFreeOfStatusText();
@@ -90,7 +91,8 @@ struct Fixture {
 
     explicit Fixture(
         MessageParseLimits parserLimits = {},
-        HistoryWriterLimits writerLimits = {})
+        HistoryWriterLimits writerLimits = {},
+        bool startWorkers = true)
         : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
         , historyStore(dataDir.path())
         , historyWriter(dataDir.path(), historyStore.nextMessageId(), writerLimits)
@@ -109,8 +111,10 @@ struct Fixture {
               launchTimestamp,
               preferences)
     {
-        historyWriter.start();
-        messageParser.start();
+        if (startWorkers) {
+            historyWriter.start();
+            messageParser.start();
+        }
         sessions.setHistoryWriter(&historyWriter);
         sessions.setMessageParser(&messageParser);
     }
@@ -387,6 +391,44 @@ void EventHistoryServiceTest::capturePolicyFiltersBeforePayloadPlanning()
         static_cast<int>(PayloadFormat::Json));
     QCOMPARE(fixture.service.captureFilteredMessageCount(), qint64(2));
     QCOMPARE(fixture.service.messageWriterBacklog(), 0);
+}
+
+void EventHistoryServiceTest::parserPressureMapsToRawOnlyAndRecovers()
+{
+    MessageParseLimits parserLimits;
+    parserLimits.highWaterTasks = 1;
+    parserLimits.lowWaterTasks = 0;
+    parserLimits.maxTasks = 1;
+    parserLimits.highWaterBytes = 4096;
+    parserLimits.lowWaterBytes = 0;
+    parserLimits.maxBytes = 8192;
+    Fixture fixture(parserLimits, {}, false);
+
+    MessageParseTask first;
+    first.envelope.messageId = 1;
+    first.envelope.sessionId = fixture.session.id;
+    first.envelope.sequence = 1;
+    first.envelope.timestamp = QStringLiteral("2026-08-02T12:00:00.000Z");
+    first.envelope.topic = QStringLiteral("devices/first");
+    first.envelope.payloadBytes = QByteArrayLiteral("{\"value\":1}");
+    first.envelope.payloadFormat = static_cast<int>(PayloadFormat::Json);
+    QVERIFY(fixture.messageParser.enqueueTask(first));
+    QCOMPARE(fixture.service.messagePressureState(), QStringLiteral("elevated"));
+    QCOMPARE(fixture.service.messageCaptureMode(), QStringLiteral("raw_only"));
+
+    MessageParseTask second = first;
+    second.envelope.messageId = 2;
+    second.envelope.sequence = 2;
+    second.envelope.topic = QStringLiteral("devices/second");
+    QVERIFY(!fixture.messageParser.enqueueTask(second));
+    QCOMPARE(fixture.service.messagePressureState(), QStringLiteral("degraded"));
+    QCOMPARE(fixture.service.messageCaptureMode(), QStringLiteral("raw_only"));
+    QCOMPARE(fixture.service.droppedParseTaskCount(), qint64(1));
+
+    fixture.messageParser.start();
+    QVERIFY(fixture.messageParser.drain(2000));
+    QCOMPARE(fixture.service.messagePressureState(), QStringLiteral("normal"));
+    QCOMPARE(fixture.service.messageCaptureMode(), QStringLiteral("full"));
 }
 
 void EventHistoryServiceTest::elevatedWriterSkipsParsingAndRecovers()

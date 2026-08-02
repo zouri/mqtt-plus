@@ -65,6 +65,8 @@ list(SORT MQTT_PLUS_APP_SOURCES)
 set(MQTT_PLUS_APP_LIBRARY_SOURCES ${MQTT_PLUS_APP_SOURCES})
 list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES
     "src/app/main.cpp"
+    "src/app/messagestreamprofiledriver.cpp"
+    "src/app/messagestreamprofiledriver.h"
     "src/app/windowgeometrymanager.cpp"
     "src/app/windowgeometrymanager.h"
 )
@@ -116,6 +118,11 @@ qt_add_resources(mqtt_plus_app app_icons
 target_include_directories(mqtt_plus_app
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+
+target_compile_definitions(mqtt_plus_app
+    PRIVATE
+        $<$<CONFIG:Debug>:QT_QML_DEBUG>
 )
 
 target_link_libraries(mqtt_plus_app
