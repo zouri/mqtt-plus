@@ -116,6 +116,14 @@ LoadedSession readSession(QSettings &settings, int index)
     session.name = settings.value(QStringLiteral("name")).toString();
 
     session.outputPaused = settings.value(QStringLiteral("outputPaused"), false).toBool();
+    session.captureIncoming = settings.value(QStringLiteral("captureIncoming"), true).toBool();
+    session.captureOutgoing = settings.value(QStringLiteral("captureOutgoing"), true).toBool();
+    session.captureIncludeTopicFilters = settings.value(
+                                                    QStringLiteral("captureIncludeTopicFilters"))
+                                                .toStringList();
+    session.captureExcludeTopicFilters = settings.value(
+                                                    QStringLiteral("captureExcludeTopicFilters"))
+                                                .toStringList();
     session.transport = SessionConfig::sanitizeTransport(settings.value(QStringLiteral("transport"), QStringLiteral("tcp")));
     session.protocolVersion = SessionConfig::sanitizeProtocolVersion(settings.value(QStringLiteral("protocolVersion"), 5));
 
@@ -203,6 +211,14 @@ bool writeSessions(QSettings &settings, const QVector<SessionState> &sessions, Q
         settings.setValue(QStringLiteral("authenticationMethod"), session.authenticationMethod);
         settings.setValue(QStringLiteral("authenticationData"), session.authenticationData);
         settings.setValue(QStringLiteral("outputPaused"), session.outputPaused);
+        settings.setValue(QStringLiteral("captureIncoming"), session.captureIncoming);
+        settings.setValue(QStringLiteral("captureOutgoing"), session.captureOutgoing);
+        settings.setValue(
+            QStringLiteral("captureIncludeTopicFilters"),
+            session.captureIncludeTopicFilters);
+        settings.setValue(
+            QStringLiteral("captureExcludeTopicFilters"),
+            session.captureExcludeTopicFilters);
         settings.setValue(QStringLiteral("subscriptions"), subscriptionsToVariantList(session.subscriptions));
     }
     settings.endArray();

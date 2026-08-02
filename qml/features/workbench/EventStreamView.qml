@@ -541,6 +541,7 @@ Item {
                 ui: root.ui
                 filterModel: root.streamModel
                 subscriptionsModel: root.viewModel.messageFilterSubscriptions
+                viewModel: root.viewModel
                 receiveStateText: root.receiveStateText
                 x: Math.max(8, parent.width - width - 110)
                 y: parent.height - 2

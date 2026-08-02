@@ -7,16 +7,25 @@
 #include "domain/publishstatus.h"
 #include "domain/sessionconfig.h"
 #include "services/apputils.h"
+#include "services/messaging/messagecapturepolicy.h"
 #include "services/payload/payloadcodec.h"
 
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QGuiApplication>
+#include <QRegularExpression>
 
 #include <algorithm>
 
 using namespace AppUtils;
+
+namespace {
+QStringList topicFiltersFromText(const QString &text)
+{
+    return text.split(QRegularExpression(QStringLiteral("[,\\r\\n]+")), Qt::SkipEmptyParts);
+}
+} // namespace
 
 WorkbenchViewModel::WorkbenchViewModel(
     SessionService &sessionService,
@@ -67,6 +76,19 @@ WorkbenchViewModel::WorkbenchViewModel(
             &SessionService::currentSessionChanged,
             this,
             &WorkbenchViewModel::messageStreamChanged);
+    connect(&m_sessionService,
+            &SessionService::currentSessionChanged,
+            this,
+            &WorkbenchViewModel::messageCapturePolicyChanged);
+    connect(&m_sessionService,
+            &SessionService::messageCapturePolicyChanged,
+            this,
+            [this](const QString &sessionId) {
+                const SessionState *session = m_sessionService.currentSession();
+                if (session && session->id == sessionId) {
+                    emit messageCapturePolicyChanged();
+                }
+            });
     connect(&m_mqttService,
             &MqttSessionService::sessionStateChanged,
             this,
@@ -303,6 +325,20 @@ QVariantMap WorkbenchViewModel::messagePressure() const
     pressure.insert(QStringLiteral("storageDegraded"), m_eventHistoryService.messageStorageDegraded());
     pressure.insert(QStringLiteral("lastError"), m_eventHistoryService.messageStorageError());
     return pressure;
+}
+
+QVariantMap WorkbenchViewModel::messageCapturePolicy() const
+{
+    const SessionState *session = m_sessionService.currentSession();
+    const MessageCapturePolicy policy = session
+        ? m_eventHistoryService.messageCapturePolicy(session->id)
+        : MessageCapturePolicy {};
+    return {
+        {QStringLiteral("captureIncoming"), policy.captureIncoming},
+        {QStringLiteral("captureOutgoing"), policy.captureOutgoing},
+        {QStringLiteral("includeTopicFilters"), policy.includeTopicFilters},
+        {QStringLiteral("excludeTopicFilters"), policy.excludeTopicFilters},
+    };
 }
 
 qint64 WorkbenchViewModel::totalMessageCount() const
@@ -580,6 +616,25 @@ void WorkbenchViewModel::clearMessageFilters()
     m_filteredMessagesModel.setFilterText({});
     m_filteredMessagesModel.setSelectedTopics({});
     m_filteredMessagesModel.setDirection(QStringLiteral("all"));
+}
+
+bool WorkbenchViewModel::setCurrentMessageCapturePolicy(
+    bool captureIncoming,
+    bool captureOutgoing,
+    const QString &includeTopicFilters,
+    const QString &excludeTopicFilters)
+{
+    const SessionState *session = m_sessionService.currentSession();
+    if (!session) {
+        return false;
+    }
+
+    MessageCapturePolicy policy;
+    policy.captureIncoming = captureIncoming;
+    policy.captureOutgoing = captureOutgoing;
+    policy.includeTopicFilters = topicFiltersFromText(includeTopicFilters);
+    policy.excludeTopicFilters = topicFiltersFromText(excludeTopicFilters);
+    return m_eventHistoryService.setMessageCapturePolicy(session->id, policy);
 }
 
 QVariantMap WorkbenchViewModel::messageDetails(const QString &historyId) const

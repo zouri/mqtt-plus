@@ -12,6 +12,7 @@ class MessageParseWorker;
 class PreferencesController;
 class QSettings;
 class ScriptService;
+struct MessageCapturePolicy;
 
 class SessionService : public QObject
 {
@@ -33,6 +34,10 @@ public:
     const SessionState *currentSession() const;
     SessionState *sessionById(const QString &sessionId);
     const SessionState *sessionById(const QString &sessionId) const;
+    MessageCapturePolicy messageCapturePolicy(const QString &sessionId) const;
+    bool setMessageCapturePolicy(
+        const QString &sessionId,
+        const MessageCapturePolicy &policy);
 
     bool loadSessions();
     bool saveSessions();
@@ -51,6 +56,7 @@ signals:
     void sessionsChanged();
     void currentSessionIndexChanged();
     void currentSessionChanged();
+    void messageCapturePolicyChanged(const QString &sessionId);
     void currentSessionHistoryReloadRequested();
     void sessionRuntimeReady(SessionState *session);
     void reconnectRequested(SessionState *session);

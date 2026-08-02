@@ -46,6 +46,10 @@ Item {
     property int pendingSubscriptionIndex: -1
     property double incomingByteRate: 0
     property double outgoingByteRate: 0
+    readonly property var messagePressure: root.viewModel.messagePressure
+    readonly property string messagePressureState: String(root.messagePressure.state || "normal")
+    readonly property bool messagePressureVisible: root.messagePressureState !== "normal"
+                                                    || Boolean(root.messagePressure.storageDegraded)
     readonly property bool incomingTrafficActive: root.incomingByteRate > 0
     readonly property bool outgoingTrafficActive: root.outgoingByteRate > 0
     property double nowMs: Date.now()
@@ -168,6 +172,55 @@ Item {
         }
         const gigabytes = rate / 1000 / 1000 / 1000;
         return qsTr("%1 GB/s").arg(gigabytes.toFixed(gigabytes < 10 ? 1 : 0));
+    }
+
+    function compactBytes(bytes) {
+        const numericBytes = Number(bytes);
+        const value = Number.isFinite(numericBytes) ? Math.max(0, numericBytes) : 0;
+        if (value < 1024) {
+            return qsTr("%1 B").arg(value.toFixed(0));
+        }
+        if (value < 1024 * 1024) {
+            return qsTr("%1 KiB").arg((value / 1024).toFixed(value < 10 * 1024 ? 1 : 0));
+        }
+        return qsTr("%1 MiB").arg((value / 1024 / 1024).toFixed(value < 10 * 1024 * 1024 ? 1 : 0));
+    }
+
+    function pressureStatusLabel() {
+        if (root.messagePressureState === "dropping") {
+            return qsTr("Dropping");
+        }
+        if (root.messagePressureState === "degraded") {
+            return qsTr("Raw only");
+        }
+        if (root.messagePressureState === "elevated") {
+            return qsTr("High load");
+        }
+        return qsTr("Storage error");
+    }
+
+    function pressureStatusDescription() {
+        if (root.messagePressureState === "dropping") {
+            return qsTr("The storage queue is full. Some messages are being dropped.");
+        }
+        if (String(root.messagePressure.captureMode || "full") === "raw_only") {
+            return qsTr("Only raw messages are being saved until the queues recover.");
+        }
+        return qsTr("Message storage reported an error.");
+    }
+
+    function pressureTextColor() {
+        return root.messagePressureState === "dropping"
+                || Boolean(root.messagePressure.storageDegraded)
+                ? root.ui.themePalette.errorText
+                : root.ui.themePalette.warningText;
+    }
+
+    function pressureBackgroundColor() {
+        return root.messagePressureState === "dropping"
+                || Boolean(root.messagePressure.storageDegraded)
+                ? root.ui.themePalette.errorBg
+                : root.ui.themePalette.warningBg;
     }
 
     function connectionStatusText() {
@@ -351,6 +404,12 @@ Item {
 
         function onCurrentSessionIndexChanged() {
             root.collapseConnectionPaneOnConnect = false;
+        }
+
+        function onMessagePressureChanged() {
+            if (!root.messagePressureVisible) {
+                pressurePopover.close();
+            }
         }
     }
 
@@ -614,10 +673,209 @@ Item {
                 Layout.fillWidth: true
             }
 
+            Button {
+                id: pressureStatusButton
+
+                visible: root.messagePressureVisible
+                Layout.preferredWidth: pressureStatusContent.implicitWidth + leftPadding + rightPadding
+                Layout.preferredHeight: 20
+                leftPadding: 7
+                rightPadding: 7
+                topPadding: 0
+                bottomPadding: 0
+                Accessible.name: qsTr("Message processing status: %1").arg(root.pressureStatusLabel())
+
+                contentItem: RowLayout {
+                    id: pressureStatusContent
+
+                    spacing: 5
+
+                    Rectangle {
+                        Layout.preferredWidth: 5
+                        Layout.preferredHeight: 5
+                        Layout.alignment: Qt.AlignVCenter
+                        radius: 3
+                        color: root.pressureTextColor()
+                        Accessible.ignored: true
+                    }
+
+                    Label {
+                        text: root.pressureStatusLabel()
+                        color: root.pressureTextColor()
+                        font.pixelSize: 10
+                        font.bold: true
+                    }
+                }
+
+                background: Rectangle {
+                    radius: 6
+                    color: root.pressureBackgroundColor()
+                    border.color: root.pressureTextColor()
+                    border.width: 1
+                }
+
+                AppToolTip {
+                    ui: root.ui
+                    text: root.pressureStatusDescription()
+                    position: AppToolTip.Position.Top
+                    active: pressureStatusButton.hovered
+                }
+
+                onClicked: pressurePopover.visible ? pressurePopover.close() : pressurePopover.open()
+            }
+
             Label {
                 text: qsTr("%1 messages").arg(root.compactMessageCount(root.viewModel.totalMessageCount))
                 color: root.ui.textMuted
                 font.pixelSize: 10
+            }
+        }
+
+        AppPopover {
+            id: pressurePopover
+
+            ui: root.ui
+            width: 330
+            implicitHeight: contentItem.implicitHeight + topPadding + bottomPadding
+            x: Math.max(8, workbenchStatusBar.width - width - 8)
+            y: -implicitHeight + 1
+            padding: 12
+            modal: false
+            focus: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+
+            background: Rectangle {
+                radius: 8
+                color: root.ui.themePalette.dialogBg
+                border.color: root.ui.themePalette.dialogBorder
+            }
+
+            contentItem: ColumnLayout {
+                spacing: 7
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Message processing")
+                        color: root.ui.textStrong
+                        font.pixelSize: 12
+                        font.bold: true
+                    }
+
+                    AppBadge {
+                        ui: root.ui
+                        label: root.pressureStatusLabel()
+                        badgeRadius: 6
+                        horizontalPadding: 7
+                        verticalPadding: 2
+                        badgeBg: root.pressureBackgroundColor()
+                        badgeBorder: root.pressureTextColor()
+                        badgeText: root.pressureTextColor()
+                    }
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    text: root.pressureStatusDescription()
+                    color: root.pressureTextColor()
+                    font.pixelSize: 11
+                    wrapMode: Text.Wrap
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: root.ui.themePalette.separator
+                    Accessible.ignored: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Writer queue")
+                        color: root.ui.textMuted
+                        font.pixelSize: 10
+                    }
+
+                    Label {
+                        text: qsTr("%1 messages · %2")
+                                  .arg(Number(root.messagePressure.backlog || 0))
+                                  .arg(root.compactBytes(root.messagePressure.backlogBytes))
+                        color: root.ui.textStrong
+                        font.pixelSize: 10
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Parser queue")
+                        color: root.ui.textMuted
+                        font.pixelSize: 10
+                    }
+
+                    Label {
+                        text: qsTr("%1 messages · %2")
+                                  .arg(Number(root.messagePressure.parseBacklog || 0))
+                                  .arg(root.compactBytes(root.messagePressure.parseBacklogBytes))
+                        color: root.ui.textStrong
+                        font.pixelSize: 10
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Dropped")
+                        color: root.ui.textMuted
+                        font.pixelSize: 10
+                    }
+
+                    Label {
+                        text: qsTr("%1 raw · %2 parse · %3 results")
+                                  .arg(Number(root.messagePressure.dropped || 0))
+                                  .arg(Number(root.messagePressure.parseDropped || 0))
+                                  .arg(Number(root.messagePressure.parseResultDropped || 0))
+                        color: root.ui.textStrong
+                        font.pixelSize: 10
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Work shed")
+                        color: root.ui.textMuted
+                        font.pixelSize: 10
+                    }
+
+                    Label {
+                        text: qsTr("%1 capture · %2 parse")
+                                  .arg(Number(root.messagePressure.captureFiltered || 0))
+                                  .arg(Number(root.messagePressure.parseSkippedPressure || 0))
+                        color: root.ui.textStrong
+                        font.pixelSize: 10
+                    }
+                }
+
+                Label {
+                    visible: String(root.messagePressure.lastError || "").length > 0
+                    Layout.fillWidth: true
+                    text: String(root.messagePressure.lastError || "")
+                    color: root.ui.themePalette.errorText
+                    font.pixelSize: 10
+                    wrapMode: Text.Wrap
+                }
             }
         }
     }
