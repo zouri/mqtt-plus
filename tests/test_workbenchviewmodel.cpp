@@ -146,6 +146,7 @@ private slots:
     void forwardsSessionAndRuntimeStateNotificationsSeparately();
     void forwardsMessageBatchNotifications();
     void exposesTotalMessageCount();
+    void coalescesDisplayTotalMessageCountUpdates();
     void exposesConnectionTimingAndAggregateRates();
     void ownsSubscriptionFilterState();
     void ownsPendingSubscriptionDeleteState();
@@ -562,13 +563,57 @@ void WorkbenchViewModelTest::exposesTotalMessageCount()
     fixture.sessionService.setCurrentSessionIndex(0);
     WorkbenchViewModel &viewModel = fixture.viewModel;
     QSignalSpy totalSpy(&viewModel, &WorkbenchViewModel::totalMessageCountChanged);
+    QSignalSpy displayTotalSpy(
+        &viewModel,
+        &WorkbenchViewModel::displayTotalMessageCountChanged);
 
     QCOMPARE(viewModel.totalMessageCount(), 1201);
+    QCOMPARE(viewModel.displayTotalMessageCount(), 1201);
 
     fixture.sessionService.currentSession()->runtime.totalMessageCount = 1202;
     emit fixture.eventHistoryService.totalMessageCountChanged();
     QCOMPARE(totalSpy.count(), 1);
     QCOMPARE(viewModel.totalMessageCount(), 1202);
+    QCOMPARE(displayTotalSpy.count(), 0);
+    QTRY_COMPARE(displayTotalSpy.count(), 1);
+    QCOMPARE(viewModel.displayTotalMessageCount(), 1202);
+}
+
+void WorkbenchViewModelTest::coalescesDisplayTotalMessageCountUpdates()
+{
+    SessionState session;
+    WorkbenchFixture fixture;
+    fixture.sessionService.sessions().append(session);
+    fixture.sessionService.setCurrentSessionIndex(0);
+    WorkbenchViewModel &viewModel = fixture.viewModel;
+    QSignalSpy exactTotalSpy(&viewModel, &WorkbenchViewModel::totalMessageCountChanged);
+    QSignalSpy displayTotalSpy(
+        &viewModel,
+        &WorkbenchViewModel::displayTotalMessageCountChanged);
+
+    for (qint64 count = 1; count <= 100; ++count) {
+        fixture.sessionService.currentSession()->runtime.totalMessageCount = count;
+        emit fixture.eventHistoryService.totalMessageCountChanged();
+    }
+
+    QCOMPARE(exactTotalSpy.count(), 100);
+    QCOMPARE(displayTotalSpy.count(), 0);
+    QCOMPARE(viewModel.totalMessageCount(), 100);
+    QCOMPARE(viewModel.displayTotalMessageCount(), 0);
+    QTRY_COMPARE(displayTotalSpy.count(), 1);
+    QCOMPARE(viewModel.displayTotalMessageCount(), 100);
+
+    SessionState otherSession;
+    otherSession.runtime.totalMessageCount = 7;
+    fixture.sessionService.sessions().append(otherSession);
+    fixture.sessionService.setCurrentSessionIndex(1);
+    QCOMPARE(displayTotalSpy.count(), 2);
+    QCOMPARE(viewModel.displayTotalMessageCount(), 7);
+
+    fixture.sessionService.currentSession()->runtime.totalMessageCount = 0;
+    emit fixture.eventHistoryService.messageStreamChanged();
+    QCOMPARE(displayTotalSpy.count(), 3);
+    QCOMPARE(viewModel.displayTotalMessageCount(), 0);
 }
 
 void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
@@ -594,9 +639,10 @@ void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
     session.subscriptions = {first, second};
 
     WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
+    QSignalSpy trafficSpy(&viewModel, &WorkbenchViewModel::trafficRatesChanged);
     fixture.sessionService.sessions().append(session);
     fixture.sessionService.setCurrentSessionIndex(0);
-    WorkbenchViewModel &viewModel = fixture.viewModel;
 
     const QVariantMap status = viewModel.sessionStatus();
     QCOMPARE(status.value(QStringLiteral("connectedAtMs")).toLongLong(), nowMs - 5000);
@@ -606,6 +652,12 @@ void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
     QCOMPARE(viewModel.currentOutgoingMessageRate(), 2.0);
     QCOMPARE(viewModel.currentIncomingByteRate(), qint64(3072));
     QCOMPARE(viewModel.currentOutgoingByteRate(), qint64(512));
+    QCOMPARE(viewModel.incomingByteRate(), qint64(3072));
+    QCOMPARE(viewModel.outgoingByteRate(), qint64(512));
+    QCOMPARE(trafficSpy.count(), 1);
+
+    emit fixture.sessionService.currentSessionChanged();
+    QCOMPARE(trafficSpy.count(), 1);
 }
 
 void WorkbenchViewModelTest::ownsSubscriptionFilterState()

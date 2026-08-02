@@ -21,6 +21,9 @@
 using namespace AppUtils;
 
 namespace {
+constexpr int kDisplayTotalMessageCountIntervalMs = 50;
+constexpr int kTrafficRateIntervalMs = 1000;
+
 QStringList topicFiltersFromText(const QString &text)
 {
     return text.split(QRegularExpression(QStringLiteral("[,\\r\\n]+")), Qt::SkipEmptyParts);
@@ -52,6 +55,23 @@ WorkbenchViewModel::WorkbenchViewModel(
     , m_scriptsModel(scriptsModel)
     , m_publisher(sessionService, mqttService, this)
 {
+    m_displayTotalMessageCountTimer.setInterval(kDisplayTotalMessageCountIntervalMs);
+    m_displayTotalMessageCountTimer.setSingleShot(true);
+    connect(
+        &m_displayTotalMessageCountTimer,
+        &QTimer::timeout,
+        this,
+        &WorkbenchViewModel::syncDisplayTotalMessageCount);
+
+    m_trafficRateTimer.setInterval(kTrafficRateIntervalMs);
+    m_trafficRateTimer.setTimerType(Qt::CoarseTimer);
+    connect(
+        &m_trafficRateTimer,
+        &QTimer::timeout,
+        this,
+        &WorkbenchViewModel::refreshTrafficRates);
+    m_trafficRateTimer.start();
+
     connect(&m_sessionService,
             &SessionService::currentSessionIndexChanged,
             this,
@@ -72,6 +92,14 @@ WorkbenchViewModel::WorkbenchViewModel(
             &SessionService::currentSessionChanged,
             this,
             &WorkbenchViewModel::totalMessageCountChanged);
+    connect(&m_sessionService,
+            &SessionService::currentSessionChanged,
+            this,
+            [this]() {
+                m_displayTotalMessageCountTimer.stop();
+                syncDisplayTotalMessageCount();
+                refreshTrafficRates();
+            });
     connect(&m_sessionService,
             &SessionService::currentSessionChanged,
             this,
@@ -106,9 +134,20 @@ WorkbenchViewModel::WorkbenchViewModel(
             this,
             &WorkbenchViewModel::totalMessageCountChanged);
     connect(&m_eventHistoryService,
+            &EventHistoryService::messageStreamChanged,
+            this,
+            [this]() {
+                m_displayTotalMessageCountTimer.stop();
+                syncDisplayTotalMessageCount();
+            });
+    connect(&m_eventHistoryService,
             &EventHistoryService::totalMessageCountChanged,
             this,
             &WorkbenchViewModel::totalMessageCountChanged);
+    connect(&m_eventHistoryService,
+            &EventHistoryService::totalMessageCountChanged,
+            this,
+            &WorkbenchViewModel::scheduleDisplayTotalMessageCountUpdate);
     connect(&m_eventHistoryService,
             &EventHistoryService::messageWriterStateChanged,
             this,
@@ -160,6 +199,8 @@ WorkbenchViewModel::WorkbenchViewModel(
             &MessageFilterModel::selectedTopicsChanged,
             this,
             &WorkbenchViewModel::messageTopicFilterStateChanged);
+    m_displayTotalMessageCount = totalMessageCount();
+    refreshTrafficRates();
     refreshSubscriptionEditorScriptOptions();
 }
 
@@ -345,6 +386,58 @@ qint64 WorkbenchViewModel::totalMessageCount() const
 {
     const SessionState *session = m_sessionService.currentSession();
     return session ? session->runtime.totalMessageCount : 0;
+}
+
+qint64 WorkbenchViewModel::displayTotalMessageCount() const
+{
+    return m_displayTotalMessageCount;
+}
+
+qint64 WorkbenchViewModel::incomingByteRate() const
+{
+    return m_incomingByteRate;
+}
+
+qint64 WorkbenchViewModel::outgoingByteRate() const
+{
+    return m_outgoingByteRate;
+}
+
+void WorkbenchViewModel::scheduleDisplayTotalMessageCountUpdate()
+{
+    if (!m_displayTotalMessageCountTimer.isActive()) {
+        m_displayTotalMessageCountTimer.start();
+    }
+}
+
+void WorkbenchViewModel::syncDisplayTotalMessageCount()
+{
+    const qint64 count = totalMessageCount();
+    if (m_displayTotalMessageCount == count) {
+        return;
+    }
+
+    m_displayTotalMessageCount = count;
+    emit displayTotalMessageCountChanged();
+}
+
+void WorkbenchViewModel::refreshTrafficRates()
+{
+    const SessionState *session = m_sessionService.currentSession();
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    const qint64 incomingRate = session
+        ? recentTrafficByteCount(session->runtime.recentReceivedTraffic, nowMs)
+        : 0;
+    const qint64 outgoingRate = session
+        ? recentTrafficByteCount(session->runtime.recentPublishedTraffic, nowMs)
+        : 0;
+    if (m_incomingByteRate == incomingRate && m_outgoingByteRate == outgoingRate) {
+        return;
+    }
+
+    m_incomingByteRate = incomingRate;
+    m_outgoingByteRate = outgoingRate;
+    emit trafficRatesChanged();
 }
 
 qreal WorkbenchViewModel::currentIncomingMessageRate() const
