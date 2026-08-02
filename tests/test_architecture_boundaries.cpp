@@ -12,6 +12,8 @@ class ArchitectureBoundariesTest : public QObject
 
 private slots:
     void usecasesDoNotDependOnApplicationLayer();
+    void messageHistoryWritesUseDedicatedWorker();
+    void messageAdmissionChecksMetadataBeforePayloadWork();
     void messageQmlUsesTypedObjectProperties();
     void messageRowsUseHoverHandlerForNestedControls();
     void messageRowsUseButtonTapPolicy();
@@ -82,6 +84,82 @@ void ArchitectureBoundariesTest::usecasesDoNotDependOnApplicationLayer()
         QVERIFY2(!source.contains(QStringLiteral("#include \"app/")),
             qPrintable(QStringLiteral("%1 must not depend on application-layer headers").arg(path)));
     }
+}
+
+void ArchitectureBoundariesTest::messageHistoryWritesUseDedicatedWorker()
+{
+    QString eventHistorySource;
+    QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.cpp"), eventHistorySource));
+    QVERIFY2(eventHistorySource.contains(QStringLiteral("m_historyWriter.enqueueMessage(record)")),
+        "Message capture must enqueue through the bounded history writer");
+    QVERIFY2(!eventHistorySource.contains(QStringLiteral("m_historyStore.enqueueMessage(record)")),
+        "EventHistoryService must not keep the GUI-thread HistoryStore pending queue");
+    QVERIFY2(!eventHistorySource.contains(QStringLiteral("m_messageHistoryFlushTimer")),
+        "Message persistence scheduling belongs to HistoryWriterWorker");
+
+    QString applicationSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/application.cpp"), applicationSource));
+    QVERIFY2(applicationSource.contains(QStringLiteral("m_historyWriter->moveToThread(&m_historyWriterThread)")),
+        "Application must give the history writer a dedicated thread");
+    QVERIFY2(applicationSource.contains(QStringLiteral("m_messageParser->moveToThread(&m_messageParserThread)")),
+        "Application must give payload parsing a dedicated thread");
+    QVERIFY2(!applicationSource.contains(QStringLiteral("m_eventHistoryService.moveToThread")),
+        "The UI-facing EventHistoryService must stay on the GUI thread");
+
+    const int destructorStart = applicationSource.indexOf(QStringLiteral("Application::~Application()"));
+    const int nextFunction = applicationSource.indexOf(
+        QStringLiteral("ApplicationViewModel *Application::viewModel()"),
+        destructorStart);
+    QVERIFY(destructorStart >= 0);
+    QVERIFY(nextFunction > destructorStart);
+    const QString destructorSource = applicationSource.mid(
+        destructorStart,
+        nextFunction - destructorStart);
+    const int parserShutdown = destructorSource.indexOf(QStringLiteral("&MessageParseWorker::shutdown"));
+    const int finalWriterDrain = destructorSource.indexOf(QStringLiteral("m_historyWriter->drain()"));
+    const int writerShutdown = destructorSource.indexOf(QStringLiteral("&HistoryWriterWorker::shutdown"));
+    QVERIFY2(parserShutdown >= 0
+            && finalWriterDrain > parserShutdown
+            && writerShutdown > finalWriterDrain,
+        "Application shutdown must persist parse results emitted by the final parser batch before closing the writer");
+
+    QVERIFY2(!eventHistorySource.contains(QStringLiteral("m_luaRuntimeCache")),
+        "Lua runtime ownership belongs to MessageParseWorker, not EventHistoryService");
+    QString parserSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/services/parsing/messageparseworker.cpp"), parserSource));
+    QVERIFY2(parserSource.contains(QStringLiteral("std::make_unique<LuaRunner::RuntimeCache>()")),
+        "The parser worker must create its Lua cache on the parser thread");
+}
+
+void ArchitectureBoundariesTest::messageAdmissionChecksMetadataBeforePayloadWork()
+{
+    QString eventHistorySource;
+    QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.cpp"), eventHistorySource));
+    const int incomingIndex = eventHistorySource.indexOf(
+        QStringLiteral("void EventHistoryService::appendIncomingMessage"));
+    const int outgoingIndex = eventHistorySource.indexOf(
+        QStringLiteral("void EventHistoryService::appendPublishedMessage"), incomingIndex);
+    QVERIFY(incomingIndex >= 0);
+    QVERIFY(outgoingIndex > incomingIndex);
+    const QString incomingSource = eventHistorySource.mid(
+        incomingIndex,
+        outgoingIndex - incomingIndex);
+    const int capturePolicyIndex = incomingSource.indexOf(QStringLiteral("shouldCaptureMessage"));
+    const int payloadPlanIndex = incomingSource.indexOf(QStringLiteral("makePayloadStoragePlan"));
+    const int captureEnqueueIndex = incomingSource.indexOf(QStringLiteral("m_historyWriter.enqueueMessage"));
+    const int parseEnqueueIndex = incomingSource.indexOf(QStringLiteral("enqueueMessageParsing"));
+    QVERIFY2(capturePolicyIndex >= 0 && capturePolicyIndex < payloadPlanIndex,
+        "Capture policy must reject by topic/direction before payload preview, hashing, or DTO work");
+    QVERIFY2(captureEnqueueIndex >= 0 && captureEnqueueIndex < parseEnqueueIndex,
+        "Raw capture admission must happen before optional structured parsing");
+
+    QString mqttSessionSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/usecases/mqttsessionservice.cpp"), mqttSessionSource));
+    const int callbackIndex = mqttSessionSource.indexOf(QStringLiteral("&QMqttClient::messageReceived"));
+    QVERIFY(callbackIndex >= 0);
+    const QString callbackSource = mqttSessionSource.mid(callbackIndex, 500);
+    QVERIFY2(!callbackSource.contains(QStringLiteral("BlockingQueuedConnection")),
+        "The MQTT receive callback must not wait for storage or parsing workers");
 }
 
 void ArchitectureBoundariesTest::messageQmlUsesTypedObjectProperties()
@@ -501,6 +579,10 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/SessionMessagePanel.qml"), panelSource));
     QVERIFY(panelSource.contains(QStringLiteral("MessageInspector")));
     QVERIFY(panelSource.contains(QStringLiteral("streamModel: root.viewModel.filteredMessages")));
+    QVERIFY2(panelSource.contains(QStringLiteral("function onCurrentSessionChanged()"))
+            && panelSource.contains(QStringLiteral("root.inspectorSessionId"))
+            && panelSource.contains(QStringLiteral("currentSessionId !== root.inspectorSessionId")),
+        "Changing session identity must close the previous inspector without reacting to ordinary session refreshes");
 
     QString streamSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), streamSource));
@@ -528,8 +610,12 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
             && streamSource.contains(QStringLiteral(": 3")),
         "Large payloads must stay clamped until the row is selected or inspected");
     QVERIFY2(streamSource.contains(QStringLiteral("required property int payloadDisplayMode"))
-            && streamSource.contains(QStringLiteral("? 2147483647")),
-        "Message payload clamping must support the persisted full-content display mode");
+            && streamSource.contains(QStringLiteral("? 64"))
+            && !streamSource.contains(QStringLiteral("2147483647")),
+        "The always-expanded list mode must remain bounded; full payloads belong in the inspector");
+    QVERIFY2(streamSource.contains(QStringLiteral("property int streamRevision"))
+            && streamSource.contains(QStringLiteral("indexOfHistoryId(anchorHistoryId)")),
+        "Older-history paging must restore a stable row anchor across the bounded render window");
     QVERIFY2(streamSource.contains(QStringLiteral("selectAdjacentMessage"))
             && streamSource.contains(QStringLiteral("Qt.Key_Up"))
             && streamSource.contains(QStringLiteral("Qt.Key_Down")),
@@ -659,6 +745,18 @@ void ArchitectureBoundariesTest::closingMessageInspectorClearsRowSelection()
         "Closing the inspector must clear selection without moving component focus");
     QVERIFY2(!source.contains(QStringLiteral("selectedMessageTrigger")),
         "The closed inspector must not retain or refocus the previously selected delegate");
+
+    const int resetPosition = source.indexOf(QStringLiteral("function resetStreamPosition()"));
+    const int nextResetFunction = source.indexOf(
+        QStringLiteral("function requestFollowScroll()"),
+        resetPosition);
+    QVERIFY(resetPosition >= 0);
+    QVERIFY(nextResetFunction > resetPosition);
+    const QString resetPositionSource = source.mid(
+        resetPosition,
+        nextResetFunction - resetPosition);
+    QVERIFY2(!resetPositionSource.contains(QStringLiteral("root.clearMessageSelection()")),
+        "Generic stream-position resets must not desynchronize list selection from an open inspector");
 }
 
 void ArchitectureBoundariesTest::messageInspectorUsesLeftEdgeShadow()

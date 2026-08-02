@@ -11,6 +11,10 @@ private slots:
     void setRowsIgnoresUnchangedRows();
     void setRowsUpdatesRowsWithoutResetWhenCountIsStable();
     void trimToLimitRemovesOldestRows();
+    void appendRowsAndTrimFrontKeepsIncrementalWindow();
+    void prependRowsAndTrimBackKeepsIncrementalWindow();
+    void updatesSingleHistoryRowWithoutReset();
+    void detectsMatchingLastRow();
     void exposesCanonicalMessageMetadata();
 };
 
@@ -119,6 +123,131 @@ void EventStreamModelTest::trimToLimitRemovesOldestRows()
     QCOMPARE(removeSpy.first().at(2).toInt(), 0);
     QCOMPARE(model.rowAt(0).value(QStringLiteral("id")).toInt(), 2);
     QCOMPARE(model.rowAt(1).value(QStringLiteral("id")).toInt(), 3);
+}
+
+void EventStreamModelTest::updatesSingleHistoryRowWithoutReset()
+{
+    EventStreamModel model;
+    model.setRows(QVariantList {
+        QVariantMap {
+            {QStringLiteral("historyId"), 41},
+            {QStringLiteral("payload"), QStringLiteral("pending")},
+            {QStringLiteral("parseState"), QStringLiteral("pending")},
+        },
+        QVariantMap {
+            {QStringLiteral("historyId"), 42},
+            {QStringLiteral("payload"), QStringLiteral("unchanged")},
+        },
+    });
+    QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
+    QSignalSpy resetSpy(&model, &EventStreamModel::modelReset);
+
+    QVERIFY(model.updateRowByHistoryId(
+        41,
+        QVariantMap {
+            {QStringLiteral("historyId"), 41},
+            {QStringLiteral("payload"), QStringLiteral("parsed")},
+            {QStringLiteral("parseState"), QStringLiteral("succeeded")},
+        }));
+
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("payload")).toString(), QStringLiteral("parsed"));
+    QCOMPARE(model.rowAt(1).value(QStringLiteral("payload")).toString(), QStringLiteral("unchanged"));
+    QCOMPARE(dataSpy.count(), 1);
+    QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 0);
+    QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 0);
+    QCOMPARE(resetSpy.count(), 0);
+}
+
+void EventStreamModelTest::appendRowsAndTrimFrontKeepsIncrementalWindow()
+{
+    EventStreamModel model;
+    model.appendRows(QVariantList {
+        QVariantMap {{QStringLiteral("id"), 1}},
+        QVariantMap {{QStringLiteral("id"), 2}},
+        QVariantMap {{QStringLiteral("id"), 3}},
+    });
+
+    QSignalSpy countSpy(&model, &EventStreamModel::countChanged);
+    QSignalSpy insertSpy(&model, &EventStreamModel::rowsInserted);
+    QSignalSpy removeSpy(&model, &EventStreamModel::rowsRemoved);
+    QSignalSpy resetSpy(&model, &EventStreamModel::modelReset);
+    QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
+
+    QCOMPARE(
+        model.appendRowsAndTrimFront(
+            QVariantList {
+                QVariantMap {{QStringLiteral("id"), 4}},
+                QVariantMap {{QStringLiteral("id"), 5}},
+            },
+            3),
+        2);
+
+    QCOMPARE(model.count(), 3);
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("id")).toInt(), 3);
+    QCOMPARE(model.rowAt(2).value(QStringLiteral("id")).toInt(), 5);
+    QCOMPARE(removeSpy.count(), 1);
+    QCOMPARE(removeSpy.first().at(1).toInt(), 0);
+    QCOMPARE(removeSpy.first().at(2).toInt(), 1);
+    QCOMPARE(insertSpy.count(), 1);
+    QCOMPARE(insertSpy.first().at(1).toInt(), 1);
+    QCOMPARE(insertSpy.first().at(2).toInt(), 2);
+    QCOMPARE(countSpy.count(), 0);
+    QCOMPARE(resetSpy.count(), 0);
+    QCOMPARE(dataSpy.count(), 0);
+}
+
+void EventStreamModelTest::prependRowsAndTrimBackKeepsIncrementalWindow()
+{
+    EventStreamModel model;
+    model.appendRows(QVariantList {
+        QVariantMap {{QStringLiteral("id"), 3}},
+        QVariantMap {{QStringLiteral("id"), 4}},
+        QVariantMap {{QStringLiteral("id"), 5}},
+    });
+
+    QSignalSpy countSpy(&model, &EventStreamModel::countChanged);
+    QSignalSpy insertSpy(&model, &EventStreamModel::rowsInserted);
+    QSignalSpy removeSpy(&model, &EventStreamModel::rowsRemoved);
+    QSignalSpy resetSpy(&model, &EventStreamModel::modelReset);
+    QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
+
+    QCOMPARE(
+        model.prependRowsAndTrimBack(
+            QVariantList {
+                QVariantMap {{QStringLiteral("id"), 1}},
+                QVariantMap {{QStringLiteral("id"), 2}},
+            },
+            3),
+        2);
+
+    QCOMPARE(model.count(), 3);
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("id")).toInt(), 1);
+    QCOMPARE(model.rowAt(2).value(QStringLiteral("id")).toInt(), 3);
+    QCOMPARE(removeSpy.count(), 1);
+    QCOMPARE(removeSpy.first().at(1).toInt(), 1);
+    QCOMPARE(removeSpy.first().at(2).toInt(), 2);
+    QCOMPARE(insertSpy.count(), 1);
+    QCOMPARE(insertSpy.first().at(1).toInt(), 0);
+    QCOMPARE(insertSpy.first().at(2).toInt(), 1);
+    QCOMPARE(countSpy.count(), 0);
+    QCOMPARE(resetSpy.count(), 0);
+    QCOMPARE(dataSpy.count(), 0);
+}
+
+void EventStreamModelTest::detectsMatchingLastRow()
+{
+    EventStreamModel model;
+    const QVariantMap row {
+        {QStringLiteral("id"), 1},
+        {QStringLiteral("title"), QStringLiteral("one")},
+    };
+    model.appendRow(row);
+
+    QVERIFY(model.lastRowEquals(row));
+    QVERIFY(!model.lastRowEquals(QVariantMap {
+        {QStringLiteral("id"), 2},
+        {QStringLiteral("title"), QStringLiteral("two")},
+    }));
 }
 
 void EventStreamModelTest::exposesCanonicalMessageMetadata()

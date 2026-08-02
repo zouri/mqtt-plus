@@ -3,6 +3,7 @@
 #include <QSortFilterProxyModel>
 #include <QList>
 #include <QStringList>
+#include <QVariantList>
 #include <QVariantMap>
 
 class MessageFilterModel : public QSortFilterProxyModel
@@ -32,6 +33,8 @@ public:
     void setDirection(const QString &direction);
 
     Q_INVOKABLE QVariantMap rowAt(int row) const;
+    Q_INVOKABLE int indexOfHistoryId(const QString &historyId) const;
+    int matchingMessageCount(const QVariantList &rows) const;
 
 signals:
     void filterTextChanged();
@@ -48,6 +51,13 @@ private:
     void invalidateRows(bool wasActive);
     void connectCountSignals();
     void connectSourceSignals();
+    bool rowMatches(
+        const QString &kind,
+        const QString &direction,
+        const QString &topic,
+        const QString &alias,
+        const QString &payload,
+        const QString &payloadFormat) const;
     static int messageCount(const QAbstractItemModel *model);
     static QString normalizedDirection(const QString &direction);
 

@@ -1,6 +1,8 @@
 #include "models/eventstreammodel.h"
 #include "services/apputils.h"
 #include "services/storage/historystore.h"
+#include "services/storage/historywriterworker.h"
+#include "services/parsing/messageparseworker.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/mqttsessionservice.h"
 #include "usecases/preferencescontroller.h"
@@ -95,6 +97,8 @@ struct MqttFixture
     QTemporaryDir dataDir;
     QSettings settings;
     HistoryStore historyStore;
+    HistoryWriterWorker historyWriter;
+    MessageParseWorker messageParser;
     PreferencesController preferences;
     ScriptService scripts;
     SessionService sessions;
@@ -108,11 +112,14 @@ struct MqttFixture
     explicit MqttFixture(bool bindMqttSignals = true)
         : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
         , historyStore(dataDir.path())
+        , historyWriter(dataDir.path(), historyStore.nextMessageId())
         , preferences(&settings)
         , sessions(settings, scripts, historyStore, preferences)
         , events(
               sessions,
               historyStore,
+              historyWriter,
+              messageParser,
               messages,
               logs,
               scripts,
@@ -121,6 +128,10 @@ struct MqttFixture
         , subscriptions(sessions, scripts, events)
         , mqtt(sessions, subscriptions, events)
     {
+        historyWriter.start();
+        messageParser.start();
+        sessions.setHistoryWriter(&historyWriter);
+        sessions.setMessageParser(&messageParser);
         if (bindMqttSignals) {
             QObject::connect(
                 &sessions,
@@ -341,8 +352,10 @@ void ConnectionErrorTextTest::qosZeroPublishDoesNotRemainQueued()
         false));
     QCOMPARE(session.runtime.publishStatus.messageId, 0);
     QCOMPARE(session.runtime.publishStatus.state, QStringLiteral("sent"));
-    QCOMPARE(session.runtime.recentPublishedTraffic.size(), 1);
-    QCOMPARE(session.runtime.recentPublishedTraffic.constFirst().byteCount, qint64(7));
+    QCOMPARE(session.runtime.recentPublishedTraffic.storedEventCount(), 1);
+    QCOMPARE(
+        session.runtime.recentPublishedTraffic.byteCount(QDateTime::currentMSecsSinceEpoch()),
+        qint64(7));
     QCOMPARE(messageSentSpy.count(), 0);
 }
 

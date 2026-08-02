@@ -2,8 +2,10 @@
 
 #include "domain/session.h"
 #include "domain/subscription.h"
-#include "services/scripting/luarunner.h"
+#include "domain/messageenvelope.h"
+#include "services/messaging/messagecapturepolicy.h"
 
+#include <QHash>
 #include <QObject>
 #include <QSet>
 #include <QTimer>
@@ -14,9 +16,12 @@
 
 class EventStreamModel;
 class HistoryStore;
+class HistoryWriterWorker;
+class MessageParseWorker;
 class PreferencesController;
 class ScriptService;
 class SessionService;
+struct MessageRecord;
 
 class EventHistoryService : public QObject
 {
@@ -26,6 +31,8 @@ public:
     explicit EventHistoryService(
         SessionService &sessionService,
         HistoryStore &historyStore,
+        HistoryWriterWorker &historyWriter,
+        MessageParseWorker &messageParser,
         EventStreamModel &messages,
         EventStreamModel &logs,
         ScriptService &scriptService,
@@ -58,15 +65,35 @@ public:
     QString messagePayloadForDisplay(qint64 messageId, const QString &fallbackPayload, int format) const;
     QVariantMap messageDetails(qint64 messageId) const;
     void reloadCurrentSessionHistory();
-    void flushPendingMessageHistory();
+    void stopAcceptingMessageParsing();
+    bool flushPendingMessageHistory(int timeoutMs = 5000);
+    int messageWriterBacklog() const;
+    qint64 messageWriterBacklogBytes() const;
+    qint64 droppedMessageCount() const;
+    qint64 droppedParseResultCount() const;
+    int messageParserBacklog() const;
+    qint64 messageParserBacklogBytes() const;
+    qint64 droppedParseTaskCount() const;
+    void setMessageCapturePolicy(const QString &sessionId, const MessageCapturePolicy &policy);
+    MessageCapturePolicy messageCapturePolicy(const QString &sessionId) const;
+    qint64 captureFilteredMessageCount() const;
+    qint64 pressureSkippedParseCount() const;
+    QString messagePressureState() const;
+    QString messageCaptureMode() const;
+    QString messageWriterPressureState() const;
+    QString messageParserPressureState() const;
+    bool messageStorageDegraded() const;
+    QString messageStorageError() const;
 
 signals:
     void messageStreamChanged();
     void totalMessageCountChanged();
     void logStreamChanged();
-    void messageRowsAppended(int count);
+    void messageRowsAppended(const QVariantList &rows);
+    void messageParseResultChanged(qint64 historyId);
     void logAppended(const QVariantMap &row);
     void subscriptionActivityChanged();
+    void messageWriterStateChanged();
 
 private:
     enum class Stream { Message, Log };
@@ -77,13 +104,12 @@ private:
 
     void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
     void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
-    LuaScriptResult parseIncomingPayload(
-        const SessionState &session,
-        const SubscriptionEntry *subscription,
-        const QString &topic,
-        const QByteArray &payloadBytes,
-        const QString &timestamp,
-        QString &scriptNameOut);
+    void enqueueMessageParsing(
+        const MessageRecord &record,
+        qint64 sequence,
+        const QString &scriptCode);
+    void handleMessageParseResult(const MessageParseResult &result);
+    void updateRenderedParseResult(SessionState &session, const MessageParseResult &result);
     bool clearStream(Stream kind, bool allSessions);
     void resetMessageStreamTransientState(bool allSessions, const SessionState *current);
     int loadOlderCurrentSession(Stream kind);
@@ -91,23 +117,35 @@ private:
     void trimVisibleRows(SessionState &session, Stream kind);
     void flushPendingVisibleMessageRows();
     void reportMessageStorageError(SessionState &session, const QString &message);
-    void scheduleMessageHistoryFlush();
     void scheduleVisibleMessageRowsFlush();
+    void scheduleMessagePressureNotification();
+    bool shouldCaptureMessage(
+        const SessionState &session,
+        MessageDirection direction,
+        const QString &topic) const;
+    bool shouldSkipParsingForPressure() const;
+    void recordCaptureFiltered();
+    void recordPressureSkippedParse();
 
     SessionService &m_sessionService;
     HistoryStore &m_historyStore;
+    HistoryWriterWorker &m_historyWriter;
+    MessageParseWorker &m_messageParser;
     EventStreamModel &m_messages;
     EventStreamModel &m_logs;
     ScriptService &m_scriptService;
-    LuaRunner::RuntimeCache m_luaRuntimeCache;
     const QString m_launchTimestamp;
     PreferencesController &m_preferencesController;
-    QTimer m_messageHistoryFlushTimer;
     QTimer m_visibleMessageRowsFlushTimer;
+    QTimer m_messagePressureNotificationTimer;
     QVariantList m_pendingVisibleMessageRows;
     QString m_pendingVisibleMessageSessionId;
     qint64 m_frozenOldestLoadedMessageId = 0;
     QSet<QString> m_reportedPayloadStorageStates;
+    QHash<QString, qint64> m_nextMessageSequence;
+    QHash<QString, MessageCapturePolicy> m_capturePolicies;
     QString m_lastMessageStorageError;
+    qint64 m_captureFilteredMessages = 0;
+    qint64 m_pressureSkippedParses = 0;
     bool m_messageStreamFrozen = false;
 };

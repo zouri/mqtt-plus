@@ -3,6 +3,8 @@
 #include "domain/sessionconfig.h"
 #include "services/apputils.h"
 #include "services/storage/historystore.h"
+#include "services/storage/historywriterworker.h"
+#include "services/parsing/messageparseworker.h"
 #include "services/storage/sessionsettingsstore.h"
 #include "usecases/preferencescontroller.h"
 #include "usecases/scriptservice.h"
@@ -271,7 +273,7 @@ void SessionService::duplicateSessionAt(int index)
         subscription.runtimeState = QStringLiteral("saved");
         subscription.grantedQos = -1;
         subscription.lastError.clear();
-        subscription.recentMessageTimestampsMs.clear();
+        subscription.recentMessages.clear();
     }
 
     m_sessions.append(std::move(session));
@@ -287,6 +289,23 @@ void SessionService::duplicateSessionAt(int index)
 void SessionService::removeSessionAt(int index)
 {
     if (m_sessions.size() <= 1 || !isValidIndex(index)) {
+        return;
+    }
+
+    if (m_preferences.deleteHistoryWithSession()
+        && m_messageParser
+        && !m_messageParser->drain()) {
+        emit storageError(tr("Cannot delete session history: queued message parsing timed out."));
+        return;
+    }
+
+    if (m_preferences.deleteHistoryWithSession()
+        && m_historyWriter
+        && !m_historyWriter->drain()) {
+        const QString error = m_historyWriter->lastError().isEmpty()
+            ? tr("Timed out while saving queued messages.")
+            : m_historyWriter->lastError();
+        emit storageError(tr("Cannot delete session history: %1").arg(error));
         return;
     }
 
@@ -309,6 +328,16 @@ void SessionService::removeSessionAt(int index)
     emit sessionsChanged();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
+}
+
+void SessionService::setHistoryWriter(HistoryWriterWorker *historyWriter)
+{
+    m_historyWriter = historyWriter;
+}
+
+void SessionService::setMessageParser(MessageParseWorker *messageParser)
+{
+    m_messageParser = messageParser;
 }
 
 void SessionService::setCurrentOutputPaused(bool paused)

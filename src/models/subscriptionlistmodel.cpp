@@ -180,7 +180,7 @@ bool SubscriptionListModel::updateTopicFps(
                 history.clear();
             } else {
                 row.topicFps = static_cast<qreal>(
-                    recentMessageCount(subscription.recentMessageTimestampsMs, nowMs));
+                    recentMessageCount(subscription.recentMessages, nowMs));
                 const qreal currentRate = row.topicFps;
                 if (history.isEmpty() && currentRate > 0.0) {
                     history.reserve(kSubscriptionRateHistorySampleCount);
@@ -247,7 +247,7 @@ SubscriptionListModel::SubscriptionRow SubscriptionListModel::rowFromSubscriptio
         subscription.grantedQos,
         subscription.paused
             ? 0.0
-            : static_cast<qreal>(recentMessageCount(subscription.recentMessageTimestampsMs, nowMs)),
+            : static_cast<qreal>(recentMessageCount(subscription.recentMessages, nowMs)),
         {},
         subscription.format,
         subscription.scriptId,

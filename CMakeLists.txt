@@ -233,6 +233,36 @@ if(BUILD_TESTING)
     )
     add_test(NAME payloadcodec COMMAND test_payloadcodec)
 
+    add_executable(test_recenttrafficwindow
+        tests/test_recenttrafficwindow.cpp
+    )
+    target_include_directories(test_recenttrafficwindow
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_recenttrafficwindow
+        PRIVATE
+            Qt6::Core
+            Qt6::Test
+    )
+    add_test(NAME recenttrafficwindow COMMAND test_recenttrafficwindow)
+
+    add_executable(test_messagecapturepolicy
+        tests/test_messagecapturepolicy.cpp
+        src/services/messaging/messagecapturepolicy.cpp
+        src/services/payload/payloadcodec.cpp
+    )
+    target_include_directories(test_messagecapturepolicy
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_messagecapturepolicy
+        PRIVATE
+            Qt6::Core
+            Qt6::Test
+    )
+    add_test(NAME messagecapturepolicy COMMAND test_messagecapturepolicy)
+
     add_mqtt_plus_qt_test(test_luarunner
         tests/test_luarunner.cpp
         src/services/scripting/luarunner.cpp
@@ -286,6 +316,19 @@ if(BUILD_TESTING)
     add_mqtt_plus_qt_test(test_historystore
         tests/test_historystore.cpp
         src/services/storage/historystore.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_historywriterworker
+        tests/test_historywriterworker.cpp
+        src/services/storage/historystore.cpp
+        src/services/storage/historywriterworker.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_messageparseworker
+        tests/test_messageparseworker.cpp
+        src/services/parsing/messageparseworker.cpp
+        src/services/payload/payloadcodec.cpp
+        src/services/scripting/luarunner.cpp
     )
 
     add_mqtt_plus_qt_test(test_subscriptionlistmodel

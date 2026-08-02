@@ -110,6 +110,41 @@ QVariantMap MessageFilterModel::rowAt(int row) const
     return result;
 }
 
+int MessageFilterModel::indexOfHistoryId(const QString &historyId) const
+{
+    if (historyId.isEmpty()) {
+        return -1;
+    }
+    for (int row = 0; row < rowCount(); ++row) {
+        if (index(row, 0).data(EventStreamModel::HistoryIdRole).toString() == historyId) {
+            return row;
+        }
+    }
+    return -1;
+}
+
+int MessageFilterModel::matchingMessageCount(const QVariantList &rows) const
+{
+    int count = 0;
+    for (const QVariant &item : rows) {
+        const QVariantMap row = item.toMap();
+        const QString kind = row.value(QStringLiteral("kind")).toString();
+        if (kind != QStringLiteral("message")) {
+            continue;
+        }
+        if (rowMatches(
+                kind,
+                row.value(QStringLiteral("direction")).toString(),
+                row.value(QStringLiteral("topic")).toString(),
+                row.value(QStringLiteral("alias")).toString(),
+                row.value(QStringLiteral("payload")).toString(),
+                row.value(QStringLiteral("payloadFormat")).toString())) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 bool MessageFilterModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
     if (!sourceModel()) {
@@ -117,17 +152,32 @@ bool MessageFilterModel::filterAcceptsRow(int sourceRow, const QModelIndex &sour
     }
 
     const QModelIndex sourceIndex = sourceModel()->index(sourceRow, 0, sourceParent);
-    const QString kind = sourceIndex.data(EventStreamModel::KindRole).toString();
+    return rowMatches(
+        sourceIndex.data(EventStreamModel::KindRole).toString(),
+        sourceIndex.data(EventStreamModel::DirectionRole).toString(),
+        sourceIndex.data(EventStreamModel::TopicRole).toString(),
+        sourceIndex.data(EventStreamModel::AliasRole).toString(),
+        sourceIndex.data(EventStreamModel::PayloadRole).toString(),
+        sourceIndex.data(EventStreamModel::PayloadFormatRole).toString());
+}
+
+bool MessageFilterModel::rowMatches(
+    const QString &kind,
+    const QString &direction,
+    const QString &topic,
+    const QString &alias,
+    const QString &payload,
+    const QString &payloadFormat) const
+{
     if (kind == QStringLiteral("divider")) {
         return !filterActive();
     }
 
     if (m_direction != QStringLiteral("all")
-        && sourceIndex.data(EventStreamModel::DirectionRole).toString() != m_direction) {
+        && direction != m_direction) {
         return false;
     }
 
-    const QString topic = sourceIndex.data(EventStreamModel::TopicRole).toString();
     if (!m_selectedTopics.isEmpty()) {
         bool matched = false;
         for (const QString &filter : m_selectedTopics) {
@@ -145,13 +195,10 @@ bool MessageFilterModel::filterAcceptsRow(int sourceRow, const QModelIndex &sour
         return true;
     }
 
-    const QString searchable = QStringLiteral("%1\n%2\n%3\n%4")
-        .arg(
-            sourceIndex.data(EventStreamModel::AliasRole).toString(),
-            topic,
-            sourceIndex.data(EventStreamModel::PayloadRole).toString(),
-            sourceIndex.data(EventStreamModel::PayloadFormatRole).toString());
-    return searchable.contains(m_filterText, Qt::CaseInsensitive);
+    return alias.contains(m_filterText, Qt::CaseInsensitive)
+        || topic.contains(m_filterText, Qt::CaseInsensitive)
+        || payload.contains(m_filterText, Qt::CaseInsensitive)
+        || payloadFormat.contains(m_filterText, Qt::CaseInsensitive);
 }
 
 void MessageFilterModel::invalidateRows(bool wasActive)

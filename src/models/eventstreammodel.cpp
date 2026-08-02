@@ -1,5 +1,8 @@
 #include "eventstreammodel.h"
 
+#include <algorithm>
+#include <utility>
+
 EventStreamModel::EventStreamModel(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -45,6 +48,7 @@ QHash<int, QByteArray> EventStreamModel::roleNames() const
         {RetainRole, "retain"},
         {RetainKnownRole, "retainKnown"},
         {ParsedPayloadRole, "parsedPayload"},
+        {ParseStateRole, "parseState"},
         {PayloadStateRole, "payloadState"},
         {PayloadHashRole, "payloadHash"},
     };
@@ -91,6 +95,7 @@ void EventStreamModel::setRows(const QVariantList &rows)
                               RetainRole,
                               RetainKnownRole,
                               ParsedPayloadRole,
+                              ParseStateRole,
                               PayloadStateRole,
                               PayloadHashRole});
         }
@@ -128,6 +133,46 @@ void EventStreamModel::appendRows(const QVariantList &rows)
     emit countChanged();
 }
 
+int EventStreamModel::appendRowsAndTrimFront(const QVariantList &rows, int limit)
+{
+    if (rows.isEmpty()) {
+        return 0;
+    }
+    if (limit <= 0) {
+        clear();
+        return 0;
+    }
+
+    const int previousCount = m_rows.size();
+    const QVector<EventStreamRow> convertedRows = rowsFromVariants(rows);
+    const int convertedRowCount = static_cast<int>(convertedRows.size());
+    const int currentRowCount = static_cast<int>(m_rows.size());
+    const int firstIncomingRow = (std::max)(0, convertedRowCount - limit);
+    const int insertCount = convertedRowCount - firstIncomingRow;
+    const int retainedExistingCount = limit - insertCount;
+    const int removeCount = (std::max)(0, currentRowCount - retainedExistingCount);
+
+    if (removeCount > 0) {
+        beginRemoveRows(QModelIndex(), 0, removeCount - 1);
+        m_rows.erase(m_rows.begin(), m_rows.begin() + removeCount);
+        endRemoveRows();
+    }
+
+    if (insertCount > 0) {
+        const int firstRow = m_rows.size();
+        beginInsertRows(QModelIndex(), firstRow, firstRow + insertCount - 1);
+        for (int row = firstIncomingRow; row < convertedRowCount; ++row) {
+            m_rows.append(convertedRows.at(row));
+        }
+        endInsertRows();
+    }
+
+    if (m_rows.size() != previousCount) {
+        emit countChanged();
+    }
+    return insertCount;
+}
+
 void EventStreamModel::prependRows(const QVariantList &rows)
 {
     if (rows.isEmpty()) {
@@ -143,6 +188,97 @@ void EventStreamModel::prependRows(const QVariantList &rows)
     m_rows = mergedRows;
     endInsertRows();
     emit countChanged();
+}
+
+int EventStreamModel::prependRowsAndTrimBack(const QVariantList &rows, int limit)
+{
+    if (rows.isEmpty()) {
+        return 0;
+    }
+    if (limit <= 0) {
+        clear();
+        return 0;
+    }
+
+    const int previousCount = m_rows.size();
+    const QVector<EventStreamRow> convertedRows = rowsFromVariants(rows);
+    const int convertedRowCount = static_cast<int>(convertedRows.size());
+    const int currentRowCount = static_cast<int>(m_rows.size());
+    const int firstIncomingRow = (std::max)(0, convertedRowCount - limit);
+    const int insertCount = convertedRowCount - firstIncomingRow;
+    const int retainedExistingCount = limit - insertCount;
+    const int removeCount = (std::max)(0, currentRowCount - retainedExistingCount);
+
+    if (removeCount > 0) {
+        const int firstRemovedRow = m_rows.size() - removeCount;
+        beginRemoveRows(QModelIndex(), firstRemovedRow, m_rows.size() - 1);
+        m_rows.erase(m_rows.begin() + firstRemovedRow, m_rows.end());
+        endRemoveRows();
+    }
+
+    if (insertCount > 0) {
+        beginInsertRows(QModelIndex(), 0, insertCount - 1);
+        QVector<EventStreamRow> mergedRows;
+        mergedRows.reserve(insertCount + m_rows.size());
+        for (int row = firstIncomingRow; row < convertedRowCount; ++row) {
+            mergedRows.append(convertedRows.at(row));
+        }
+        for (const EventStreamRow &row : std::as_const(m_rows)) {
+            mergedRows.append(row);
+        }
+        m_rows = std::move(mergedRows);
+        endInsertRows();
+    }
+
+    if (m_rows.size() != previousCount) {
+        emit countChanged();
+    }
+    return insertCount;
+}
+
+bool EventStreamModel::updateRowByHistoryId(qint64 historyId, const QVariantMap &row)
+{
+    if (historyId <= 0) {
+        return false;
+    }
+
+    const EventStreamRow updated = rowFromMap(row);
+    for (int index = 0; index < m_rows.size(); ++index) {
+        if (m_rows.at(index).historyId != historyId) {
+            continue;
+        }
+        if (m_rows.at(index) == updated) {
+            return false;
+        }
+        m_rows[index] = updated;
+        emit dataChanged(
+            this->index(index, 0),
+            this->index(index, 0),
+            {IdRole,
+             KindRole,
+             TimestampRole,
+             TitleRole,
+             PayloadRole,
+             PayloadFormatRole,
+             PayloadSizeRole,
+             TopicRole,
+             TopicColorRole,
+             TestPayloadRole,
+             TestFormatRole,
+             TestFormatNameRole,
+             HistoryIdRole,
+             DirectionRole,
+             AliasRole,
+             QosRole,
+             RetainRole,
+             RetainKnownRole,
+             ParsedPayloadRole,
+             ParseStateRole,
+             PayloadStateRole,
+             PayloadHashRole});
+        return true;
+    }
+    return false;
 }
 
 void EventStreamModel::clear()
@@ -170,6 +306,11 @@ void EventStreamModel::trimToLimit(int limit)
     emit countChanged();
 }
 
+bool EventStreamModel::lastRowEquals(const QVariantMap &row) const
+{
+    return !m_rows.isEmpty() && m_rows.constLast() == rowFromMap(row);
+}
+
 EventStreamModel::EventStreamRow EventStreamModel::rowFromMap(const QVariantMap &row)
 {
     EventStreamRow streamRow;
@@ -193,6 +334,7 @@ EventStreamModel::EventStreamRow EventStreamModel::rowFromMap(const QVariantMap 
     streamRow.retain = row.value(QStringLiteral("retain")).toBool();
     streamRow.retainKnown = row.value(QStringLiteral("retainKnown")).toBool();
     streamRow.parsedPayload = row.value(QStringLiteral("parsedPayload")).toString();
+    streamRow.parseState = row.value(QStringLiteral("parseState")).toString();
     streamRow.payloadState = row.value(QStringLiteral("payloadState")).toString();
     streamRow.payloadHash = row.value(QStringLiteral("payloadHash")).toString();
     return streamRow;
@@ -249,6 +391,8 @@ QVariant EventStreamModel::roleValue(const EventStreamRow &row, int role) const
         return row.retainKnown;
     case ParsedPayloadRole:
         return row.parsedPayload;
+    case ParseStateRole:
+        return row.parseState;
     case PayloadStateRole:
         return row.payloadState;
     case PayloadHashRole:

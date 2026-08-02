@@ -19,6 +19,7 @@ AppPanel {
     required property string fontFamily
     required property int messagePayloadDisplayMode
     property string selectedMessageHistoryId: ""
+    property string inspectorSessionId: ""
     property bool inspectorOpened: false
     property alias composerHeight: publishComposer.composerHeight
 
@@ -47,7 +48,20 @@ AppPanel {
     function closeInspector() {
         root.inspectorOpened = false;
         root.selectedMessageHistoryId = "";
+        root.inspectorSessionId = "";
         eventStreamView.clearMessageSelection();
+    }
+
+    Connections {
+        target: root.viewModel
+
+        function onCurrentSessionChanged() {
+            const currentSession = root.viewModel.currentSession || ({});
+            const currentSessionId = String(currentSession.id || "");
+            if (root.inspectorOpened && currentSessionId !== root.inspectorSessionId) {
+                root.closeInspector();
+            }
+        }
     }
 
     SplitView {
@@ -110,6 +124,7 @@ AppPanel {
             }
             onMessageSelected: historyId => {
                 root.selectedMessageHistoryId = historyId;
+                root.inspectorSessionId = String(root.session.id || "");
                 root.inspectorOpened = true;
             }
             onMessagesCleared: root.closeInspector()

@@ -7,6 +7,8 @@
 #include "models/subscriptionfiltermodel.h"
 #include "models/subscriptionlistmodel.h"
 #include "services/storage/historystore.h"
+#include "services/storage/historywriterworker.h"
+#include "services/parsing/messageparseworker.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/mqttsessionservice.h"
 #include "usecases/preferencescontroller.h"
@@ -19,6 +21,7 @@
 #include <QSettings>
 #include <QString>
 #include <QTimer>
+#include <QThread>
 
 class Application
 {
@@ -39,6 +42,10 @@ private:
     QSettings m_settings;
     PreferencesController m_preferences;
     HistoryStore m_historyStore;
+    QThread m_historyWriterThread;
+    HistoryWriterWorker *m_historyWriter = nullptr;
+    QThread m_messageParserThread;
+    MessageParseWorker *m_messageParser = nullptr;
     ScriptService m_scriptService;
     SessionService m_sessionService;
     SessionListModel m_sessionsModel;

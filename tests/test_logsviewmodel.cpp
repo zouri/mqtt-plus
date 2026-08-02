@@ -1,6 +1,8 @@
 #include "domain/session.h"
 #include "models/eventstreammodel.h"
 #include "services/storage/historystore.h"
+#include "services/storage/historywriterworker.h"
+#include "services/parsing/messageparseworker.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/preferencescontroller.h"
 #include "usecases/scriptservice.h"
@@ -29,6 +31,8 @@ struct LogsFixture
     QTemporaryDir dataDir;
     QSettings settings;
     HistoryStore historyStore;
+    HistoryWriterWorker historyWriter;
+    MessageParseWorker messageParser;
     PreferencesController preferences;
     EventStreamModel messages;
     EventStreamModel logs;
@@ -42,12 +46,15 @@ struct LogsFixture
     LogsFixture()
         : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
         , historyStore(dataDir.path())
+        , historyWriter(dataDir.path(), historyStore.nextMessageId())
         , preferences(&settings)
         , sessions(settings, scripts, historyStore, preferences)
         , session(initializeSession(sessions))
         , history(
               sessions,
               historyStore,
+              historyWriter,
+              messageParser,
               messages,
               logs,
               scripts,
@@ -55,6 +62,10 @@ struct LogsFixture
               preferences)
         , viewModel(history, logs)
     {
+        historyWriter.start();
+        messageParser.start();
+        sessions.setHistoryWriter(&historyWriter);
+        sessions.setMessageParser(&messageParser);
     }
 };
 

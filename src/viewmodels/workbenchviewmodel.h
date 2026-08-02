@@ -40,6 +40,7 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(bool allSubscriptionsPaused READ allSubscriptionsPaused NOTIFY subscriptionsStateChanged)
     Q_PROPERTY(QVariantMap messageTopicFilterState READ messageTopicFilterState NOTIFY messageTopicFilterStateChanged)
     Q_PROPERTY(qint64 totalMessageCount READ totalMessageCount NOTIFY totalMessageCountChanged)
+    Q_PROPERTY(QVariantMap messagePressure READ messagePressure NOTIFY messagePressureChanged)
 
 public:
     explicit WorkbenchViewModel(
@@ -73,6 +74,7 @@ public:
     bool allSubscriptionsPaused() const;
     QVariantMap messageTopicFilterState() const;
     qint64 totalMessageCount() const;
+    QVariantMap messagePressure() const;
 
     void setCurrentSessionIndex(int index);
 
@@ -122,10 +124,12 @@ signals:
     void messageStreamChanged();
     void totalMessageCountChanged();
     void messageStreamRowsAppended(int count);
+    void messageDetailsChanged(const QString &historyId);
     void pendingSubscriptionDeleteChanged();
     void subscriptionDeleteRequested(const QString &topic, const QString &displayName);
     void subscriptionsStateChanged();
     void messageTopicFilterStateChanged();
+    void messagePressureChanged();
 
 private:
     QString reusableMessagePayload(
