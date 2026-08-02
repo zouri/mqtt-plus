@@ -28,6 +28,7 @@ Item {
     property string selectedHistoryId: ""
     property string pendingMessageSearchText: ""
     property int bottomVisualOverflow: 0
+    property int streamRevision: 0
     readonly property bool connected: root.status.state === "connected"
     readonly property bool connecting: root.status.state === "connecting"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
@@ -83,6 +84,7 @@ Item {
     Layout.fillHeight: true
 
     function resetStreamPosition() {
+        root.streamRevision += 1
         root.loadingOlderEvents = false
         root.reachedHistoryStart = false
         root.followMode = "smart"
@@ -93,6 +95,7 @@ Item {
             eventList.shouldFollowOutput = true
             eventList.userScrollActive = false
             eventList.programmaticScroll = true
+            eventList.followScrollQueued = false
         }
 
         root.eventHistory.setMessageStreamFrozen(false)
@@ -135,6 +138,9 @@ Item {
 
     function clearMessageSelection() {
         root.selectedHistoryId = "";
+        if (eventList) {
+            eventList.currentIndex = -1;
+        }
     }
 
     function selectAdjacentMessage(fromIndex, direction) {
@@ -170,8 +176,12 @@ Item {
             return
         }
 
+        const revision = root.streamRevision
         eventList.followScrollQueued = true
         Qt.callLater(function() {
+            if (revision !== root.streamRevision) {
+                return
+            }
             eventList.followScrollQueued = false
             if (eventList.bottomAnchorActive) {
                 eventList.scrollToBottom()
@@ -201,8 +211,28 @@ Item {
 
         root.loadingOlderEvents = true
         eventList.bottomAnchorActive = false
+        const revision = root.streamRevision
         const previousContentHeight = eventList.contentHeight
         const previousContentY = eventList.contentY
+        let anchorIndex = eventList.indexAt(
+            1,
+            Math.max(eventList.originY, eventList.contentY) + 1)
+        if (anchorIndex < 0) {
+            anchorIndex = 0
+        }
+        let anchorHistoryId = ""
+        let anchorOffset = 0
+        for (let index = anchorIndex; index < root.streamModel.count; ++index) {
+            const row = root.streamModel.rowAt(index)
+            const historyId = String(row.historyId || "")
+            if (historyId.length === 0 || historyId === "0") {
+                continue
+            }
+            anchorHistoryId = historyId
+            const anchorItem = eventList.itemAtIndex(index)
+            anchorOffset = anchorItem ? anchorItem.y - eventList.contentY : 0
+            break
+        }
         const insertedRows = root.eventHistory.loadOlderCurrentSessionMessages()
         if (insertedRows === 0) {
             root.reachedHistoryStart = true
@@ -211,8 +241,33 @@ Item {
         }
 
         Qt.callLater(function() {
-            eventList.contentY = previousContentY + eventList.contentHeight - previousContentHeight
-            root.loadingOlderEvents = false
+            if (revision !== root.streamRevision) {
+                return
+            }
+            const restoredIndex = anchorHistoryId.length > 0
+                                  ? root.streamModel.indexOfHistoryId(anchorHistoryId)
+                                  : -1
+            if (restoredIndex < 0) {
+                eventList.contentY = previousContentY
+                                   + eventList.contentHeight
+                                   - previousContentHeight
+                root.loadingOlderEvents = false
+                return
+            }
+
+            eventList.positionViewAtIndex(restoredIndex, ListView.Beginning)
+            Qt.callLater(function() {
+                if (revision !== root.streamRevision) {
+                    return
+                }
+                const restoredItem = eventList.itemAtIndex(restoredIndex)
+                if (restoredItem) {
+                    eventList.contentY = Math.max(
+                        eventList.originY,
+                        restoredItem.y - anchorOffset)
+                }
+                root.loadingOlderEvents = false
+            })
         })
     }
 
@@ -885,7 +940,7 @@ Item {
                                     textFormat: Text.PlainText
                                     wrapMode: Text.WrapAnywhere
                                     maximumLineCount: root.payloadDisplayMode === 2
-                                                      ? 2147483647
+                                                      ? 64
                                                       : (root.payloadDisplayMode === 1
                                                          && (eventDelegate.historyId === root.selectedHistoryId
                                                              || rowHover.hovered)

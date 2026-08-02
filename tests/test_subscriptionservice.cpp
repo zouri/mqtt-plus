@@ -3,6 +3,8 @@
 #include "models/eventstreammodel.h"
 #include "services/apputils.h"
 #include "services/storage/historystore.h"
+#include "services/storage/historywriterworker.h"
+#include "services/parsing/messageparseworker.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/preferencescontroller.h"
 #include "usecases/scriptservice.h"
@@ -32,6 +34,8 @@ struct Fixture {
     QTemporaryDir dataDir;
     QSettings settings;
     HistoryStore historyStore;
+    HistoryWriterWorker historyWriter;
+    MessageParseWorker messageParser;
     PreferencesController preferences;
     EventStreamModel messages;
     EventStreamModel logs;
@@ -44,11 +48,14 @@ struct Fixture {
     Fixture()
         : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
         , historyStore(dataDir.path())
+        , historyWriter(dataDir.path(), historyStore.nextMessageId())
         , preferences(&settings)
         , sessions(settings, scripts, historyStore, preferences)
         , eventHistory(
               sessions,
               historyStore,
+              historyWriter,
+              messageParser,
               messages,
               logs,
               scripts,
@@ -56,6 +63,10 @@ struct Fixture {
               preferences)
         , service(sessions, scripts, eventHistory)
     {
+        historyWriter.start();
+        messageParser.start();
+        sessions.setHistoryWriter(&historyWriter);
+        sessions.setMessageParser(&messageParser);
     }
 
     SessionState &setCurrentSession(SessionState session)
@@ -111,8 +122,10 @@ void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleSignal(
         SubscriptionEntry {.topic = QStringLiteral("devices/one")},
         SubscriptionEntry {.topic = QStringLiteral("devices/two")},
     };
-    session.subscriptions[0].recentMessageTimestampsMs = {1, 2};
-    session.subscriptions[1].recentMessageTimestampsMs = {3, 4};
+    session.subscriptions[0].recentMessages.add(1);
+    session.subscriptions[0].recentMessages.add(2);
+    session.subscriptions[1].recentMessages.add(3);
+    session.subscriptions[1].recentMessages.add(4);
     SessionState &currentSession = fixture.setCurrentSession(std::move(session));
     QSignalSpy changedSpy(&fixture.service, &SubscriptionService::subscriptionsChanged);
 
@@ -120,18 +133,18 @@ void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleSignal(
 
     QVERIFY(currentSession.subscriptions.at(0).paused);
     QVERIFY(currentSession.subscriptions.at(1).paused);
-    QVERIFY(currentSession.subscriptions.at(0).recentMessageTimestampsMs.isEmpty());
-    QVERIFY(currentSession.subscriptions.at(1).recentMessageTimestampsMs.isEmpty());
+    QVERIFY(currentSession.subscriptions.at(0).recentMessages.isEmpty());
+    QVERIFY(currentSession.subscriptions.at(1).recentMessages.isEmpty());
     QCOMPARE(changedSpy.count(), 1);
 
-    currentSession.subscriptions[0].recentMessageTimestampsMs = {5};
-    currentSession.subscriptions[1].recentMessageTimestampsMs = {6};
+    currentSession.subscriptions[0].recentMessages.add(5);
+    currentSession.subscriptions[1].recentMessages.add(6);
     fixture.service.setAllCurrentSubscriptionsPaused(false);
 
     QVERIFY(!currentSession.subscriptions.at(0).paused);
     QVERIFY(!currentSession.subscriptions.at(1).paused);
-    QVERIFY(currentSession.subscriptions.at(0).recentMessageTimestampsMs.isEmpty());
-    QVERIFY(currentSession.subscriptions.at(1).recentMessageTimestampsMs.isEmpty());
+    QVERIFY(currentSession.subscriptions.at(0).recentMessages.isEmpty());
+    QVERIFY(currentSession.subscriptions.at(1).recentMessages.isEmpty());
     QCOMPARE(changedSpy.count(), 2);
 }
 
@@ -144,7 +157,7 @@ void SubscriptionServiceTest::detectsActiveCurrentSubscriptionFps()
     session.name = QStringLiteral("Session 1");
     SubscriptionEntry entry;
     entry.topic = QStringLiteral("devices/temp");
-    entry.recentMessageTimestampsMs = {nowMs};
+    entry.recentMessages.add(nowMs);
     session.subscriptions.append(entry);
     SessionState &currentSession = fixture.setCurrentSession(std::move(session));
 

@@ -13,7 +13,7 @@
 namespace AppUtils {
 
 constexpr int kMaxVisibleEventRows = 1200;
-constexpr qint64 kSubscriptionFpsWindowMs = 1000;
+constexpr qint64 kSubscriptionFpsWindowMs = RecentTrafficWindow::kWindowMs;
 constexpr int kSubscriptionFpsRefreshIntervalMs = 250;
 constexpr int kSubscriptionRateHistorySampleIntervalMs = 1000;
 constexpr int kSubscriptionRateHistoryDurationMs = 10'000;
@@ -33,10 +33,10 @@ QString clientErrorName(QMqttClient::ClientError error);
 QString messageStatusName(QMqtt::MessageStatus status);
 QString socketDiagnostic(QMqttClient *client);
 QString sessionStateName(const SessionState &session, const QMqttClient *client);
-void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs);
-int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs);
-void appendRecentTrafficSample(QVector<TrafficSample> &samples, qint64 nowMs, qint64 byteCount);
-int recentTrafficSampleCount(const QVector<TrafficSample> &samples, qint64 nowMs);
-qint64 recentTrafficByteCount(const QVector<TrafficSample> &samples, qint64 nowMs);
+void appendRecentMessage(RecentTrafficWindow &window, qint64 nowMs);
+int recentMessageCount(const RecentTrafficWindow &window, qint64 nowMs);
+void appendRecentTrafficSample(RecentTrafficWindow &window, qint64 nowMs, qint64 byteCount);
+int recentTrafficSampleCount(const RecentTrafficWindow &window, qint64 nowMs);
+qint64 recentTrafficByteCount(const RecentTrafficWindow &window, qint64 nowMs);
 
 } // namespace AppUtils

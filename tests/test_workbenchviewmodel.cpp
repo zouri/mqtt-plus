@@ -3,6 +3,8 @@
 #include "domain/session.h"
 #include "models/subscriptionlistmodel.h"
 #include "services/storage/historystore.h"
+#include "services/storage/historywriterworker.h"
+#include "services/parsing/messageparseworker.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/mqttsessionservice.h"
 #include "usecases/preferencescontroller.h"
@@ -48,6 +50,7 @@ struct WorkbenchFixture
         : settings(temporaryDirectory.filePath(QStringLiteral("settings.data")), settingsFormat)
         , preferences(&settings)
         , historyStore(temporaryDirectory.path())
+        , historyWriter(temporaryDirectory.path(), historyStore.nextMessageId())
         , sessionService(
               settings,
               scriptService,
@@ -56,6 +59,8 @@ struct WorkbenchFixture
         , eventHistoryService(
               sessionService,
               historyStore,
+              historyWriter,
+              messageParser,
               messagesModel,
               logsModel,
               scriptService,
@@ -81,6 +86,10 @@ struct WorkbenchFixture
               filteredMessagesModel,
               scriptsModel)
     {
+        historyWriter.start();
+        messageParser.start();
+        sessionService.setHistoryWriter(&historyWriter);
+        sessionService.setMessageParser(&messageParser);
         sessionsModel.setSessions(sessionService.sessions());
         scriptsModel.setScripts(scriptService.scripts());
         subscriptionsModel.setSubscriptions(QString(), {}, scriptService.scripts());
@@ -93,6 +102,8 @@ struct WorkbenchFixture
     QSettings settings;
     PreferencesController preferences;
     HistoryStore historyStore;
+    HistoryWriterWorker historyWriter;
+    MessageParseWorker messageParser;
     ScriptService scriptService;
     SessionService sessionService;
     SessionListModel sessionsModel;
@@ -118,6 +129,7 @@ class WorkbenchViewModelTest : public QObject
 
 private slots:
     void exposesDefaultPublishDraft();
+    void exposesMessagePressureState();
     void recoversFromInvalidSessionSettingsWithoutOverwritingFile();
     void rejectsSessionCreateWhenSettingsWriteFails();
     void rollsBackSessionEditWhenSettingsWriteFails();
@@ -151,6 +163,39 @@ void WorkbenchViewModelTest::exposesDefaultPublishDraft()
     QCOMPARE(viewModel.publisher()->qos(), 0);
     QCOMPARE(viewModel.publisher()->retain(), false);
     QVERIFY(!viewModel.publisher()->canPublish());
+}
+
+void WorkbenchViewModelTest::exposesMessagePressureState()
+{
+    WorkbenchFixture fixture;
+    QVariantMap pressure = fixture.viewModel.messagePressure();
+    QCOMPARE(pressure.value(QStringLiteral("state")).toString(), QStringLiteral("normal"));
+    QCOMPARE(pressure.value(QStringLiteral("captureMode")).toString(), QStringLiteral("full"));
+    QCOMPARE(pressure.value(QStringLiteral("writerState")).toString(), QStringLiteral("normal"));
+    QCOMPARE(pressure.value(QStringLiteral("parserState")).toString(), QStringLiteral("normal"));
+    QCOMPARE(pressure.value(QStringLiteral("backlog")).toInt(), 0);
+    QCOMPARE(pressure.value(QStringLiteral("dropped")).toLongLong(), 0);
+    QCOMPARE(pressure.value(QStringLiteral("parseBacklog")).toInt(), 0);
+    QCOMPARE(pressure.value(QStringLiteral("parseDropped")).toLongLong(), 0);
+    QCOMPARE(pressure.value(QStringLiteral("parseResultDropped")).toLongLong(), 0);
+    QCOMPARE(pressure.value(QStringLiteral("captureFiltered")).toLongLong(), 0);
+    QCOMPARE(pressure.value(QStringLiteral("parseSkippedPressure")).toLongLong(), 0);
+    QCOMPARE(pressure.value(QStringLiteral("storageDegraded")).toBool(), false);
+
+    MessageRecord record;
+    record.sessionId = QStringLiteral("session-1");
+    record.timestamp = QStringLiteral("2026-08-01T10:00:00.000Z");
+    record.topic = QStringLiteral("devices/pressure");
+    record.payloadBytes = QByteArrayLiteral("payload");
+    record.payloadSize = record.payloadBytes.size();
+    record.payloadPreview = QStringLiteral("payload");
+    QSignalSpy pressureSpy(&fixture.viewModel, &WorkbenchViewModel::messagePressureChanged);
+
+    QVERIFY(fixture.historyWriter.enqueueMessage(record) > 0);
+    QTRY_COMPARE(pressureSpy.count(), 1);
+    pressure = fixture.viewModel.messagePressure();
+    QCOMPARE(pressure.value(QStringLiteral("backlog")).toInt(), 1);
+    QCOMPARE(pressure.value(QStringLiteral("backlogBytes")).toLongLong() > 0, true);
 }
 
 void WorkbenchViewModelTest::recoversFromInvalidSessionSettingsWithoutOverwritingFile()
@@ -369,6 +414,7 @@ void WorkbenchViewModelTest::forwardsSessionAndRuntimeStateNotificationsSeparate
     QSignalSpy sessionSpy(&viewModel, &WorkbenchViewModel::currentSessionChanged);
     QSignalSpy statusSpy(&viewModel, &WorkbenchViewModel::sessionStatusChanged);
     QSignalSpy publishSpy(&viewModel, &WorkbenchViewModel::publishStatusChanged);
+    QSignalSpy streamSpy(&viewModel, &WorkbenchViewModel::messageStreamChanged);
     QSignalSpy availabilitySpy(viewModel.publisher(), &PublishDraftViewModel::canPublishChanged);
 
     emit fixture.sessionService.currentSessionChanged();
@@ -376,6 +422,7 @@ void WorkbenchViewModelTest::forwardsSessionAndRuntimeStateNotificationsSeparate
     QCOMPARE(sessionSpy.size(), 1);
     QCOMPARE(statusSpy.size(), 1);
     QCOMPARE(publishSpy.size(), 1);
+    QCOMPARE(streamSpy.size(), 1);
     QCOMPARE(availabilitySpy.size(), 1);
 
     emit fixture.mqttService.sessionStateChanged();
@@ -383,6 +430,7 @@ void WorkbenchViewModelTest::forwardsSessionAndRuntimeStateNotificationsSeparate
     QCOMPARE(sessionSpy.size(), 1);
     QCOMPARE(statusSpy.size(), 2);
     QCOMPARE(publishSpy.size(), 2);
+    QCOMPARE(streamSpy.size(), 1);
     QCOMPARE(availabilitySpy.size(), 2);
 }
 
@@ -392,10 +440,31 @@ void WorkbenchViewModelTest::forwardsMessageBatchNotifications()
     WorkbenchViewModel &viewModel = fixture.viewModel;
     QSignalSpy appendSpy(&viewModel, &WorkbenchViewModel::messageStreamRowsAppended);
 
-    emit fixture.eventHistoryService.messageRowsAppended(4);
+    fixture.filteredMessagesModel.setSelectedTopics({QStringLiteral("visible/#")});
+    emit fixture.eventHistoryService.messageRowsAppended(QVariantList {
+        QVariantMap {
+            {QStringLiteral("kind"), QStringLiteral("message")},
+            {QStringLiteral("topic"), QStringLiteral("visible/one")},
+            {QStringLiteral("direction"), QStringLiteral("incoming")},
+        },
+        QVariantMap {
+            {QStringLiteral("kind"), QStringLiteral("message")},
+            {QStringLiteral("topic"), QStringLiteral("hidden/one")},
+            {QStringLiteral("direction"), QStringLiteral("incoming")},
+        },
+    });
 
     QCOMPARE(appendSpy.size(), 1);
-    QCOMPARE(appendSpy.first().at(0).toInt(), 4);
+    QCOMPARE(appendSpy.first().at(0).toInt(), 1);
+
+    emit fixture.eventHistoryService.messageRowsAppended(QVariantList {
+        QVariantMap {
+            {QStringLiteral("kind"), QStringLiteral("message")},
+            {QStringLiteral("topic"), QStringLiteral("hidden/two")},
+            {QStringLiteral("direction"), QStringLiteral("incoming")},
+        },
+    });
+    QCOMPARE(appendSpy.size(), 1);
 }
 
 void WorkbenchViewModelTest::exposesTotalMessageCount()
@@ -423,22 +492,19 @@ void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()
     session.connectTimeoutSeconds = 8;
     session.runtime.connectedAtMs = nowMs - 5000;
     session.runtime.connectionStartedAtMs = nowMs - 1000;
-    session.runtime.recentReceivedTraffic = {
-        {nowMs - 100, 1024},
-        {nowMs - 200, 2048},
-        {nowMs - 300, 0},
-        {nowMs - 1500, 8192},
-    };
-    session.runtime.recentPublishedTraffic = {
-        {nowMs - 100, 512},
-        {nowMs - 200, 0},
-    };
+    session.runtime.recentReceivedTraffic.add(nowMs - 100, 1024);
+    session.runtime.recentReceivedTraffic.add(nowMs - 200, 2048);
+    session.runtime.recentReceivedTraffic.add(nowMs - 300, 0);
+    session.runtime.recentReceivedTraffic.add(nowMs - 1500, 8192);
+    session.runtime.recentPublishedTraffic.add(nowMs - 100, 512);
+    session.runtime.recentPublishedTraffic.add(nowMs - 200, 0);
     SubscriptionEntry first;
     first.topic = QStringLiteral("devices/one");
-    first.recentMessageTimestampsMs = {nowMs - 100, nowMs - 200};
+    first.recentMessages.add(nowMs - 100);
+    first.recentMessages.add(nowMs - 200);
     SubscriptionEntry second;
     second.topic = QStringLiteral("devices/two");
-    second.recentMessageTimestampsMs = {nowMs - 300};
+    second.recentMessages.add(nowMs - 300);
     session.subscriptions = {first, second};
 
     WorkbenchFixture fixture;

@@ -180,57 +180,29 @@ QString sessionStateName(const SessionState &session, const QMqttClient *client)
     return QStringLiteral("disconnected");
 }
 
-void pruneRecentMessageTimestamps(QVector<qint64> &timestamps, qint64 nowMs)
+void appendRecentMessage(RecentTrafficWindow &window, qint64 nowMs)
 {
-    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
-    timestamps.erase(
-        std::remove_if(
-            timestamps.begin(),
-            timestamps.end(),
-            [cutoffMs](qint64 timestampMs) { return timestampMs < cutoffMs; }),
-        timestamps.end());
+    window.add(nowMs);
 }
 
-int recentMessageCount(const QVector<qint64> &timestamps, qint64 nowMs)
+int recentMessageCount(const RecentTrafficWindow &window, qint64 nowMs)
 {
-    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
-    return static_cast<int>(std::count_if(
-        timestamps.cbegin(),
-        timestamps.cend(),
-        [cutoffMs](qint64 timestampMs) { return timestampMs >= cutoffMs; }));
+    return window.eventCount(nowMs);
 }
 
-void appendRecentTrafficSample(QVector<TrafficSample> &samples, qint64 nowMs, qint64 byteCount)
+void appendRecentTrafficSample(RecentTrafficWindow &window, qint64 nowMs, qint64 byteCount)
 {
-    samples.append({nowMs, (std::max)(qint64(0), byteCount)});
-    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
-    samples.erase(
-        std::remove_if(
-            samples.begin(),
-            samples.end(),
-            [cutoffMs](const TrafficSample &sample) { return sample.timestampMs < cutoffMs; }),
-        samples.end());
+    window.add(nowMs, byteCount);
 }
 
-int recentTrafficSampleCount(const QVector<TrafficSample> &samples, qint64 nowMs)
+int recentTrafficSampleCount(const RecentTrafficWindow &window, qint64 nowMs)
 {
-    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
-    return static_cast<int>(std::count_if(
-        samples.cbegin(),
-        samples.cend(),
-        [cutoffMs](const TrafficSample &sample) { return sample.timestampMs >= cutoffMs; }));
+    return window.eventCount(nowMs);
 }
 
-qint64 recentTrafficByteCount(const QVector<TrafficSample> &samples, qint64 nowMs)
+qint64 recentTrafficByteCount(const RecentTrafficWindow &window, qint64 nowMs)
 {
-    const qint64 cutoffMs = nowMs - kSubscriptionFpsWindowMs;
-    qint64 totalBytes = 0;
-    for (const TrafficSample &sample : samples) {
-        if (sample.timestampMs >= cutoffMs) {
-            totalBytes += sample.byteCount;
-        }
-    }
-    return totalBytes;
+    return window.byteCount(nowMs);
 }
 
 } // namespace AppUtils
