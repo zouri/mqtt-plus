@@ -9,25 +9,51 @@
 #include <QTemporaryDir>
 #include <QUuid>
 
+namespace {
+qint64 appendMessage(HistoryStore &store, MessageRecord record)
+{
+    record.id = store.nextMessageId();
+    if (record.id <= 0) {
+        return 0;
+    }
+    const HistoryWriteResult result = store.appendMessages({record});
+    return result.ok ? record.id : 0;
+}
+
+bool appendMessages(HistoryStore &store, QVector<MessageRecord> records)
+{
+    qint64 nextId = store.nextMessageId();
+    if (nextId <= 0) {
+        return false;
+    }
+    for (MessageRecord &record : records) {
+        record.id = nextId++;
+    }
+    return store.appendMessages(records).ok;
+}
+} // namespace
+
 class HistoryStoreTest : public QObject
 {
     Q_OBJECT
 
 private slots:
-    void flushesRawPayloadWithoutLegacyColumns();
+    void writesRawPayloadWithoutLegacyColumns();
     void resetsOnlyMessageTableWhenSchemaIsStale();
+    void migratesParseStateWithoutDroppingCanonicalHistory();
+    void repairsInterruptedParseStateBackfill();
     void loadMessagesExcludePayloadBytes();
-    void loadsPendingMessageByReservedId();
+    void loadsMessageByExplicitId();
     void loadsPayloadBytesByMessageId();
     void roundTripsCanonicalOutgoingMessage();
-    void countsPersistedAndPendingMessagesPerSession();
+    void countsPersistedMessagesPerSession();
     void keepsTotalMessageCountAcrossPruneAndReopen();
     void backfillsTotalMessageCountForExistingHistory();
     void clearMessagesRollsBackWhenTotalDeleteFails();
     void clearAllHistoryRollsBackWhenLogDeleteFails();
 };
 
-void HistoryStoreTest::flushesRawPayloadWithoutLegacyColumns()
+void HistoryStoreTest::writesRawPayloadWithoutLegacyColumns()
 {
     QTemporaryDir dataDir;
     QVERIFY(dataDir.isValid());
@@ -50,14 +76,10 @@ void HistoryStoreTest::flushesRawPayloadWithoutLegacyColumns()
     record.payloadPreview = QStringLiteral("raw preview");
     record.payloadSize = payload.size();
     record.payloadHash = QStringLiteral("hash");
-    const qint64 reservedId = store.enqueueMessage(record);
+    const qint64 reservedId = appendMessage(store, record);
 
     QVERIFY(reservedId > 0);
-    QCOMPARE(store.pendingMessageCount(), 1);
-
-    QCOMPARE(store.flushPendingMessages(), QStringList({sessionId}));
     QVERIFY2(store.lastError().isEmpty(), qPrintable(store.lastError()));
-    QCOMPARE(store.pendingMessageCount(), 0);
 
     const QVariantList rows = store.loadMessages(sessionId, 10);
     QCOMPARE(rows.size(), 1);
@@ -128,11 +150,108 @@ void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
     record.payloadPreview = QStringLiteral("current");
     record.payloadSize = 7;
     record.payloadHash = QStringLiteral("hash");
-    const qint64 reservedId = store.enqueueMessage(record);
+    const qint64 reservedId = appendMessage(store, record);
 
     QVERIFY(reservedId > 0);
-    QCOMPARE(store.flushPendingMessages(), QStringList({newSessionId}));
     QCOMPARE(store.loadMessages(newSessionId, 10).size(), 1);
+}
+
+void HistoryStoreTest::migratesParseStateWithoutDroppingCanonicalHistory()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    const QString connectionName = QStringLiteral("parse-state-migration-%1")
+                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral(
+                     "CREATE TABLE mqtt_messages ("
+                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                     "session_id TEXT NOT NULL, timestamp TEXT NOT NULL, "
+                     "direction TEXT NOT NULL, topic TEXT NOT NULL, "
+                     "qos INTEGER NOT NULL DEFAULT -1, retain INTEGER NOT NULL DEFAULT 0, "
+                     "retain_known INTEGER NOT NULL DEFAULT 0, "
+                     "parsed_payload TEXT NOT NULL DEFAULT '', parsed_format TEXT NOT NULL DEFAULT '', "
+                     "parse_error TEXT NOT NULL DEFAULT '', script_id TEXT NOT NULL DEFAULT '', "
+                     "script_name TEXT NOT NULL DEFAULT '', payload_bytes BLOB, "
+                     "payload_size INTEGER NOT NULL DEFAULT 0, payload_state TEXT NOT NULL DEFAULT 'full', "
+                     "payload_preview TEXT NOT NULL DEFAULT '', payload_hash TEXT NOT NULL DEFAULT '', "
+                     "payload_format INTEGER NOT NULL DEFAULT -1)")),
+            qPrintable(query.lastError().text()));
+        QVERIFY2(query.exec(QStringLiteral(
+                     "INSERT INTO mqtt_messages("
+                     "session_id, timestamp, direction, topic, parsed_payload, parsed_format, "
+                     "payload_bytes, payload_size, payload_preview, payload_format) "
+                     "VALUES('session-1', '2026-08-01T12:00:00.000Z', 'incoming', 'devices/one', "
+                     "'{\"value\":1}', 'JSON', '{\"value\":1}', 11, '{\"value\":1}', 1)")),
+            qPrintable(query.lastError().text()));
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    const QVariantList rows = store.loadMessages(QStringLiteral("session-1"), 10);
+    QCOMPARE(rows.size(), 1);
+    QCOMPARE(rows.first().toMap().value(QStringLiteral("topic")).toString(), QStringLiteral("devices/one"));
+    QCOMPARE(rows.first().toMap().value(QStringLiteral("parse_state")).toString(), QStringLiteral("succeeded"));
+}
+
+void HistoryStoreTest::repairsInterruptedParseStateBackfill()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    const QString connectionName = QStringLiteral("parse-state-repair-%1")
+                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral(
+                     "CREATE TABLE mqtt_messages ("
+                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                     "session_id TEXT NOT NULL, timestamp TEXT NOT NULL, "
+                     "direction TEXT NOT NULL, topic TEXT NOT NULL, "
+                     "qos INTEGER NOT NULL DEFAULT -1, retain INTEGER NOT NULL DEFAULT 0, "
+                     "retain_known INTEGER NOT NULL DEFAULT 0, "
+                     "parsed_payload TEXT NOT NULL DEFAULT '', parsed_format TEXT NOT NULL DEFAULT '', "
+                     "parse_error TEXT NOT NULL DEFAULT '', script_id TEXT NOT NULL DEFAULT '', "
+                     "script_name TEXT NOT NULL DEFAULT '', payload_bytes BLOB, "
+                     "payload_size INTEGER NOT NULL DEFAULT 0, payload_state TEXT NOT NULL DEFAULT 'full', "
+                     "payload_preview TEXT NOT NULL DEFAULT '', payload_hash TEXT NOT NULL DEFAULT '', "
+                     "payload_format INTEGER NOT NULL DEFAULT -1, "
+                     "parse_state TEXT NOT NULL DEFAULT 'not_required')")),
+            qPrintable(query.lastError().text()));
+        QVERIFY2(query.exec(QStringLiteral(
+                     "INSERT INTO mqtt_messages("
+                     "session_id, timestamp, direction, topic, parsed_payload, parsed_format) "
+                     "VALUES('session-1', '2026-08-01T12:00:00.000Z', 'incoming', "
+                     "'devices/parsed', '{\"value\":1}', 'JSON')")),
+            qPrintable(query.lastError().text()));
+        QVERIFY2(query.exec(QStringLiteral(
+                     "INSERT INTO mqtt_messages("
+                     "session_id, timestamp, direction, topic, parse_error) "
+                     "VALUES('session-1', '2026-08-01T12:00:01.000Z', 'incoming', "
+                     "'devices/failed', 'invalid payload')")),
+            qPrintable(query.lastError().text()));
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    QCOMPARE(
+        store.loadMessage(1).value(QStringLiteral("parse_state")).toString(),
+        QStringLiteral("succeeded"));
+    QCOMPARE(
+        store.loadMessage(2).value(QStringLiteral("parse_state")).toString(),
+        QStringLiteral("failed"));
 }
 
 void HistoryStoreTest::loadMessagesExcludePayloadBytes()
@@ -155,10 +274,9 @@ void HistoryStoreTest::loadMessagesExcludePayloadBytes()
     record.payloadPreview = QStringLiteral("preview only");
     record.payloadSize = payload.size();
     record.payloadHash = QStringLiteral("hash");
-    const qint64 reservedId = store.enqueueMessage(record);
+    const qint64 reservedId = appendMessage(store, record);
 
     QVERIFY(reservedId > 0);
-    QCOMPARE(store.flushPendingMessages(), QStringList({sessionId}));
 
     const QVariantList rows = store.loadMessages(sessionId, 10);
     QCOMPARE(rows.size(), 1);
@@ -171,7 +289,7 @@ void HistoryStoreTest::loadMessagesExcludePayloadBytes()
     QCOMPARE(store.loadMessagePayloadBytes(reservedId), payload);
 }
 
-void HistoryStoreTest::loadsPendingMessageByReservedId()
+void HistoryStoreTest::loadsMessageByExplicitId()
 {
     QTemporaryDir dataDir;
     QVERIFY(dataDir.isValid());
@@ -189,19 +307,17 @@ void HistoryStoreTest::loadsPendingMessageByReservedId()
     record.payloadPreview = QStringLiteral("preview");
     record.payloadFormat = 0;
 
-    const qint64 id = store.enqueueMessage(record);
+    const qint64 id = appendMessage(store, record);
     QVERIFY(id > 0);
-    QCOMPARE(store.pendingMessageCount(), 1);
 
     const QVariantMap loaded = store.loadMessage(id);
     QCOMPARE(loaded.value(QStringLiteral("id")).toLongLong(), id);
     QCOMPARE(loaded.value(QStringLiteral("topic")).toString(), record.topic);
     QCOMPARE(loaded.value(QStringLiteral("payload_bytes")).toByteArray(), record.payloadBytes);
     QCOMPARE(store.loadMessagePayloadBytes(id), record.payloadBytes);
-    QCOMPARE(store.pendingMessageCount(), 1);
 }
 
-void HistoryStoreTest::countsPersistedAndPendingMessagesPerSession()
+void HistoryStoreTest::countsPersistedMessagesPerSession()
 {
     QTemporaryDir dataDir;
     QVERIFY(dataDir.isValid());
@@ -221,14 +337,9 @@ void HistoryStoreTest::countsPersistedAndPendingMessagesPerSession()
     MessageRecord other = first;
     other.sessionId = QStringLiteral("session-2");
 
-    QVERIFY(store.enqueueMessage(first) > 0);
-    QVERIFY(store.enqueueMessage(second) > 0);
-    QVERIFY(store.enqueueMessage(other) > 0);
+    QVERIFY(appendMessages(store, {first, second, other}));
     QCOMPARE(store.totalMessageCount(first.sessionId), 2);
     QCOMPARE(store.totalMessageCount(other.sessionId), 1);
-
-    store.flushPendingMessages();
-    QCOMPARE(store.totalMessageCount(first.sessionId), 2);
 
     store.clearMessages(first.sessionId);
     QCOMPARE(store.totalMessageCount(first.sessionId), 0);
@@ -245,6 +356,7 @@ void HistoryStoreTest::keepsTotalMessageCountAcrossPruneAndReopen()
         HistoryStore store(dataDir.path());
         QVERIFY2(store.isReady(), qPrintable(store.lastError()));
 
+        QVector<MessageRecord> records;
         for (int index = 0; index < 3; ++index) {
             MessageRecord record;
             record.sessionId = sessionId;
@@ -252,10 +364,9 @@ void HistoryStoreTest::keepsTotalMessageCountAcrossPruneAndReopen()
             record.topic = QStringLiteral("devices/%1").arg(index);
             record.payloadPreview = QString::number(index);
             record.payloadState = QStringLiteral("full");
-            QVERIFY(store.enqueueMessage(record) > 0);
+            records.append(record);
         }
-
-        store.flushPendingMessages();
+        QVERIFY(appendMessages(store, records));
         QCOMPARE(store.totalMessageCount(sessionId), 3);
         store.pruneMessages(sessionId, 1);
         QCOMPARE(store.loadMessages(sessionId, 10).size(), 1);
@@ -278,6 +389,7 @@ void HistoryStoreTest::backfillsTotalMessageCountForExistingHistory()
     {
         HistoryStore store(dataDir.path());
         QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+        QVector<MessageRecord> records;
         for (int index = 0; index < 2; ++index) {
             MessageRecord record;
             record.sessionId = sessionId;
@@ -285,9 +397,9 @@ void HistoryStoreTest::backfillsTotalMessageCountForExistingHistory()
             record.topic = QStringLiteral("devices/%1").arg(index);
             record.payloadPreview = QString::number(index);
             record.payloadState = QStringLiteral("full");
-            QVERIFY(store.enqueueMessage(record) > 0);
+            records.append(record);
         }
-        store.flushPendingMessages();
+        QVERIFY(appendMessages(store, records));
     }
 
     const QString connectionName = QStringLiteral("drop-message-total-%1")
@@ -320,8 +432,7 @@ void HistoryStoreTest::clearMessagesRollsBackWhenTotalDeleteFails()
     record.topic = QStringLiteral("devices/one");
     record.payloadPreview = QStringLiteral("one");
     record.payloadState = QStringLiteral("full");
-    QVERIFY(store.enqueueMessage(record) > 0);
-    QCOMPARE(store.flushPendingMessages(), QStringList {record.sessionId});
+    QVERIFY(appendMessage(store, record) > 0);
 
     const QString connectionName = QStringLiteral("fail-total-delete-%1")
                                        .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
@@ -358,8 +469,7 @@ void HistoryStoreTest::clearAllHistoryRollsBackWhenLogDeleteFails()
     record.topic = QStringLiteral("devices/one");
     record.payloadPreview = QStringLiteral("one");
     record.payloadState = QStringLiteral("full");
-    QVERIFY(store.enqueueMessage(record) > 0);
-    QCOMPARE(store.flushPendingMessages(), QStringList {record.sessionId});
+    QVERIFY(appendMessage(store, record) > 0);
     QVERIFY(store.appendEvent(
                 record.sessionId,
                 QStringLiteral("2026-07-25T10:00:01.000"),
@@ -409,10 +519,9 @@ void HistoryStoreTest::loadsPayloadBytesByMessageId()
     record.payloadPreview = QStringLiteral("preview");
     record.payloadSize = payload.size();
     record.payloadHash = QStringLiteral("hash");
-    const qint64 reservedId = store.enqueueMessage(record);
+    const qint64 reservedId = appendMessage(store, record);
 
     QVERIFY(reservedId > 0);
-    QCOMPARE(store.flushPendingMessages(), QStringList({sessionId}));
     QCOMPARE(store.loadMessagePayloadBytes(reservedId), payload);
 }
 
@@ -438,9 +547,8 @@ void HistoryStoreTest::roundTripsCanonicalOutgoingMessage()
     record.payloadPreview = QString::fromUtf8(record.payloadBytes);
     record.payloadFormat = 1;
 
-    const qint64 id = store.enqueueMessage(record);
+    const qint64 id = appendMessage(store, record);
     QVERIFY(id > 0);
-    QCOMPARE(store.flushPendingMessages(), QStringList {QStringLiteral("session-1")});
 
     const QVariantMap loaded = store.loadMessage(id);
     QCOMPARE(loaded.value(QStringLiteral("direction")).toString(), QStringLiteral("outgoing"));

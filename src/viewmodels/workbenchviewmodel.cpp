@@ -63,6 +63,10 @@ WorkbenchViewModel::WorkbenchViewModel(
             &SessionService::currentSessionChanged,
             this,
             &WorkbenchViewModel::totalMessageCountChanged);
+    connect(&m_sessionService,
+            &SessionService::currentSessionChanged,
+            this,
+            &WorkbenchViewModel::messageStreamChanged);
     connect(&m_mqttService,
             &MqttSessionService::sessionStateChanged,
             this,
@@ -84,9 +88,24 @@ WorkbenchViewModel::WorkbenchViewModel(
             this,
             &WorkbenchViewModel::totalMessageCountChanged);
     connect(&m_eventHistoryService,
+            &EventHistoryService::messageWriterStateChanged,
+            this,
+            &WorkbenchViewModel::messagePressureChanged);
+    connect(&m_eventHistoryService,
             &EventHistoryService::messageRowsAppended,
             this,
-            &WorkbenchViewModel::messageStreamRowsAppended);
+            [this](const QVariantList &rows) {
+                const int visibleMessageCount = m_filteredMessagesModel.matchingMessageCount(rows);
+                if (visibleMessageCount > 0) {
+                    emit messageStreamRowsAppended(visibleMessageCount);
+                }
+            });
+    connect(&m_eventHistoryService,
+            &EventHistoryService::messageParseResultChanged,
+            this,
+            [this](qint64 historyId) {
+                emit messageDetailsChanged(QString::number(historyId));
+            });
     connect(&m_scriptsModel,
             &QAbstractItemModel::modelReset,
             this,
@@ -263,6 +282,27 @@ QVariantMap WorkbenchViewModel::messageTopicFilterState() const
         {QStringLiteral("pausedCount"), pausedCount},
         {QStringLiteral("singleTopicLabel"), singleTopicLabel},
     };
+}
+
+QVariantMap WorkbenchViewModel::messagePressure() const
+{
+    QVariantMap pressure;
+    pressure.insert(QStringLiteral("state"), m_eventHistoryService.messagePressureState());
+    pressure.insert(QStringLiteral("captureMode"), m_eventHistoryService.messageCaptureMode());
+    pressure.insert(QStringLiteral("writerState"), m_eventHistoryService.messageWriterPressureState());
+    pressure.insert(QStringLiteral("parserState"), m_eventHistoryService.messageParserPressureState());
+    pressure.insert(QStringLiteral("backlog"), m_eventHistoryService.messageWriterBacklog());
+    pressure.insert(QStringLiteral("backlogBytes"), m_eventHistoryService.messageWriterBacklogBytes());
+    pressure.insert(QStringLiteral("dropped"), m_eventHistoryService.droppedMessageCount());
+    pressure.insert(QStringLiteral("parseBacklog"), m_eventHistoryService.messageParserBacklog());
+    pressure.insert(QStringLiteral("parseBacklogBytes"), m_eventHistoryService.messageParserBacklogBytes());
+    pressure.insert(QStringLiteral("parseDropped"), m_eventHistoryService.droppedParseTaskCount());
+    pressure.insert(QStringLiteral("parseResultDropped"), m_eventHistoryService.droppedParseResultCount());
+    pressure.insert(QStringLiteral("captureFiltered"), m_eventHistoryService.captureFilteredMessageCount());
+    pressure.insert(QStringLiteral("parseSkippedPressure"), m_eventHistoryService.pressureSkippedParseCount());
+    pressure.insert(QStringLiteral("storageDegraded"), m_eventHistoryService.messageStorageDegraded());
+    pressure.insert(QStringLiteral("lastError"), m_eventHistoryService.messageStorageError());
+    return pressure;
 }
 
 qint64 WorkbenchViewModel::totalMessageCount() const

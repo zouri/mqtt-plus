@@ -22,7 +22,7 @@ Rectangle {
         { "key": "rose", "label": qsTr("Rose"), "color": "#ff879d" }
     ]
     readonly property var languageLabels: [qsTr("System"), qsTr("English"), qsTr("Simplified Chinese")]
-    readonly property var messagePayloadDisplayLabels: [qsTr("Compact"), qsTr("Expand on hover"), qsTr("Always show full")]
+    readonly property var messagePayloadDisplayLabels: [qsTr("Compact"), qsTr("Expand on hover"), qsTr("Always expanded")]
     readonly property var messageRetentionLabels: [qsTr("1,000 messages"), qsTr("5,000 messages"), qsTr("10,000 messages"), qsTr("Unlimited")]
     readonly property var logRetentionLabels: [qsTr("500 logs"), qsTr("2,000 logs"), qsTr("5,000 logs"), qsTr("Unlimited")]
     readonly property var pageSizeLabels: [qsTr("200 rows"), qsTr("500 rows"), qsTr("1,000 rows")]

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "publishstatus.h"
+#include "recenttrafficwindow.h"
 
 #include <QHash>
 #include <QString>
@@ -9,11 +10,6 @@
 #include <QVector>
 
 #include <QMqttClient>
-
-struct TrafficSample {
-    qint64 timestampMs = 0;
-    qint64 byteCount = 0;
-};
 
 struct SessionRuntimeState {
     bool disconnectRequested = false;
@@ -31,8 +27,8 @@ struct SessionRuntimeState {
     qint64 oldestLoadedLogId = 0;
     qint64 connectedAtMs = 0;
     qint64 connectionStartedAtMs = 0;
-    QVector<TrafficSample> recentReceivedTraffic;
-    QVector<TrafficSample> recentPublishedTraffic;
+    RecentTrafficWindow recentReceivedTraffic;
+    RecentTrafficWindow recentPublishedTraffic;
     bool loadedAllMessageHistory = false;
     bool loadedAllLogHistory = false;
     QMqttClient *client = nullptr;

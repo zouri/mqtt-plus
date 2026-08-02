@@ -6,6 +6,8 @@
 using namespace AppUtils;
 
 namespace {
+constexpr qsizetype kListTextCharacterLimit = 64 * 1024;
+
 QString startupDividerLabel()
 {
     return QStringLiteral("Current launch");
@@ -34,6 +36,11 @@ QString resolveTopicValue(const QHash<QString, QString> &values, const QString &
         }
     }
     return value;
+}
+
+QString boundedListText(const QString &text)
+{
+    return text.left(kListTextCharacterLimit);
 }
 }
 
@@ -109,6 +116,7 @@ QVariantMap launchDividerRow(const QString &launchTimestamp)
     dividerRow.insert(QStringLiteral("retain"), false);
     dividerRow.insert(QStringLiteral("retainKnown"), false);
     dividerRow.insert(QStringLiteral("parsedPayload"), QString());
+    dividerRow.insert(QStringLiteral("parseState"), QString());
     dividerRow.insert(QStringLiteral("payloadState"), QString());
     dividerRow.insert(QStringLiteral("payloadHash"), QString());
     return dividerRow;
@@ -133,6 +141,7 @@ QVariantMap eventRow(qint64 historyId, const QString &timestamp, const QString &
     row.insert(QStringLiteral("retain"), false);
     row.insert(QStringLiteral("retainKnown"), false);
     row.insert(QStringLiteral("parsedPayload"), QString());
+    row.insert(QStringLiteral("parseState"), QString());
     row.insert(QStringLiteral("payloadState"), QString());
     row.insert(QStringLiteral("payloadHash"), QString());
     return row;
@@ -190,48 +199,60 @@ QVariantMap renderHistoryRow(
         payloadState = QStringLiteral("full");
     }
     QString payloadPreview = row.value(QStringLiteral("payload_preview")).toString();
-    const bool renderingStoredPayload = payloadState != QStringLiteral("skipped")
-        && (!payloadBytes.isEmpty() || payloadPreview.isEmpty());
-    const bool renderingFullPayloadFromPreview = payloadState == QStringLiteral("full")
-        && payloadBytes.isEmpty()
-        && !payloadPreview.isEmpty();
-    const bool renderedPayloadIsPreviewOnly = renderingFullPayloadFromPreview
-        && payloadSize > payloadPreview.toUtf8().size();
+    const bool renderingFullPayload = payloadState == QStringLiteral("full");
 
     const int storedPayloadFormat = row.value(QStringLiteral("payload_format"), -1).toInt();
     const PayloadFormat format = storedPayloadFormat >= 0
         ? PayloadCodec::formatFromInt(storedPayloadFormat)
         : PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
-    QString parseError;
+    const QString parserError = row.value(QStringLiteral("parse_error")).toString();
+    const QString parsedFormat = row.value(QStringLiteral("parsed_format")).toString();
+    const QString parsedPayload = boundedListText(
+        row.value(QStringLiteral("parsed_payload")).toString());
+    QString parseState = row.value(QStringLiteral("parse_state")).toString();
+    if (parseState.isEmpty()) {
+        parseState = !parserError.isEmpty()
+            ? QStringLiteral("failed")
+            : (!parsedFormat.isEmpty() || !parsedPayload.isEmpty()
+                ? QStringLiteral("succeeded")
+                : QStringLiteral("not_required"));
+    }
+
+    QString decodeError;
     QString renderedPayload;
     QString decodedPayload;
-    if (renderingStoredPayload) {
-        decodedPayload = PayloadCodec::decodeForDisplay(format, payloadBytes, parseError);
+    bool renderedPayloadIsPreviewOnly = false;
+    const bool parseHandledInWorker = parseState != QStringLiteral("not_required");
+    if (renderingFullPayload && !parseHandledInWorker) {
+        const QByteArray displayBytes = !payloadPreview.isEmpty() || payloadBytes.isEmpty()
+            ? payloadPreview.toUtf8()
+            : payloadBytes;
+        renderedPayloadIsPreviewOnly = payloadSize > displayBytes.size();
+        decodedPayload = PayloadCodec::decodeForDisplay(format, displayBytes, decodeError);
         renderedPayload = decodedPayload;
-        if (!parseError.isEmpty()) {
+        if (!decodeError.isEmpty()) {
             renderedPayload = QStringLiteral("%1\n%2").arg(renderedPayload, payloadPreview);
-        }
-    } else if (renderingFullPayloadFromPreview) {
-        decodedPayload = PayloadCodec::decodeForDisplay(format, payloadPreview.toUtf8(), parseError);
-        renderedPayload = decodedPayload;
-        if (!parseError.isEmpty()) {
-            decodedPayload = payloadPreview;
-            renderedPayload = payloadPreview;
         }
     } else {
         renderedPayload = payloadState == QStringLiteral("skipped")
             ? QString()
             : payloadPreview;
+        decodedPayload = renderedPayload;
+        renderedPayloadIsPreviewOnly = payloadSize > payloadPreview.toUtf8().size();
     }
 
-    const QString scriptError = row.value(QStringLiteral("parse_error")).toString();
-    const QString parsedFormat = row.value(QStringLiteral("parsed_format")).toString();
-    const bool hasScriptResult = !parsedFormat.isEmpty() || !scriptError.isEmpty();
-    if (!scriptError.isEmpty()) {
-        renderedPayload = QStringLiteral("%1\nLua Error: %2").arg(renderedPayload, scriptError);
-    } else if (hasScriptResult) {
-        renderedPayload = row.value(QStringLiteral("parsed_payload")).toString();
+    if (parseState == QStringLiteral("failed") && !parserError.isEmpty()) {
+        const QString errorLabel = row.value(QStringLiteral("script_id")).toString().isEmpty()
+            ? QStringLiteral("Parser Error")
+            : QStringLiteral("Lua Error");
+        renderedPayload = renderedPayload.isEmpty()
+            ? QStringLiteral("%1: %2").arg(errorLabel, parserError)
+            : QStringLiteral("%1\n%2: %3").arg(renderedPayload, errorLabel, parserError);
+    } else if (parseState == QStringLiteral("succeeded")) {
+        renderedPayload = parsedPayload;
     }
+    renderedPayload = boundedListText(renderedPayload);
+    decodedPayload = boundedListText(decodedPayload);
 
     rendered.insert(QStringLiteral("kind"), QStringLiteral("message"));
     rendered.insert(QStringLiteral("title"), topic);
@@ -244,34 +265,43 @@ QVariantMap renderHistoryRow(
     rendered.insert(QStringLiteral("qos"), row.value(QStringLiteral("qos"), -1).toInt());
     rendered.insert(QStringLiteral("retain"), row.value(QStringLiteral("retain")).toBool());
     rendered.insert(QStringLiteral("retainKnown"), row.value(QStringLiteral("retain_known")).toBool());
-    rendered.insert(QStringLiteral("parsedPayload"), row.value(QStringLiteral("parsed_payload")).toString());
+    rendered.insert(QStringLiteral("parsedPayload"), parsedPayload);
+    rendered.insert(QStringLiteral("parseState"), parseState);
     rendered.insert(QStringLiteral("payloadState"), payloadState);
     rendered.insert(QStringLiteral("payloadHash"), row.value(QStringLiteral("payload_hash")).toString());
     const QString explicitTopicColor = row.value(QStringLiteral("topic_color")).toString();
     rendered.insert(
         QStringLiteral("topicColor"),
         explicitTopicColor.isEmpty() ? resolveTopicValue(subscriptionColors, topic) : explicitTopicColor);
-    rendered.insert(
-        QStringLiteral("payloadFormat"),
-        !scriptError.isEmpty()
-            ? QStringLiteral("Lua Error")
-            : (hasScriptResult ? parsedFormat : (renderedPayloadIsPreviewOnly
-                    ? QStringLiteral("%1 preview").arg(PayloadCodec::formatName(format))
-                    : (renderingStoredPayload
-                    ? PayloadCodec::formatName(format)
-                    : (payloadState == QStringLiteral("skipped")
-                    ? QStringLiteral("Skipped")
-                    : (payloadState == QStringLiteral("truncated")
-                        ? QStringLiteral("Truncated")
-                        : (payloadState == QStringLiteral("raw_only")
-                            ? QStringLiteral("%1 · raw").arg(PayloadCodec::formatName(format))
-                            : PayloadCodec::formatName(format))))))));
+    QString payloadFormatLabel;
+    if (parseState == QStringLiteral("pending")) {
+        payloadFormatLabel = QStringLiteral("Parsing");
+    } else if (parseState == QStringLiteral("skipped_overload")) {
+        payloadFormatLabel = QStringLiteral("Parse skipped");
+    } else if (parseState == QStringLiteral("failed")) {
+        payloadFormatLabel = row.value(QStringLiteral("script_id")).toString().isEmpty()
+            ? (parsedFormat.isEmpty()
+                ? QStringLiteral("Parser Error")
+                : QStringLiteral("%1 Error").arg(parsedFormat))
+            : QStringLiteral("Lua Error");
+    } else if (parseState == QStringLiteral("succeeded")) {
+        payloadFormatLabel = parsedFormat;
+    } else if (payloadState == QStringLiteral("skipped")) {
+        payloadFormatLabel = QStringLiteral("Skipped");
+    } else if (payloadState == QStringLiteral("truncated")) {
+        payloadFormatLabel = QStringLiteral("Truncated");
+    } else if (payloadState == QStringLiteral("raw_only")) {
+        payloadFormatLabel = QStringLiteral("%1 · raw").arg(PayloadCodec::formatName(format));
+    } else if (renderedPayloadIsPreviewOnly) {
+        payloadFormatLabel = QStringLiteral("%1 preview").arg(PayloadCodec::formatName(format));
+    } else {
+        payloadFormatLabel = PayloadCodec::formatName(format);
+    }
+    rendered.insert(QStringLiteral("payloadFormat"), payloadFormatLabel);
     rendered.insert(QStringLiteral("payloadSize"), payloadSize);
     rendered.insert(
         QStringLiteral("testPayload"),
-        renderingStoredPayload
-            ? decodedPayload
-            : payloadPreview);
+        renderingFullPayload ? decodedPayload : boundedListText(payloadPreview));
     rendered.insert(QStringLiteral("testFormat"), static_cast<int>(format));
     rendered.insert(QStringLiteral("testFormatName"), PayloadCodec::formatName(format));
     return rendered;

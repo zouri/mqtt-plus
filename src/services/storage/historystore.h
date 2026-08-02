@@ -9,22 +9,37 @@
 #include <QVector>
 
 #include "domain/messagerecord.h"
+#include "domain/messageenvelope.h"
+
+struct HistoryWriteResult
+{
+    bool ok = false;
+    QStringList sessionIds;
+    int messageCount = 0;
+    QString error;
+};
 
 class HistoryStore
 {
 public:
     HistoryStore();
     explicit HistoryStore(const QString &dataPath);
+    HistoryStore(const QString &dataPath, int busyTimeoutMs);
     ~HistoryStore();
 
     Q_DISABLE_COPY_MOVE(HistoryStore)
 
     bool isReady() const;
     QString lastError() const;
+    QString dataPath() const;
+    QString journalMode() const;
+    int busyTimeoutMs() const;
+    qint64 nextMessageId();
+    HistoryWriteResult appendMessages(const QVector<MessageRecord> &messages);
+    HistoryWriteResult writeMessageBatch(
+        const QVector<MessageRecord> &messages,
+        const QVector<MessageParseResult> &parseResults);
 
-    qint64 enqueueMessage(const MessageRecord &message);
-    QStringList flushPendingMessages();
-    int pendingMessageCount() const;
     qint64 totalMessageCount(const QString &sessionId) const;
     qint64 appendEvent(
         const QString &sessionId,
@@ -47,13 +62,11 @@ public:
     void pruneLogs(const QString &sessionId, int keepCount);
 
 private:
-    bool initialize(const QString &dataPath);
-    bool flushPendingMessagesForClear();
+    bool initialize(const QString &dataPath, int busyTimeoutMs);
     bool executeDeletes(const QStringList &statements, const QString &sessionId = QString());
 
     QSqlDatabase m_db;
     QString m_connectionName;
     QString m_lastError;
-    QVector<MessageRecord> m_pendingMessages;
-    qint64 m_nextMessageId = 0;
+    QString m_dataPath;
 };

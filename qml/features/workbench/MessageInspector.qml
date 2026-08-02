@@ -53,8 +53,7 @@ Item {
     Accessible.name: qsTr("Message inspector")
 
     onHistoryIdChanged: {
-        control.details = historyId.length > 0 ? control.viewModel.messageDetails(historyId) : ({});
-        control.refreshDisplayedPayload();
+        control.reloadDetails();
     }
 
     onOpenedChanged: {
@@ -68,6 +67,23 @@ Item {
     onMotionEnabledChanged: control.syncRevealProgress()
     onPayloadViewFormatChanged: control.refreshDisplayedPayload()
     Component.onCompleted: control.syncRevealProgress()
+
+    Connections {
+        target: control.viewModel
+
+        function onMessageDetailsChanged(changedHistoryId) {
+            if (control.opened && changedHistoryId === control.historyId) {
+                control.reloadDetails();
+            }
+        }
+    }
+
+    function reloadDetails() {
+        control.details = control.historyId.length > 0
+                          ? control.viewModel.messageDetails(control.historyId)
+                          : ({});
+        control.refreshDisplayedPayload();
+    }
 
     function syncRevealProgress() {
         const targetProgress = control.opened ? 1.0 : 0.0;
@@ -314,6 +330,16 @@ Item {
                         font.pixelSize: 11
                         wrapMode: Text.Wrap
                     }
+                }
+
+                AppInlineAlert {
+                    visible: String(control.details.parseError || "").length > 0
+                    ui: control.ui
+                    type: "error"
+                    text: qsTr("Parser error: %1").arg(String(control.details.parseError || ""))
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
                 }
 
                 ColumnLayout {

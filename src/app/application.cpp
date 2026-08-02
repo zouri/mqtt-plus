@@ -11,6 +11,10 @@ Application::Application()
     : m_owner(nullptr)
     , m_settings(QStringLiteral("mqtt-plus"), QStringLiteral("mqtt-plus"))
     , m_preferences(&m_settings, &m_owner)
+    , m_historyWriter(new HistoryWriterWorker(
+          m_historyStore.dataPath(),
+          m_historyStore.nextMessageId()))
+    , m_messageParser(new MessageParseWorker())
     , m_scriptService(&m_owner)
     , m_sessionService(
           m_settings,
@@ -30,6 +34,8 @@ Application::Application()
     , m_eventHistoryService(
           m_sessionService,
           m_historyStore,
+          *m_historyWriter,
+          *m_messageParser,
           m_messagesModel,
           m_logsModel,
           m_scriptService,
@@ -65,6 +71,31 @@ Application::Application()
           m_settings,
           &m_owner)
 {
+    m_historyWriter->moveToThread(&m_historyWriterThread);
+    QObject::connect(
+        &m_historyWriterThread,
+        &QThread::finished,
+        m_historyWriter,
+        &QObject::deleteLater);
+    m_historyWriterThread.start();
+    QMetaObject::invokeMethod(
+        m_historyWriter,
+        &HistoryWriterWorker::start,
+        Qt::BlockingQueuedConnection);
+    m_messageParser->moveToThread(&m_messageParserThread);
+    QObject::connect(
+        &m_messageParserThread,
+        &QThread::finished,
+        m_messageParser,
+        &QObject::deleteLater);
+    m_messageParserThread.start();
+    QMetaObject::invokeMethod(
+        m_messageParser,
+        &MessageParseWorker::start,
+        Qt::BlockingQueuedConnection);
+    m_sessionService.setHistoryWriter(m_historyWriter);
+    m_sessionService.setMessageParser(m_messageParser);
+
     m_filteredSubscriptionsModel.setSourceModel(&m_subscriptionsModel);
     m_messageFilterSubscriptionsModel.setSourceModel(&m_subscriptionsModel);
     m_filteredMessagesModel.setSourceModel(&m_messagesModel);
@@ -201,7 +232,29 @@ Application::Application()
 
 Application::~Application()
 {
+    m_eventHistoryService.stopAcceptingMessageParsing();
     applyExitCleanup();
+    QMetaObject::invokeMethod(
+        m_messageParser,
+        &MessageParseWorker::shutdown,
+        Qt::BlockingQueuedConnection);
+    m_messageParserThread.quit();
+    m_messageParserThread.wait();
+    m_messageParser = nullptr;
+
+    m_historyWriter->stopAccepting();
+    if (!m_historyWriter->drain()) {
+        qWarning().noquote()
+            << "Cannot finish draining message history writer on exit:"
+            << m_historyWriter->lastError();
+    }
+    QMetaObject::invokeMethod(
+        m_historyWriter,
+        &HistoryWriterWorker::shutdown,
+        Qt::BlockingQueuedConnection);
+    m_historyWriterThread.quit();
+    m_historyWriterThread.wait();
+    m_historyWriter = nullptr;
 }
 
 ApplicationViewModel *Application::viewModel()
@@ -261,7 +314,12 @@ void Application::applyMessageRetentionLimit()
 
 void Application::applyExitCleanup()
 {
-    m_eventHistoryService.flushPendingMessageHistory();
+    if (!m_eventHistoryService.flushPendingMessageHistory()) {
+        qWarning().noquote()
+            << "Cannot drain message history writer on exit:"
+            << m_eventHistoryService.messageStorageError();
+        return;
+    }
     applyMessageRetentionLimit();
 
     const QString clearMessagesMode = m_preferences.clearMessagesOnExit();

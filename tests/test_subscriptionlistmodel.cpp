@@ -78,7 +78,7 @@ void SubscriptionListModelTest::sourceSessionChangeClearsTopicRateHistory()
     QVector<SubscriptionEntry> subscriptions {
         SubscriptionEntry {.topic = QStringLiteral("devices/temp")},
     };
-    subscriptions[0].recentMessageTimestampsMs = {nowMs};
+    subscriptions[0].recentMessages.add(nowMs);
     SubscriptionListModel model;
     model.setSubscriptions(QStringLiteral("session-1"), subscriptions, {});
     QVERIFY(model.updateTopicFps(subscriptions, nowMs));
@@ -101,7 +101,8 @@ void SubscriptionListModelTest::samplesTopicRateHistory()
     SessionState session;
     SubscriptionEntry subscription;
     subscription.topic = QStringLiteral("devices/temp");
-    subscription.recentMessageTimestampsMs = {nowMs - 50, nowMs - 100};
+    subscription.recentMessages.add(nowMs - 50);
+    subscription.recentMessages.add(nowMs - 100);
     session.subscriptions.append(subscription);
 
     SubscriptionListModel model;
@@ -115,7 +116,7 @@ void SubscriptionListModelTest::samplesTopicRateHistory()
     }
     QCOMPARE(history.constLast().toReal(), 2.0);
 
-    session.subscriptions[0].recentMessageTimestampsMs.clear();
+    session.subscriptions[0].recentMessages.clear();
     for (int sample = 1; sample < AppUtils::kSubscriptionRateHistorySampleCount; ++sample) {
         QVERIFY(model.updateTopicFps(
             session.subscriptions,
@@ -144,7 +145,7 @@ void SubscriptionListModelTest::separatesNumericRateAndHistoryNotifications()
     QVector<SubscriptionEntry> subscriptions {
         SubscriptionEntry {.topic = QStringLiteral("devices/temp")},
     };
-    subscriptions[0].recentMessageTimestampsMs = {nowMs};
+    subscriptions[0].recentMessages.add(nowMs);
 
     SubscriptionListModel model;
     model.setSubscriptions(QStringLiteral("session-1"), subscriptions, {});
@@ -154,7 +155,7 @@ void SubscriptionListModelTest::separatesNumericRateAndHistoryNotifications()
                                             .toList();
 
     QSignalSpy dataSpy(&model, &SubscriptionListModel::dataChanged);
-    subscriptions[0].recentMessageTimestampsMs.append(nowMs + 100);
+    subscriptions[0].recentMessages.add(nowMs + 100);
     QVERIFY(model.updateTopicFps(
         subscriptions,
         nowMs + AppUtils::kSubscriptionFpsRefreshIntervalMs));
@@ -188,7 +189,7 @@ void SubscriptionListModelTest::pausedSubscriptionClearsTopicRateHistory()
     SessionState session;
     SubscriptionEntry subscription;
     subscription.topic = QStringLiteral("devices/temp");
-    subscription.recentMessageTimestampsMs = {nowMs};
+    subscription.recentMessages.add(nowMs);
     session.subscriptions.append(subscription);
 
     SubscriptionListModel model;

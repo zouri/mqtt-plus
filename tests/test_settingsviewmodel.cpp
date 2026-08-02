@@ -1,6 +1,8 @@
 #include "usecases/preferencescontroller.h"
 #include "models/eventstreammodel.h"
 #include "services/storage/historystore.h"
+#include "services/storage/historywriterworker.h"
+#include "services/parsing/messageparseworker.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
@@ -18,22 +20,31 @@ public:
         : settings(dataDir.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat)
         , preferencesController(&settings)
         , historyStore(dataDir.path())
+        , historyWriter(dataDir.path(), historyStore.nextMessageId())
         , sessionService(settings, scriptService, historyStore, preferencesController)
         , eventHistoryService(
               sessionService,
               historyStore,
+              historyWriter,
+              messageParser,
               messages,
               logs,
               scriptService,
               launchTimestamp,
               preferencesController)
     {
+        historyWriter.start();
+        messageParser.start();
+        sessionService.setHistoryWriter(&historyWriter);
+        sessionService.setMessageParser(&messageParser);
     }
 
     QTemporaryDir dataDir;
     QSettings settings;
     PreferencesController preferencesController;
     HistoryStore historyStore;
+    HistoryWriterWorker historyWriter;
+    MessageParseWorker messageParser;
     ScriptService scriptService;
     SessionService sessionService;
     EventStreamModel messages;
@@ -156,9 +167,9 @@ void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
         record.timestamp = QString::number(index);
         record.topic = QStringLiteral("topic");
         record.payloadBytes = QByteArray::number(index);
-        QVERIFY(deps.historyStore.enqueueMessage(record) > 0);
+        QVERIFY(deps.historyWriter.enqueueMessage(record) > 0);
     }
-    QVERIFY(!deps.historyStore.flushPendingMessages().isEmpty());
+    QVERIFY(deps.eventHistoryService.flushPendingMessageHistory());
     QCOMPARE(deps.historyStore.loadMessages(session.id, 2000).size(), 1001);
 
     MessageRecord pendingRecord;
@@ -166,8 +177,8 @@ void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
     pendingRecord.timestamp = QStringLiteral("pending");
     pendingRecord.topic = QStringLiteral("topic");
     pendingRecord.payloadBytes = QByteArrayLiteral("pending");
-    QVERIFY(deps.historyStore.enqueueMessage(pendingRecord) > 0);
-    QCOMPARE(deps.historyStore.pendingMessageCount(), 1);
+    QVERIFY(deps.historyWriter.enqueueMessage(pendingRecord) > 0);
+    QCOMPARE(deps.historyWriter.pendingMessageCount(), 1);
 
     SettingsViewModel settings(
         deps.preferencesController,
@@ -180,7 +191,7 @@ void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
     settings.setMessageRetentionLimitIndex(0);
 
     QCOMPARE(deps.preferencesController.messageRetentionLimit(), 1000);
-    QCOMPARE(deps.historyStore.pendingMessageCount(), 1);
+    QCOMPARE(deps.historyWriter.pendingMessageCount(), 1);
     QCOMPARE(deps.historyStore.loadMessages(session.id, 2000).size(), 1001);
     QCOMPARE(messageSpy.count(), 0);
 }

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "recenttrafficwindow.h"
+
 #include <QPointer>
 #include <QString>
-#include <QVector>
 
 #include <QMqttSubscription>
 
@@ -18,5 +19,5 @@ struct SubscriptionEntry {
     QString runtimeState = QStringLiteral("saved");
     QString lastError;
     QPointer<QMqttSubscription> runtimeSubscription;
-    QVector<qint64> recentMessageTimestampsMs;
+    RecentTrafficWindow recentMessages;
 };

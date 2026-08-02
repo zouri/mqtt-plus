@@ -260,6 +260,11 @@
         <source>Selected Lua script is missing.</source>
         <translation>选择的 Lua 脚本不存在。</translation>
     </message>
+    <message>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="1153"/>
+        <source>Timed out while saving queued messages.</source>
+        <translation>保存排队消息时超时。</translation>
+    </message>
 </context>
 <context>
     <name>EventStreamView</name>
@@ -707,6 +712,11 @@
         <location filename="../qml/features/workbench/MessageInspector.qml" line="221"/>
         <source>Payload display format</source>
         <translation>Payload 显示格式</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="339"/>
+        <source>Parser error: %1</source>
+        <translation>解析错误：%1</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/MessageInspector.qml" line="346"/>
@@ -1288,9 +1298,19 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../src/usecases/sessionservice.cpp" line="298"/>
+        <source>Cannot delete session history: queued message parsing timed out.</source>
+        <translation>无法删除会话历史：排队中的消息解析超时。</translation>
+    </message>
+    <message>
         <location filename="../src/usecases/sessionservice.cpp" line="297"/>
         <source>Cannot delete session history: %1</source>
         <translation>无法删除会话历史：%1</translation>
+    </message>
+    <message>
+        <location filename="../src/usecases/sessionservice.cpp" line="306"/>
+        <source>Timed out while saving queued messages.</source>
+        <translation>保存排队消息时超时。</translation>
     </message>
     <message>
         <location filename="../src/usecases/sessionservice.cpp" line="228"/>
@@ -1563,8 +1583,8 @@
     </message>
     <message>
         <location filename="../qml/features/settings/SettingsView.qml" line="25"/>
-        <source>Always show full</source>
-        <translation>始终完整显示</translation>
+        <source>Always expanded</source>
+        <translation>始终展开</translation>
     </message>
     <message>
         <location filename="../qml/features/settings/SettingsView.qml" line="315"/>

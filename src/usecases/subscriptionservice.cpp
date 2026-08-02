@@ -182,7 +182,7 @@ bool SubscriptionService::updateCurrentSubscription(
     if (topicChanged) {
         session->runtime.subscriptionFormats.remove(entry->topic);
         entry->topic = filter;
-        entry->recentMessageTimestampsMs.clear();
+        entry->recentMessages.clear();
     }
 
     if (shouldResubscribe) {
@@ -256,7 +256,7 @@ void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, boo
     }
 
     entry->paused = paused;
-    entry->recentMessageTimestampsMs.clear();
+    entry->recentMessages.clear();
     if (paused) {
         entry->runtimeState = QStringLiteral("paused");
         if (entry->runtimeSubscription) {
@@ -301,7 +301,7 @@ void SubscriptionService::setAllCurrentSubscriptionsPaused(bool paused)
 
         changed = true;
         entry.paused = paused;
-        entry.recentMessageTimestampsMs.clear();
+        entry.recentMessages.clear();
         if (paused) {
             entry.runtimeState = QStringLiteral("paused");
             if (entry.runtimeSubscription) {
@@ -497,7 +497,7 @@ bool SubscriptionService::currentSessionHasActiveSubscriptionFps(qint64 nowMs) c
 
     for (const auto &subscription : session->subscriptions) {
         if (!subscription.paused
-            && recentMessageCount(subscription.recentMessageTimestampsMs, nowMs) > 0) {
+            && recentMessageCount(subscription.recentMessages, nowMs) > 0) {
             return true;
         }
     }

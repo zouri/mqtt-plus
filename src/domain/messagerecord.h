@@ -21,6 +21,7 @@ struct MessageRecord {
     QString parsedPayload;
     QString parsedFormat;
     QString parseError;
+    QString parseState = QStringLiteral("not_required");
     QString scriptId;
     QString scriptName;
     QString payloadPreview;

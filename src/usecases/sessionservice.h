@@ -7,6 +7,8 @@
 #include <QVector>
 
 class HistoryStore;
+class HistoryWriterWorker;
+class MessageParseWorker;
 class PreferencesController;
 class QSettings;
 class ScriptService;
@@ -41,6 +43,8 @@ public:
     bool addSessionWithConfig(const QVariantMap &config);
     void duplicateSessionAt(int index);
     void removeSessionAt(int index);
+    void setHistoryWriter(HistoryWriterWorker *historyWriter);
+    void setMessageParser(MessageParseWorker *messageParser);
     Q_INVOKABLE void setCurrentOutputPaused(bool paused);
 
 signals:
@@ -67,6 +71,8 @@ private:
     QSettings &m_settings;
     ScriptService &m_scriptService;
     HistoryStore &m_historyStore;
+    HistoryWriterWorker *m_historyWriter = nullptr;
+    MessageParseWorker *m_messageParser = nullptr;
     PreferencesController &m_preferences;
     QVector<SessionState> m_sessions;
     int m_currentIndex = -1;
