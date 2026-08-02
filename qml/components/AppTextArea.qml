@@ -24,7 +24,7 @@ Control {
     readonly property real contentY: contentRoot.editorContentY
     readonly property real contentHeight: contentRoot.editorContentHeight
     readonly property real viewportHeight: contentRoot.editorViewportHeight
-    readonly property int lineCount: Math.max(1, textArea.text.split("\n").length)
+    readonly property int lineCount: control.showLineNumbers ? Math.max(1, textArea.lineCount) : 1
     readonly property int lineNumberGutterWidth: control.showLineNumbers
                                                ? Math.max(42, 24 + String(control.lineCount).length * 8)
                                                : 0
@@ -46,6 +46,14 @@ Control {
         Qt.callLater(function() {
             control.setContentY(control.contentHeight - control.viewportHeight)
         })
+    }
+
+    function insertText(position, text) {
+        textArea.insert(position, text)
+    }
+
+    function removeText(start, end) {
+        textArea.remove(start, end)
     }
 
     FontMetrics {
@@ -125,52 +133,56 @@ Control {
             }
         }
 
-        Rectangle {
-            id: lineNumberGutter
+        Loader {
+            id: lineNumberGutterLoader
 
-            visible: control.showLineNumbers
+            active: control.showLineNumbers
             x: 1
             y: 1
             width: control.lineNumberGutterWidth
             height: contentRoot.height - 2
-            color: control.ui.themePalette.innerPanelBg
-            clip: true
+            sourceComponent: Component {
+                Rectangle {
+                    color: control.ui.themePalette.innerPanelBg
+                    clip: true
 
-            ListView {
-                id: lineNumberList
+                    ListView {
+                        id: lineNumberList
 
-                anchors.fill: parent
-                anchors.topMargin: textArea.topPadding
-                anchors.bottomMargin: textArea.bottomPadding
-                anchors.rightMargin: 10
-                interactive: false
-                boundsBehavior: Flickable.StopAtBounds
-                clip: true
-                contentY: contentRoot.editorContentY
-                model: control.lineCount
-                reuseItems: true
+                        anchors.fill: parent
+                        anchors.topMargin: textArea.topPadding
+                        anchors.bottomMargin: textArea.bottomPadding
+                        anchors.rightMargin: 10
+                        interactive: false
+                        boundsBehavior: Flickable.StopAtBounds
+                        clip: true
+                        contentY: contentRoot.editorContentY
+                        model: control.lineCount
+                        reuseItems: true
 
-                delegate: Label {
-                    id: lineNumberDelegate
+                        delegate: Label {
+                            id: lineNumberDelegate
 
-                    required property int index
+                            required property int index
 
-                    width: lineNumberList.width
-                    height: lineNumberFontMetrics.lineSpacing
-                    horizontalAlignment: Text.AlignRight
-                    verticalAlignment: Text.AlignTop
-                    text: lineNumberDelegate.index + 1
-                    color: control.ui.themePalette.fieldPlaceholder
-                    font.family: textArea.font.family
-                    font.pixelSize: textArea.font.pixelSize
+                            width: ListView.view.width
+                            height: lineNumberFontMetrics.lineSpacing
+                            horizontalAlignment: Text.AlignRight
+                            verticalAlignment: Text.AlignTop
+                            text: lineNumberDelegate.index + 1
+                            color: control.ui.themePalette.fieldPlaceholder
+                            font.family: textArea.font.family
+                            font.pixelSize: textArea.font.pixelSize
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.right: parent.right
+                        width: 1
+                        height: parent.height
+                        color: control.ui.themePalette.fieldBorder
+                    }
                 }
-            }
-
-            Rectangle {
-                anchors.right: parent.right
-                width: 1
-                height: parent.height
-                color: control.ui.themePalette.fieldBorder
             }
         }
     }

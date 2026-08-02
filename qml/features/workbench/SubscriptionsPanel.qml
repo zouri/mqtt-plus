@@ -11,6 +11,7 @@ AppPanel {
 
     required property var viewModel
     required property var subscriptionService
+    required property bool active
 
     property string subscriptionActionVisualKey: ""
     property int subscriptionContextIndex: -1
@@ -91,6 +92,7 @@ AppPanel {
 
     Connections {
         target: control.viewModel
+        enabled: control.active
 
         function onSubscriptionDeleteRequested() {
             deleteSubscriptionDialog.open();
@@ -319,7 +321,7 @@ AppPanel {
             Layout.margins: 8
             clip: true
             spacing: 4
-            model: control.subscriptionModel
+            model: control.active ? control.subscriptionModel : null
             reuseItems: true
 
             ScrollBar.vertical: ScrollBar {

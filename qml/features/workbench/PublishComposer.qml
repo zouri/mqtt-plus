@@ -15,51 +15,22 @@ Item {
 
     property bool expanded: true
     property int composerHeight: 166
-    property real expansionProgress: 1
     property string fontFamily: ""
     readonly property int collapsedHeight: root.ui.compactControlHeight + 2
     readonly property int metadataControlHeight: root.ui.compactCheckHeight
     readonly property int minComposerHeight: 150
     readonly property int maxComposerHeight: 300
-    readonly property real animatedComposerHeight: root.collapsedHeight
-                                                   + (root.composerHeight - root.collapsedHeight)
-                                                   * root.expansionProgress
-    readonly property bool expansionInProgress: Math.abs(root.expansionProgress
-                                                         - (root.expanded ? 1 : 0)) > 0.001
     readonly property color surfaceBg: root.ui.themePalette.panelBg
     readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle" ? (root.publishStatus.reason && root.publishStatus.reason.length > 0 ? root.publishStatus.reason : qsTr("Publish status: %1").arg(root.ui.statusLabel(root.publishStatus.state))) : ""
     readonly property string publishDisabledReason: root.status.state !== "connected" ? qsTr("Connect before publishing") : (root.publisher.topic.trim().length === 0 ? qsTr("Enter a topic before publishing") : "")
     readonly property color publishFeedbackColor: root.publishStatus.state === "failed" ? root.ui.themePalette.errorText : (root.publishStatus.state === "sent" || root.publishStatus.state === "acknowledged" || root.publishStatus.state === "completed" ? root.ui.themePalette.successText : root.ui.textMuted)
     property bool publishPulseActive: false
 
-    Layout.fillWidth: true
-    Layout.preferredHeight: root.animatedComposerHeight
-    Layout.minimumHeight: root.expansionInProgress
-                          ? root.animatedComposerHeight
-                          : (root.expanded ? root.minComposerHeight : root.collapsedHeight)
     SplitView.fillWidth: true
-    SplitView.preferredHeight: root.animatedComposerHeight
-    SplitView.minimumHeight: root.expansionInProgress
-                             ? root.animatedComposerHeight
-                             : (root.expanded ? root.minComposerHeight : root.collapsedHeight)
-    SplitView.maximumHeight: root.expansionInProgress
-                             ? root.animatedComposerHeight
-                             : (root.expanded ? root.maxComposerHeight : root.collapsedHeight)
-    clip: !root.expanded || root.expansionInProgress
-
-    onExpandedChanged: {
-        composerExpansionAnimation.to = root.expanded ? 1 : 0;
-        composerExpansionAnimation.restart();
-    }
-
-    NumberAnimation {
-        id: composerExpansionAnimation
-
-        target: root
-        property: "expansionProgress"
-        duration: root.ui.animationsEnabled ? 180 : 0
-        easing.type: Easing.OutCubic
-    }
+    SplitView.preferredHeight: root.expanded ? root.composerHeight : root.collapsedHeight
+    SplitView.minimumHeight: root.expanded ? root.minComposerHeight : root.collapsedHeight
+    SplitView.maximumHeight: root.expanded ? root.maxComposerHeight : root.collapsedHeight
+    clip: !root.expanded
 
     function resizeComposer(height) {
         root.composerHeight = Math.max(root.minComposerHeight, Math.min(root.maxComposerHeight, Math.round(height)));
@@ -91,7 +62,7 @@ Item {
     }
 
     onHeightChanged: {
-        if (root.expanded && !root.expansionInProgress && height > 0) {
+        if (root.expanded && height > 0) {
             root.resizeComposer(height);
         }
     }
@@ -105,7 +76,7 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: root.expansionInProgress ? root.composerHeight : root.height
+        height: root.height
         spacing: 0
 
         Item {
@@ -201,7 +172,7 @@ Item {
         }
 
         RowLayout {
-            visible: root.expanded || root.expansionInProgress
+            visible: root.expanded
             Layout.fillWidth: true
             Layout.leftMargin: root.ui.spaceSm
             Layout.rightMargin: root.ui.spaceSm
@@ -259,7 +230,7 @@ Item {
         }
 
         Item {
-            visible: root.expanded || root.expansionInProgress
+            visible: root.expanded
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: root.ui.spaceSm

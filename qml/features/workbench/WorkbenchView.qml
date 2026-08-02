@@ -9,6 +9,7 @@ Item {
     id: root
 
     required property AppUi ui
+    required property bool active
     required property var viewModel
     required property var settingsViewModel
     required property var preferences
@@ -55,15 +56,6 @@ Item {
 
     Layout.fillWidth: true
     Layout.fillHeight: true
-
-    Behavior on connectionPaneWidth {
-        enabled: root.ui.animationsEnabled
-
-        NumberAnimation {
-            duration: 180
-            easing.type: Easing.OutCubic
-        }
-    }
 
     function resetStreamPosition() {
         sessionActivityPanel.resetStreamPosition();
@@ -247,8 +239,18 @@ Item {
     Component.onCompleted: {
         root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
         root.trackedConnectionState = root.status.state || "";
-        root.resetStreamPosition();
+        if (root.active) {
+            root.resetStreamPosition();
+        }
         root.layoutReady = true;
+    }
+
+    onActiveChanged: {
+        if (root.active) {
+            root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
+            root.trackedConnectionState = root.status.state || "";
+            root.refreshTrafficRates();
+        }
     }
 
     onConnectionPaneCollapsedChanged: root.scheduleLayoutSave()
@@ -265,7 +267,7 @@ Item {
     Timer {
         interval: 1000
         repeat: true
-        running: root.visible
+        running: root.active && root.visible
         triggeredOnStart: true
         onTriggered: {
             root.nowMs = Date.now();
@@ -283,15 +285,15 @@ Item {
         target: root.viewModel
 
         function onMessageStreamChanged() {
-            root.resetStreamPosition();
+            if (root.active) {
+                root.resetStreamPosition();
+            }
         }
 
         function onMessageStreamRowsAppended(count) {
-            root.noteStreamRowsAppended(count);
-        }
-
-        function onSessionEditRequested(index) {
-            root.openSessionEditorForEdit(index);
+            if (root.active) {
+                root.noteStreamRowsAppended(count);
+            }
         }
 
         function onSessionStatusChanged() {
@@ -379,6 +381,7 @@ Item {
                 SubscriptionsPanel {
                     id: subscriptionsPanel
                     ui: root.ui
+                    active: root.active
                     viewModel: root.viewModel
                     subscriptionService: root.subscriptionService
                     onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
@@ -392,6 +395,7 @@ Item {
         SessionMessagePanel {
             id: sessionActivityPanel
             ui: root.ui
+            active: root.active
             viewModel: root.viewModel
             eventHistory: root.eventHistory
             sessionService: root.sessionService

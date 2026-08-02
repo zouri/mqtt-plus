@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariantMap>
+#include <QVector>
 
 class EventHistoryService;
 class EventStreamModel;
@@ -26,8 +27,18 @@ public:
 
 signals:
     void logTextChanged();
+    void logTextReset();
+    void logTextInserted(int position, const QString &text);
+    void logTextRemoved(int start, int end);
 
 private:
+    void rebuildCachedText();
+    void handleRowsInserted(int first, int last);
+    void handleRowsAboutToBeRemoved(int first, int last);
+    int rowStartPosition(int row) const;
+
     EventHistoryService &m_history;
     EventStreamModel &m_logs;
+    QString m_logText;
+    QVector<int> m_rowTextLengths;
 };

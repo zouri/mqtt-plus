@@ -17,6 +17,7 @@ private slots:
     void setSubscriptionsRebuildsScriptNameCache();
     void sourceSessionChangeClearsTopicRateHistory();
     void samplesTopicRateHistory();
+    void separatesNumericRateAndHistoryNotifications();
     void pausedSubscriptionClearsTopicRateHistory();
     void filterSourceChangeNotifiesOnce();
     void filterRowAtUsesPublicRoles();
@@ -118,13 +119,13 @@ void SubscriptionListModelTest::samplesTopicRateHistory()
     for (int sample = 1; sample < AppUtils::kSubscriptionRateHistorySampleCount; ++sample) {
         QVERIFY(model.updateTopicFps(
             session.subscriptions,
-            nowMs + sample * AppUtils::kSubscriptionFpsRefreshIntervalMs));
+            nowMs + sample * AppUtils::kSubscriptionRateHistorySampleIntervalMs));
     }
     QVERIFY(!model.updateTopicFps(
         session.subscriptions,
         nowMs
         + AppUtils::kSubscriptionRateHistorySampleCount
-            * AppUtils::kSubscriptionFpsRefreshIntervalMs));
+            * AppUtils::kSubscriptionRateHistorySampleIntervalMs));
     QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
 
     session.subscriptions[0].topic = QStringLiteral("devices/humidity");
@@ -135,6 +136,50 @@ void SubscriptionListModelTest::samplesTopicRateHistory()
     otherSession.subscriptions.append({QStringLiteral("devices/other")});
     model.setSubscriptions(QStringLiteral("session-2"), otherSession.subscriptions, {});
     QVERIFY(model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList().isEmpty());
+}
+
+void SubscriptionListModelTest::separatesNumericRateAndHistoryNotifications()
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    QVector<SubscriptionEntry> subscriptions {
+        SubscriptionEntry {.topic = QStringLiteral("devices/temp")},
+    };
+    subscriptions[0].recentMessageTimestampsMs = {nowMs};
+
+    SubscriptionListModel model;
+    model.setSubscriptions(QStringLiteral("session-1"), subscriptions, {});
+    QVERIFY(model.updateTopicFps(subscriptions, nowMs));
+    const QVariantList initialHistory = model.rowAt(0)
+                                            .value(QStringLiteral("topicRateHistory"))
+                                            .toList();
+
+    QSignalSpy dataSpy(&model, &SubscriptionListModel::dataChanged);
+    subscriptions[0].recentMessageTimestampsMs.append(nowMs + 100);
+    QVERIFY(model.updateTopicFps(
+        subscriptions,
+        nowMs + AppUtils::kSubscriptionFpsRefreshIntervalMs));
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("topicFps")).toReal(), 2.0);
+    QCOMPARE(
+        model.rowAt(0).value(QStringLiteral("topicRateHistory")).toList(),
+        initialHistory);
+    QCOMPARE(dataSpy.count(), 1);
+    QCOMPARE(
+        dataSpy.first().at(2).value<QList<int>>(),
+        QList<int> {SubscriptionListModel::TopicFpsRole});
+
+    dataSpy.clear();
+    QVERIFY(model.updateTopicFps(
+        subscriptions,
+        nowMs + AppUtils::kSubscriptionFpsRefreshIntervalMs * 2));
+    QCOMPARE(dataSpy.count(), 0);
+
+    QVERIFY(model.updateTopicFps(
+        subscriptions,
+        nowMs + AppUtils::kSubscriptionRateHistorySampleIntervalMs));
+    QCOMPARE(dataSpy.count(), 1);
+    QCOMPARE(
+        dataSpy.first().at(2).value<QList<int>>(),
+        QList<int> {SubscriptionListModel::TopicRateHistoryRole});
 }
 
 void SubscriptionListModelTest::pausedSubscriptionClearsTopicRateHistory()

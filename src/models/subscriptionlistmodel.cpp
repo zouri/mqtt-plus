@@ -129,6 +129,7 @@ void SubscriptionListModel::setSubscriptions(
         beginResetModel();
         m_rows = std::move(rows);
         endResetModel();
+        m_lastRateHistorySampleMs = 0;
         if (countWillChange) {
             emit countChanged();
         }
@@ -141,28 +142,13 @@ void SubscriptionListModel::setSubscriptions(
             rows[i].topicRateHistory = m_rows.at(i).topicRateHistory;
         }
     }
-    m_rows = std::move(rows);
-    if (!m_rows.isEmpty()) {
-        emit dataChanged(
-            index(0, 0),
-            index(static_cast<int>(m_rows.size() - 1), 0),
-            {
-                TopicRole,
-                AliasRole,
-                DisplayNameRole,
-                RequestedQosRole,
-                GrantedQosRole,
-                TopicFpsRole,
-                TopicRateHistoryRole,
-                FormatRole,
-                FormatNameRole,
-                ScriptIdRole,
-                ScriptNameRole,
-                ColorRole,
-                PausedRole,
-                StateRole,
-                LastErrorRole,
-            });
+    for (qsizetype row = 0; row < rows.size(); ++row) {
+        const QList<int> roles = changedRoles(m_rows.at(row), rows.at(row));
+        if (roles.isEmpty()) {
+            continue;
+        }
+        m_rows[row] = std::move(rows[row]);
+        emit dataChanged(index(static_cast<int>(row), 0), index(static_cast<int>(row), 0), roles);
     }
 }
 
@@ -174,49 +160,71 @@ bool SubscriptionListModel::updateTopicFps(
         return false;
     }
 
+    const bool historySampleDue = m_lastRateHistorySampleMs <= 0
+        || nowMs - m_lastRateHistorySampleMs >= kSubscriptionRateHistorySampleIntervalMs;
+    bool sampledHistory = false;
+    bool hasRateActivity = false;
     bool hasRateHistory = false;
     for (qsizetype i = 0; i < m_rows.size(); ++i) {
         const SubscriptionEntry &subscription = subscriptions.at(i);
         SubscriptionRow &row = m_rows[i];
+        const qreal previousFps = row.topicFps;
+        const QVariantList previousHistory = row.topicRateHistory;
         if (row.topic != subscription.topic) {
             row.topicFps = 0.0;
             row.topicRateHistory.clear();
-            continue;
-        }
-
-        QVariantList &history = row.topicRateHistory;
-        if (subscription.paused) {
-            row.topicFps = 0.0;
-            history.clear();
         } else {
-            row.topicFps = static_cast<qreal>(
-                recentMessageCount(subscription.recentMessageTimestampsMs, nowMs));
-            const qreal currentRate = row.topicFps;
-            if (history.isEmpty() && currentRate > 0.0) {
-                history.reserve(kSubscriptionRateHistorySampleCount);
-                for (int sample = 1; sample < kSubscriptionRateHistorySampleCount; ++sample) {
-                    history.append(0.0);
-                }
-                history.append(currentRate);
-            } else if (!history.isEmpty()) {
-                history.append(currentRate);
-                while (history.size() > kSubscriptionRateHistorySampleCount) {
-                    history.removeFirst();
-                }
-                if (!hasPositiveRateSample(history)) {
-                    history.clear();
+            QVariantList &history = row.topicRateHistory;
+            if (subscription.paused) {
+                row.topicFps = 0.0;
+                history.clear();
+            } else {
+                row.topicFps = static_cast<qreal>(
+                    recentMessageCount(subscription.recentMessageTimestampsMs, nowMs));
+                const qreal currentRate = row.topicFps;
+                if (history.isEmpty() && currentRate > 0.0) {
+                    history.reserve(kSubscriptionRateHistorySampleCount);
+                    for (int sample = 1; sample < kSubscriptionRateHistorySampleCount; ++sample) {
+                        history.append(0.0);
+                    }
+                    history.append(currentRate);
+                    sampledHistory = true;
+                } else if (!history.isEmpty() && historySampleDue) {
+                    history.append(currentRate);
+                    while (history.size() > kSubscriptionRateHistorySampleCount) {
+                        history.removeFirst();
+                    }
+                    if (!hasPositiveRateSample(history)) {
+                        history.clear();
+                    }
+                    sampledHistory = true;
                 }
             }
         }
-        hasRateHistory = hasRateHistory || !history.isEmpty();
+
+        QList<int> roles;
+        if (previousFps != row.topicFps) {
+            roles.append(TopicFpsRole);
+        }
+        if (previousHistory != row.topicRateHistory) {
+            roles.append(TopicRateHistoryRole);
+        }
+        if (!roles.isEmpty()) {
+            emit dataChanged(index(static_cast<int>(i), 0), index(static_cast<int>(i), 0), roles);
+        }
+
+        hasRateActivity = hasRateActivity || row.topicFps > 0.0;
+        hasRateHistory = hasRateHistory || !row.topicRateHistory.isEmpty();
     }
 
-    emit dataChanged(
-        index(0, 0),
-        index(static_cast<int>(m_rows.size() - 1), 0),
-        {TopicFpsRole, TopicRateHistoryRole});
+    if (historySampleDue && sampledHistory) {
+        m_lastRateHistorySampleMs = nowMs;
+    }
+    if (!hasRateHistory) {
+        m_lastRateHistorySampleMs = 0;
+    }
 
-    return hasRateHistory;
+    return hasRateActivity || hasRateHistory;
 }
 
 SubscriptionListModel::SubscriptionRow SubscriptionListModel::rowFromSubscription(
@@ -275,4 +283,55 @@ QVariantMap SubscriptionListModel::rowToMap(const SubscriptionRow &row)
 QString SubscriptionListModel::displayName(const SubscriptionRow &row)
 {
     return row.alias.isEmpty() ? row.topic : row.alias;
+}
+
+QList<int> SubscriptionListModel::changedRoles(
+    const SubscriptionRow &before,
+    const SubscriptionRow &after)
+{
+    QList<int> roles;
+    if (before.topic != after.topic) {
+        roles.append(TopicRole);
+    }
+    if (before.alias != after.alias) {
+        roles.append(AliasRole);
+    }
+    if (before.topic != after.topic || before.alias != after.alias) {
+        roles.append(DisplayNameRole);
+    }
+    if (before.requestedQos != after.requestedQos) {
+        roles.append(RequestedQosRole);
+    }
+    if (before.grantedQos != after.grantedQos) {
+        roles.append(GrantedQosRole);
+    }
+    if (before.topicFps != after.topicFps) {
+        roles.append(TopicFpsRole);
+    }
+    if (before.topicRateHistory != after.topicRateHistory) {
+        roles.append(TopicRateHistoryRole);
+    }
+    if (before.format != after.format) {
+        roles.append(FormatRole);
+        roles.append(FormatNameRole);
+    }
+    if (before.scriptId != after.scriptId) {
+        roles.append(ScriptIdRole);
+    }
+    if (before.scriptName != after.scriptName) {
+        roles.append(ScriptNameRole);
+    }
+    if (before.color != after.color) {
+        roles.append(ColorRole);
+    }
+    if (before.paused != after.paused) {
+        roles.append(PausedRole);
+    }
+    if (before.state != after.state) {
+        roles.append(StateRole);
+    }
+    if (before.lastError != after.lastError) {
+        roles.append(LastErrorRole);
+    }
+    return roles;
 }

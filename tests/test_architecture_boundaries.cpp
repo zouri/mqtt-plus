@@ -469,6 +469,11 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(workbenchSource.contains(QStringLiteral("subscriptionPaneWidth: root.preferences.subscriptionPaneWidth")));
     QVERIFY(workbenchSource.contains(QStringLiteral("setWorkbenchLayout")));
     QVERIFY(workbenchSource.contains(QStringLiteral("function persistLayout()")));
+    QVERIFY2(!workbenchSource.contains(
+                 QStringLiteral("target: root.viewModel\n        enabled: root.active")),
+        "WorkbenchView must keep session status transitions active while another page is visible");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("function onSessionStatusChanged()")),
+        "WorkbenchView must keep handling background connection status transitions");
 
     QString mainSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), mainSource));
@@ -506,6 +511,11 @@ void ArchitectureBoundariesTest::workbenchUsesReferenceMessageWorkspace()
     QVERIFY(streamSource.contains(QStringLiteral("Keys.onPressed")));
     QVERIFY(streamSource.contains(QStringLiteral("streamActionsMenu.openForItem(streamActionsButton)")));
     QVERIFY(streamSource.contains(QStringLiteral("accessibleName: qsTr(\"More message actions\")")));
+    QVERIFY2(streamSource.contains(QStringLiteral("const searchPending = messageSearchDebounce.running"))
+            && streamSource.contains(QStringLiteral("!root.active && searchPending"))
+            && streamSource.contains(
+                QStringLiteral("setMessageSearchText(root.pendingMessageSearchText)")),
+        "Leaving the workbench must flush a pending debounced message search");
     QVERIFY2(streamSource.contains(QStringLiteral("AppEmptyState {")),
         "The message workspace must guide users when no rows are visible");
     QVERIFY2(streamSource.contains(QStringLiteral("id: clearMessagesDialog")),
@@ -609,10 +619,12 @@ void ArchitectureBoundariesTest::messageInspectorPreservesPayloadFormatting()
 
     QVERIFY2(source.count(QStringLiteral("textFormat: TextEdit.PlainText")) >= 2,
         "Inspector payload fields must render message data as literal text so embedded markup and newlines are preserved");
-    QVERIFY2(source.contains(QStringLiteral("Layout.preferredHeight: Math.max(40, payloadBodyText.contentHeight + 20)")),
-        "The payload container must grow to its wrapped content height instead of clipping multiline data");
-    QVERIFY2(source.contains(QStringLiteral("Layout.preferredHeight: Math.max(40, parsedResultText.contentHeight + 20)")),
-        "The parsed-result container must grow to its wrapped content height instead of clipping multiline data");
+    QVERIFY2(source.contains(QStringLiteral("control.payloadTextMaximumHeight"))
+            && source.contains(QStringLiteral("id: payloadScroll")),
+        "The payload document must use a bounded internal scroll area");
+    QVERIFY2(source.contains(QStringLiteral("control.parsedTextMaximumHeight"))
+            && source.contains(QStringLiteral("id: parsedResultScroll")),
+        "The parsed-result document must use a bounded internal scroll area");
     QVERIFY2(source.contains(QStringLiteral("contentWidth: availableWidth")),
         "The inspector scroller must constrain content to its viewport so long payload lines can wrap");
     QVERIFY2(source.contains(QStringLiteral("width: inspectorScroll.availableWidth")),

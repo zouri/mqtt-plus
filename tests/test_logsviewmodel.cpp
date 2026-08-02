@@ -67,7 +67,7 @@ class LogsViewModelTest : public QObject
 private slots:
     void formatsLogRows();
     void rendersLogTextFromModel();
-    void logTextChangedTracksStreamAndModel();
+    void emitsIncrementalTextChanges();
 };
 
 void LogsViewModelTest::formatsLogRows()
@@ -115,10 +115,12 @@ void LogsViewModelTest::rendersLogTextFromModel()
         QStringLiteral("[10:00:00] [DEBUG] packet received\n[10:00:01] [ERROR] [broker] timeout"));
 }
 
-void LogsViewModelTest::logTextChangedTracksStreamAndModel()
+void LogsViewModelTest::emitsIncrementalTextChanges()
 {
     LogsFixture fixture;
     QSignalSpy textSpy(&fixture.viewModel, &LogsViewModel::logTextChanged);
+    QSignalSpy insertSpy(&fixture.viewModel, &LogsViewModel::logTextInserted);
+    QSignalSpy removeSpy(&fixture.viewModel, &LogsViewModel::logTextRemoved);
 
     fixture.history.logStreamChanged();
     QCOMPARE(textSpy.count(), 1);
@@ -129,6 +131,25 @@ void LogsViewModelTest::logTextChangedTracksStreamAndModel()
         {QStringLiteral("payload"), QStringLiteral("connected")},
     });
     QCOMPARE(textSpy.count(), 2);
+    QCOMPARE(insertSpy.count(), 1);
+    QCOMPARE(insertSpy.first().at(0).toInt(), 0);
+    QCOMPARE(insertSpy.first().at(1).toString(), QStringLiteral("[10:00:00] [INFO] [broker] connected"));
+    QCOMPARE(fixture.viewModel.logText(), insertSpy.first().at(1).toString());
+
+    fixture.logs.prependRows({QVariantMap {
+        {QStringLiteral("timestamp"), QStringLiteral("09:59:59")},
+        {QStringLiteral("title"), QStringLiteral("debug")},
+        {QStringLiteral("payload"), QStringLiteral("packet")},
+    }});
+    QCOMPARE(textSpy.count(), 3);
+    QCOMPARE(insertSpy.count(), 2);
+    QCOMPARE(insertSpy.last().at(0).toInt(), 0);
+    QCOMPARE(insertSpy.last().at(1).toString(), QStringLiteral("[09:59:59] [DEBUG] packet\n"));
+
+    fixture.logs.trimToLimit(1);
+    QCOMPARE(textSpy.count(), 4);
+    QCOMPARE(removeSpy.count(), 1);
+    QCOMPARE(fixture.viewModel.logText(), QStringLiteral("[10:00:00] [INFO] [broker] connected"));
 }
 
 QTEST_MAIN(LogsViewModelTest)

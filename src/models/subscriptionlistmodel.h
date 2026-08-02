@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QList>
 #include <QString>
 #include <QVariantList>
 #include <QVector>
@@ -76,7 +77,11 @@ private:
         qint64 nowMs);
     static QVariantMap rowToMap(const SubscriptionRow &row);
     static QString displayName(const SubscriptionRow &row);
+    static QList<int> changedRoles(
+        const SubscriptionRow &before,
+        const SubscriptionRow &after);
 
     QVector<SubscriptionRow> m_rows;
     QString m_sourceSessionId;
+    qint64 m_lastRateHistorySampleMs = 0;
 };

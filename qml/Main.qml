@@ -200,6 +200,7 @@ ApplicationWindow {
                 WorkbenchView {
                     id: workbenchPage
                     ui: appUi
+                    active: root.currentAppView === "workbench"
                     viewModel: root.app.workbench
                     settingsViewModel: root.settingsViewModel
                     preferences: root.preferences
@@ -210,25 +211,49 @@ ApplicationWindow {
                     autoCollapseConnectionListOnConnect: root.preferences.autoCollapseConnectionListOnConnect
                 }
 
-                LogsView {
-                    id: logsPage
-                    ui: appUi
-                    viewModel: root.app.logs
-                    eventHistory: root.app.eventHistory
+                Loader {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    active: root.currentAppView === "logs"
+                    asynchronous: true
+
+                    sourceComponent: Component {
+                        LogsView {
+                            ui: appUi
+                            viewModel: root.app.logs
+                            eventHistory: root.app.eventHistory
+                        }
+                    }
                 }
 
-                ScriptsView {
-                    id: scriptsPage
-                    ui: appUi
-                    viewModel: root.app.scripts
+                Loader {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    active: root.currentAppView === "scripts"
+                    asynchronous: true
+
+                    sourceComponent: Component {
+                        ScriptsView {
+                            ui: appUi
+                            viewModel: root.app.scripts
+                        }
+                    }
                 }
 
-                SettingsView {
-                    id: settingsPage
-                    ui: appUi
-                    viewModel: root.app.settings
-                    preferences: root.preferences
-                    eventHistory: root.app.eventHistory
+                Loader {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    active: root.currentAppView === "settings"
+                    asynchronous: true
+
+                    sourceComponent: Component {
+                        SettingsView {
+                            ui: appUi
+                            viewModel: root.app.settings
+                            preferences: root.preferences
+                            eventHistory: root.app.eventHistory
+                        }
+                    }
                 }
             }
         }

@@ -12,9 +12,6 @@ Rectangle {
     required property string currentScriptId
     required property AppUi ui
 
-    property string filterText: ""
-    property int matchingScriptCount: 0
-
     signal scriptRequested(int index)
 
     Layout.preferredWidth: 300
@@ -22,29 +19,6 @@ Rectangle {
     Layout.maximumWidth: 300
     Layout.fillHeight: true
     color: root.ui.themePalette.windowBg
-
-    function rowMatches(name, description, code) {
-        const needle = root.filterText.trim().toLowerCase()
-        if (needle.length === 0) {
-            return true
-        }
-        return `${name} ${description} ${code}`.toLowerCase().indexOf(needle) >= 0
-    }
-
-    function recomputeVisibleCount() {
-        root.matchingScriptCount = root.viewModel ? root.viewModel.visibleScriptCount(root.filterText) : 0
-    }
-
-    onFilterTextChanged: root.recomputeVisibleCount()
-    Component.onCompleted: root.recomputeVisibleCount()
-
-    Connections {
-        target: root.viewModel ? root.viewModel.scripts : null
-
-        function onCountChanged() {
-            root.recomputeVisibleCount()
-        }
-    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -55,8 +29,8 @@ Rectangle {
             ui: root.ui
             Layout.fillWidth: true
             placeholderText: qsTr("Search script name or description")
-            text: root.filterText
-            onTextChanged: root.filterText = text
+            text: root.viewModel.filteredScripts.filterText
+            onTextEdited: root.viewModel.setScriptFilterText(text)
         }
 
         ListView {
@@ -65,7 +39,7 @@ Rectangle {
             Layout.fillHeight: true
             clip: true
             spacing: 8
-            model: root.viewModel.scripts
+            model: root.viewModel.filteredScripts
             reuseItems: true
 
             ScrollBar.vertical: ScrollBar {
@@ -79,17 +53,10 @@ Rectangle {
                 required property string id
                 required property string name
                 required property string description
-                required property string code
                 required property string updatedAt
 
-                readonly property bool matchesFilter: root.rowMatches(
-                                                          scriptDelegate.name,
-                                                          scriptDelegate.description,
-                                                          scriptDelegate.code)
-
                 width: ListView.view.width
-                implicitHeight: matchesFilter ? 82 : 0
-                visible: matchesFilter
+                implicitHeight: 82
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Lua script %1").arg(scriptDelegate.name)
 
