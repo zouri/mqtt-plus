@@ -9,6 +9,7 @@ AppPanel {
     id: root
 
     required property var viewModel
+    required property bool active
     required property var publisher
     required property var eventHistory
     required property var sessionService
@@ -76,6 +77,7 @@ AppPanel {
         EventStreamView {
             id: eventStreamView
             ui: root.ui
+            active: root.active
             viewModel: root.viewModel
             publisher: root.publisher
             eventHistory: root.eventHistory

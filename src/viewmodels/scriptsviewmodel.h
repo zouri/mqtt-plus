@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 
+#include "models/scriptfiltermodel.h"
 #include "viewmodels/scripteditorviewmodel.h"
 
 class ScriptLibraryModel;
@@ -12,6 +13,7 @@ class ScriptsViewModel : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(ScriptLibraryModel* scripts READ scripts CONSTANT)
+    Q_PROPERTY(ScriptFilterModel* filteredScripts READ filteredScripts CONSTANT)
     Q_PROPERTY(ScriptEditorViewModel* editor READ editor CONSTANT)
 
 public:
@@ -21,19 +23,16 @@ public:
         QObject *parent = nullptr);
 
     ScriptLibraryModel *scripts() const;
+    ScriptFilterModel *filteredScripts();
     ScriptEditorViewModel *editor();
-    static bool scriptMatchesFilter(
-        const QString &name,
-        const QString &description,
-        const QString &code,
-        const QString &filterText);
 
     Q_INVOKABLE void ensureEditorSelection();
     Q_INVOKABLE bool selectScriptAt(int index);
+    Q_INVOKABLE bool selectFilteredScriptAt(int index);
+    Q_INVOKABLE void setScriptFilterText(const QString &filterText);
     Q_INVOKABLE void newScript();
     Q_INVOKABLE bool validateEditorStructure();
     Q_INVOKABLE bool saveEditor();
-    Q_INVOKABLE int visibleScriptCount(const QString &filterText) const;
 
 signals:
     void scriptLibraryChanged();
@@ -41,5 +40,6 @@ signals:
 private:
     ScriptService &m_scriptService;
     ScriptLibraryModel &m_scripts;
+    ScriptFilterModel m_filteredScripts;
     ScriptEditorViewModel m_editor;
 };

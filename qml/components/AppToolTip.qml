@@ -267,6 +267,7 @@ ToolTip {
 
     Connections {
         target: control.parent
+        enabled: control.visible
 
         function onXChanged() {
             control.refreshAnchorPosition()
@@ -287,6 +288,7 @@ ToolTip {
 
     Connections {
         target: control.hostWindow
+        enabled: control.visible
 
         function onWidthChanged() {
             control.refreshAnchorPosition()

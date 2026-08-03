@@ -12,9 +12,11 @@ ScriptsViewModel::ScriptsViewModel(
     : QObject(parent)
     , m_scriptService(scriptService)
     , m_scripts(scripts)
+    , m_filteredScripts(this)
     , m_editor(this)
 {
     m_scripts.setScripts(m_scriptService.scripts());
+    m_filteredScripts.setSourceModel(&m_scripts);
     connect(
         &m_scriptService,
         &ScriptService::scriptsChanged,
@@ -26,25 +28,16 @@ ScriptsViewModel::ScriptsViewModel(
 }
 
 ScriptLibraryModel *ScriptsViewModel::scripts() const { return &m_scripts; }
+ScriptFilterModel *ScriptsViewModel::filteredScripts() { return &m_filteredScripts; }
 ScriptEditorViewModel *ScriptsViewModel::editor() { return &m_editor; }
-
-bool ScriptsViewModel::scriptMatchesFilter(
-    const QString &name,
-    const QString &description,
-    const QString &code,
-    const QString &filterText)
-{
-    const QString needle = filterText.trimmed().toLower();
-    if (needle.isEmpty()) {
-        return true;
-    }
-    return QStringLiteral("%1 %2 %3").arg(name, description, code).toLower().contains(needle);
-}
 
 void ScriptsViewModel::ensureEditorSelection()
 {
     const QString currentId = m_editor.currentScriptId();
     if (!currentId.isEmpty() && m_scripts.indexOfId(currentId) >= 0) {
+        return;
+    }
+    if (m_editor.hasUnsavedChanges()) {
         return;
     }
 
@@ -65,6 +58,21 @@ bool ScriptsViewModel::selectScriptAt(int index)
     }
     m_editor.loadScript(m_scripts.rowAt(index));
     return true;
+}
+
+bool ScriptsViewModel::selectFilteredScriptAt(int index)
+{
+    if (index < 0 || index >= m_filteredScripts.rowCount()) {
+        return false;
+    }
+
+    const QModelIndex sourceIndex = m_filteredScripts.mapToSource(m_filteredScripts.index(index, 0));
+    return selectScriptAt(sourceIndex.row());
+}
+
+void ScriptsViewModel::setScriptFilterText(const QString &filterText)
+{
+    m_filteredScripts.setFilterText(filterText);
 }
 
 void ScriptsViewModel::newScript()
@@ -89,20 +97,4 @@ bool ScriptsViewModel::saveEditor()
     }
     m_editor.markSaved(savedId);
     return true;
-}
-
-int ScriptsViewModel::visibleScriptCount(const QString &filterText) const
-{
-    int visibleRows = 0;
-    for (int row = 0; row < m_scripts.rowCount(); ++row) {
-        const QVariantMap script = m_scripts.rowAt(row);
-        if (scriptMatchesFilter(
-                script.value(QStringLiteral("name")).toString(),
-                script.value(QStringLiteral("description")).toString(),
-                script.value(QStringLiteral("code")).toString(),
-                filterText)) {
-            ++visibleRows;
-        }
-    }
-    return visibleRows;
 }

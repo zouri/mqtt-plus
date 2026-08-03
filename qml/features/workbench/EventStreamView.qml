@@ -9,6 +9,7 @@ Item {
     id: root
 
     required property var viewModel
+    required property bool active
     required property var publisher
     required property var eventHistory
     required property var sessionService
@@ -25,6 +26,7 @@ Item {
     property bool reachedHistoryStart: false
     property string followMode: "smart"
     property string selectedHistoryId: ""
+    property string pendingMessageSearchText: ""
     readonly property bool connected: root.status.state === "connected"
     readonly property bool connecting: root.status.state === "connecting"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
@@ -97,7 +99,7 @@ Item {
     }
 
     function noteStreamRowsAppended(count) {
-        if (!eventList) {
+        if (!root.active || !eventList) {
             return
         }
 
@@ -158,7 +160,7 @@ Item {
     }
 
     function requestFollowScroll() {
-        if (!eventList) {
+        if (!root.active || !eventList) {
             return
         }
 
@@ -192,7 +194,7 @@ Item {
     }
 
     function loadOlderEvents() {
-        if (root.loadingOlderEvents || root.reachedHistoryStart || !eventList) {
+        if (!root.active || root.loadingOlderEvents || root.reachedHistoryStart || !eventList) {
             return
         }
 
@@ -264,6 +266,27 @@ Item {
         return eventList.shouldFollowOutput
     }
 
+    onActiveChanged: {
+        const searchPending = messageSearchDebounce.running
+        messageSearchDebounce.stop()
+        if (!root.active && searchPending) {
+            root.viewModel.setMessageSearchText(root.pendingMessageSearchText)
+        }
+        if (root.active) {
+            root.resetStreamPosition()
+        } else {
+            root.eventHistory.setMessageStreamFrozen(false)
+        }
+    }
+
+    Timer {
+        id: messageSearchDebounce
+
+        interval: 200
+        repeat: false
+        onTriggered: root.viewModel.setMessageSearchText(root.pendingMessageSearchText)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -318,7 +341,16 @@ Item {
                     placeholderText: qsTr("Search messages")
                     // qmllint disable missing-property
                     text: root.streamModel.filterText
-                    onTextChanged: root.viewModel.setMessageSearchText(text)
+                    onTextChanged: {
+                        if (text === root.streamModel.filterText) {
+                            root.pendingMessageSearchText = text
+                            messageSearchDebounce.stop()
+                        }
+                    }
+                    onTextEdited: {
+                        root.pendingMessageSearchText = text
+                        messageSearchDebounce.restart()
+                    }
                     // qmllint enable missing-property
 
                     AppIconButton {
@@ -504,7 +536,7 @@ Item {
                 anchors.bottomMargin: 8
                 clip: true
                 spacing: 2
-                model: root.streamModel
+                model: root.active ? root.streamModel : null
                 reuseItems: true
                 property bool shouldFollowOutput: true
                 property bool programmaticScroll: false

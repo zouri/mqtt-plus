@@ -63,10 +63,17 @@ Button {
         font.bold: true
     }
 
-    AppToolTip {
-        ui: control.ui
-        text: control.toolTipText
-        position: control.toolTipPosition
-        active: control.hovered
+    Loader {
+        anchors.fill: parent
+        active: control.hovered && control.toolTipText.length > 0
+
+        sourceComponent: Component {
+            AppToolTip {
+                ui: control.ui
+                text: control.toolTipText
+                position: control.toolTipPosition
+                active: true
+            }
+        }
     }
 }
