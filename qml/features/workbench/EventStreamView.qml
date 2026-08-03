@@ -372,7 +372,7 @@ Item {
                     label: root.streamModel.filterActive
                            ? qsTr("%1/%2").arg(root.streamModel.filteredMessageCount)
                                            .arg(root.streamModel.totalMessageCount)
-                           : String(root.viewModel.totalMessageCount)
+                           : String(root.viewModel.displayTotalMessageCount)
                     // qmllint enable missing-property
                     badgeRadius: 11
                     horizontalPadding: 7
