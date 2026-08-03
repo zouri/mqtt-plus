@@ -61,30 +61,38 @@ ToolButton {
     }
 
     Behavior on scale {
-        enabled: control.ui.animationsEnabled
+        enabled: control.enabled && control.ui.animationsEnabled
 
-        NumberAnimation {
-            duration: 110
-            easing.type: Easing.OutCubic
+        ScaleAnimator {
+            duration: control.ui.motionMicroDuration
+            easing.type: control.ui.motionEnterEasing
         }
     }
 
-    background: Rectangle {
-        radius: control.cornerRadius
-        color: !control.enabled
-               ? control.disabledBg
-               : (control.down
-               ? control.pressedBg
-               : ((control.hovered || control.forceActive) ? control.hoverBg : control.effectiveRestBg))
-        border.color: control.outlineColor
-        border.width: 0
+    background: Item {
+        Rectangle {
+            anchors.fill: parent
+            radius: control.cornerRadius
+            color: !control.enabled
+                   ? control.disabledBg
+                   : (control.forceActive ? control.hoverBg : control.effectiveRestBg)
+            border.color: control.outlineColor
+            border.width: 0
+        }
 
-        Behavior on color {
-            enabled: control.ui.animationsEnabled
+        Rectangle {
+            anchors.fill: parent
+            radius: control.cornerRadius
+            color: control.down ? control.pressedBg : control.hoverBg
+            opacity: control.enabled && (control.down || control.hovered) ? 1 : 0
 
-            ColorAnimation {
-                duration: 120
-                easing.type: Easing.OutCubic
+            Behavior on opacity {
+                enabled: control.enabled && control.ui.animationsEnabled
+
+                OpacityAnimator {
+                    duration: control.ui.motionMicroDuration
+                    easing.type: control.ui.motionEnterEasing
+                }
             }
         }
     }

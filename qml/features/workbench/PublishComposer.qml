@@ -11,15 +11,21 @@ Item {
     required property var publisher
     required property var publishStatus
     required property var status
-    required property var ui
+    required property AppUi ui
 
     property bool expanded: true
     property int composerHeight: 166
+    property real expansionProgress: 1
     property string fontFamily: ""
     readonly property int collapsedHeight: root.ui.compactControlHeight + 2
     readonly property int metadataControlHeight: root.ui.compactCheckHeight
     readonly property int minComposerHeight: 150
     readonly property int maxComposerHeight: 300
+    readonly property real animatedComposerHeight: root.collapsedHeight
+                                                   + (root.composerHeight - root.collapsedHeight)
+                                                   * root.expansionProgress
+    readonly property bool expansionInProgress: Math.abs(root.expansionProgress
+                                                         - (root.expanded ? 1 : 0)) > 0.001
     readonly property color surfaceBg: root.ui.themePalette.panelBg
     readonly property string publishFeedback: root.publishStatus.state && root.publishStatus.state !== "idle" ? (root.publishStatus.reason && root.publishStatus.reason.length > 0 ? root.publishStatus.reason : qsTr("Publish status: %1").arg(root.ui.statusLabel(root.publishStatus.state))) : ""
     readonly property string publishDisabledReason: root.status.state !== "connected" ? qsTr("Connect before publishing") : (root.publisher.topic.trim().length === 0 ? qsTr("Enter a topic before publishing") : "")
@@ -27,10 +33,46 @@ Item {
     property bool publishPulseActive: false
 
     SplitView.fillWidth: true
-    SplitView.preferredHeight: root.expanded ? root.composerHeight : root.collapsedHeight
-    SplitView.minimumHeight: root.expanded ? root.minComposerHeight : root.collapsedHeight
-    SplitView.maximumHeight: root.expanded ? root.maxComposerHeight : root.collapsedHeight
-    clip: !root.expanded
+    SplitView.preferredHeight: root.animatedComposerHeight
+    SplitView.minimumHeight: root.expansionInProgress
+                             ? root.animatedComposerHeight
+                             : (root.expanded ? root.minComposerHeight : root.collapsedHeight)
+    SplitView.maximumHeight: root.expansionInProgress
+                             ? root.animatedComposerHeight
+                             : (root.expanded ? root.maxComposerHeight : root.collapsedHeight)
+    clip: root.expansionInProgress
+
+    function updateExpansion(animate) {
+        const targetProgress = root.expanded ? 1 : 0;
+        composerExpansionAnimation.stop();
+        if (!animate || !root.ui.animationsEnabled || root.ui.motionPanelDuration <= 0) {
+            root.expansionProgress = targetProgress;
+            return;
+        }
+        composerExpansionAnimation.to = targetProgress;
+        composerExpansionAnimation.restart();
+    }
+
+    onExpandedChanged: root.updateExpansion(true)
+
+    NumberAnimation {
+        id: composerExpansionAnimation
+
+        target: root
+        property: "expansionProgress"
+        duration: root.ui.motionPanelDuration
+        easing.type: root.ui.motionEnterEasing
+    }
+
+    Connections {
+        target: root.ui
+
+        function onAnimationsEnabledChanged() {
+            if (!root.ui.animationsEnabled) {
+                root.updateExpansion(false);
+            }
+        }
+    }
 
     function resizeComposer(height) {
         root.composerHeight = Math.max(root.minComposerHeight, Math.min(root.maxComposerHeight, Math.round(height)));
@@ -62,7 +104,7 @@ Item {
     }
 
     onHeightChanged: {
-        if (root.expanded && height > 0) {
+        if (root.expanded && !root.expansionInProgress && height > 0) {
             root.resizeComposer(height);
         }
     }
@@ -76,7 +118,7 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: root.height
+        height: root.expansionInProgress ? root.composerHeight : root.height
         spacing: 0
 
         Item {
@@ -154,7 +196,7 @@ Item {
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
                     cornerRadius: 7
-                    iconSource: root.ui.materialIcon(root.expanded ? "chevron-up" : "chevron-down")
+                    iconSource: root.ui.materialIcon(root.expanded ? "chevron-down" : "chevron-up")
                     iconSize: 18
                     restBg: root.ui.themePalette.itemBg
                     hoverBg: root.ui.themePalette.rowHover
@@ -172,7 +214,7 @@ Item {
         }
 
         RowLayout {
-            visible: root.expanded
+            visible: root.expanded || root.expansionInProgress
             Layout.fillWidth: true
             Layout.leftMargin: root.ui.spaceSm
             Layout.rightMargin: root.ui.spaceSm
@@ -230,7 +272,7 @@ Item {
         }
 
         Item {
-            visible: root.expanded
+            visible: root.expanded || root.expansionInProgress
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: root.ui.spaceSm
@@ -278,9 +320,10 @@ Item {
         }
     }
 
-    Popup {
+    AppPopover {
         id: publishHistoryPopup
 
+        ui: root.ui
         width: Math.min(420, root.width - 24)
         height: Math.min(320, Math.max(96, historyContent.implicitHeight + 20))
         x: Math.max(12, root.width - width - 12)
