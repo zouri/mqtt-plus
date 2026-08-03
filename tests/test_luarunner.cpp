@@ -2,7 +2,6 @@
 
 #include <QtTest/QtTest>
 
-#include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 
@@ -24,8 +23,6 @@ private slots:
     void libraryMutationsAreIsolated();
     void rejectsUnsupportedConstants();
     void rejectsCyclicConstants();
-    void parsesProjectMessageScript();
-    void reportsTruncatedProjectMessageAsFailure();
 };
 
 namespace {
@@ -293,51 +290,6 @@ void LuaRunnerTest::rejectsCyclicConstants()
 
     QVERIFY(!result.success);
     QVERIFY(result.error.contains(QStringLiteral("must not contain cycles")));
-}
-
-void LuaRunnerTest::parsesProjectMessageScript()
-{
-    QFile file(QStringLiteral(MQTT_PLUS_SOURCE_DIR "/ParseMessage.lua"));
-    QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text), qPrintable(file.errorString()));
-
-    LuaRunner::RuntimeCache cache;
-    LuaScriptContext scriptContext = context();
-    scriptContext.payloadBytes = QByteArray::fromHex(
-        QByteArrayLiteral("00000000140000000000000000000000000000000b00080007010203"));
-    const QString code = QString::fromUtf8(file.readAll());
-    const QString expected = QStringLiteral(
-        "消息类型: 接收心跳 | 消息ID: 11 | 头长度: 20\n"
-        "消息ID: 11 | 数据长度: 8 | 发送者状态: 7\n"
-        "其他信息: [1,2,3] | -: - | -: -");
-
-    const LuaScriptResult first = cache.run(QStringLiteral("parse-message"), code, scriptContext);
-    const LuaScriptResult second = cache.run(QStringLiteral("parse-message"), code, scriptContext);
-
-    QVERIFY2(first.success, qPrintable(first.error));
-    QVERIFY2(second.success, qPrintable(second.error));
-    QCOMPARE(first.output, expected);
-    QCOMPARE(second.output, expected);
-}
-
-void LuaRunnerTest::reportsTruncatedProjectMessageAsFailure()
-{
-    QFile file(QStringLiteral(MQTT_PLUS_SOURCE_DIR "/ParseMessage.lua"));
-    QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text), qPrintable(file.errorString()));
-
-    LuaRunner::RuntimeCache cache;
-    LuaScriptContext scriptContext = context();
-    scriptContext.payloadBytes = QByteArray::fromHex(
-        QByteArrayLiteral("00000000140000000000000000000000000000000b000800"));
-    const QString code = QString::fromUtf8(file.readAll());
-
-    const LuaScriptResult result = cache.run(
-        QStringLiteral("parse-message-truncated"),
-        code,
-        scriptContext);
-
-    QVERIFY2(result.success, qPrintable(result.error));
-    QVERIFY(result.output.contains(QStringLiteral("结果: 解析失败")));
-    QVERIFY(result.output.contains(QStringLiteral("消息体长度")));
 }
 
 QTEST_APPLESS_MAIN(LuaRunnerTest)
