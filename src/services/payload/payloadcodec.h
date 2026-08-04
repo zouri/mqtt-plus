@@ -19,6 +19,8 @@ class PayloadCodec
 public:
     static QStringList formatNames();
     static PayloadFormat formatFromInt(int value);
+    static PayloadFormat formatFromId(const QString &id, bool *ok = nullptr);
+    static QString formatId(PayloadFormat format);
     static QString formatName(PayloadFormat format);
 
     static bool encodeForPublish(

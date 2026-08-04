@@ -24,6 +24,7 @@ AppPanel {
     property alias composerHeight: publishComposer.composerHeight
 
     signal subscriptionCreateRequested
+    signal draftsManageRequested
 
     showTopBorder: false
     showLeftBorder: false
@@ -139,6 +140,7 @@ AppPanel {
             publishStatus: root.publishStatus
             status: root.status
             fontFamily: root.fontFamily
+            onManageDraftsRequested: root.draftsManageRequested()
         }
     }
 

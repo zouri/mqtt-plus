@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Test LinguistTools)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Test LinguistTools)
 
 include(GNUInstallDirs)
 include(CTest)
@@ -128,6 +128,7 @@ target_compile_definitions(mqtt_plus_app
 target_link_libraries(mqtt_plus_app
     PRIVATE
         Qt6::Core
+        Qt6::Concurrent
         Qt6::Gui
         Qt6::Network
         Qt6::Mqtt
@@ -196,6 +197,7 @@ if(BUILD_TESTING)
         target_link_libraries(${target}
             PRIVATE
                 Qt6::Core
+                Qt6::Concurrent
                 Qt6::Gui
                 Qt6::Network
                 Qt6::Mqtt
@@ -239,6 +241,38 @@ if(BUILD_TESTING)
             Qt6::Test
     )
     add_test(NAME payloadcodec COMMAND test_payloadcodec)
+
+    add_mqtt_plus_qt_test(test_draftstore
+        tests/test_draftstore.cpp
+        src/services/payload/payloadcodec.cpp
+        src/services/storage/draftstore.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_draftlibraryservice
+        tests/test_draftlibraryservice.cpp
+        src/services/apputils.cpp
+        src/services/payload/payloadcodec.cpp
+        src/services/storage/draftstore.cpp
+        src/usecases/draftlibraryservice.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_drafteditorviewmodel
+        tests/test_drafteditorviewmodel.cpp
+        src/services/payload/payloadcodec.cpp
+        src/viewmodels/drafteditorviewmodel.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_draftmodels
+        tests/test_draftmodels.cpp
+        src/models/draftfiltermodel.cpp
+        src/models/draftlibrarymodel.cpp
+        src/services/payload/payloadcodec.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_notificationcentermodel
+        tests/test_notificationcentermodel.cpp
+        src/models/notificationcentermodel.cpp
+    )
 
     add_executable(test_recenttrafficwindow
         tests/test_recenttrafficwindow.cpp
