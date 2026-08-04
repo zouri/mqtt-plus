@@ -95,9 +95,13 @@ void ArchitectureBoundariesTest::draftLibraryUsesDedicatedPageAndGlobalNotificat
     QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), mainSource));
     const qsizetype workbenchRail = mainSource.indexOf(QStringLiteral("accessibleLabel: qsTr(\"Workbench\")"));
     const qsizetype draftsRail = mainSource.indexOf(QStringLiteral("accessibleLabel: qsTr(\"Draft Library\")"));
+    const qsizetype scriptsRail = mainSource.indexOf(QStringLiteral("accessibleLabel: qsTr(\"Lua scripts\")"));
     const qsizetype logsRail = mainSource.indexOf(QStringLiteral("accessibleLabel: qsTr(\"Logs\")"));
-    QVERIFY2(workbenchRail >= 0 && draftsRail > workbenchRail && logsRail > draftsRail,
-        "Draft Library must be a first-class navigation page directly after Workbench");
+    QVERIFY2(workbenchRail >= 0
+            && scriptsRail > workbenchRail
+            && draftsRail > scriptsRail
+            && logsRail > draftsRail,
+        "The navigation rail must order Workbench, Scripts, Draft Library, then Logs");
     QVERIFY2(mainSource.contains(QStringLiteral("iconSource: appUi.materialIcon(\"drafts\")")),
         "Draft Library navigation must use its dedicated document icon");
     QVERIFY2(mainSource.contains(QStringLiteral("AppNotificationStack"))
@@ -897,10 +901,14 @@ void ArchitectureBoundariesTest::qmlMotionPolicyUsesSharedTokens()
 
     QString mainSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), mainSource));
-    QVERIFY2(mainSource.contains(QStringLiteral("railBackgroundAnimation.stop()"))
-            && mainSource.contains(QStringLiteral("railBackgroundAnimation.to = railBackground.targetColor"))
-            && !mainSource.contains(QStringLiteral("Behavior on color")),
-        "The navigation rail must stop an in-flight micro transition when motion is disabled");
+    QVERIFY2(mainSource.contains(QStringLiteral("id: railHoverBackground"))
+            && mainSource.contains(QStringLiteral("color: railButton.ui.themePalette.selectedItemBg"))
+            && mainSource.contains(QStringLiteral("railHoverAnimation.stop()"))
+            && mainSource.contains(QStringLiteral("railHoverAnimation.to = railHoverBackground.targetOpacity"))
+            && mainSource.contains(QStringLiteral("property: \"presentationOpacity\""))
+            && mainSource.contains(QStringLiteral("NumberAnimation"))
+            && !mainSource.contains(QStringLiteral("ColorAnimation")),
+        "The navigation rail hover must fade a visible overlay and snap it to the target when motion is disabled");
 
     QString composerSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/PublishComposer.qml"), composerSource));
