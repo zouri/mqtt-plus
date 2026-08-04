@@ -33,93 +33,95 @@ Rectangle {
             onTextEdited: root.viewModel.setScriptFilterText(text)
         }
 
-        ListView {
-            id: scriptList
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            spacing: 8
-            model: root.viewModel.filteredScripts
-            reuseItems: true
+            Layout.minimumHeight: 0
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-            }
+            ListView {
+                id: scriptList
+                anchors.fill: parent
+                clip: true
+                spacing: 8
+                model: root.viewModel.filteredScripts
+                reuseItems: true
 
-            delegate: Item {
-                id: scriptDelegate
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
 
-                required property int index
-                required property string id
-                required property string name
-                required property string description
-                required property string updatedAt
+                delegate: Item {
+                    id: scriptDelegate
 
-                width: ListView.view.width
-                implicitHeight: 82
-                Accessible.role: Accessible.Button
-                Accessible.name: qsTr("Lua script %1").arg(scriptDelegate.name)
+                    required property int index
+                    required property string id
+                    required property string name
+                    required property string description
+                    required property string updatedAt
 
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    radius: 10
-                    color: scriptMouse.containsMouse
-                           ? root.ui.rowHover
-                           : root.ui.themePalette.itemBg
-                    border.color: scriptDelegate.id === root.currentScriptId
-                                  ? root.ui.themePalette.selectedBorder
-                                  : root.ui.themePalette.itemBorder
-                    border.width: 1
+                    width: ListView.view.width
+                    implicitHeight: 82
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Lua script %1").arg(scriptDelegate.name)
 
-                    Column {
+                    Rectangle {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        anchors.topMargin: 10
-                        anchors.bottomMargin: 10
-                        spacing: 5
+                        radius: 10
+                        color: scriptMouse.containsMouse
+                               ? root.ui.rowHover
+                               : root.ui.themePalette.itemBg
+                        border.color: scriptDelegate.id === root.currentScriptId
+                                      ? root.ui.themePalette.selectedBorder
+                                      : root.ui.themePalette.itemBorder
+                        border.width: 1
 
-                        Label {
-                            width: parent.width
-                            text: scriptDelegate.name
-                            color: root.ui.textStrong
-                            font.pixelSize: 13
-                            font.bold: true
-                            elide: Label.ElideRight
-                        }
+                        Column {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            anchors.topMargin: 10
+                            anchors.bottomMargin: 10
+                            spacing: 5
 
-                        Label {
-                            width: parent.width
-                            text: scriptDelegate.description.length > 0
-                                  ? scriptDelegate.description
-                                  : qsTr("Lua decoder · %1").arg(scriptDelegate.updatedAt || qsTr("Not saved"))
-                            color: root.ui.themePalette.textSubtle
-                            font.pixelSize: 11
-                            elide: Label.ElideRight
+                            Label {
+                                width: parent.width
+                                text: scriptDelegate.name
+                                color: root.ui.textStrong
+                                font.pixelSize: 13
+                                font.bold: true
+                                elide: Label.ElideRight
+                            }
+
+                            Label {
+                                width: parent.width
+                                text: scriptDelegate.description.length > 0
+                                      ? scriptDelegate.description
+                                      : qsTr("Lua decoder · %1").arg(scriptDelegate.updatedAt || qsTr("Not saved"))
+                                color: root.ui.themePalette.textSubtle
+                                font.pixelSize: 11
+                                elide: Label.ElideRight
+                            }
                         }
                     }
-                }
 
-                Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Return
-                            || event.key === Qt.Key_Enter
-                            || event.key === Qt.Key_Space) {
-                        root.scriptRequested(scriptDelegate.index)
-                        event.accepted = true
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return
+                                || event.key === Qt.Key_Enter
+                                || event.key === Qt.Key_Space) {
+                            root.scriptRequested(scriptDelegate.index)
+                            event.accepted = true
+                        }
                     }
-                }
 
-                MouseArea {
-                    id: scriptMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
+                    MouseArea {
+                        id: scriptMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
 
-                    onClicked: {
-                        root.scriptRequested(scriptDelegate.index)
+                        onClicked: {
+                            root.scriptRequested(scriptDelegate.index)
+                        }
                     }
                 }
             }
