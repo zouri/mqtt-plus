@@ -52,12 +52,23 @@ ApplicationViewModel::ApplicationViewModel(
           sessionService.sessions(),
           settings,
           this)
+    , m_configurationTransfer(
+          sessionService,
+          draftService,
+          preferences,
+          settings,
+          this)
     , m_preferences(&preferences)
     , m_eventHistory(&eventHistoryService)
     , m_sessionService(&sessionService)
     , m_subscriptionService(&subscriptionService)
     , m_notifications(&notifications)
 {
+    connect(
+        &m_configurationTransfer,
+        &ConfigurationTransferService::portableSettingsImported,
+        &m_settings,
+        &SettingsViewModel::reloadPortableSettings);
 }
 
 WorkbenchViewModel *ApplicationViewModel::workbench()
@@ -83,6 +94,11 @@ ScriptsViewModel *ApplicationViewModel::scripts()
 SettingsViewModel *ApplicationViewModel::settings()
 {
     return &m_settings;
+}
+
+ConfigurationTransferService *ApplicationViewModel::configurationTransfer()
+{
+    return &m_configurationTransfer;
 }
 
 PreferencesController *ApplicationViewModel::preferences()

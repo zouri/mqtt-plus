@@ -179,6 +179,7 @@ LoadedSession readSession(QSettings &settings, int index)
 bool writeSessions(QSettings &settings, const QVector<SessionState> &sessions, QString &errorMessage)
 {
     errorMessage.clear();
+    settings.remove(QStringLiteral("sessions"));
     settings.beginWriteArray(QStringLiteral("sessions"), sessions.size());
     for (int i = 0; i < sessions.size(); ++i) {
         const auto &session = sessions.at(i);

@@ -86,6 +86,19 @@ Application::Application()
           m_settings,
           &m_owner)
 {
+    QObject::connect(
+        m_viewModel.configurationTransfer(),
+        &ConfigurationTransferService::operationFinished,
+        &m_notifications,
+        [this](bool success, const QString &title, const QString &message) {
+            m_notifications.postOrUpdate(
+                QStringLiteral("configuration-transfer"),
+                title,
+                message,
+                success ? QStringLiteral("success") : QStringLiteral("error"),
+                success ? 5000 : 0);
+        });
+
     m_historyWriter->moveToThread(&m_historyWriterThread);
     QObject::connect(
         &m_historyWriterThread,

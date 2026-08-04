@@ -12,6 +12,7 @@ class DraftLibraryServiceTest : public QObject
 private slots:
     void createsUpdatesTouchesAndDeletesDurably();
     void enforcesNamesTopicsAndEncodedPayloads();
+    void importsDraftsInOneAtomicSave();
     void suggestsUniqueCopyNameAtMaximumLength();
     void leavesVisibleLibraryUnchangedWhenSaveFails();
 };
@@ -98,6 +99,40 @@ void DraftLibraryServiceTest::enforcesNamesTopicsAndEncodedPayloads()
     oversizedStoredPayload.formatId = QStringLiteral("hex");
     QVERIFY(!service.validateDraft(oversizedStoredPayload, error));
     QVERIFY(error.contains(QStringLiteral("16 MiB")));
+}
+
+void DraftLibraryServiceTest::importsDraftsInOneAtomicSave()
+{
+    QTemporaryDir temporaryDirectory;
+    DraftLibraryService service(temporaryDirectory.path());
+    service.load();
+    QTRY_VERIFY(service.ready());
+
+    PublishDraft first;
+    first.id = QStringLiteral("import-one");
+    first.name = QStringLiteral("Imported one");
+    first.payload = QStringLiteral("hello");
+    first.formatId = QStringLiteral("text");
+
+    PublishDraft second;
+    second.id = QStringLiteral("import-two");
+    second.name = QStringLiteral("Imported two");
+    second.payload = QStringLiteral("{}");
+    second.formatId = QStringLiteral("json");
+    second.qos = 1;
+
+    QSignalSpy operationSpy(&service, &DraftLibraryService::operationSucceeded);
+    QVERIFY(service.importDrafts({first, second}));
+    QVERIFY(service.busy());
+    QCOMPARE(service.drafts().size(), 0);
+    QTRY_COMPARE(operationSpy.size(), 1);
+    QCOMPARE(operationSpy.first().first().toString(), QStringLiteral("import"));
+    QCOMPARE(service.drafts().size(), 2);
+
+    DraftLibraryService reloaded(temporaryDirectory.path());
+    reloaded.load();
+    QTRY_VERIFY(reloaded.ready());
+    QCOMPARE(reloaded.drafts().size(), 2);
 }
 
 void DraftLibraryServiceTest::suggestsUniqueCopyNameAtMaximumLength()

@@ -5,6 +5,7 @@
 #include <QSize>
 #include <QString>
 #include <QVariant>
+#include <QVariantMap>
 
 class PreferencesController : public QObject
 {
@@ -33,6 +34,8 @@ public:
     int subscriptionPaneWidth() const;
     int publishComposerHeight() const;
     bool connectionPaneCollapsed() const;
+    QVariantMap portableSettings() const;
+    bool applyPortableSettings(const QVariantMap &settings, QString &errorMessage);
     void setWindowState(const QSize &size, bool maximized);
 
 public slots:

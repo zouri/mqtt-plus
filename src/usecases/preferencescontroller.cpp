@@ -179,6 +179,66 @@ bool PreferencesController::connectionPaneCollapsed() const
     return m_connectionPaneCollapsed;
 }
 
+QVariantMap PreferencesController::portableSettings() const
+{
+    return {
+        {QStringLiteral("history/messageRetentionLimit"), m_messageRetentionLimit},
+        {QStringLiteral("history/logRetentionLimit"), m_logRetentionLimit},
+        {QStringLiteral("history/pageSize"), m_historyPageSize},
+        {QStringLiteral("history/maxIncomingPayloadBytes"), m_maxIncomingPayloadBytes},
+        {QStringLiteral("history/deleteHistoryWithSession"), m_deleteHistoryWithSession},
+        {QStringLiteral("history/saveMessagesWhenOutputPaused"), m_saveMessagesWhenOutputPaused},
+        {QStringLiteral("ui/autoCollapseConnectionListOnConnect"), m_autoCollapseConnectionListOnConnect},
+        {QStringLiteral("cleanup/clearMessagesOnExit"), m_clearMessagesOnExit},
+        {QStringLiteral("cleanup/clearLogsOnExit"), m_clearLogsOnExit},
+    };
+}
+
+bool PreferencesController::applyPortableSettings(
+    const QVariantMap &settings,
+    QString &errorMessage)
+{
+    errorMessage.clear();
+    if (settings.contains(QStringLiteral("history/messageRetentionLimit"))) {
+        setMessageRetentionLimit(settings.value(QStringLiteral("history/messageRetentionLimit")).toInt());
+    }
+    if (settings.contains(QStringLiteral("history/logRetentionLimit"))) {
+        setLogRetentionLimit(settings.value(QStringLiteral("history/logRetentionLimit")).toInt());
+    }
+    if (settings.contains(QStringLiteral("history/pageSize"))) {
+        setHistoryPageSize(settings.value(QStringLiteral("history/pageSize")).toInt());
+    }
+    if (settings.contains(QStringLiteral("history/maxIncomingPayloadBytes"))) {
+        setMaxIncomingPayloadBytes(settings.value(QStringLiteral("history/maxIncomingPayloadBytes")).toInt());
+    }
+    if (settings.contains(QStringLiteral("history/deleteHistoryWithSession"))) {
+        setDeleteHistoryWithSession(settings.value(QStringLiteral("history/deleteHistoryWithSession")).toBool());
+    }
+    if (settings.contains(QStringLiteral("history/saveMessagesWhenOutputPaused"))) {
+        setSaveMessagesWhenOutputPaused(settings.value(QStringLiteral("history/saveMessagesWhenOutputPaused")).toBool());
+    }
+    if (settings.contains(QStringLiteral("ui/autoCollapseConnectionListOnConnect"))) {
+        setAutoCollapseConnectionListOnConnect(settings.value(QStringLiteral("ui/autoCollapseConnectionListOnConnect")).toBool());
+    }
+    if (settings.contains(QStringLiteral("cleanup/clearMessagesOnExit"))) {
+        setClearMessagesOnExit(settings.value(QStringLiteral("cleanup/clearMessagesOnExit")).toString());
+    }
+    if (settings.contains(QStringLiteral("cleanup/clearLogsOnExit"))) {
+        setClearLogsOnExit(settings.value(QStringLiteral("cleanup/clearLogsOnExit")).toString());
+    }
+    if (!m_settings) {
+        return true;
+    }
+    m_settings->sync();
+    if (m_settings->status() == QSettings::NoError) {
+        return true;
+    }
+    errorMessage = m_settings->status() == QSettings::AccessError
+        ? tr("Cannot write imported preferences: access denied.")
+        : tr("Cannot write imported preferences: invalid settings format.");
+    return false;
+}
+
 void PreferencesController::setMessageRetentionLimit(int limit)
 {
     const int sanitized = sanitizeRetentionLimit(limit, m_messageRetentionLimit);
