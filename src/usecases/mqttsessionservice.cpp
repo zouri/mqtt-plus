@@ -10,6 +10,7 @@
 #include <QSslCertificate>
 #include <QSslSocket>
 #include <QDateTime>
+#include <QUuid>
 
 #include <algorithm>
 
@@ -83,98 +84,119 @@ bool MqttSessionService::publishCurrentSession(
     const QString &payload,
     int format,
     int qos,
-    bool retain)
+    bool retain,
+    const QString &sourceLabel)
 {
     auto *session = m_sessionService.currentSession();
     auto *client = session ? session->runtime.client : nullptr;
-    if (!session || !client) {
+    PublishStatus status;
+    status.requestId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    status.sessionId = session ? session->id : QString();
+    status.sessionName = session ? session->name : QString();
+    status.sourceLabel = sourceLabel;
+    status.topic = topic.trimmed();
+    status.qos = SessionConfig::sanitizeQos(qos);
+    status.retain = retain;
+    status.format = format;
+    const PayloadFormat payloadFormat = PayloadCodec::formatFromInt(format);
+    status.formatName = PayloadCodec::formatName(payloadFormat);
+    status.updatedAt = timestampNow();
+
+    const auto fail = [this, session, &status](const QString &reason) {
+        status.state = QStringLiteral("failed");
+        status.reason = reason;
+        status.updatedAt = timestampNow();
+        if (session) {
+            session->runtime.publishStatus = status;
+            m_eventHistoryService.appendEvent(*session, QStringLiteral("Publish"), reason);
+        }
+        emitPublishProgress(status);
+        emit sessionStateChanged();
         return false;
+    };
+
+    if (!session || !client) {
+        return fail(tr("Select a connection before publishing."));
     }
 
-    const QString trimmedTopic = topic.trimmed();
+    const QString trimmedTopic = status.topic;
     if (trimmedTopic.isEmpty()) {
-        m_eventHistoryService.appendEvent(
-            *session,
-            QStringLiteral("Publish"),
-            QStringLiteral("Topic cannot be empty."));
-        return false;
+        return fail(tr("Topic cannot be empty."));
     }
 
     const QMqttTopicName topicName(trimmedTopic);
     if (!topicName.isValid()) {
-        m_eventHistoryService.appendEvent(
-            *session,
-            QStringLiteral("Publish"),
-            QStringLiteral("Invalid topic name: %1").arg(trimmedTopic));
-        return false;
+        return fail(tr("Invalid topic name: %1").arg(trimmedTopic));
     }
 
     if (client->state() != QMqttClient::Connected) {
-        m_eventHistoryService.appendEvent(
-            *session,
-            QStringLiteral("Publish"),
-            QStringLiteral("Connect before publishing."));
-        return false;
+        return fail(tr("Connect before publishing."));
     }
 
     QByteArray payloadBytes;
     QString error;
-    const PayloadFormat payloadFormat = PayloadCodec::formatFromInt(format);
     if (!PayloadCodec::encodeForPublish(payloadFormat, payload, payloadBytes, error)) {
-        m_eventHistoryService.appendEvent(
-            *session,
-            QStringLiteral("Publish"),
-            QStringLiteral("%1 (%2)").arg(error).arg(PayloadCodec::formatName(payloadFormat)));
-        return false;
+        return fail(QStringLiteral("%1 (%2)").arg(error, status.formatName));
     }
 
-    const int publishQos = SessionConfig::sanitizeQos(qos);
-    PublishStatus status;
+    const int publishQos = status.qos;
+    if (publishQos > 0 && m_pendingPublishes.size() >= 256) {
+        return fail(tr("Too many publishes are waiting for broker confirmation."));
+    }
+
     status.state = QStringLiteral("queued");
-    status.topic = trimmedTopic;
-    status.qos = publishQos;
-    status.retain = retain;
-    status.format = format;
-    status.formatName = PayloadCodec::formatName(payloadFormat);
-    status.updatedAt = timestampNow();
     session->runtime.publishStatus = status;
 
     const qint32 messageId = client->publish(topicName, payloadBytes, publishQos, retain);
     if (messageId < 0) {
-        updatePublishStatus(*session, QStringLiteral("failed"), tr("Qt MQTT rejected the publish request."));
-        m_eventHistoryService.appendEvent(
-            *session,
-            QStringLiteral("Publish"),
-            QStringLiteral("Publish rejected for %1").arg(trimmedTopic));
-    } else {
-        const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-        appendRecentTrafficSample(
-            session->runtime.recentPublishedTraffic,
-            nowMs,
-            payloadBytes.size());
-        updatePublishStatus(
-            *session,
-            publishQos == 0 ? QStringLiteral("sent") : QStringLiteral("queued"),
-            QString(),
-            messageId);
-        m_eventHistoryService.appendPublishedMessage(
-            session->id,
-            trimmedTopic,
-            payloadBytes,
-            format,
-            status.qos,
-            retain);
-        m_eventHistoryService.appendEvent(
-            *session,
-            QStringLiteral("Publish"),
-            QStringLiteral("Queued %1 (QoS %2%3)")
-                .arg(trimmedTopic)
-                .arg(publishQos)
-                .arg(retain ? QStringLiteral(", retain") : QString()));
+        return fail(tr("Qt MQTT rejected the publish request."));
     }
 
+    status.messageId = messageId;
+    status.state = publishQos == 0 ? QStringLiteral("sent") : QStringLiteral("queued");
+    status.updatedAt = timestampNow();
+    session->runtime.publishStatus = status;
+    if (publishQos > 0) {
+        m_pendingPublishes.insert(pendingKey(session->id, messageId), status);
+    }
+
+    appendRecentTrafficSample(
+        session->runtime.recentPublishedTraffic,
+        QDateTime::currentMSecsSinceEpoch(),
+        payloadBytes.size());
+    recordRecentPublish(trimmedTopic, payload, format, publishQos, retain, payloadBytes.size());
+    m_eventHistoryService.appendPublishedMessage(
+        session->id,
+        trimmedTopic,
+        payloadBytes,
+        format,
+        publishQos,
+        retain);
+    m_eventHistoryService.appendEvent(
+        *session,
+        QStringLiteral("Publish"),
+        QStringLiteral("Queued %1 (QoS %2%3)")
+            .arg(trimmedTopic)
+            .arg(publishQos)
+            .arg(retain ? QStringLiteral(", retain") : QString()));
+    emitPublishProgress(status);
     emit sessionStateChanged();
-    return messageId >= 0;
+    return true;
+}
+
+QVariantList MqttSessionService::recentPublishes() const
+{
+    return m_recentPublishes;
+}
+
+void MqttSessionService::clearRecentPublishes()
+{
+    if (m_recentPublishes.isEmpty()) {
+        return;
+    }
+    m_recentPublishes.clear();
+    m_recentPublishBytes = 0;
+    emit recentPublishesChanged();
 }
 
 void MqttSessionService::bindSessionSignals(SessionState *session)
@@ -233,7 +255,17 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
             }
         }
 
+        finishPendingPublishes(
+            sessionId,
+            tr("Connection closed before broker confirmation."));
+
         emit sessionStateChanged();
+    });
+
+    connect(client, &QObject::destroyed, this, [this, sessionId = session->id]() {
+        finishPendingPublishes(
+            sessionId,
+            tr("Connection closed before broker confirmation."));
     });
 
     connect(client, &QMqttClient::stateChanged, this, [this]() {
@@ -286,6 +318,13 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
 
     connect(client, &QMqttClient::messageSent, this, [this, sessionId = session->id](qint32 messageId) {
         if (auto *boundSession = m_sessionService.sessionById(sessionId)) {
+            const QString key = pendingKey(sessionId, messageId);
+            auto pending = m_pendingPublishes.find(key);
+            if (pending != m_pendingPublishes.end()) {
+                pending->state = QStringLiteral("sent");
+                pending->updatedAt = timestampNow();
+                emitPublishProgress(*pending);
+            }
             if (boundSession->runtime.publishStatus.messageId == messageId) {
                 updatePublishStatus(*boundSession, QStringLiteral("sent"), QString(), messageId);
             }
@@ -302,15 +341,35 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
             QMqtt::MessageStatus status,
             const QMqttMessageStatusProperties &properties) {
             if (auto *boundSession = m_sessionService.sessionById(sessionId)) {
-                if (boundSession->runtime.publishStatus.messageId != messageId) {
+                const QString key = pendingKey(sessionId, messageId);
+                auto pending = m_pendingPublishes.find(key);
+                if (pending == m_pendingPublishes.end()) {
                     return;
                 }
 
                 QString reason = properties.reason();
                 if (reason.isEmpty()) {
-                    reason = boundSession->runtime.publishStatus.reason;
+                    reason = pending->reason;
                 }
-                updatePublishStatus(*boundSession, messageStatusName(status), reason, messageId);
+                const bool brokerRejected = static_cast<quint8>(properties.reasonCode()) >= 0x80;
+                if (brokerRejected && reason.isEmpty()) {
+                    reason = tr("Broker rejected the publish request.");
+                }
+                pending->state = brokerRejected
+                    ? QStringLiteral("failed")
+                    : messageStatusName(status);
+                pending->reason = reason;
+                pending->updatedAt = timestampNow();
+                const PublishStatus progress = *pending;
+                if (boundSession->runtime.publishStatus.messageId == messageId) {
+                    updatePublishStatus(*boundSession, progress.state, reason, messageId);
+                }
+                emitPublishProgress(progress);
+                if (progress.state == QStringLiteral("failed")
+                    || progress.state == QStringLiteral("acknowledged")
+                    || progress.state == QStringLiteral("completed")) {
+                    m_pendingPublishes.erase(pending);
+                }
             }
             emit sessionStateChanged();
         });
@@ -423,4 +482,72 @@ void MqttSessionService::updatePublishStatus(
     if (messageId >= 0) {
         session.runtime.publishStatus.messageId = messageId;
     }
+}
+
+void MqttSessionService::emitPublishProgress(const PublishStatus &status)
+{
+    emit publishProgress(status.toVariantMap());
+}
+
+void MqttSessionService::finishPendingPublishes(const QString &sessionId, const QString &reason)
+{
+    SessionState *session = m_sessionService.sessionById(sessionId);
+    for (auto it = m_pendingPublishes.begin(); it != m_pendingPublishes.end();) {
+        if (it->sessionId != sessionId) {
+            ++it;
+            continue;
+        }
+        PublishStatus status = *it;
+        status.state = QStringLiteral("failed");
+        status.reason = reason;
+        status.updatedAt = timestampNow();
+        if (session && session->runtime.publishStatus.requestId == status.requestId) {
+            session->runtime.publishStatus = status;
+        }
+        emitPublishProgress(status);
+        it = m_pendingPublishes.erase(it);
+    }
+}
+
+void MqttSessionService::recordRecentPublish(
+    const QString &topic,
+    const QString &payload,
+    int format,
+    int qos,
+    bool retain,
+    qint64 encodedSize)
+{
+    QVariantMap entry {
+        {QStringLiteral("topic"), topic},
+        {QStringLiteral("payload"), payload},
+        {QStringLiteral("format"), format},
+        {QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(format))},
+        {QStringLiteral("qos"), qos},
+        {QStringLiteral("retain"), retain},
+        {QStringLiteral("publishedAt"), QDateTime::currentDateTime().toString(Qt::ISODate)},
+        {QStringLiteral("encodedSize"), encodedSize},
+    };
+    for (qsizetype index = m_recentPublishes.size() - 1; index >= 0; --index) {
+        const QVariantMap existing = m_recentPublishes.at(index).toMap();
+        if (existing.value(QStringLiteral("topic")) == topic
+            && existing.value(QStringLiteral("payload")) == payload
+            && existing.value(QStringLiteral("format")) == format
+            && existing.value(QStringLiteral("qos")) == qos
+            && existing.value(QStringLiteral("retain")) == retain) {
+            m_recentPublishBytes -= existing.value(QStringLiteral("encodedSize")).toLongLong();
+            m_recentPublishes.removeAt(index);
+        }
+    }
+    m_recentPublishes.prepend(entry);
+    m_recentPublishBytes += encodedSize;
+    while (m_recentPublishes.size() > 10 || m_recentPublishBytes > 16 * 1024 * 1024) {
+        const QVariantMap removed = m_recentPublishes.takeLast().toMap();
+        m_recentPublishBytes -= removed.value(QStringLiteral("encodedSize")).toLongLong();
+    }
+    emit recentPublishesChanged();
+}
+
+QString MqttSessionService::pendingKey(const QString &sessionId, qint32 messageId)
+{
+    return QStringLiteral("%1:%2").arg(sessionId).arg(messageId);
 }

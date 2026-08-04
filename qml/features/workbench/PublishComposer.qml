@@ -13,6 +13,8 @@ Item {
     required property var status
     required property AppUi ui
 
+    signal manageDraftsRequested
+
     property bool expanded: true
     property int composerHeight: 166
     property real expansionProgress: 1
@@ -31,6 +33,10 @@ Item {
     readonly property string publishDisabledReason: root.status.state !== "connected" ? qsTr("Connect before publishing") : (root.publisher.topic.trim().length === 0 ? qsTr("Enter a topic before publishing") : "")
     readonly property color publishFeedbackColor: root.publishStatus.state === "failed" ? root.ui.themePalette.errorText : (root.publishStatus.state === "sent" || root.publishStatus.state === "acknowledged" || root.publishStatus.state === "completed" ? root.ui.themePalette.successText : root.ui.textMuted)
     property bool publishPulseActive: false
+    property int sendLibraryTabIndex: 0
+    property int pendingDraftIndex: -1
+    property string pendingDraftId: ""
+    property string saveDraftError: ""
 
     SplitView.fillWidth: true
     SplitView.preferredHeight: root.animatedComposerHeight
@@ -86,6 +92,28 @@ Item {
         if (root.publisher.canPublish) {
             root.publisher.publishDraft();
         }
+    }
+
+    function requestDraftLoad(index, draftId) {
+        root.pendingDraftIndex = index
+        root.pendingDraftId = draftId
+        if (root.publisher.wouldReplaceWithDraft(index)) {
+            replaceComposerDialog.open()
+            return
+        }
+        root.publisher.useSavedDraft(index)
+        sendLibraryPopup.close()
+    }
+
+    function requestDraftQuickPublish(index, draftId) {
+        root.pendingDraftIndex = index
+        root.pendingDraftId = draftId
+        if (root.publisher.draftNeedsTopic(index)) {
+            draftTopicField.text = ""
+            draftTopicDialog.open()
+            return
+        }
+        root.publisher.quickPublishDraft(index)
     }
 
     onPublishStatusChanged: {
@@ -168,22 +196,46 @@ Item {
                 }
 
                 AppIconButton {
-                    id: publishHistoryButton
+                    id: sendLibraryButton
 
                     ui: root.ui
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
                     cornerRadius: 7
-                    iconSource: root.ui.materialIcon("logs")
+                    iconSource: root.ui.materialIcon("drafts")
                     iconSize: 14
-                    restBg: publishHistoryPopup.visible ? root.ui.themePalette.selectedBg : "transparent"
+                    restBg: sendLibraryPopup.visible ? root.ui.themePalette.selectedBg : "transparent"
                     hoverBg: root.ui.themePalette.rowHover
-                    outlineColor: publishHistoryPopup.visible ? root.ui.themePalette.selectedBorder : "transparent"
-                    symbolColor: publishHistoryPopup.visible ? root.ui.themePalette.infoText : root.ui.textMuted
-                    accessibleName: qsTr("Recent publishes")
-                    toolTipText: root.publisher.recentPublishes.length > 0 ? qsTr("Recent publishes") : qsTr("No recent publishes")
+                    outlineColor: sendLibraryPopup.visible ? root.ui.themePalette.selectedBorder : "transparent"
+                    symbolColor: sendLibraryPopup.visible ? root.ui.themePalette.infoText : root.ui.textMuted
+                    accessibleName: qsTr("Send Library")
+                    toolTipText: qsTr("Drafts and recent publishes")
                     toolTipPosition: AppToolTip.Position.Bottom
-                    onClicked: publishHistoryPopup.open()
+                    onClicked: sendLibraryPopup.visible ? sendLibraryPopup.close() : sendLibraryPopup.open()
+                }
+
+                AppIconButton {
+                    id: saveAsDraftButton
+
+                    ui: root.ui
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    cornerRadius: 7
+                    iconSource: root.ui.materialIcon("plus")
+                    iconSize: 14
+                    restBg: "transparent"
+                    hoverBg: root.ui.themePalette.rowHover
+                    outlineColor: "transparent"
+                    symbolColor: root.ui.textMuted
+                    enabled: root.publisher.draftsReady && !root.publisher.draftsBusy
+                    accessibleName: qsTr("Save composer as draft")
+                    toolTipText: accessibleName
+                    toolTipPosition: AppToolTip.Position.Bottom
+                    onClicked: {
+                        root.saveDraftError = ""
+                        saveAsDraftNameField.text = ""
+                        saveAsDraftDialog.open()
+                    }
                 }
 
                 AppIconButton {
@@ -192,7 +244,8 @@ Item {
                     ui: root.ui
                     readonly property bool collapseHoverActive: collapseButton.hovered
                                                                  || (composerHeader.hovered
-                                                                     && !publishHistoryButton.hovered)
+                                                                     && !sendLibraryButton.hovered
+                                                                     && !saveAsDraftButton.hovered)
                     Layout.preferredWidth: 28
                     Layout.preferredHeight: 28
                     cornerRadius: 7
@@ -266,6 +319,14 @@ Item {
                 onToggled: root.publisher.retain = checked
             }
 
+            Label {
+                visible: root.publisher.retain
+                text: qsTr("Retain enabled")
+                color: root.ui.themePalette.warningText
+                font.pixelSize: root.ui.textXs
+                font.bold: true
+            }
+
             Item {
                 Layout.fillWidth: true
             }
@@ -321,149 +382,617 @@ Item {
     }
 
     AppPopover {
-        id: publishHistoryPopup
+        id: sendLibraryPopup
 
         ui: root.ui
-        width: Math.min(420, root.width - 24)
-        height: Math.min(320, Math.max(96, historyContent.implicitHeight + 20))
+        width: Math.min(470, root.width - 24)
+        height: 376
         x: Math.max(12, root.width - width - 12)
-        y: Math.max(12, root.height - height - 44)
+        y: -height - 6
         padding: 10
         modal: false
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         background: Rectangle {
-            radius: 8
+            radius: root.ui.radiusMd
             color: root.ui.themePalette.dialogBg
             border.color: root.ui.themePalette.dialogBorder
         }
 
         contentItem: ColumnLayout {
-            id: historyContent
             spacing: 8
 
             RowLayout {
                 Layout.fillWidth: true
+                spacing: 8
 
                 Label {
                     Layout.fillWidth: true
-                    text: qsTr("Recent publishes")
+                    text: qsTr("Send Library")
                     color: root.ui.textStrong
-                    font.pixelSize: 12
+                    font.pixelSize: root.ui.textMd
                     font.bold: true
                 }
 
-                AppIconButton {
+                AppButton {
                     ui: root.ui
-                    visible: root.publisher.recentPublishes.length > 0
-                    implicitWidth: 26
-                    implicitHeight: 26
-                    cornerRadius: 6
-                    iconSource: root.ui.materialIcon("delete")
-                    iconSize: 13
-                    restBg: "transparent"
-                    outlineColor: "transparent"
-                    accessibleName: qsTr("Clear recent publishes")
-                    toolTipText: accessibleName
-                    onClicked: root.publisher.clearRecentPublishes()
+                    text: qsTr("Manage drafts")
+                    minimumWidth: 104
+                    onClicked: {
+                        sendLibraryPopup.close()
+                        root.manageDraftsRequested()
+                    }
                 }
             }
 
-            Label {
-                visible: root.publisher.recentPublishes.length === 0
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 48
-                text: qsTr("Published messages will appear here for quick reuse.")
-                color: root.ui.textMuted
-                font.pixelSize: 11
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                wrapMode: Text.Wrap
+                spacing: 6
+
+                AppButton {
+                    ui: root.ui
+                    Layout.fillWidth: true
+                    text: qsTr("Drafts")
+                    primary: root.sendLibraryTabIndex === 0
+                    onClicked: root.sendLibraryTabIndex = 0
+                }
+
+                AppButton {
+                    ui: root.ui
+                    Layout.fillWidth: true
+                    text: qsTr("Recent")
+                    primary: root.sendLibraryTabIndex === 1
+                    onClicked: root.sendLibraryTabIndex = 1
+                }
             }
 
-            ListView {
-                id: recentPublishList
-                visible: root.publisher.recentPublishes.length > 0
+            StackLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Math.min(contentHeight, 250)
-                clip: true
-                spacing: 3
-                model: root.publisher.recentPublishes
-                reuseItems: true
+                Layout.fillHeight: true
+                currentIndex: root.sendLibraryTabIndex
 
-                delegate: Rectangle {
-                    id: recentPublishDelegate
-                    required property int index
-                    required property var modelData
-                    width: ListView.view.width
-                    height: 48
-                    radius: 6
-                    color: recentPublishHover.hovered ? root.ui.themePalette.rowHover : root.ui.themePalette.innerPanelBg
+                ColumnLayout {
+                    spacing: 7
 
-                    HoverHandler {
-                        id: recentPublishHover
+                    AppTextField {
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("Search draft name, description, Topic, or Payload")
+                        text: root.publisher.drafts.filterText
+                        onTextEdited: root.publisher.setDraftFilterText(text)
                     }
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 9
-                        anchors.rightMargin: 6
-                        spacing: 8
+                    Label {
+                        visible: root.publisher.draftsLoading
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        text: qsTr("Loading draft library…")
+                        color: root.ui.textMuted
+                        font.pixelSize: root.ui.textSm
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
 
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            spacing: 2
+                    Label {
+                        visible: !root.publisher.draftsLoading
+                                 && root.publisher.drafts.count === 0
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        text: root.publisher.drafts.filterText.length > 0
+                              ? qsTr("No matching drafts")
+                              : qsTr("Save a composer message to build your Draft Library.")
+                        color: root.ui.textMuted
+                        font.pixelSize: root.ui.textSm
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        wrapMode: Text.Wrap
+                    }
 
-                            TapHandler {
-                                gesturePolicy: TapHandler.ReleaseWithinBounds
-                                onTapped: {
-                                    root.publisher.useRecentPublish(recentPublishDelegate.index);
-                                    publishHistoryPopup.close();
-                                }
-                            }
+                    ListView {
+                        id: savedDraftList
 
-                            Label {
-                                Layout.fillWidth: true
-                                text: String(recentPublishDelegate.modelData.topic || "")
-                                color: root.ui.textStrong
-                                font.pixelSize: 11
-                                font.bold: true
-                                elide: Label.ElideMiddle
-                            }
+                        visible: !root.publisher.draftsLoading
+                                 && root.publisher.drafts.count > 0
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        model: root.publisher.drafts
+                        spacing: 4
+                        clip: true
+                        reuseItems: true
 
-                            Label {
-                                Layout.fillWidth: true
-                                text: String(recentPublishDelegate.modelData.payload || qsTr("Empty payload"))
-                                color: root.ui.textMuted
-                                font.pixelSize: 10
-                                elide: Label.ElideRight
-                            }
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
                         }
 
+                        delegate: Rectangle {
+                            id: savedDraftDelegate
+
+                            required property int index
+                            required property string id
+                            required property string name
+                            required property string description
+                            required property string defaultTopic
+                            required property string payloadPreview
+                            required property string formatName
+                            required property int qos
+                            required property bool retain
+
+                            width: ListView.view.width
+                            height: 58
+                            radius: root.ui.radiusSm
+                            color: savedDraftHover.hovered
+                                   ? root.ui.themePalette.rowHover
+                                   : root.ui.themePalette.innerPanelBg
+
+                            HoverHandler {
+                                id: savedDraftHover
+                            }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 9
+                                anchors.rightMargin: 6
+                                spacing: 7
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    spacing: 2
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+
+                                        Label {
+                                            Layout.fillWidth: true
+                                            text: savedDraftDelegate.name
+                                            color: root.ui.textStrong
+                                            font.pixelSize: root.ui.textSm
+                                            font.bold: true
+                                            elide: Label.ElideRight
+                                        }
+
+                                        Label {
+                                            visible: savedDraftDelegate.retain
+                                            text: qsTr("RETAIN")
+                                            color: root.ui.themePalette.warningText
+                                            font.pixelSize: root.ui.textXs
+                                            font.bold: true
+                                        }
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: savedDraftDelegate.defaultTopic.length > 0
+                                              ? savedDraftDelegate.defaultTopic
+                                              : qsTr("Topic requested when sending")
+                                        color: root.ui.textMuted
+                                        font.pixelSize: root.ui.textXs
+                                        elide: Label.ElideMiddle
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: qsTr("%1 · QoS %2 · %3")
+                                              .arg(savedDraftDelegate.formatName)
+                                              .arg(savedDraftDelegate.qos)
+                                              .arg(savedDraftDelegate.payloadPreview.length > 0
+                                                   ? savedDraftDelegate.payloadPreview
+                                                   : qsTr("Empty payload"))
+                                        color: root.ui.themePalette.textSubtle
+                                        font.pixelSize: root.ui.textXs
+                                        elide: Label.ElideRight
+                                    }
+                                }
+
+                                AppIconButton {
+                                    ui: root.ui
+                                    Layout.preferredWidth: 26
+                                    Layout.preferredHeight: 26
+                                    cornerRadius: root.ui.radiusSm
+                                    iconSource: root.ui.materialIcon("content-copy")
+                                    iconSize: 12
+                                    accessibleName: qsTr("Load draft into composer")
+                                    toolTipText: accessibleName
+                                    onClicked: root.requestDraftLoad(
+                                                   savedDraftDelegate.index,
+                                                   savedDraftDelegate.id)
+                                }
+
+                                AppIconButton {
+                                    ui: root.ui
+                                    Layout.preferredWidth: 26
+                                    Layout.preferredHeight: 26
+                                    cornerRadius: root.ui.radiusSm
+                                    iconSource: root.ui.materialIcon("send")
+                                    iconSize: 12
+                                    primary: true
+                                    enabled: root.status.state === "connected"
+                                    accessibleName: qsTr("Quick publish draft")
+                                    toolTipText: enabled
+                                                 ? (savedDraftDelegate.retain
+                                                    ? qsTr("Quick publish with Retain enabled")
+                                                    : accessibleName)
+                                                 : qsTr("Connect before publishing")
+                                    onClicked: root.requestDraftQuickPublish(
+                                                   savedDraftDelegate.index,
+                                                   savedDraftDelegate.id)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    spacing: 7
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
                         Label {
-                            text: qsTr("QoS %1").arg(Number(recentPublishDelegate.modelData.qos || 0))
-                            color: root.ui.themePalette.textSubtle
-                            font.pixelSize: 10
+                            Layout.fillWidth: true
+                            text: qsTr("Runtime-only recent publishes")
+                            color: root.ui.textMuted
+                            font.pixelSize: root.ui.textXs
                         }
 
                         AppIconButton {
                             ui: root.ui
-                            implicitWidth: 26
-                            implicitHeight: 26
-                            cornerRadius: 6
-                            iconSource: root.ui.materialIcon("send")
-                            iconSize: 13
-                            primary: true
-                            enabled: root.status.state === "connected"
-                            accessibleName: qsTr("Publish again")
-                            toolTipText: enabled ? accessibleName : qsTr("Connect before publishing")
-                            onClicked: {
-                                root.publisher.useRecentPublish(recentPublishDelegate.index);
-                                root.publishDraft();
-                                publishHistoryPopup.close();
+                            visible: root.publisher.recentPublishes.length > 0
+                            Layout.preferredWidth: 26
+                            Layout.preferredHeight: 26
+                            cornerRadius: root.ui.radiusSm
+                            iconSource: root.ui.materialIcon("delete")
+                            iconSize: 12
+                            restBg: "transparent"
+                            outlineColor: "transparent"
+                            accessibleName: qsTr("Clear recent publishes")
+                            toolTipText: accessibleName
+                            onClicked: root.publisher.clearRecentPublishes()
+                        }
+                    }
+
+                    Label {
+                        visible: root.publisher.recentPublishes.length === 0
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        text: qsTr("Published messages will appear here for quick reuse.")
+                        color: root.ui.textMuted
+                        font.pixelSize: root.ui.textSm
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        wrapMode: Text.Wrap
+                    }
+
+                    ListView {
+                        id: recentPublishList
+
+                        visible: root.publisher.recentPublishes.length > 0
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        model: root.publisher.recentPublishes
+                        spacing: 4
+                        clip: true
+                        reuseItems: true
+
+                        delegate: Rectangle {
+                            id: recentPublishDelegate
+
+                            required property int index
+                            required property var modelData
+
+                            width: ListView.view.width
+                            height: 52
+                            radius: root.ui.radiusSm
+                            color: recentPublishHover.hovered
+                                   ? root.ui.themePalette.rowHover
+                                   : root.ui.themePalette.innerPanelBg
+
+                            HoverHandler {
+                                id: recentPublishHover
                             }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 9
+                                anchors.rightMargin: 6
+                                spacing: 7
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    spacing: 2
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: String(recentPublishDelegate.modelData.topic || "")
+                                        color: root.ui.textStrong
+                                        font.pixelSize: root.ui.textSm
+                                        font.bold: true
+                                        elide: Label.ElideMiddle
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: qsTr("%1 · QoS %2 · %3")
+                                              .arg(String(recentPublishDelegate.modelData.formatName || ""))
+                                              .arg(Number(recentPublishDelegate.modelData.qos || 0))
+                                              .arg(String(recentPublishDelegate.modelData.payload || qsTr("Empty payload")))
+                                        color: root.ui.textMuted
+                                        font.pixelSize: root.ui.textXs
+                                        elide: Label.ElideRight
+                                    }
+                                }
+
+                                Label {
+                                    visible: Boolean(recentPublishDelegate.modelData.retain)
+                                    text: qsTr("RETAIN")
+                                    color: root.ui.themePalette.warningText
+                                    font.pixelSize: root.ui.textXs
+                                    font.bold: true
+                                }
+
+                                AppIconButton {
+                                    ui: root.ui
+                                    Layout.preferredWidth: 26
+                                    Layout.preferredHeight: 26
+                                    cornerRadius: root.ui.radiusSm
+                                    iconSource: root.ui.materialIcon("content-copy")
+                                    iconSize: 12
+                                    accessibleName: qsTr("Load into composer")
+                                    toolTipText: accessibleName
+                                    onClicked: {
+                                        root.publisher.useRecentPublish(recentPublishDelegate.index)
+                                        sendLibraryPopup.close()
+                                    }
+                                }
+
+                                AppIconButton {
+                                    ui: root.ui
+                                    Layout.preferredWidth: 26
+                                    Layout.preferredHeight: 26
+                                    cornerRadius: root.ui.radiusSm
+                                    iconSource: root.ui.materialIcon("send")
+                                    iconSize: 12
+                                    primary: true
+                                    enabled: root.status.state === "connected"
+                                    accessibleName: qsTr("Publish again")
+                                    toolTipText: enabled
+                                                 ? (Boolean(recentPublishDelegate.modelData.retain)
+                                                    ? qsTr("Publish again with Retain enabled")
+                                                    : accessibleName)
+                                                 : qsTr("Connect before publishing")
+                                    onClicked: root.publisher.quickPublishRecent(recentPublishDelegate.index)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    AppDialog {
+        id: replaceComposerDialog
+
+        ui: root.ui
+        width: 450
+        height: 200
+        closePolicy: Popup.CloseOnEscape
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: root.ui.radiusLg
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 14
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Replace composer contents?")
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Loading this draft replaces the current Topic, Payload, format, QoS, and Retain values.")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 76
+                    onClicked: replaceComposerDialog.close()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Replace")
+                    primary: true
+                    minimumWidth: 82
+                    onClicked: {
+                        const draftIndex = root.publisher.draftIndexOfId(root.pendingDraftId)
+                        if (root.publisher.useSavedDraft(draftIndex)) {
+                            replaceComposerDialog.close()
+                            sendLibraryPopup.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    AppDialog {
+        id: draftTopicDialog
+
+        ui: root.ui
+        width: 460
+        height: 250
+        closePolicy: Popup.CloseOnEscape
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: root.ui.radiusLg
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+        onOpened: draftTopicField.forceActiveFocus()
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 12
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Topic for this publish")
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("This draft has no default Topic. This value is used once without changing the draft or composer.")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                wrapMode: Text.Wrap
+            }
+
+            AppTextField {
+                id: draftTopicField
+
+                ui: root.ui
+                Layout.fillWidth: true
+                placeholderText: qsTr("devices/example/set")
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 76
+                    onClicked: draftTopicDialog.close()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Quick Publish")
+                    primary: true
+                    minimumWidth: 104
+                    enabled: draftTopicField.text.trim().length > 0
+                    onClicked: {
+                        if (root.publisher.quickPublishDraft(
+                                    root.publisher.draftIndexOfId(root.pendingDraftId),
+                                    draftTopicField.text)) {
+                            draftTopicDialog.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    AppDialog {
+        id: saveAsDraftDialog
+
+        ui: root.ui
+        width: 450
+        height: root.saveDraftError.length > 0 ? 250 : 220
+        closePolicy: Popup.CloseOnEscape
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: root.ui.radiusLg
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+        onOpened: saveAsDraftNameField.forceActiveFocus()
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 12
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Save composer as draft")
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("The draft is saved as an independent copy. Later composer edits do not update it automatically.")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                wrapMode: Text.Wrap
+            }
+
+            AppTextField {
+                id: saveAsDraftNameField
+
+                ui: root.ui
+                Layout.fillWidth: true
+                maximumLength: 80
+                placeholderText: qsTr("Unique draft name")
+                onTextEdited: root.saveDraftError = ""
+            }
+
+            Label {
+                visible: root.saveDraftError.length > 0
+                Layout.fillWidth: true
+                text: root.saveDraftError
+                color: root.ui.themePalette.errorText
+                font.pixelSize: root.ui.textXs
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 76
+                    onClicked: saveAsDraftDialog.close()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Save Draft")
+                    primary: true
+                    minimumWidth: 92
+                    enabled: saveAsDraftNameField.text.trim().length > 0
+                             && root.publisher.draftsReady
+                             && !root.publisher.draftsBusy
+                    onClicked: {
+                        if (root.publisher.saveAsDraft(saveAsDraftNameField.text)) {
+                            saveAsDraftDialog.close()
+                        } else {
+                            root.saveDraftError = root.publisher.draftError.length > 0
+                                                  ? root.publisher.draftError
+                                                  : qsTr("The draft could not be saved.")
                         }
                     }
                 }

@@ -33,6 +33,8 @@ QStringList topicFiltersFromText(const QString &text)
 WorkbenchViewModel::WorkbenchViewModel(
     SessionService &sessionService,
     MqttSessionService &mqttService,
+    DraftLibraryService &draftService,
+    DraftLibraryModel &draftsModel,
     SubscriptionService &subscriptionService,
     EventHistoryService &eventHistoryService,
     SessionListModel &sessionsModel,
@@ -53,7 +55,7 @@ WorkbenchViewModel::WorkbenchViewModel(
     , m_messagesModel(messagesModel)
     , m_filteredMessagesModel(filteredMessagesModel)
     , m_scriptsModel(scriptsModel)
-    , m_publisher(sessionService, mqttService, this)
+    , m_publisher(sessionService, mqttService, draftService, draftsModel, this)
 {
     m_displayTotalMessageCountTimer.setInterval(kDisplayTotalMessageCountIntervalMs);
     m_displayTotalMessageCountTimer.setSingleShot(true);
@@ -209,7 +211,7 @@ SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { ret
 SubscriptionFilterModel *WorkbenchViewModel::messageFilterSubscriptions() const { return &m_messageFilterSubscriptionsModel; }
 EventStreamModel *WorkbenchViewModel::messages() const { return &m_messagesModel; }
 MessageFilterModel *WorkbenchViewModel::filteredMessages() const { return &m_filteredMessagesModel; }
-PublishDraftViewModel *WorkbenchViewModel::publisher() { return &m_publisher; }
+PublishComposerViewModel *WorkbenchViewModel::publisher() { return &m_publisher; }
 SessionEditorViewModel *WorkbenchViewModel::sessionEditor() { return &m_sessionEditor; }
 SubscriptionEditorViewModel *WorkbenchViewModel::subscriptionEditor() { return &m_subscriptionEditor; }
 int WorkbenchViewModel::currentSessionIndex() const

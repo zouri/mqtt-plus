@@ -701,6 +701,55 @@ PayloadFormat PayloadCodec::formatFromInt(int value)
     }
 }
 
+PayloadFormat PayloadCodec::formatFromId(const QString &id, bool *ok)
+{
+    const QString normalized = id.trimmed().toLower();
+    if (ok) {
+        *ok = true;
+    }
+    if (normalized == QStringLiteral("json")) {
+        return PayloadFormat::Json;
+    }
+    if (normalized == QStringLiteral("base64")) {
+        return PayloadFormat::Base64;
+    }
+    if (normalized == QStringLiteral("hex")) {
+        return PayloadFormat::Hex;
+    }
+    if (normalized == QStringLiteral("cbor")) {
+        return PayloadFormat::Cbor;
+    }
+    if (normalized == QStringLiteral("msgpack")) {
+        return PayloadFormat::MsgPack;
+    }
+    if (normalized == QStringLiteral("text") || normalized == QStringLiteral("plaintext")) {
+        return PayloadFormat::Plaintext;
+    }
+    if (ok) {
+        *ok = false;
+    }
+    return PayloadFormat::Plaintext;
+}
+
+QString PayloadCodec::formatId(PayloadFormat format)
+{
+    switch (format) {
+    case PayloadFormat::Json:
+        return QStringLiteral("json");
+    case PayloadFormat::Base64:
+        return QStringLiteral("base64");
+    case PayloadFormat::Hex:
+        return QStringLiteral("hex");
+    case PayloadFormat::Cbor:
+        return QStringLiteral("cbor");
+    case PayloadFormat::MsgPack:
+        return QStringLiteral("msgpack");
+    case PayloadFormat::Plaintext:
+    default:
+        return QStringLiteral("text");
+    }
+}
+
 QString PayloadCodec::formatName(PayloadFormat format)
 {
     switch (format) {
@@ -728,6 +777,10 @@ bool PayloadCodec::encodeForPublish(
 {
     output.clear();
     error.clear();
+
+    if (input.isEmpty()) {
+        return true;
+    }
 
     switch (format) {
     case PayloadFormat::Plaintext:

@@ -1,0 +1,667 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Controls.Basic
+import QtQuick.Layouts
+import "../../components"
+
+Item {
+    id: root
+
+    required property AppUi ui
+    required property var viewModel
+
+    readonly property var editor: root.viewModel.editor
+    property string pendingEditorAction: ""
+    property string pendingEditorDraftId: ""
+
+    Layout.fillWidth: true
+    Layout.fillHeight: true
+
+    function runEditorAction(action, draftId) {
+        if (action === "select") {
+            root.viewModel.selectDraftById(draftId)
+        } else if (action === "new") {
+            root.viewModel.newDraft()
+            Qt.callLater(function() { nameField.forceActiveFocus() })
+        } else if (action === "duplicate") {
+            root.viewModel.duplicateCurrentDraft()
+            Qt.callLater(function() { nameField.forceActiveFocus() })
+        }
+    }
+
+    function requestEditorAction(action, draftId) {
+        if (!root.editor.hasUnsavedChanges) {
+            root.runEditorAction(action, draftId)
+            return
+        }
+        root.pendingEditorAction = action
+        root.pendingEditorDraftId = draftId
+        unsavedChangesDialog.open()
+    }
+
+    function continuePendingEditorAction() {
+        const action = root.pendingEditorAction
+        const draftId = root.pendingEditorDraftId
+        root.pendingEditorAction = ""
+        root.pendingEditorDraftId = ""
+        root.runEditorAction(action, draftId)
+    }
+
+    function requestSendCurrent() {
+        if (root.viewModel.currentNeedsTopic()) {
+            temporaryTopicField.text = ""
+            temporaryTopicDialog.open()
+        } else {
+            root.viewModel.sendCurrent()
+        }
+    }
+
+    Component.onCompleted: root.viewModel.ensureEditorSelection()
+
+    Connections {
+        target: root.viewModel
+
+        function onEditorSaveSucceeded() {
+            if (root.pendingEditorAction.length > 0) {
+                root.continuePendingEditorAction()
+            }
+        }
+
+        function onLibraryStateChanged() {
+            if (!root.viewModel.busy
+                    && root.viewModel.storageError.length > 0
+                    && root.pendingEditorAction.length > 0) {
+                root.pendingEditorAction = ""
+                root.pendingEditorDraftId = ""
+            }
+        }
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 48
+            color: root.ui.themePalette.headerBg
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                spacing: 10
+
+                Label {
+                    text: qsTr("Draft Library")
+                    color: root.ui.textStrong
+                    font.pixelSize: root.ui.text2xl
+                    font.bold: true
+                }
+
+                AppBadge {
+                    ui: root.ui
+                    label: `${root.viewModel.filteredDrafts.count}`
+                    badgeRadius: 11
+                    horizontalPadding: 8
+                    verticalPadding: 4
+                    badgeBg: root.ui.themePalette.selectedBg
+                    badgeBorder: "transparent"
+                    badgeText: root.ui.themePalette.infoText
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("New Draft")
+                    primary: true
+                    minimumWidth: 100
+                    enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
+                    onClicked: root.requestEditorAction("new", "")
+                }
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 1
+                color: root.ui.themePalette.separator
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
+
+            DraftListPane {
+                ui: root.ui
+                viewModel: root.viewModel
+                currentDraftId: root.editor.currentDraftId
+                onDraftRequested: draftId => root.requestEditorAction("select", draftId)
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.fillHeight: true
+                color: root.ui.themePalette.separator
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.leftMargin: 24
+                Layout.rightMargin: 24
+                Layout.topMargin: 16
+                Layout.bottomMargin: 16
+                spacing: 12
+
+                RowLayout {
+                    visible: root.viewModel.storageError.length > 0
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    AppInlineAlert {
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        type: "error"
+                        text: root.viewModel.storageError
+                    }
+
+                    AppButton {
+                        ui: root.ui
+                        visible: root.viewModel.canRecover
+                        text: qsTr("Restore backup")
+                        minimumWidth: 104
+                        enabled: !root.viewModel.busy
+                        onClicked: root.viewModel.recoverBackup()
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    ColumnLayout {
+                        Layout.preferredWidth: 340
+                        spacing: 6
+
+                        Label {
+                            text: qsTr("Draft name")
+                            color: root.ui.textMuted
+                            font.pixelSize: root.ui.textSm
+                        }
+
+                        AppTextField {
+                            id: nameField
+
+                            ui: root.ui
+                            Layout.fillWidth: true
+                            enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
+                            maximumLength: 80
+                            text: root.editor.name
+                            placeholderText: qsTr("Required, unique across the library")
+                            onTextEdited: root.editor.name = text
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Label {
+                            text: qsTr("Description")
+                            color: root.ui.textMuted
+                            font.pixelSize: root.ui.textSm
+                        }
+
+                        AppTextField {
+                            ui: root.ui
+                            Layout.fillWidth: true
+                            enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
+                            maximumLength: 500
+                            text: root.editor.description
+                            placeholderText: qsTr("Optional searchable note")
+                            onTextEdited: root.editor.description = text
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Label {
+                            text: qsTr("Default Topic")
+                            color: root.ui.textMuted
+                            font.pixelSize: root.ui.textSm
+                        }
+
+                        AppTextField {
+                            ui: root.ui
+                            Layout.fillWidth: true
+                            enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
+                            text: root.editor.defaultTopic
+                            placeholderText: qsTr("Optional; requested when sending if empty")
+                            onTextEdited: root.editor.defaultTopic = text
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.preferredWidth: 92
+                        spacing: 6
+
+                        Label {
+                            text: qsTr("QoS")
+                            color: root.ui.textMuted
+                            font.pixelSize: root.ui.textSm
+                        }
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.fillWidth: true
+                            enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
+                            model: [qsTr("QoS 0"), qsTr("QoS 1")]
+                            currentIndex: root.editor.qos
+                            onActivated: root.editor.qos = currentIndex
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.preferredWidth: 116
+                        spacing: 6
+
+                        Label {
+                            text: qsTr("Format")
+                            color: root.ui.textMuted
+                            font.pixelSize: root.ui.textSm
+                        }
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.fillWidth: true
+                            enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
+                            model: root.viewModel.payloadFormats
+                            currentIndex: root.editor.format
+                            onActivated: root.editor.format = currentIndex
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.preferredWidth: 82
+                        spacing: 6
+
+                        Label {
+                            text: qsTr("Delivery")
+                            color: root.ui.textMuted
+                            font.pixelSize: root.ui.textSm
+                        }
+
+                        AppCheckBox {
+                            ui: root.ui
+                            Layout.fillWidth: true
+                            enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
+                            text: qsTr("Retain")
+                            checked: root.editor.retain
+                            onToggled: root.editor.retain = checked
+                        }
+                    }
+                }
+
+                AppInlineAlert {
+                    ui: root.ui
+                    visible: root.editor.retain
+                    Layout.fillWidth: true
+                    type: "warning"
+                    text: qsTr("Retain is enabled. The broker may replace its retained message for this Topic.")
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    spacing: 6
+
+                    Label {
+                        text: qsTr("Payload")
+                        color: root.ui.textMuted
+                        font.pixelSize: root.ui.textSm
+                    }
+
+                    AppTextArea {
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 260
+                        enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
+                        text: root.editor.payload
+                        wrapMode: TextEdit.Wrap
+                        placeholderText: qsTr("Empty payload is valid")
+                        onTextChanged: {
+                            if (text !== root.editor.payload) {
+                                root.editor.payload = text
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 62
+            color: root.ui.themePalette.headerBg
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.leftMargin: 300
+                height: 1
+                color: root.ui.themePalette.separator
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 324
+                anchors.rightMargin: 24
+                spacing: 8
+
+                Label {
+                    Layout.fillWidth: true
+                    text: root.editor.validationError.length > 0
+                          ? root.editor.validationError
+                          : (root.viewModel.busy
+                             ? qsTr("Saving…")
+                             : (root.editor.hasUnsavedChanges ? qsTr("Unsaved changes") : qsTr("Saved")))
+                    color: root.editor.validationError.length > 0
+                           ? root.ui.themePalette.errorText
+                           : root.ui.textMuted
+                    font.pixelSize: root.ui.textSm
+                    elide: Label.ElideRight
+                }
+
+                AppComboBox {
+                    ui: root.ui
+                    Layout.preferredWidth: 176
+                    model: root.viewModel.sessionNames
+                    currentIndex: root.viewModel.currentSessionIndex
+                    enabled: model.length > 0
+                    onActivated: root.viewModel.currentSessionIndex = currentIndex
+                }
+
+                Label {
+                    text: root.ui.statusLabel(root.viewModel.sessionStatus.state || "disconnected")
+                    color: root.ui.stateColor(root.viewModel.sessionStatus.state || "disconnected")
+                    font.pixelSize: root.ui.textXs
+                    font.bold: true
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Duplicate")
+                    minimumWidth: 82
+                    enabled: root.editor.currentDraftId.length > 0
+                             && !root.viewModel.busy
+                             && !root.viewModel.readOnly
+                    onClicked: root.requestEditorAction("duplicate", "")
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Delete")
+                    danger: true
+                    minimumWidth: 72
+                    enabled: root.editor.currentDraftId.length > 0
+                             && !root.viewModel.busy
+                             && !root.viewModel.readOnly
+                    onClicked: deleteDraftDialog.open()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Send")
+                    minimumWidth: 72
+                    enabled: Boolean(root.viewModel.sessionStatus.connected)
+                    toolTipText: root.editor.retain
+                                     ? qsTr("Retain is enabled for this publish")
+                                     : qsTr("Send through the selected connection")
+                    onClicked: root.requestSendCurrent()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Save Draft")
+                    primary: true
+                    minimumWidth: 92
+                    enabled: root.editor.canSave
+                             && root.viewModel.ready
+                             && !root.viewModel.busy
+                             && !root.viewModel.readOnly
+                    onClicked: root.viewModel.saveEditor()
+                }
+            }
+        }
+    }
+
+    AppDialog {
+        id: unsavedChangesDialog
+
+        ui: root.ui
+        width: 470
+        height: 210
+        closePolicy: Popup.CloseOnEscape
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: root.ui.radiusLg
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 14
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Save changes to this draft?")
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("You have unsaved changes. Save them before continuing, or discard them.")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 76
+                    onClicked: {
+                        root.pendingEditorAction = ""
+                        root.pendingEditorDraftId = ""
+                        unsavedChangesDialog.close()
+                    }
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Discard")
+                    danger: true
+                    minimumWidth: 76
+                    onClicked: {
+                        unsavedChangesDialog.close()
+                        root.continuePendingEditorAction()
+                    }
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Save")
+                    primary: true
+                    minimumWidth: 76
+                    enabled: root.editor.canSave && !root.viewModel.busy
+                    onClicked: {
+                        if (root.viewModel.saveEditor()) {
+                            unsavedChangesDialog.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    AppDialog {
+        id: deleteDraftDialog
+
+        ui: root.ui
+        width: 440
+        height: 190
+        closePolicy: Popup.CloseOnEscape
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: root.ui.radiusLg
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 14
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Delete draft?")
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("“%1” will be permanently removed from the Draft Library.").arg(root.editor.name)
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 76
+                    onClicked: deleteDraftDialog.close()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Delete")
+                    danger: true
+                    minimumWidth: 76
+                    enabled: !root.viewModel.busy
+                    onClicked: {
+                        if (root.viewModel.deleteCurrentDraft()) {
+                            deleteDraftDialog.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    AppDialog {
+        id: temporaryTopicDialog
+
+        ui: root.ui
+        width: 460
+        height: 250
+        closePolicy: Popup.CloseOnEscape
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: root.ui.radiusLg
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+        onOpened: temporaryTopicField.forceActiveFocus()
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 12
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Topic for this publish")
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("This draft has no default Topic. The value below is used once and is not saved.")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                wrapMode: Text.Wrap
+            }
+
+            AppTextField {
+                id: temporaryTopicField
+
+                ui: root.ui
+                Layout.fillWidth: true
+                placeholderText: qsTr("devices/example/set")
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 76
+                    onClicked: temporaryTopicDialog.close()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Send")
+                    primary: true
+                    minimumWidth: 76
+                    enabled: temporaryTopicField.text.trim().length > 0
+                    onClicked: {
+                        if (root.viewModel.sendCurrent(temporaryTopicField.text)) {
+                            temporaryTopicDialog.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
