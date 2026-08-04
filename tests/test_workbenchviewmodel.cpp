@@ -1,12 +1,15 @@
 #include "viewmodels/workbenchviewmodel.h"
+#include "viewmodels/draftsviewmodel.h"
 
 #include "domain/session.h"
+#include "models/draftlibrarymodel.h"
 #include "models/subscriptionlistmodel.h"
 #include "services/messaging/messagecapturepolicy.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
 #include "usecases/eventhistoryservice.h"
+#include "usecases/draftlibraryservice.h"
 #include "usecases/mqttsessionservice.h"
 #include "usecases/preferencescontroller.h"
 #include "usecases/scriptservice.h"
@@ -75,9 +78,12 @@ struct WorkbenchFixture
               sessionService,
               subscriptionService,
               eventHistoryService)
+        , draftService(temporaryDirectory.filePath(QStringLiteral("drafts")))
         , viewModel(
               sessionService,
               mqttService,
+              draftService,
+              draftsModel,
               subscriptionService,
               eventHistoryService,
               sessionsModel,
@@ -119,6 +125,8 @@ struct WorkbenchFixture
     EventHistoryService eventHistoryService;
     SubscriptionService subscriptionService;
     MqttSessionService mqttService;
+    DraftLibraryService draftService;
+    DraftLibraryModel draftsModel;
     WorkbenchViewModel viewModel;
 };
 
@@ -142,6 +150,9 @@ private slots:
     void rejectsInvalidSubscriptionEditorIndex();
     void ignoresInvalidSessionIndexes();
     void updatesPublishDraft();
+    void savedDraftQuickPublishDoesNotReplaceComposer();
+    void draftEditorSelectionFollowsPopulatedModel();
+    void failedEditorSaveDoesNotConsumeComposerSave();
     void rejectsPublishWithoutConnectedSession();
     void forwardsSessionAndRuntimeStateNotificationsSeparately();
     void forwardsMessageBatchNotifications();
@@ -455,11 +466,11 @@ void WorkbenchViewModelTest::updatesPublishDraft()
     WorkbenchFixture fixture;
     WorkbenchViewModel &viewModel = fixture.viewModel;
     auto *publisher = viewModel.publisher();
-    QSignalSpy topicSpy(publisher, &PublishDraftViewModel::topicChanged);
-    QSignalSpy payloadSpy(publisher, &PublishDraftViewModel::payloadChanged);
-    QSignalSpy formatSpy(publisher, &PublishDraftViewModel::formatChanged);
-    QSignalSpy qosSpy(publisher, &PublishDraftViewModel::qosChanged);
-    QSignalSpy retainSpy(publisher, &PublishDraftViewModel::retainChanged);
+    QSignalSpy topicSpy(publisher, &PublishComposerViewModel::topicChanged);
+    QSignalSpy payloadSpy(publisher, &PublishComposerViewModel::payloadChanged);
+    QSignalSpy formatSpy(publisher, &PublishComposerViewModel::formatChanged);
+    QSignalSpy qosSpy(publisher, &PublishComposerViewModel::qosChanged);
+    QSignalSpy retainSpy(publisher, &PublishComposerViewModel::retainChanged);
 
     publisher->setTopic(QStringLiteral(" sensors/temp "));
     publisher->setPayload(QStringLiteral("{\"value\":23}"));
@@ -478,6 +489,104 @@ void WorkbenchViewModelTest::updatesPublishDraft()
     QCOMPARE(formatSpy.size(), 2);
     QCOMPARE(qosSpy.size(), 1);
     QCOMPARE(retainSpy.size(), 1);
+}
+
+void WorkbenchViewModelTest::savedDraftQuickPublishDoesNotReplaceComposer()
+{
+    WorkbenchFixture fixture;
+    fixture.draftService.load();
+    QTRY_VERIFY(fixture.draftService.ready());
+
+    PublishDraft draft;
+    draft.name = QStringLiteral("Reset device");
+    draft.defaultTopic = QStringLiteral("devices/reset");
+    draft.payload = QStringLiteral("now");
+    draft.formatId = QStringLiteral("text");
+    draft.qos = 1;
+    draft.retain = true;
+    QVERIFY(fixture.draftService.createDraft(draft));
+    QTRY_COMPARE(fixture.draftService.drafts().size(), 1);
+    fixture.draftsModel.setDrafts(fixture.draftService.drafts());
+
+    PublishComposerViewModel *publisher = fixture.viewModel.publisher();
+    publisher->setTopic(QStringLiteral("composer/topic"));
+    publisher->setPayload(QStringLiteral("composer payload"));
+    publisher->setFormat(1);
+    publisher->setQos(0);
+    publisher->setRetain(false);
+    QVERIFY(publisher->wouldReplaceWithDraft(0));
+
+    QVERIFY(!publisher->quickPublishDraft(0));
+    QCOMPARE(publisher->topic(), QStringLiteral("composer/topic"));
+    QCOMPARE(publisher->payload(), QStringLiteral("composer payload"));
+    QCOMPARE(publisher->format(), 1);
+    QCOMPARE(publisher->qos(), 0);
+    QVERIFY(!publisher->retain());
+
+    QVERIFY(publisher->useSavedDraft(0));
+    QCOMPARE(publisher->topic(), QStringLiteral("devices/reset"));
+    QCOMPARE(publisher->payload(), QStringLiteral("now"));
+    QCOMPARE(publisher->format(), 0);
+    QCOMPARE(publisher->qos(), 1);
+    QVERIFY(publisher->retain());
+}
+
+void WorkbenchViewModelTest::draftEditorSelectionFollowsPopulatedModel()
+{
+    WorkbenchFixture fixture;
+    DraftsViewModel draftsViewModel(
+        fixture.draftService,
+        fixture.draftsModel,
+        fixture.sessionService,
+        fixture.mqttService);
+    QObject::connect(
+        &fixture.draftService,
+        &DraftLibraryService::draftsChanged,
+        &fixture.draftsModel,
+        [&fixture]() { fixture.draftsModel.setDrafts(fixture.draftService.drafts()); });
+
+    fixture.draftService.load();
+    QTRY_VERIFY(fixture.draftService.ready());
+
+    PublishDraft draft;
+    draft.name = QStringLiteral("Selected after load");
+    draft.formatId = QStringLiteral("text");
+    QVERIFY(fixture.draftService.createDraft(draft));
+    QTRY_COMPARE(fixture.draftService.drafts().size(), 1);
+    QTRY_COMPARE(
+        draftsViewModel.editor()->currentDraftId(),
+        fixture.draftService.drafts().first().id);
+}
+
+void WorkbenchViewModelTest::failedEditorSaveDoesNotConsumeComposerSave()
+{
+    WorkbenchFixture fixture;
+    DraftsViewModel draftsViewModel(
+        fixture.draftService,
+        fixture.draftsModel,
+        fixture.sessionService,
+        fixture.mqttService);
+    fixture.draftService.load();
+    QTRY_VERIFY(fixture.draftService.ready());
+
+    const QString blockedRoot = fixture.temporaryDirectory.filePath(QStringLiteral("drafts"));
+    QFile blocker(blockedRoot);
+    QVERIFY(blocker.open(QIODevice::WriteOnly));
+    blocker.write("x");
+    blocker.close();
+
+    draftsViewModel.editor()->setName(QStringLiteral("Unsaved editor draft"));
+    QSignalSpy storageErrorSpy(&fixture.draftService, &DraftLibraryService::storageError);
+    QVERIFY(draftsViewModel.saveEditor());
+    QTRY_COMPARE(storageErrorSpy.size(), 1);
+    QVERIFY(draftsViewModel.editor()->currentDraftId().isEmpty());
+
+    QVERIFY(QFile::remove(blockedRoot));
+    QVERIFY(fixture.viewModel.publisher()->saveAsDraft(QStringLiteral("Composer draft")));
+    QTRY_COMPARE(fixture.draftService.drafts().size(), 1);
+
+    QVERIFY(draftsViewModel.editor()->currentDraftId().isEmpty());
+    QCOMPARE(draftsViewModel.editor()->name(), QStringLiteral("Unsaved editor draft"));
 }
 
 void WorkbenchViewModelTest::rejectsPublishWithoutConnectedSession()
@@ -502,7 +611,7 @@ void WorkbenchViewModelTest::forwardsSessionAndRuntimeStateNotificationsSeparate
     QSignalSpy statusSpy(&viewModel, &WorkbenchViewModel::sessionStatusChanged);
     QSignalSpy publishSpy(&viewModel, &WorkbenchViewModel::publishStatusChanged);
     QSignalSpy streamSpy(&viewModel, &WorkbenchViewModel::messageStreamChanged);
-    QSignalSpy availabilitySpy(viewModel.publisher(), &PublishDraftViewModel::canPublishChanged);
+    QSignalSpy availabilitySpy(viewModel.publisher(), &PublishComposerViewModel::canPublishChanged);
 
     emit fixture.sessionService.currentSessionChanged();
 

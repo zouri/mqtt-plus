@@ -6,6 +6,10 @@
 .od-skills/
 .superpowers/
 docs/
+!docs/
+docs/*
+!docs/adr/
+!docs/adr/*.md
 
 CMakeUserPresets.json
 compile_commands.json

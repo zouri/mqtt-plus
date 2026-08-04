@@ -11,11 +11,13 @@
 #include "models/scriptlibrarymodel.h"
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
-#include "viewmodels/publishdraftviewmodel.h"
+#include "viewmodels/publishcomposerviewmodel.h"
 #include "viewmodels/sessioneditorviewmodel.h"
 #include "viewmodels/subscriptioneditorviewmodel.h"
 
 class EventHistoryService;
+class DraftLibraryService;
+class DraftLibraryModel;
 class MqttSessionService;
 class SessionService;
 class SubscriptionService;
@@ -28,7 +30,7 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(SubscriptionFilterModel* messageFilterSubscriptions READ messageFilterSubscriptions CONSTANT)
     Q_PROPERTY(EventStreamModel* messages READ messages CONSTANT)
     Q_PROPERTY(MessageFilterModel* filteredMessages READ filteredMessages CONSTANT)
-    Q_PROPERTY(PublishDraftViewModel* publisher READ publisher CONSTANT)
+    Q_PROPERTY(PublishComposerViewModel* publisher READ publisher CONSTANT)
     Q_PROPERTY(SessionEditorViewModel* sessionEditor READ sessionEditor CONSTANT)
     Q_PROPERTY(SubscriptionEditorViewModel* subscriptionEditor READ subscriptionEditor CONSTANT)
     Q_PROPERTY(int currentSessionIndex READ currentSessionIndex WRITE setCurrentSessionIndex NOTIFY currentSessionIndexChanged)
@@ -51,6 +53,8 @@ public:
     explicit WorkbenchViewModel(
         SessionService &sessionService,
         MqttSessionService &mqttService,
+        DraftLibraryService &draftService,
+        DraftLibraryModel &draftsModel,
         SubscriptionService &subscriptionService,
         EventHistoryService &eventHistoryService,
         SessionListModel &sessionsModel,
@@ -66,7 +70,7 @@ public:
     SubscriptionFilterModel *messageFilterSubscriptions() const;
     EventStreamModel *messages() const;
     MessageFilterModel *filteredMessages() const;
-    PublishDraftViewModel *publisher();
+    PublishComposerViewModel *publisher();
     SessionEditorViewModel *sessionEditor();
     SubscriptionEditorViewModel *subscriptionEditor();
     int currentSessionIndex() const;
@@ -170,7 +174,7 @@ private:
     EventStreamModel &m_messagesModel;
     MessageFilterModel &m_filteredMessagesModel;
     ScriptLibraryModel &m_scriptsModel;
-    PublishDraftViewModel m_publisher;
+    PublishComposerViewModel m_publisher;
     QTimer m_displayTotalMessageCountTimer;
     QTimer m_trafficRateTimer;
     qint64 m_displayTotalMessageCount = 0;

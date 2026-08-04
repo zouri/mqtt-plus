@@ -3,9 +3,18 @@
 #include "services/apputils.h"
 
 #include <QDateTime>
+#include <QCoreApplication>
 #include <QDebug>
+#include <QStringList>
 
 using namespace AppUtils;
+
+namespace {
+QString appText(const char *source)
+{
+    return QCoreApplication::translate("Application", source);
+}
+}
 
 Application::Application()
     : m_owner(nullptr)
@@ -16,6 +25,7 @@ Application::Application()
           m_historyStore.nextMessageId()))
     , m_messageParser(new MessageParseWorker())
     , m_scriptService(&m_owner)
+    , m_draftService(QString(), &m_owner)
     , m_sessionService(
           m_settings,
           m_scriptService,
@@ -30,6 +40,8 @@ Application::Application()
     , m_filteredMessagesModel(&m_owner)
     , m_logsModel(&m_owner)
     , m_scriptsModel(&m_owner)
+    , m_draftsModel(&m_owner)
+    , m_notifications(&m_owner)
     , m_subscriptionFpsTimer(&m_owner)
     , m_eventHistoryService(
           m_sessionService,
@@ -59,6 +71,7 @@ Application::Application()
           m_subscriptionService,
           m_eventHistoryService,
           m_scriptService,
+          m_draftService,
           m_preferences,
           m_historyStore,
           m_sessionsModel,
@@ -68,6 +81,8 @@ Application::Application()
           m_filteredMessagesModel,
           m_logsModel,
           m_scriptsModel,
+          m_draftsModel,
+          m_notifications,
           m_settings,
           &m_owner)
 {
@@ -192,6 +207,120 @@ Application::Application()
         &m_subscriptionsModel,
         [this]() { refreshSubscriptionsModel(); });
 
+    QObject::connect(
+        &m_draftService,
+        &DraftLibraryService::draftsChanged,
+        &m_draftsModel,
+        [this]() { m_draftsModel.setDrafts(m_draftService.drafts()); });
+    QObject::connect(
+        &m_draftService,
+        &DraftLibraryService::storageError,
+        &m_notifications,
+        [this](const QString &message) {
+            m_notifications.postOrUpdate(
+                QStringLiteral("draft-storage"),
+                appText(QT_TRANSLATE_NOOP("Application", "Draft library error")),
+                message,
+                QStringLiteral("error"),
+                0,
+                m_draftService.canRecover()
+                    ? appText(QT_TRANSLATE_NOOP("Application", "Restore backup"))
+                    : QString(),
+                m_draftService.canRecover() ? QStringLiteral("recoverDraftBackup") : QString());
+        });
+    QObject::connect(
+        &m_draftService,
+        &DraftLibraryService::operationSucceeded,
+        &m_notifications,
+        [this](const QString &operation, const QString &draftId) {
+            if (operation == QStringLiteral("touch")) {
+                return;
+            }
+            QString title;
+            QString message;
+            if (operation == QStringLiteral("create") || operation == QStringLiteral("update")) {
+                title = appText(QT_TRANSLATE_NOOP("Application", "Draft saved"));
+                if (const PublishDraft *draft = m_draftService.draftById(draftId)) {
+                    message = draft->name;
+                }
+            } else if (operation == QStringLiteral("delete")) {
+                title = appText(QT_TRANSLATE_NOOP("Application", "Draft deleted"));
+                message = appText(QT_TRANSLATE_NOOP("Application", "The draft was removed from the library."));
+            } else if (operation == QStringLiteral("recover")) {
+                m_notifications.dismiss(QStringLiteral("draft-storage"));
+                title = appText(QT_TRANSLATE_NOOP("Application", "Draft library restored"));
+                message = appText(QT_TRANSLATE_NOOP("Application", "The backup was restored successfully."));
+            } else {
+                return;
+            }
+            m_notifications.postOrUpdate(
+                QStringLiteral("draft-operation:%1:%2").arg(operation, draftId),
+                title,
+                message,
+                QStringLiteral("success"),
+                4000);
+        });
+    QObject::connect(
+        &m_notifications,
+        &NotificationCenterModel::actionRequested,
+        &m_draftService,
+        [this](const QString &actionId) {
+            if (actionId == QStringLiteral("recoverDraftBackup")) {
+                m_draftService.recoverBackup();
+            }
+        });
+    QObject::connect(
+        &m_mqttService,
+        &MqttSessionService::publishProgress,
+        &m_notifications,
+        [this](const QVariantMap &status) {
+            const QString state = status.value(QStringLiteral("state")).toString();
+            const int qos = status.value(QStringLiteral("qos")).toInt();
+            const bool retain = status.value(QStringLiteral("retain")).toBool();
+            const QString source = status.value(QStringLiteral("sourceLabel")).toString();
+            const QString topic = status.value(QStringLiteral("topic")).toString();
+            const QString sessionName = status.value(QStringLiteral("sessionName")).toString();
+            QString title;
+            QString severity = QStringLiteral("info");
+            int autoCloseMs = 0;
+            QString actionLabel;
+            QString actionId;
+            if (state == QStringLiteral("failed")) {
+                title = appText(QT_TRANSLATE_NOOP("Application", "Publish failed"));
+                severity = QStringLiteral("error");
+                actionLabel = appText(QT_TRANSLATE_NOOP("Application", "View logs"));
+                actionId = QStringLiteral("openLogs");
+            } else if (state == QStringLiteral("acknowledged")
+                       || state == QStringLiteral("completed")
+                       || (state == QStringLiteral("sent") && qos == 0)) {
+                title = appText(QT_TRANSLATE_NOOP("Application", "Message sent"));
+                severity = QStringLiteral("success");
+                autoCloseMs = 4000;
+            } else {
+                title = qos > 0
+                    ? appText(QT_TRANSLATE_NOOP("Application", "Waiting for broker confirmation"))
+                    : appText(QT_TRANSLATE_NOOP("Application", "Publish queued"));
+            }
+            QStringList parts;
+            if (!source.isEmpty()) parts.append(source);
+            if (!sessionName.isEmpty()) parts.append(sessionName);
+            if (!topic.isEmpty()) parts.append(topic);
+            parts.append(appText(QT_TRANSLATE_NOOP("Application", "QoS %1")).arg(qos));
+            if (retain) {
+                parts.append(appText(QT_TRANSLATE_NOOP("Application", "Retain")));
+            }
+            const QString reason = status.value(QStringLiteral("reason")).toString();
+            if (!reason.isEmpty()) parts.append(reason);
+            m_notifications.postOrUpdate(
+                QStringLiteral("publish:%1").arg(status.value(QStringLiteral("requestId")).toString()),
+                title,
+                parts.join(QStringLiteral(" • ")),
+                severity,
+                autoCloseMs,
+                actionLabel,
+                actionId);
+        });
+
     m_subscriptionFpsTimer.setInterval(kSubscriptionFpsRefreshIntervalMs);
     QObject::connect(
         &m_subscriptionFpsTimer,
@@ -225,6 +354,7 @@ Application::Application()
         [this]() { m_sessionsModel.setSessions(m_sessionService.sessions()); });
 
     m_scriptService.loadScripts();
+    m_draftService.load();
     m_sessionService.loadSessions();
     applyMessageRetentionLimit();
     m_sessionService.setCurrentSessionIndex(0);

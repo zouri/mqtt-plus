@@ -1,7 +1,9 @@
 #pragma once
 
 #include "models/eventstreammodel.h"
+#include "models/draftlibrarymodel.h"
 #include "models/messagefiltermodel.h"
+#include "models/notificationcentermodel.h"
 #include "models/scriptlibrarymodel.h"
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
@@ -10,6 +12,7 @@
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
 #include "usecases/eventhistoryservice.h"
+#include "usecases/draftlibraryservice.h"
 #include "usecases/mqttsessionservice.h"
 #include "usecases/preferencescontroller.h"
 #include "usecases/scriptservice.h"
@@ -47,6 +50,7 @@ private:
     QThread m_messageParserThread;
     MessageParseWorker *m_messageParser = nullptr;
     ScriptService m_scriptService;
+    DraftLibraryService m_draftService;
     SessionService m_sessionService;
     SessionListModel m_sessionsModel;
     SubscriptionListModel m_subscriptionsModel;
@@ -56,6 +60,8 @@ private:
     MessageFilterModel m_filteredMessagesModel;
     EventStreamModel m_logsModel;
     ScriptLibraryModel m_scriptsModel;
+    DraftLibraryModel m_draftsModel;
+    NotificationCenterModel m_notifications;
     QTimer m_subscriptionFpsTimer;
     EventHistoryService m_eventHistoryService;
     SubscriptionService m_subscriptionService;

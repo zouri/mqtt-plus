@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Controls.Material
 import QtQuick.Layouts
+import "features/drafts"
 import "features/logs"
 import "features/scripts"
 import "features/settings"
@@ -30,8 +31,40 @@ ApplicationWindow {
 
     // C++ sizes and centers the window on the primary screen before showing it.
 
-    onClosing: function () {
+    property string pendingNavigationView: ""
+    property bool allowCloseWithUnsavedDraft: false
+
+    function finishPendingNavigation() {
+        const targetView = root.pendingNavigationView
+        root.pendingNavigationView = ""
+        if (targetView === "__close__") {
+            root.allowCloseWithUnsavedDraft = true
+            root.close()
+        } else if (targetView.length > 0) {
+            root.currentAppView = targetView
+        }
+    }
+
+    function requestAppView(targetView) {
+        if (targetView === root.currentAppView) {
+            return
+        }
+        if (root.currentAppView === "drafts" && root.app.drafts.editor.hasUnsavedChanges) {
+            root.pendingNavigationView = targetView
+            unsavedDraftNavigationDialog.open()
+            return
+        }
+        root.currentAppView = targetView
+    }
+
+    onClosing: function (close) {
         workbenchPage.persistLayout();
+        if (!root.allowCloseWithUnsavedDraft
+                && root.app.drafts.editor.hasUnsavedChanges) {
+            close.accepted = false
+            root.pendingNavigationView = "__close__"
+            unsavedDraftNavigationDialog.open()
+        }
     }
 
     AppUi {
@@ -61,7 +94,7 @@ ApplicationWindow {
 
     Shortcut {
         sequences: [StandardKey.Preferences]
-        onActivated: root.currentAppView = "settings"
+        onActivated: root.requestAppView("settings")
     }
 
     Material.theme: appUi.materialTheme
@@ -196,7 +229,16 @@ ApplicationWindow {
                         text: qsTr("Workbench")
                         active: root.currentAppView === "workbench"
                         accessibleLabel: qsTr("Workbench")
-                        onClicked: root.currentAppView = "workbench"
+                        onClicked: root.requestAppView("workbench")
+                    }
+
+                    RailButton {
+                        ui: appUi
+                        iconSource: appUi.materialIcon("drafts")
+                        text: qsTr("Drafts")
+                        active: root.currentAppView === "drafts"
+                        accessibleLabel: qsTr("Draft Library")
+                        onClicked: root.requestAppView("drafts")
                     }
 
                     RailButton {
@@ -205,7 +247,7 @@ ApplicationWindow {
                         text: qsTr("Logs")
                         active: root.currentAppView === "logs"
                         accessibleLabel: qsTr("Logs")
-                        onClicked: root.currentAppView = "logs"
+                        onClicked: root.requestAppView("logs")
                     }
 
                     RailButton {
@@ -214,7 +256,7 @@ ApplicationWindow {
                         text: qsTr("Scripts")
                         active: root.currentAppView === "scripts"
                         accessibleLabel: qsTr("Lua scripts")
-                        onClicked: root.currentAppView = "scripts"
+                        onClicked: root.requestAppView("scripts")
                     }
 
                     Rectangle {
@@ -235,7 +277,7 @@ ApplicationWindow {
                         text: qsTr("Settings")
                         active: root.currentAppView === "settings"
                         accessibleLabel: qsTr("Settings")
-                        onClicked: root.currentAppView = "settings"
+                        onClicked: root.requestAppView("settings")
                     }
                 }
             }
@@ -244,7 +286,10 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 z: 2
-                currentIndex: root.currentAppView === "logs" ? 1 : (root.currentAppView === "scripts" ? 2 : (root.currentAppView === "settings" ? 3 : 0))
+                currentIndex: root.currentAppView === "drafts" ? 1
+                              : (root.currentAppView === "logs" ? 2
+                                 : (root.currentAppView === "scripts" ? 3
+                                    : (root.currentAppView === "settings" ? 4 : 0)))
 
                 WorkbenchView {
                     id: workbenchPage
@@ -258,6 +303,21 @@ ApplicationWindow {
                     subscriptionService: root.app.subscriptionService
                     fontFamily: root.settingsViewModel.effectiveFontFamily
                     autoCollapseConnectionListOnConnect: root.preferences.autoCollapseConnectionListOnConnect
+                    onDraftsManageRequested: root.requestAppView("drafts")
+                }
+
+                Loader {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    active: root.currentAppView === "drafts"
+                    asynchronous: true
+
+                    sourceComponent: Component {
+                        DraftsView {
+                            ui: appUi
+                            viewModel: root.app.drafts
+                        }
+                    }
                 }
 
                 Loader {
@@ -315,5 +375,123 @@ ApplicationWindow {
         width: 1
         z: 4
         color: appUi.themePalette.sidebarBorder
+    }
+
+    AppNotificationStack {
+        ui: appUi
+        notificationModel: root.app.notifications
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 16
+        anchors.rightMargin: 16
+        width: Math.min(368, root.width - 32)
+        height: implicitHeight
+        z: 100
+    }
+
+    Connections {
+        target: root.app.notifications
+
+        function onActionRequested(actionId) {
+            if (actionId === "openLogs") {
+                root.requestAppView("logs")
+            }
+        }
+    }
+
+    Connections {
+        target: root.app.drafts
+
+        function onEditorSaveSucceeded() {
+            if (root.pendingNavigationView.length > 0) {
+                root.finishPendingNavigation()
+            }
+        }
+
+        function onLibraryStateChanged() {
+            if (!root.app.drafts.busy
+                    && root.app.drafts.storageError.length > 0
+                    && root.pendingNavigationView.length > 0) {
+                root.pendingNavigationView = ""
+            }
+        }
+    }
+
+    AppDialog {
+        id: unsavedDraftNavigationDialog
+
+        ui: appUi
+        width: 470
+        height: 210
+        closePolicy: Popup.CloseOnEscape
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: appUi.radiusLg
+            color: appUi.themePalette.dialogBg
+            border.color: appUi.themePalette.dialogBorder
+        }
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 14
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Save draft changes before leaving?")
+                color: appUi.textStrong
+                font.pixelSize: appUi.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("The Draft Library has unsaved editor changes.")
+                color: appUi.textMuted
+                font.pixelSize: appUi.textSm
+                wrapMode: Text.Wrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: appUi
+                    text: qsTr("Cancel")
+                    minimumWidth: 76
+                    onClicked: {
+                        root.pendingNavigationView = ""
+                        unsavedDraftNavigationDialog.close()
+                    }
+                }
+
+                AppButton {
+                    ui: appUi
+                    text: qsTr("Discard")
+                    danger: true
+                    minimumWidth: 76
+                    onClicked: {
+                        unsavedDraftNavigationDialog.close()
+                        root.app.drafts.discardEditorChanges()
+                        root.finishPendingNavigation()
+                    }
+                }
+
+                AppButton {
+                    ui: appUi
+                    text: qsTr("Save")
+                    primary: true
+                    minimumWidth: 76
+                    enabled: root.app.drafts.editor.canSave && !root.app.drafts.busy
+                    onClicked: {
+                        if (root.app.drafts.saveEditor()) {
+                            unsavedDraftNavigationDialog.close()
+                        }
+                    }
+                }
+            }
+        }
     }
 }

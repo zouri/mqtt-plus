@@ -4,6 +4,10 @@
 #include <QVariantMap>
 
 struct PublishStatus {
+    QString requestId;
+    QString sessionId;
+    QString sessionName;
+    QString sourceLabel;
     QString state = QStringLiteral("idle");
     QString topic;
     QString reason;
@@ -17,6 +21,10 @@ struct PublishStatus {
     QVariantMap toVariantMap() const
     {
         QVariantMap map;
+        map.insert(QStringLiteral("requestId"), requestId);
+        map.insert(QStringLiteral("sessionId"), sessionId);
+        map.insert(QStringLiteral("sessionName"), sessionName);
+        map.insert(QStringLiteral("sourceLabel"), sourceLabel);
         map.insert(QStringLiteral("state"), state);
         map.insert(QStringLiteral("topic"), topic);
         map.insert(QStringLiteral("reason"), reason);

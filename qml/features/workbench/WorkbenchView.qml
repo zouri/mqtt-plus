@@ -18,6 +18,7 @@ Item {
     required property var subscriptionService
     required property string fontFamily
     required property bool autoCollapseConnectionListOnConnect
+    signal draftsManageRequested
     property bool connectionPaneCollapsed: root.preferences.connectionPaneCollapsed
     readonly property var session: root.viewModel.currentSession
     readonly property var status: root.viewModel.sessionStatus
@@ -516,6 +517,7 @@ Item {
             messagePayloadDisplayMode: root.settingsViewModel.messagePayloadDisplayModeIndex
             composerHeight: root.preferences.publishComposerHeight
             onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
+            onDraftsManageRequested: root.draftsManageRequested()
             onComposerHeightChanged: root.scheduleLayoutSave()
             SplitView.fillWidth: true
             SplitView.fillHeight: true

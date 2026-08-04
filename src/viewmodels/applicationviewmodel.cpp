@@ -1,6 +1,8 @@
 #include "viewmodels/applicationviewmodel.h"
 
 #include "usecases/eventhistoryservice.h"
+#include "usecases/draftlibraryservice.h"
+#include "models/notificationcentermodel.h"
 #include "usecases/preferencescontroller.h"
 #include "usecases/sessionservice.h"
 #include "usecases/subscriptionservice.h"
@@ -11,6 +13,7 @@ ApplicationViewModel::ApplicationViewModel(
     SubscriptionService &subscriptionService,
     EventHistoryService &eventHistoryService,
     ScriptService &scriptService,
+    DraftLibraryService &draftService,
     PreferencesController &preferences,
     HistoryStore &historyStore,
     SessionListModel &sessions,
@@ -20,12 +23,16 @@ ApplicationViewModel::ApplicationViewModel(
     MessageFilterModel &filteredMessages,
     EventStreamModel &logs,
     ScriptLibraryModel &scripts,
+    DraftLibraryModel &drafts,
+    NotificationCenterModel &notifications,
     QSettings &settings,
     QObject *parent)
     : QObject(parent)
     , m_workbench(
           sessionService,
           mqttService,
+          draftService,
+          drafts,
           subscriptionService,
           eventHistoryService,
           sessions,
@@ -35,6 +42,7 @@ ApplicationViewModel::ApplicationViewModel(
           filteredMessages,
           scripts,
           this)
+    , m_drafts(draftService, drafts, sessionService, mqttService, this)
     , m_logs(eventHistoryService, logs, this)
     , m_scripts(scriptService, scripts, this)
     , m_settings(
@@ -48,12 +56,18 @@ ApplicationViewModel::ApplicationViewModel(
     , m_eventHistory(&eventHistoryService)
     , m_sessionService(&sessionService)
     , m_subscriptionService(&subscriptionService)
+    , m_notifications(&notifications)
 {
 }
 
 WorkbenchViewModel *ApplicationViewModel::workbench()
 {
     return &m_workbench;
+}
+
+DraftsViewModel *ApplicationViewModel::drafts()
+{
+    return &m_drafts;
 }
 
 LogsViewModel *ApplicationViewModel::logs()
@@ -89,4 +103,9 @@ SessionService *ApplicationViewModel::sessionService()
 SubscriptionService *ApplicationViewModel::subscriptionService()
 {
     return m_subscriptionService;
+}
+
+NotificationCenterModel *ApplicationViewModel::notifications()
+{
+    return m_notifications;
 }

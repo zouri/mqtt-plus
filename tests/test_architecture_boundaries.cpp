@@ -21,6 +21,7 @@ private slots:
     void messagePanelUsesSplitViewForComposerResize();
     void eventStreamFollowModeUsesSingleCycleButton();
     void qmlUsesApplicationViewModelRootOnly();
+    void draftLibraryUsesDedicatedPageAndGlobalNotifications();
     void applicationUsesConfigurableMonospaceFont();
     void messageProfilerUsesIsolatedApplicationData();
     void translationsDoNotReferenceLegacyFacade();
@@ -86,6 +87,49 @@ void ArchitectureBoundariesTest::usecasesDoNotDependOnApplicationLayer()
         QVERIFY2(!source.contains(QStringLiteral("#include \"app/")),
             qPrintable(QStringLiteral("%1 must not depend on application-layer headers").arg(path)));
     }
+}
+
+void ArchitectureBoundariesTest::draftLibraryUsesDedicatedPageAndGlobalNotifications()
+{
+    QString mainSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), mainSource));
+    const qsizetype workbenchRail = mainSource.indexOf(QStringLiteral("accessibleLabel: qsTr(\"Workbench\")"));
+    const qsizetype draftsRail = mainSource.indexOf(QStringLiteral("accessibleLabel: qsTr(\"Draft Library\")"));
+    const qsizetype logsRail = mainSource.indexOf(QStringLiteral("accessibleLabel: qsTr(\"Logs\")"));
+    QVERIFY2(workbenchRail >= 0 && draftsRail > workbenchRail && logsRail > draftsRail,
+        "Draft Library must be a first-class navigation page directly after Workbench");
+    QVERIFY2(mainSource.contains(QStringLiteral("iconSource: appUi.materialIcon(\"drafts\")")),
+        "Draft Library navigation must use its dedicated document icon");
+    QVERIFY2(mainSource.contains(QStringLiteral("AppNotificationStack"))
+            && mainSource.contains(QStringLiteral("notificationModel: root.app.notifications")),
+        "Application-wide notifications must be owned above individual feature pages");
+    QVERIFY2(mainSource.contains(QStringLiteral("hasUnsavedChanges"))
+            && mainSource.contains(QStringLiteral("unsavedDraftNavigationDialog")),
+        "Leaving or closing the Draft Library must protect unsaved editor changes");
+
+    QString draftsSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/drafts/DraftsView.qml"), draftsSource));
+    QVERIFY2(draftsSource.contains(QStringLiteral("text: qsTr(\"Save Draft\")"))
+            && draftsSource.contains(QStringLiteral("currentNeedsTopic()"))
+            && draftsSource.contains(QStringLiteral("sessionNames")),
+        "The dedicated page must use explicit save, one-time Topic, and connection selection flows");
+
+    QString composerSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/PublishComposer.qml"), composerSource));
+    QVERIFY2(composerSource.contains(QStringLiteral("quickPublishDraft"))
+            && composerSource.contains(QStringLiteral("wouldReplaceWithDraft"))
+            && composerSource.contains(QStringLiteral("quickPublishRecent"))
+            && composerSource.contains(QStringLiteral("manageDraftsRequested")),
+        "The composer Send Library must separate load, quick publish, repeat publish, and management intents");
+    QVERIFY2(composerSource.contains(QStringLiteral("iconSource: root.ui.materialIcon(\"drafts\")")),
+        "The composer Send Library must reuse the dedicated Draft Library icon");
+
+    QString draftStoreSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/services/storage/draftstore.cpp"), draftStoreSource));
+    QVERIFY2(draftStoreSource.contains(QStringLiteral("QSaveFile"))
+            && draftStoreSource.contains(QStringLiteral("drafts.json.bak"))
+            && draftStoreSource.contains(QStringLiteral("drafts.json.corrupt-%1")),
+        "Persistent drafts must keep atomic primary, backup, and recovery artifacts");
 }
 
 void ArchitectureBoundariesTest::messageHistoryWritesUseDedicatedWorker()

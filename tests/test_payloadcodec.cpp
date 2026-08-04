@@ -8,7 +8,9 @@ class PayloadCodecTest : public QObject
 
 private slots:
     void formatMapping();
+    void stableFormatIds();
     void encodePlaintextAndJson();
+    void emptyPayloadIsValidForEveryFormat();
     void rejectInvalidStructuredPayloads();
     void encodeBinaryTextFormats();
     void decodeDisplayFormats();
@@ -33,6 +35,23 @@ void PayloadCodecTest::formatMapping()
     QCOMPARE(PayloadCodec::formatName(PayloadFormat::Cbor), QStringLiteral("CBOR"));
 }
 
+void PayloadCodecTest::stableFormatIds()
+{
+    const QList<PayloadFormat> formats {
+        PayloadFormat::Plaintext,
+        PayloadFormat::Json,
+        PayloadFormat::Base64,
+        PayloadFormat::Hex,
+        PayloadFormat::Cbor,
+        PayloadFormat::MsgPack,
+    };
+    for (PayloadFormat format : formats) {
+        bool ok = false;
+        QCOMPARE(PayloadCodec::formatFromId(PayloadCodec::formatId(format), &ok), format);
+        QVERIFY(ok);
+    }
+}
+
 void PayloadCodecTest::encodePlaintextAndJson()
 {
     QByteArray output;
@@ -45,6 +64,18 @@ void PayloadCodecTest::encodePlaintextAndJson()
     QVERIFY(PayloadCodec::encodeForPublish(PayloadFormat::Json, QStringLiteral("{\"a\": 1}"), output, error));
     QCOMPARE(output, QByteArray("{\"a\":1}"));
     QVERIFY(error.isEmpty());
+}
+
+void PayloadCodecTest::emptyPayloadIsValidForEveryFormat()
+{
+    for (int value = 0; value <= 5; ++value) {
+        QByteArray output("stale");
+        QString error(QStringLiteral("stale"));
+        QVERIFY(PayloadCodec::encodeForPublish(
+            PayloadCodec::formatFromInt(value), QString(), output, error));
+        QVERIFY(output.isEmpty());
+        QVERIFY(error.isEmpty());
+    }
 }
 
 void PayloadCodecTest::rejectInvalidStructuredPayloads()
