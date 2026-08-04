@@ -144,58 +144,62 @@ ApplicationWindow {
             active: railButton.hovered
         }
 
-        background: Rectangle {
-            id: railBackground
+        background: Item {
+            Rectangle {
+                anchors.fill: parent
+                radius: 12
+                color: railButton.active ? railButton.ui.themePalette.selectedBg : "transparent"
+            }
 
-            readonly property color targetColor: railButton.active
-                                                  ? railButton.ui.themePalette.selectedBg
-                                                  : (railButton.hovered
-                                                     ? railButton.ui.themePalette.rowHover
-                                                     : "transparent")
-            property color presentationColor: railBackground.targetColor
-            property bool presentationReady: false
+            Rectangle {
+                id: railHoverBackground
 
-            radius: 12
-            color: railBackground.presentationColor
-            border.color: "transparent"
+                anchors.fill: parent
+                radius: 12
+                color: railButton.ui.themePalette.selectedItemBg
+                readonly property real targetOpacity: !railButton.active && railButton.hovered ? 1 : 0
+                property real presentationOpacity: railHoverBackground.targetOpacity
+                property bool presentationReady: false
+                opacity: railHoverBackground.presentationOpacity
 
-            function syncPresentation(animate) {
-                railBackgroundAnimation.stop();
-                if (!animate
-                        || !railBackground.presentationReady
-                        || !railButton.ui.animationsEnabled
-                        || railButton.ui.motionMicroDuration <= 0) {
-                    railBackground.presentationColor = railBackground.targetColor;
-                    return;
+                function syncPresentation(animate) {
+                    railHoverAnimation.stop()
+                    if (!animate
+                            || !railHoverBackground.presentationReady
+                            || !railButton.ui.animationsEnabled
+                            || railButton.ui.motionMicroDuration <= 0) {
+                        railHoverBackground.presentationOpacity = railHoverBackground.targetOpacity
+                        return
+                    }
+                    railHoverAnimation.to = railHoverBackground.targetOpacity
+                    railHoverAnimation.restart()
                 }
-                railBackgroundAnimation.to = railBackground.targetColor;
-                railBackgroundAnimation.restart();
-            }
 
-            onTargetColorChanged: railBackground.syncPresentation(true)
+                onTargetOpacityChanged: railHoverBackground.syncPresentation(true)
 
-            Component.onCompleted: {
-                railBackground.presentationReady = true;
-                railBackground.syncPresentation(false);
-            }
+                Component.onCompleted: {
+                    railHoverBackground.presentationReady = true
+                    railHoverBackground.syncPresentation(false)
+                }
 
-            Connections {
-                target: railButton.ui
+                Connections {
+                    target: railButton.ui
 
-                function onAnimationsEnabledChanged() {
-                    if (!railButton.ui.animationsEnabled) {
-                        railBackground.syncPresentation(false);
+                    function onAnimationsEnabledChanged() {
+                        if (!railButton.ui.animationsEnabled) {
+                            railHoverBackground.syncPresentation(false)
+                        }
                     }
                 }
-            }
 
-            ColorAnimation {
-                id: railBackgroundAnimation
+                NumberAnimation {
+                    id: railHoverAnimation
 
-                target: railBackground
-                property: "presentationColor"
-                duration: railButton.ui.motionMicroDuration
-                easing.type: railButton.ui.motionEnterEasing
+                    target: railHoverBackground
+                    property: "presentationOpacity"
+                    duration: railButton.ui.motionMicroDuration
+                    easing.type: railButton.ui.motionEnterEasing
+                }
             }
         }
     }
@@ -234,6 +238,15 @@ ApplicationWindow {
 
                     RailButton {
                         ui: appUi
+                        iconSource: appUi.materialIcon("script-development")
+                        text: qsTr("Scripts")
+                        active: root.currentAppView === "scripts"
+                        accessibleLabel: qsTr("Lua scripts")
+                        onClicked: root.requestAppView("scripts")
+                    }
+
+                    RailButton {
+                        ui: appUi
                         iconSource: appUi.materialIcon("drafts")
                         text: qsTr("Drafts")
                         active: root.currentAppView === "drafts"
@@ -248,15 +261,6 @@ ApplicationWindow {
                         active: root.currentAppView === "logs"
                         accessibleLabel: qsTr("Logs")
                         onClicked: root.requestAppView("logs")
-                    }
-
-                    RailButton {
-                        ui: appUi
-                        iconSource: appUi.materialIcon("script-development")
-                        text: qsTr("Scripts")
-                        active: root.currentAppView === "scripts"
-                        accessibleLabel: qsTr("Lua scripts")
-                        onClicked: root.requestAppView("scripts")
                     }
 
                     Rectangle {
