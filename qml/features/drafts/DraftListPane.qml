@@ -33,140 +33,149 @@ Rectangle {
             onTextEdited: root.viewModel.setFilterText(text)
         }
 
-        Label {
-            visible: root.viewModel.loading
-            Layout.fillWidth: true
-            Layout.topMargin: 18
-            text: qsTr("Loading draft library…")
-            color: root.ui.textMuted
-            font.pixelSize: root.ui.textSm
-            horizontalAlignment: Text.AlignHCenter
-        }
-
-        Label {
-            visible: !root.viewModel.loading && root.viewModel.filteredDrafts.count === 0
-            Layout.fillWidth: true
-            Layout.topMargin: 18
-            text: root.viewModel.filteredDrafts.filterText.length > 0
-                  ? qsTr("No matching drafts")
-                  : qsTr("No saved drafts yet")
-            color: root.ui.textMuted
-            font.pixelSize: root.ui.textSm
-            horizontalAlignment: Text.AlignHCenter
-        }
-
-        ListView {
-            id: draftList
-
-            visible: !root.viewModel.loading && root.viewModel.filteredDrafts.count > 0
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            model: root.viewModel.filteredDrafts
-            spacing: 7
-            clip: true
-            reuseItems: true
+            Layout.minimumHeight: 0
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
+            Label {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.topMargin: 18
+                visible: root.viewModel.loading
+                text: qsTr("Loading draft library…")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                horizontalAlignment: Text.AlignHCenter
             }
 
-            delegate: Item {
-                id: draftDelegate
+            Label {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.topMargin: 18
+                visible: !root.viewModel.loading && root.viewModel.filteredDrafts.count === 0
+                text: root.viewModel.filteredDrafts.filterText.length > 0
+                      ? qsTr("No matching drafts")
+                      : qsTr("No saved drafts yet")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                horizontalAlignment: Text.AlignHCenter
+            }
 
-                required property int index
-                required property string id
-                required property string name
-                required property string description
-                required property string defaultTopic
-                required property string formatName
-                required property int qos
-                required property bool retain
-                required property string updatedAt
+            ListView {
+                id: draftList
 
-                width: ListView.view.width
-                implicitHeight: 82
-                activeFocusOnTab: true
-                Accessible.role: Accessible.Button
-                Accessible.name: qsTr("Draft %1").arg(draftDelegate.name)
+                anchors.fill: parent
+                visible: !root.viewModel.loading && root.viewModel.filteredDrafts.count > 0
+                model: root.viewModel.filteredDrafts
+                spacing: 7
+                clip: true
+                reuseItems: true
 
-                Rectangle {
-                    anchors.fill: parent
-                    radius: root.ui.radiusMd
-                    color: draftHover.hovered
-                           ? root.ui.themePalette.rowHover
-                           : root.ui.themePalette.itemBg
-                    border.color: draftDelegate.id === root.currentDraftId
-                                  ? root.ui.themePalette.selectedBorder
-                                  : root.ui.themePalette.itemBorder
-                    border.width: 1
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
 
-                    ColumnLayout {
+                delegate: Item {
+                    id: draftDelegate
+
+                    required property int index
+                    required property string id
+                    required property string name
+                    required property string description
+                    required property string defaultTopic
+                    required property string formatName
+                    required property int qos
+                    required property bool retain
+                    required property string updatedAt
+
+                    width: ListView.view.width
+                    implicitHeight: 82
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Draft %1").arg(draftDelegate.name)
+
+                    Rectangle {
                         anchors.fill: parent
-                        anchors.leftMargin: 11
-                        anchors.rightMargin: 11
-                        anchors.topMargin: 9
-                        anchors.bottomMargin: 9
-                        spacing: 4
+                        radius: root.ui.radiusMd
+                        color: draftHover.hovered
+                               ? root.ui.themePalette.rowHover
+                               : root.ui.themePalette.itemBg
+                        border.color: draftDelegate.id === root.currentDraftId
+                                      ? root.ui.themePalette.selectedBorder
+                                      : root.ui.themePalette.itemBorder
+                        border.width: 1
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 11
+                            anchors.rightMargin: 11
+                            anchors.topMargin: 9
+                            anchors.bottomMargin: 9
+                            spacing: 4
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 6
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: draftDelegate.name
+                                    color: root.ui.textStrong
+                                    font.pixelSize: root.ui.textMd
+                                    font.bold: true
+                                    elide: Label.ElideRight
+                                }
+
+                                Label {
+                                    visible: draftDelegate.retain
+                                    text: qsTr("RETAIN")
+                                    color: root.ui.themePalette.warningText
+                                    font.pixelSize: root.ui.textXs
+                                    font.bold: true
+                                }
+                            }
 
                             Label {
                                 Layout.fillWidth: true
-                                text: draftDelegate.name
-                                color: root.ui.textStrong
-                                font.pixelSize: root.ui.textMd
-                                font.bold: true
+                                text: draftDelegate.description.length > 0
+                                      ? draftDelegate.description
+                                      : (draftDelegate.defaultTopic.length > 0
+                                         ? draftDelegate.defaultTopic
+                                         : qsTr("Topic requested when sending"))
+                                color: root.ui.textMuted
+                                font.pixelSize: root.ui.textXs
                                 elide: Label.ElideRight
                             }
 
                             Label {
-                                visible: draftDelegate.retain
-                                text: qsTr("RETAIN")
-                                color: root.ui.themePalette.warningText
+                                Layout.fillWidth: true
+                                text: qsTr("%1 · QoS %2").arg(draftDelegate.formatName).arg(draftDelegate.qos)
+                                color: root.ui.themePalette.textSubtle
                                 font.pixelSize: root.ui.textXs
-                                font.bold: true
+                                elide: Label.ElideRight
                             }
                         }
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: draftDelegate.description.length > 0
-                                  ? draftDelegate.description
-                                  : (draftDelegate.defaultTopic.length > 0
-                                     ? draftDelegate.defaultTopic
-                                     : qsTr("Topic requested when sending"))
-                            color: root.ui.textMuted
-                            font.pixelSize: root.ui.textXs
-                            elide: Label.ElideRight
-                        }
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: qsTr("%1 · QoS %2").arg(draftDelegate.formatName).arg(draftDelegate.qos)
-                            color: root.ui.themePalette.textSubtle
-                            font.pixelSize: root.ui.textXs
-                            elide: Label.ElideRight
-                        }
                     }
-                }
 
-                HoverHandler {
-                    id: draftHover
-                    cursorShape: Qt.PointingHandCursor
-                }
+                    HoverHandler {
+                        id: draftHover
+                        cursorShape: Qt.PointingHandCursor
+                    }
 
-                TapHandler {
-                    onTapped: root.draftRequested(draftDelegate.id)
-                }
+                    TapHandler {
+                        onTapped: root.draftRequested(draftDelegate.id)
+                    }
 
-                Keys.onPressed: event => {
-                    if (event.key === Qt.Key_Return
-                            || event.key === Qt.Key_Enter
-                            || event.key === Qt.Key_Space) {
-                        root.draftRequested(draftDelegate.id)
-                        event.accepted = true
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Return
+                                || event.key === Qt.Key_Enter
+                                || event.key === Qt.Key_Space) {
+                            root.draftRequested(draftDelegate.id)
+                            event.accepted = true
+                        }
                     }
                 }
             }
