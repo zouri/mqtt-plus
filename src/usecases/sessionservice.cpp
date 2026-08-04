@@ -12,6 +12,8 @@
 
 #include <QMqttClient>
 #include <QMqttConnectionProperties>
+#include <QMqttTopicFilter>
+#include <QSet>
 #include <QSettings>
 #include <QTimer>
 #include <QUuid>
@@ -320,6 +322,182 @@ bool SessionService::addSessionWithConfig(const QVariantMap &config)
     emit sessionsChanged();
     emit currentSessionIndexChanged();
     emit currentSessionChanged();
+    return true;
+}
+
+bool SessionService::importSessions(
+    const QVector<SessionImportRequest> &requests,
+    QStringList &importedSessionIds,
+    QString &errorMessage)
+{
+    importedSessionIds.clear();
+    errorMessage.clear();
+    if (requests.isEmpty()) {
+        return true;
+    }
+
+    QSet<QString> ids;
+    QSet<QString> names;
+    for (const SessionState &session : std::as_const(m_sessions)) {
+        ids.insert(session.id);
+        names.insert(session.name.trimmed().toCaseFolded());
+    }
+
+    QVector<SessionState> imported;
+    imported.reserve(requests.size());
+    for (const SessionImportRequest &request : requests) {
+        QString name = request.config.value(QStringLiteral("name")).toString().trimmed();
+        if (name.isEmpty()) {
+            name = tr("Imported connection");
+        }
+        const QString baseName = name;
+        int suffix = 2;
+        while (names.contains(name.toCaseFolded())) {
+            name = tr("%1 (Imported %2)").arg(baseName).arg(suffix++);
+        }
+        names.insert(name.toCaseFolded());
+
+        SessionState session = createDefaultSession(name);
+        QString sessionId = request.id.trimmed();
+        if (sessionId.isEmpty() || ids.contains(sessionId)) {
+            sessionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        }
+        ids.insert(sessionId);
+        session.id = sessionId;
+
+        QVariantMap config = request.config;
+        config.insert(QStringLiteral("name"), name);
+        applyConfig(session, config, false);
+        session.outputPaused = request.outputPaused;
+        session.captureIncoming = request.captureIncoming;
+        session.captureOutgoing = request.captureOutgoing;
+        session.captureIncludeTopicFilters = request.captureIncludeTopicFilters;
+        session.captureExcludeTopicFilters = request.captureExcludeTopicFilters;
+
+        QSet<QString> topics;
+        for (SubscriptionEntry subscription : request.subscriptions) {
+            subscription.topic = subscription.topic.trimmed();
+            if (subscription.topic.isEmpty()
+                || !QMqttTopicFilter(subscription.topic).isValid()
+                || topics.contains(subscription.topic)) {
+                continue;
+            }
+            topics.insert(subscription.topic);
+            subscription.alias = subscription.alias.trimmed();
+            subscription.requestedQos = SessionConfig::sanitizeQos(subscription.requestedQos);
+            subscription.format = std::clamp(subscription.format, 0, 5);
+            subscription.color = subscription.color.trimmed();
+            if (!subscription.scriptId.isEmpty()
+                && !m_scriptService.scriptById(subscription.scriptId)) {
+                subscription.scriptId.clear();
+            }
+            subscription.runtimeSubscription.clear();
+            subscription.runtimeState = subscription.paused
+                ? QStringLiteral("paused")
+                : QStringLiteral("saved");
+            subscription.grantedQos = -1;
+            subscription.lastError.clear();
+            subscription.recentMessages.clear();
+            session.runtime.subscriptionFormats.insert(
+                subscription.topic,
+                subscription.format);
+            session.subscriptions.append(std::move(subscription));
+        }
+        importedSessionIds.append(session.id);
+        imported.append(std::move(session));
+    }
+
+    for (SessionState &session : imported) {
+        m_sessions.append(std::move(session));
+    }
+    if (!SessionSettingsStore::writeSessions(m_settings, m_sessions, errorMessage)) {
+        for (qsizetype index = 0; index < importedSessionIds.size(); ++index) {
+            SessionState failed = m_sessions.takeLast();
+            destroySessionRuntime(failed);
+        }
+        QString ignoredError;
+        SessionSettingsStore::writeSessions(m_settings, m_sessions, ignoredError);
+        importedSessionIds.clear();
+        if (errorMessage.isEmpty()) {
+            errorMessage = tr("Cannot save imported sessions.");
+        }
+        return false;
+    }
+
+    for (const QString &sessionId : std::as_const(importedSessionIds)) {
+        if (SessionState *session = sessionById(sessionId)) {
+            emit sessionRuntimeReady(session);
+        }
+    }
+    emit sessionsChanged();
+    return true;
+}
+
+bool SessionService::rollbackImportedSessions(
+    const QStringList &sessionIds,
+    QString &errorMessage)
+{
+    errorMessage.clear();
+    if (sessionIds.isEmpty()) {
+        return true;
+    }
+    const QSet<QString> rollbackIds(sessionIds.cbegin(), sessionIds.cend());
+    QVector<SessionState> retained;
+    retained.reserve(m_sessions.size());
+    for (const SessionState &session : std::as_const(m_sessions)) {
+        if (!rollbackIds.contains(session.id)) {
+            retained.append(session);
+        }
+    }
+    if (retained.size() == m_sessions.size()) {
+        return true;
+    }
+    if (!SessionSettingsStore::writeSessions(m_settings, retained, errorMessage)) {
+        if (errorMessage.isEmpty()) {
+            errorMessage = tr("Cannot roll back imported sessions.");
+        }
+        return false;
+    }
+
+    const int previousCurrentIndex = m_currentIndex;
+    const QString previousCurrentSessionId = currentSession()
+        ? currentSession()->id
+        : QString();
+    for (qsizetype index = m_sessions.size(); index > 0; --index) {
+        if (!rollbackIds.contains(m_sessions.at(index - 1).id)) {
+            continue;
+        }
+        SessionState removed = m_sessions.takeAt(index - 1);
+        destroySessionRuntime(removed);
+    }
+    if (m_sessions.isEmpty()) {
+        m_currentIndex = -1;
+    } else if (!previousCurrentSessionId.isEmpty()
+        && sessionById(previousCurrentSessionId)) {
+        for (int index = 0; index < m_sessions.size(); ++index) {
+            if (m_sessions.at(index).id == previousCurrentSessionId) {
+                m_currentIndex = index;
+                break;
+            }
+        }
+    } else {
+        m_currentIndex = (std::clamp)(
+            previousCurrentIndex,
+            0,
+            static_cast<int>(m_sessions.size() - 1));
+    }
+    const QString currentSessionId = currentSession() ? currentSession()->id : QString();
+    const bool selectedSessionChanged = currentSessionId != previousCurrentSessionId;
+    if (selectedSessionChanged) {
+        emit currentSessionHistoryReloadRequested();
+    }
+    emit sessionsChanged();
+    if (m_currentIndex != previousCurrentIndex) {
+        emit currentSessionIndexChanged();
+    }
+    if (selectedSessionChanged) {
+        emit currentSessionChanged();
+    }
     return true;
 }
 

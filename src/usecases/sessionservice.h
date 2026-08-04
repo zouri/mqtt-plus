@@ -3,6 +3,7 @@
 #include "domain/session.h"
 
 #include <QObject>
+#include <QStringList>
 #include <QVariantMap>
 #include <QVector>
 
@@ -13,6 +14,17 @@ class PreferencesController;
 class QSettings;
 class ScriptService;
 struct MessageCapturePolicy;
+
+struct SessionImportRequest {
+    QString id;
+    QVariantMap config;
+    QVector<SubscriptionEntry> subscriptions;
+    bool outputPaused = false;
+    bool captureIncoming = true;
+    bool captureOutgoing = true;
+    QStringList captureIncludeTopicFilters;
+    QStringList captureExcludeTopicFilters;
+};
 
 class SessionService : public QObject
 {
@@ -46,6 +58,13 @@ public:
     QVariantMap sessionConfigAt(int index) const;
     bool updateSessionConfigAt(int index, const QVariantMap &config);
     bool addSessionWithConfig(const QVariantMap &config);
+    bool importSessions(
+        const QVector<SessionImportRequest> &requests,
+        QStringList &importedSessionIds,
+        QString &errorMessage);
+    bool rollbackImportedSessions(
+        const QStringList &sessionIds,
+        QString &errorMessage);
     void duplicateSessionAt(int index);
     void removeSessionAt(int index);
     void setHistoryWriter(HistoryWriterWorker *historyWriter);

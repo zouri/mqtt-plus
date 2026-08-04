@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../../components"
 
@@ -12,6 +13,7 @@ Rectangle {
     required property var viewModel
     required property var preferences
     required property var eventHistory
+    required property var configurationTransfer
 
     readonly property var themeLabels: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
     readonly property var themeColorOptions: [
@@ -541,6 +543,46 @@ Rectangle {
 
                 SettingsSection {
                     ui: root.ui
+                    title: qsTr("Data transfer")
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    Layout.maximumWidth: 760
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Import configuration")
+                        detail: qsTr("Import MQTT Plus backups or MQTTX connection exports. Existing data is kept and imported items are added as copies.")
+
+                        AppButton {
+                            ui: root.ui
+                            text: qsTr("Choose file")
+                            minimumWidth: 104
+                            enabled: !root.configurationTransfer.busy
+                            onClicked: importFileDialog.open()
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Export configuration")
+                        detail: qsTr("Export connections, subscriptions, drafts, and portable settings. Scripts, message history, and logs are excluded.")
+                        showDivider: false
+
+                        AppButton {
+                            ui: root.ui
+                            text: qsTr("Export")
+                            minimumWidth: 86
+                            enabled: !root.configurationTransfer.busy
+                            onClicked: {
+                                exportSensitiveCheck.checked = false
+                                exportOptionsDialog.open()
+                            }
+                        }
+                    }
+                }
+
+                SettingsSection {
+                    ui: root.ui
                     title: qsTr("Cleanup")
                     Layout.leftMargin: 14
                     Layout.rightMargin: 14
@@ -607,6 +649,265 @@ Rectangle {
                 Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 14
+                }
+            }
+        }
+    }
+
+    FileDialog {
+        id: importFileDialog
+
+        title: qsTr("Import configuration")
+        fileMode: FileDialog.OpenFile
+        nameFilters: [
+            qsTr("Configuration files (*.json)"),
+            qsTr("All files (*)")
+        ]
+        onAccepted: root.configurationTransfer.inspectImportFile(selectedFile)
+    }
+
+    Connections {
+        target: root.configurationTransfer
+
+        function onImportPreviewReady() {
+            importSensitiveCheck.checked = root.configurationTransfer.previewContainsSensitiveData
+            importPreviewDialog.commitRequested = false
+            importPreviewDialog.open()
+        }
+    }
+
+    FileDialog {
+        id: exportFileDialog
+
+        title: qsTr("Export configuration")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "mqttplus.json"
+        nameFilters: [qsTr("MQTT Plus configuration (*.mqttplus.json)")]
+        onAccepted: root.configurationTransfer.exportConfiguration(
+                        selectedFile,
+                        exportSensitiveCheck.checked)
+    }
+
+    AppDialog {
+        id: exportOptionsDialog
+
+        ui: root.ui
+        width: 520
+        height: 248
+        closePolicy: Popup.CloseOnEscape
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: root.ui.radiusLg
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 14
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Export configuration")
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("The export can contain draft payloads. Store it as private data even when credentials are excluded.")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textSm
+                wrapMode: Text.WordWrap
+            }
+
+            AppCheckBox {
+                id: exportSensitiveCheck
+
+                ui: root.ui
+                text: qsTr("Include passwords, authentication data, and private keys")
+                checked: false
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 78
+                    onClicked: exportOptionsDialog.close()
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Continue")
+                    primary: true
+                    minimumWidth: 92
+                    onClicked: {
+                        exportOptionsDialog.close()
+                        exportFileDialog.open()
+                    }
+                }
+            }
+        }
+    }
+
+    AppDialog {
+        id: importPreviewDialog
+
+        property bool commitRequested: false
+
+        ui: root.ui
+        width: 570
+        height: 460
+        closePolicy: Popup.CloseOnEscape
+        onClosed: {
+            if (!commitRequested) {
+                root.configurationTransfer.clearPreview()
+            }
+            commitRequested = false
+        }
+        header: Item { implicitHeight: 0; visible: false }
+        background: Rectangle {
+            radius: root.ui.radiusLg
+            color: root.ui.themePalette.dialogBg
+            border.color: root.ui.themePalette.dialogBorder
+        }
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 12
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Import preview")
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.text2xl
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: root.configurationTransfer.previewFormat === "mqttx"
+                      ? qsTr("MQTTX connection export")
+                      : qsTr("MQTT Plus configuration")
+                color: root.ui.themePalette.infoText
+                font.pixelSize: root.ui.textSm
+                font.bold: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("%1 connections · %2 subscriptions · %3 drafts")
+                    .arg(root.configurationTransfer.previewConnectionCount)
+                    .arg(root.configurationTransfer.previewSubscriptionCount)
+                    .arg(root.configurationTransfer.previewDraftCount)
+                color: root.ui.textStrong
+                font.pixelSize: root.ui.textMd
+                wrapMode: Text.WordWrap
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                radius: root.ui.radiusMd
+                color: root.ui.themePalette.innerPanelBg
+                border.color: root.ui.themePalette.innerPanelBorder
+                visible: root.configurationTransfer.previewWarnings.length > 0
+
+                Flickable {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    contentWidth: width
+                    contentHeight: warningColumn.implicitHeight
+                    clip: true
+
+                    ColumnLayout {
+                        id: warningColumn
+
+                        width: parent.width
+                        spacing: 8
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: qsTr("Compatibility notes")
+                            color: root.ui.textStrong
+                            font.pixelSize: root.ui.textSm
+                            font.bold: true
+                        }
+
+                        Repeater {
+                            model: root.configurationTransfer.previewWarnings
+
+                            delegate: Label {
+                                required property string modelData
+
+                                Layout.fillWidth: true
+                                text: "• " + modelData
+                                color: root.ui.textMuted
+                                font.pixelSize: root.ui.textSm
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item {
+                Layout.fillHeight: true
+                visible: root.configurationTransfer.previewWarnings.length === 0
+            }
+
+            AppCheckBox {
+                id: importSensitiveCheck
+
+                ui: root.ui
+                visible: root.configurationTransfer.previewContainsSensitiveData
+                text: qsTr("Import passwords, authentication data, and private keys")
+                checked: true
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Imported connections remain disconnected. Existing connections and drafts are not replaced. Scripts are not imported.")
+                color: root.ui.textMuted
+                font.pixelSize: root.ui.textXs
+                wrapMode: Text.WordWrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Item { Layout.fillWidth: true }
+
+                AppButton {
+                    ui: root.ui
+                    text: qsTr("Cancel")
+                    minimumWidth: 78
+                    onClicked: {
+                        importPreviewDialog.close()
+                    }
+                }
+
+                AppButton {
+                    ui: root.ui
+                    text: root.configurationTransfer.busy ? qsTr("Importing…") : qsTr("Import")
+                    primary: true
+                    minimumWidth: 92
+                    enabled: !root.configurationTransfer.busy
+                    onClicked: {
+                        importPreviewDialog.commitRequested = true
+                        root.configurationTransfer.importPreview(importSensitiveCheck.checked)
+                        importPreviewDialog.close()
+                    }
                 }
             }
         }

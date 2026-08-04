@@ -61,6 +61,7 @@ private slots:
     void exposesDefaultSettingIndexes();
     void readsSettings();
     void messageRetentionChangeDefersCleanup();
+    void portableLogRetentionImportPrunesImmediately();
     void writesSettingsAndClearsHistory();
     void themeChangesEmitSignals();
     void themeColorPersistsAndEmitsSignal();
@@ -194,6 +195,46 @@ void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
     QCOMPARE(deps.historyWriter.pendingMessageCount(), 1);
     QCOMPARE(deps.historyStore.loadMessages(session.id, 2000).size(), 1001);
     QCOMPARE(messageSpy.count(), 0);
+}
+
+void SettingsOptionsViewModelTest::portableLogRetentionImportPrunesImmediately()
+{
+    SettingsFixture deps;
+    QVERIFY(deps.dataDir.isValid());
+    QVERIFY2(deps.historyStore.isReady(), qPrintable(deps.historyStore.lastError()));
+
+    deps.sessionService.sessions().append(SessionState {});
+    deps.sessionService.setCurrentSessionIndex(0);
+    SessionState &session = *deps.sessionService.currentSession();
+    session.id = QStringLiteral("session-1");
+    for (int index = 0; index < 501; ++index) {
+        QVERIFY(deps.historyStore.appendEvent(
+            session.id,
+            QString::number(index),
+            QStringLiteral("Test"),
+            QString::number(index)) > 0);
+    }
+    QCOMPARE(deps.historyStore.loadLogs(session.id, 1000).size(), 501);
+
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.sessionService.sessions(),
+        deps.settings);
+    QSignalSpy messageSpy(
+        &deps.eventHistoryService,
+        &EventHistoryService::messageStreamChanged);
+    QSignalSpy logSpy(
+        &deps.eventHistoryService,
+        &EventHistoryService::logStreamChanged);
+    deps.preferencesController.setLogRetentionLimit(500);
+
+    settings.reloadPortableSettings(true);
+
+    QCOMPARE(deps.historyStore.loadLogs(session.id, 1000).size(), 500);
+    QCOMPARE(messageSpy.size(), 1);
+    QCOMPARE(logSpy.size(), 1);
 }
 
 void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
