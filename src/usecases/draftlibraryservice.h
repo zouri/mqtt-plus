@@ -38,6 +38,7 @@ public:
     bool createDraft(PublishDraft draft);
     bool updateDraft(PublishDraft draft);
     bool removeDraft(const QString &id);
+    bool importDrafts(QVector<PublishDraft> drafts);
     void markUsed(const QString &id);
     Q_INVOKABLE bool recoverBackup();
 

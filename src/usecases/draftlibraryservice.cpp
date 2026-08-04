@@ -218,6 +218,56 @@ bool DraftLibraryService::removeDraft(const QString &id)
     return beginSave(candidate, QStringLiteral("delete"), id);
 }
 
+bool DraftLibraryService::importDrafts(QVector<PublishDraft> drafts)
+{
+    if (!m_ready || m_readOnly || m_busy || drafts.isEmpty()) {
+        return false;
+    }
+
+    QVector<PublishDraft> candidate = m_drafts;
+    QSet<QString> ids;
+    QSet<QString> names;
+    for (const PublishDraft &draft : std::as_const(candidate)) {
+        ids.insert(draft.id);
+        names.insert(draft.name.trimmed().toCaseFolded());
+    }
+
+    const QString now = AppUtils::timestampNow();
+    for (PublishDraft &draft : drafts) {
+        draft.id = draft.id.trimmed();
+        if (draft.id.isEmpty()) {
+            draft.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        }
+        draft.name = draft.name.trimmed();
+        draft.description = draft.description.trimmed();
+        draft.defaultTopic = draft.defaultTopic.trimmed();
+        if (draft.createdAt.isEmpty()) {
+            draft.createdAt = now;
+        }
+        if (draft.updatedAt.isEmpty()) {
+            draft.updatedAt = now;
+        }
+
+        const QString normalizedName = draft.name.toCaseFolded();
+        if (ids.contains(draft.id) || names.contains(normalizedName)) {
+            m_errorMessage = tr("Cannot import drafts with duplicate IDs or names.");
+            emit stateChanged();
+            return false;
+        }
+        QString error;
+        if (!validateDraft(draft, error)) {
+            m_errorMessage = error;
+            emit stateChanged();
+            return false;
+        }
+        ids.insert(draft.id);
+        names.insert(normalizedName);
+        candidate.append(draft);
+    }
+
+    return beginSave(candidate, QStringLiteral("import"), QString());
+}
+
 void DraftLibraryService::markUsed(const QString &id)
 {
     if (!m_ready || m_readOnly || id.trimmed().isEmpty()) {

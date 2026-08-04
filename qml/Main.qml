@@ -365,6 +365,7 @@ ApplicationWindow {
                             viewModel: root.app.settings
                             preferences: root.preferences
                             eventHistory: root.app.eventHistory
+                            configurationTransfer: root.app.configurationTransfer
                         }
                     }
                 }

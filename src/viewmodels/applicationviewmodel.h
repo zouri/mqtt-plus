@@ -8,6 +8,7 @@
 #include "viewmodels/scriptsviewmodel.h"
 #include "viewmodels/settingsviewmodel.h"
 #include "viewmodels/workbenchviewmodel.h"
+#include "usecases/configurationtransferservice.h"
 
 class EventHistoryService;
 class DraftLibraryService;
@@ -25,6 +26,7 @@ class ApplicationViewModel : public QObject
     Q_PROPERTY(LogsViewModel* logs READ logs CONSTANT)
     Q_PROPERTY(ScriptsViewModel* scripts READ scripts CONSTANT)
     Q_PROPERTY(SettingsViewModel* settings READ settings CONSTANT)
+    Q_PROPERTY(ConfigurationTransferService* configurationTransfer READ configurationTransfer CONSTANT)
     Q_PROPERTY(PreferencesController* preferences READ preferences CONSTANT)
     Q_PROPERTY(EventHistoryService* eventHistory READ eventHistory CONSTANT)
     Q_PROPERTY(SessionService* sessionService READ sessionService CONSTANT)
@@ -58,6 +60,7 @@ public:
     LogsViewModel *logs();
     ScriptsViewModel *scripts();
     SettingsViewModel *settings();
+    ConfigurationTransferService *configurationTransfer();
     PreferencesController *preferences();
     EventHistoryService *eventHistory();
     SessionService *sessionService();
@@ -70,6 +73,7 @@ private:
     LogsViewModel m_logs;
     ScriptsViewModel m_scripts;
     SettingsViewModel m_settings;
+    ConfigurationTransferService m_configurationTransfer;
     PreferencesController *m_preferences;
     EventHistoryService *m_eventHistory;
     SessionService *m_sessionService;

@@ -374,6 +374,34 @@ void SettingsViewModel::setLogRetentionLimit(int limit)
         return;
     }
 
+    pruneLogsToCurrentLimit();
+}
+
+void SettingsViewModel::reloadPortableSettings(bool logRetentionLimitChanged)
+{
+    setThemeMode(
+        m_settings.value(QStringLiteral("appearance/themeMode"), QStringLiteral("system"))
+            .toString());
+    setThemeColor(
+        m_settings.value(QStringLiteral("appearance/themeColor"), QStringLiteral("mint"))
+            .toString());
+    setAnimationsEnabled(
+        m_settings.value(QStringLiteral("appearance/animationsEnabled"), true).toBool());
+    setLanguageMode(
+        m_settings.value(QStringLiteral("appearance/languageMode"), QStringLiteral("system"))
+            .toString());
+    setMessagePayloadDisplayMode(
+        m_settings.value(
+                      QStringLiteral("workbench/messagePayloadDisplayMode"),
+                      QStringLiteral("hover"))
+            .toString());
+    if (logRetentionLimitChanged && logRetentionLimit() > 0) {
+        pruneLogsToCurrentLimit();
+    }
+}
+
+void SettingsViewModel::pruneLogsToCurrentLimit()
+{
     for (const auto &session : m_sessions) {
         m_historyStore.pruneLogs(session.id, logRetentionLimit());
     }

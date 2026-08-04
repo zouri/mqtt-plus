@@ -78,6 +78,9 @@ public:
     Q_INVOKABLE void setClearMessagesOnExitIndex(int index);
     Q_INVOKABLE void setClearLogsOnExitIndex(int index);
 
+public slots:
+    void reloadPortableSettings(bool logRetentionLimitChanged);
+
 signals:
     void themeModeChanged();
     void effectiveThemeChanged();
@@ -99,6 +102,7 @@ private:
     void setLanguageMode(const QString &mode);
     void setMessagePayloadDisplayMode(const QString &mode);
     void setLogRetentionLimit(int limit);
+    void pruneLogsToCurrentLimit();
     void refreshSystemColorScheme();
     QString resolvedLanguage() const;
     void applyCurrentLanguage();

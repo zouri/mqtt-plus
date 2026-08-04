@@ -227,6 +227,16 @@ if(BUILD_TESTING)
     )
     add_test(NAME sessionconfig COMMAND test_sessionconfig)
 
+    add_mqtt_plus_qt_test(test_configurationadapters
+        tests/test_configurationadapters.cpp
+        src/services/configuration/configurationadapters.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_configurationtransferservice
+        tests/test_configurationtransferservice.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
     add_executable(test_payloadcodec
         tests/test_payloadcodec.cpp
         src/services/payload/payloadcodec.cpp
@@ -318,6 +328,11 @@ if(BUILD_TESTING)
         tests/test_sessioneditorviewmodel.cpp
         src/domain/sessionconfig.cpp
         src/viewmodels/sessioneditorviewmodel.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_sessionimport
+        tests/test_sessionimport.cpp
+        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
     add_mqtt_plus_qt_test(test_subscriptioneditorviewmodel
