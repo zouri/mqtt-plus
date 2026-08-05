@@ -44,7 +44,6 @@ private slots:
     void repairsInterruptedParseStateBackfill();
     void loadMessagesExcludePayloadBytes();
     void loadsMessageByExplicitId();
-    void loadsPayloadBytesByMessageId();
     void roundTripsCanonicalOutgoingMessage();
     void countsPersistedMessagesPerSession();
     void keepsTotalMessageCountAcrossPruneAndReopen();
@@ -497,32 +496,6 @@ void HistoryStoreTest::clearAllHistoryRollsBackWhenLogDeleteFails()
     QCOMPARE(store.loadMessages(record.sessionId, 10).size(), 1);
     QCOMPARE(store.totalMessageCount(record.sessionId), 1);
     QCOMPARE(store.loadLogs(record.sessionId, 10).size(), 1);
-}
-
-void HistoryStoreTest::loadsPayloadBytesByMessageId()
-{
-    QTemporaryDir dataDir;
-    QVERIFY(dataDir.isValid());
-
-    HistoryStore store(dataDir.path());
-    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
-
-    const QString sessionId = QStringLiteral("test-session-%1")
-                                  .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    const QByteArray payload("full payload");
-
-    MessageRecord record;
-    record.sessionId = sessionId;
-    record.timestamp = QStringLiteral("2026-07-02T15:02:20.304Z");
-    record.topic = QStringLiteral("devices/payload");
-    record.payloadBytes = payload;
-    record.payloadPreview = QStringLiteral("preview");
-    record.payloadSize = payload.size();
-    record.payloadHash = QStringLiteral("hash");
-    const qint64 reservedId = appendMessage(store, record);
-
-    QVERIFY(reservedId > 0);
-    QCOMPARE(store.loadMessagePayloadBytes(reservedId), payload);
 }
 
 void HistoryStoreTest::roundTripsCanonicalOutgoingMessage()

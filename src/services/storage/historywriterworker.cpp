@@ -155,17 +155,6 @@ qint64 HistoryWriterWorker::pendingBytes() const
     return m_pendingBytes;
 }
 
-qint64 HistoryWriterWorker::pendingMessageCountForSession(const QString &sessionId) const
-{
-    QMutexLocker locker(&m_mutex);
-    return std::count_if(
-        m_queue.cbegin(),
-        m_queue.cend(),
-        [&sessionId](const WriteOperation &operation) {
-            return operationSessionId(operation) == sessionId;
-        });
-}
-
 qint64 HistoryWriterWorker::droppedMessageCount() const
 {
     QMutexLocker locker(&m_mutex);

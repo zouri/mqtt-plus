@@ -117,22 +117,6 @@ void EventStreamModel::appendRow(const QVariantMap &row)
     emit countChanged();
 }
 
-void EventStreamModel::appendRows(const QVariantList &rows)
-{
-    if (rows.isEmpty()) {
-        return;
-    }
-
-    const int firstRow = m_rows.size();
-    const int lastRow = firstRow + rows.size() - 1;
-    beginInsertRows(QModelIndex(), firstRow, lastRow);
-    for (const QVariant &row : rows) {
-        m_rows.append(rowFromMap(row.toMap()));
-    }
-    endInsertRows();
-    emit countChanged();
-}
-
 int EventStreamModel::appendRowsAndTrimFront(const QVariantList &rows, int limit)
 {
     if (rows.isEmpty()) {
@@ -171,23 +155,6 @@ int EventStreamModel::appendRowsAndTrimFront(const QVariantList &rows, int limit
         emit countChanged();
     }
     return insertCount;
-}
-
-void EventStreamModel::prependRows(const QVariantList &rows)
-{
-    if (rows.isEmpty()) {
-        return;
-    }
-
-    beginInsertRows(QModelIndex(), 0, rows.size() - 1);
-    QVector<EventStreamRow> mergedRows = rowsFromVariants(rows);
-    mergedRows.reserve(mergedRows.size() + m_rows.size());
-    for (const EventStreamRow &row : std::as_const(m_rows)) {
-        mergedRows.append(row);
-    }
-    m_rows = mergedRows;
-    endInsertRows();
-    emit countChanged();
 }
 
 int EventStreamModel::prependRowsAndTrimBack(const QVariantList &rows, int limit)
