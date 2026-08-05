@@ -12,7 +12,7 @@ ApplicationViewModel::ApplicationViewModel(
     MqttSessionService &mqttService,
     SubscriptionService &subscriptionService,
     EventHistoryService &eventHistoryService,
-    ScriptService &scriptService,
+    ProcessorLibrary &processorLibrary,
     DraftLibraryService &draftService,
     PreferencesController &preferences,
     HistoryStore &historyStore,
@@ -22,12 +22,20 @@ ApplicationViewModel::ApplicationViewModel(
     EventStreamModel &messages,
     MessageFilterModel &filteredMessages,
     EventStreamModel &logs,
-    ScriptLibraryModel &scripts,
+    ProcessorLibraryModel &processors,
     DraftLibraryModel &drafts,
     NotificationCenterModel &notifications,
     QSettings &settings,
     QObject *parent)
     : QObject(parent)
+    , m_settings(
+          preferences,
+          eventHistoryService,
+          historyStore,
+          sessionService.sessions(),
+          settings,
+          this)
+    , m_processors(processorLibrary, processors, this)
     , m_workbench(
           sessionService,
           mqttService,
@@ -40,18 +48,10 @@ ApplicationViewModel::ApplicationViewModel(
           messageFilterSubscriptions,
           messages,
           filteredMessages,
-          scripts,
+          processors,
           this)
     , m_drafts(draftService, drafts, sessionService, mqttService, this)
     , m_logs(eventHistoryService, logs, this)
-    , m_scripts(scriptService, scripts, this)
-    , m_settings(
-          preferences,
-          eventHistoryService,
-          historyStore,
-          sessionService.sessions(),
-          settings,
-          this)
     , m_configurationTransfer(
           sessionService,
           draftService,
@@ -87,9 +87,9 @@ LogsViewModel *ApplicationViewModel::logs()
     return &m_logs;
 }
 
-ScriptsViewModel *ApplicationViewModel::scripts()
+ProcessorsViewModel *ApplicationViewModel::processors()
 {
-    return &m_scripts;
+    return &m_processors;
 }
 
 SettingsViewModel *ApplicationViewModel::settings()

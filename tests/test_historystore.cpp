@@ -38,10 +38,9 @@ class HistoryStoreTest : public QObject
     Q_OBJECT
 
 private slots:
-    void writesRawPayloadWithoutLegacyColumns();
+    void writesRawPayloadWithProcessorSchema();
     void resetsOnlyMessageTableWhenSchemaIsStale();
-    void migratesParseStateWithoutDroppingCanonicalHistory();
-    void repairsInterruptedParseStateBackfill();
+    void roundTripsProcessorIdentityAndResult();
     void loadMessagesExcludePayloadBytes();
     void loadsMessageByExplicitId();
     void roundTripsCanonicalOutgoingMessage();
@@ -52,7 +51,7 @@ private slots:
     void clearAllHistoryRollsBackWhenLogDeleteFails();
 };
 
-void HistoryStoreTest::writesRawPayloadWithoutLegacyColumns()
+void HistoryStoreTest::writesRawPayloadWithProcessorSchema()
 {
     QTemporaryDir dataDir;
     QVERIFY(dataDir.isValid());
@@ -72,6 +71,7 @@ void HistoryStoreTest::writesRawPayloadWithoutLegacyColumns()
     record.timestamp = QStringLiteral("2026-07-02 15:02:20.304");
     record.topic = QStringLiteral("111111/ros_to_android");
     record.payloadBytes = payload;
+    record.processorResultCbor = QByteArray::fromHex("a16576616c756501");
     record.payloadPreview = QStringLiteral("raw preview");
     record.payloadSize = payload.size();
     record.payloadHash = QStringLiteral("hash");
@@ -86,8 +86,12 @@ void HistoryStoreTest::writesRawPayloadWithoutLegacyColumns()
     const QVariantMap row = rows.first().toMap();
     QVERIFY(!row.contains(QStringLiteral("payload")));
     QVERIFY(row.value(QStringLiteral("payload_bytes")).toByteArray().isEmpty());
+    QVERIFY(row.value(QStringLiteral("processor_result_cbor")).toByteArray().isEmpty());
     QCOMPARE(row.value(QStringLiteral("payload_size")).toLongLong(), qint64(payload.size()));
     QCOMPARE(store.loadMessagePayloadBytes(reservedId), payload);
+    QCOMPARE(
+        store.loadMessage(reservedId).value(QStringLiteral("processor_result_cbor")).toByteArray(),
+        record.processorResultCbor);
 }
 
 void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
@@ -108,13 +112,30 @@ void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
                      "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                      "session_id TEXT NOT NULL, "
                      "timestamp TEXT NOT NULL, "
-                     "topic TEXT NOT NULL, "
-                     "payload TEXT NOT NULL DEFAULT '', "
-                     "payload_b64 TEXT NOT NULL DEFAULT '')")),
+                     "direction TEXT NOT NULL, topic TEXT NOT NULL, "
+                     "qos INTEGER NOT NULL DEFAULT -1, retain INTEGER NOT NULL DEFAULT 0, "
+                     "retain_known INTEGER NOT NULL DEFAULT 0, "
+                     "parsed_payload TEXT NOT NULL DEFAULT '', parsed_format TEXT NOT NULL DEFAULT '', "
+                     "parse_error TEXT NOT NULL DEFAULT '', script_id TEXT NOT NULL DEFAULT '', "
+                     "script_name TEXT NOT NULL DEFAULT '', payload_bytes BLOB, "
+                     "payload_size INTEGER NOT NULL DEFAULT 0, payload_state TEXT NOT NULL DEFAULT 'full', "
+                     "payload_preview TEXT NOT NULL DEFAULT '', payload_hash TEXT NOT NULL DEFAULT '', "
+                     "payload_format INTEGER NOT NULL DEFAULT -1, "
+                     "parse_state TEXT NOT NULL DEFAULT 'not_required')")),
             qPrintable(query.lastError().text()));
         QVERIFY2(query.exec(QStringLiteral(
-                     "INSERT INTO mqtt_messages(session_id, timestamp, topic, payload, payload_b64) "
-                     "VALUES('stale-session', '2026-07-02T15:02:20.304Z', 'devices/stale', 'old', 'b2xk')")),
+                     "INSERT INTO mqtt_messages(session_id, timestamp, direction, topic, script_id) "
+                     "VALUES('stale-session', '2026-07-02T15:02:20.304Z', "
+                     "'incoming', 'devices/stale', 'legacy-script')")),
+            qPrintable(query.lastError().text()));
+
+        QVERIFY2(query.exec(QStringLiteral(
+                     "CREATE TABLE mqtt_message_totals ("
+                     "session_id TEXT PRIMARY KEY, total_count INTEGER NOT NULL DEFAULT 0)")),
+            qPrintable(query.lastError().text()));
+        QVERIFY2(query.exec(QStringLiteral(
+                     "INSERT INTO mqtt_message_totals(session_id, total_count) "
+                     "VALUES('stale-session', 17)")),
             qPrintable(query.lastError().text()));
 
         QVERIFY2(query.exec(QStringLiteral(
@@ -135,6 +156,7 @@ void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
     HistoryStore store(dataDir.path());
     QVERIFY2(store.isReady(), qPrintable(store.lastError()));
     QVERIFY(store.loadMessages(QStringLiteral("stale-session"), 10).isEmpty());
+    QCOMPARE(store.totalMessageCount(QStringLiteral("stale-session")), 0);
 
     const QVariantList logs = store.loadLogs(QStringLiteral("stale-session"), 10);
     QCOMPARE(logs.size(), 1);
@@ -155,102 +177,61 @@ void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
     QCOMPARE(store.loadMessages(newSessionId, 10).size(), 1);
 }
 
-void HistoryStoreTest::migratesParseStateWithoutDroppingCanonicalHistory()
+void HistoryStoreTest::roundTripsProcessorIdentityAndResult()
 {
     QTemporaryDir dataDir;
     QVERIFY(dataDir.isValid());
 
-    const QString connectionName = QStringLiteral("parse-state-migration-%1")
-                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    {
-        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
-        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
-        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
-
-        QSqlQuery query(db);
-        QVERIFY2(query.exec(QStringLiteral(
-                     "CREATE TABLE mqtt_messages ("
-                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                     "session_id TEXT NOT NULL, timestamp TEXT NOT NULL, "
-                     "direction TEXT NOT NULL, topic TEXT NOT NULL, "
-                     "qos INTEGER NOT NULL DEFAULT -1, retain INTEGER NOT NULL DEFAULT 0, "
-                     "retain_known INTEGER NOT NULL DEFAULT 0, "
-                     "parsed_payload TEXT NOT NULL DEFAULT '', parsed_format TEXT NOT NULL DEFAULT '', "
-                     "parse_error TEXT NOT NULL DEFAULT '', script_id TEXT NOT NULL DEFAULT '', "
-                     "script_name TEXT NOT NULL DEFAULT '', payload_bytes BLOB, "
-                     "payload_size INTEGER NOT NULL DEFAULT 0, payload_state TEXT NOT NULL DEFAULT 'full', "
-                     "payload_preview TEXT NOT NULL DEFAULT '', payload_hash TEXT NOT NULL DEFAULT '', "
-                     "payload_format INTEGER NOT NULL DEFAULT -1)")),
-            qPrintable(query.lastError().text()));
-        QVERIFY2(query.exec(QStringLiteral(
-                     "INSERT INTO mqtt_messages("
-                     "session_id, timestamp, direction, topic, parsed_payload, parsed_format, "
-                     "payload_bytes, payload_size, payload_preview, payload_format) "
-                     "VALUES('session-1', '2026-08-01T12:00:00.000Z', 'incoming', 'devices/one', "
-                     "'{\"value\":1}', 'JSON', '{\"value\":1}', 11, '{\"value\":1}', 1)")),
-            qPrintable(query.lastError().text()));
-    }
-    QSqlDatabase::removeDatabase(connectionName);
-
     HistoryStore store(dataDir.path());
     QVERIFY2(store.isReady(), qPrintable(store.lastError()));
-    const QVariantList rows = store.loadMessages(QStringLiteral("session-1"), 10);
-    QCOMPARE(rows.size(), 1);
-    QCOMPARE(rows.first().toMap().value(QStringLiteral("topic")).toString(), QStringLiteral("devices/one"));
-    QCOMPARE(rows.first().toMap().value(QStringLiteral("parse_state")).toString(), QStringLiteral("succeeded"));
-}
 
-void HistoryStoreTest::repairsInterruptedParseStateBackfill()
-{
-    QTemporaryDir dataDir;
-    QVERIFY(dataDir.isValid());
+    MessageRecord record;
+    record.id = store.nextMessageId();
+    record.sessionId = QStringLiteral("session-1");
+    record.timestamp = QStringLiteral("2026-08-05T18:00:00.000Z");
+    record.topic = QStringLiteral("devices/processor");
+    record.payloadBytes = QByteArrayLiteral("payload");
+    record.payloadSize = record.payloadBytes.size();
+    record.processorId = QStringLiteral("processor-1");
+    record.processorRevisionId = QStringLiteral("revision-2");
+    record.processorName = QStringLiteral("Temperature Decoder");
+    record.processorLanguageId = QStringLiteral("javascript");
+    record.processorRuntimeId = QStringLiteral("qt-qjsengine");
+    record.processorContentHash = QStringLiteral("sha256:abc");
+    record.processorExecutionState = QStringLiteral("pending");
+    record.displayState = QStringLiteral("pending");
+    QVERIFY(store.appendMessages({record}).ok);
 
-    const QString connectionName = QStringLiteral("parse-state-repair-%1")
-                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    {
-        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
-        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
-        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+    const QVariantMap captured = store.loadMessage(record.id);
+    QCOMPARE(captured.value(QStringLiteral("processor_id")).toString(), record.processorId);
+    QCOMPARE(captured.value(QStringLiteral("processor_revision_id")).toString(), record.processorRevisionId);
+    QCOMPARE(captured.value(QStringLiteral("processor_execution_state")).toString(), QStringLiteral("pending"));
 
-        QSqlQuery query(db);
-        QVERIFY2(query.exec(QStringLiteral(
-                     "CREATE TABLE mqtt_messages ("
-                     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                     "session_id TEXT NOT NULL, timestamp TEXT NOT NULL, "
-                     "direction TEXT NOT NULL, topic TEXT NOT NULL, "
-                     "qos INTEGER NOT NULL DEFAULT -1, retain INTEGER NOT NULL DEFAULT 0, "
-                     "retain_known INTEGER NOT NULL DEFAULT 0, "
-                     "parsed_payload TEXT NOT NULL DEFAULT '', parsed_format TEXT NOT NULL DEFAULT '', "
-                     "parse_error TEXT NOT NULL DEFAULT '', script_id TEXT NOT NULL DEFAULT '', "
-                     "script_name TEXT NOT NULL DEFAULT '', payload_bytes BLOB, "
-                     "payload_size INTEGER NOT NULL DEFAULT 0, payload_state TEXT NOT NULL DEFAULT 'full', "
-                     "payload_preview TEXT NOT NULL DEFAULT '', payload_hash TEXT NOT NULL DEFAULT '', "
-                     "payload_format INTEGER NOT NULL DEFAULT -1, "
-                     "parse_state TEXT NOT NULL DEFAULT 'not_required')")),
-            qPrintable(query.lastError().text()));
-        QVERIFY2(query.exec(QStringLiteral(
-                     "INSERT INTO mqtt_messages("
-                     "session_id, timestamp, direction, topic, parsed_payload, parsed_format) "
-                     "VALUES('session-1', '2026-08-01T12:00:00.000Z', 'incoming', "
-                     "'devices/parsed', '{\"value\":1}', 'JSON')")),
-            qPrintable(query.lastError().text()));
-        QVERIFY2(query.exec(QStringLiteral(
-                     "INSERT INTO mqtt_messages("
-                     "session_id, timestamp, direction, topic, parse_error) "
-                     "VALUES('session-1', '2026-08-01T12:00:01.000Z', 'incoming', "
-                     "'devices/failed', 'invalid payload')")),
-            qPrintable(query.lastError().text()));
-    }
-    QSqlDatabase::removeDatabase(connectionName);
+    MessageParseResult parseResult;
+    parseResult.messageId = record.id;
+    parseResult.sessionId = record.sessionId;
+    parseResult.state = MessageParseState::Succeeded;
+    parseResult.displayPayload = QStringLiteral("{\"value\":42}");
+    parseResult.displayFormat = QStringLiteral("JavaScript: Temperature Decoder");
+    parseResult.processorId = record.processorId;
+    parseResult.processorRevisionId = record.processorRevisionId;
+    parseResult.processorName = record.processorName;
+    parseResult.processorLanguageId = record.processorLanguageId;
+    parseResult.processorRuntimeId = record.processorRuntimeId;
+    parseResult.processorContentHash = record.processorContentHash;
+    parseResult.processorResultCbor = QByteArray::fromHex("a16576616c7565182a");
+    parseResult.processorResultPreview = parseResult.displayPayload;
+    parseResult.processorExecutionState = QStringLiteral("succeeded");
+    parseResult.processorExecutionDurationUs = 375;
+    QVERIFY(store.writeMessageBatch({}, {parseResult}).ok);
 
-    HistoryStore store(dataDir.path());
-    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
-    QCOMPARE(
-        store.loadMessage(1).value(QStringLiteral("parse_state")).toString(),
-        QStringLiteral("succeeded"));
-    QCOMPARE(
-        store.loadMessage(2).value(QStringLiteral("parse_state")).toString(),
-        QStringLiteral("failed"));
+    const QVariantMap completed = store.loadMessage(record.id);
+    QCOMPARE(completed.value(QStringLiteral("display_state")).toString(), QStringLiteral("succeeded"));
+    QCOMPARE(completed.value(QStringLiteral("display_payload")).toString(), parseResult.displayPayload);
+    QCOMPARE(completed.value(QStringLiteral("processor_result_cbor")).toByteArray(), parseResult.processorResultCbor);
+    QCOMPARE(completed.value(QStringLiteral("processor_result_preview")).toString(), parseResult.processorResultPreview);
+    QCOMPARE(completed.value(QStringLiteral("processor_execution_state")).toString(), QStringLiteral("succeeded"));
+    QCOMPARE(completed.value(QStringLiteral("processor_execution_duration_us")).toLongLong(), qint64(375));
 }
 
 void HistoryStoreTest::loadMessagesExcludePayloadBytes()

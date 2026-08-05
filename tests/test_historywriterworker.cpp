@@ -70,6 +70,7 @@ private slots:
     void writesQueuedMessagesInReservedIdOrder();
     void retriesLockedDatabaseWithoutAnotherEnqueue();
     void writesCaptureBeforeParseUpdateInOneQueue();
+    void oversizedProcessorResultKeepsRevisionIdentity();
     void historyStoreEnablesWalAndBusyTimeout();
 };
 
@@ -289,17 +290,70 @@ void HistoryWriterWorkerTest::writesCaptureBeforeParseUpdateInOneQueue()
     MessageParseResult parseResult;
     parseResult.messageId = messageId;
     parseResult.sessionId = QStringLiteral("session-1");
-    parseResult.parsedPayload = QStringLiteral("{\n    \"value\": 1\n}");
-    parseResult.parsedFormat = QStringLiteral("JSON");
+    parseResult.displayPayload = QStringLiteral("{\n    \"value\": 1\n}");
+    parseResult.displayFormat = QStringLiteral("JavaScript: Decoder");
+    parseResult.processorId = QStringLiteral("processor-1");
+    parseResult.processorRevisionId = QStringLiteral("revision-1");
+    parseResult.processorName = QStringLiteral("Decoder");
+    parseResult.processorLanguageId = QStringLiteral("javascript");
+    parseResult.processorRuntimeId = QStringLiteral("qt-qjsengine");
+    parseResult.processorContentHash = QStringLiteral("sha256:abc");
+    parseResult.processorResultCbor = QByteArray::fromHex("a16576616c756501");
+    parseResult.processorResultPreview = parseResult.displayPayload;
+    parseResult.processorExecutionState = QStringLiteral("succeeded");
     parseResult.state = MessageParseState::Succeeded;
     QVERIFY(writer.enqueueParseResult(parseResult));
     QVERIFY(writer.drain(2000));
 
     HistoryStore reader(dataDir.path());
     const QVariantMap stored = reader.loadMessage(messageId);
-    QCOMPARE(stored.value(QStringLiteral("parse_state")).toString(), QStringLiteral("succeeded"));
-    QCOMPARE(stored.value(QStringLiteral("parsed_payload")).toString(), parseResult.parsedPayload);
-    QCOMPARE(stored.value(QStringLiteral("parsed_format")).toString(), QStringLiteral("JSON"));
+    QCOMPARE(stored.value(QStringLiteral("display_state")).toString(), QStringLiteral("succeeded"));
+    QCOMPARE(stored.value(QStringLiteral("display_payload")).toString(), parseResult.displayPayload);
+    QCOMPARE(stored.value(QStringLiteral("display_format")).toString(), parseResult.displayFormat);
+    QCOMPARE(stored.value(QStringLiteral("processor_id")).toString(), parseResult.processorId);
+    QCOMPARE(stored.value(QStringLiteral("processor_result_cbor")).toByteArray(), parseResult.processorResultCbor);
+}
+
+void HistoryWriterWorkerTest::oversizedProcessorResultKeepsRevisionIdentity()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryWriterLimits limits;
+    limits.maxMessages = 10;
+    limits.maxBytes = 4096;
+    HistoryWriterWorker writer(dataDir.path(), 1, limits);
+    const qint64 messageId = writer.enqueueMessage(
+        makeRecord(
+            QStringLiteral("session-1"),
+            QStringLiteral("devices/processor"),
+            QByteArrayLiteral("{}")));
+    QVERIFY(messageId > 0);
+
+    MessageParseResult result;
+    result.messageId = messageId;
+    result.sessionId = QStringLiteral("session-1");
+    result.processorId = QStringLiteral("processor-1");
+    result.processorRevisionId = QStringLiteral("revision-9");
+    result.processorName = QStringLiteral("Large Result Processor");
+    result.processorLanguageId = QStringLiteral("javascript");
+    result.processorRuntimeId = QStringLiteral("qt-qjs");
+    result.processorContentHash = QStringLiteral("sha256:large");
+    result.processorResultCbor = QByteArray(8192, 'x');
+    result.processorResultPreview = QString(8192, QLatin1Char('x'));
+    result.processorExecutionState = QStringLiteral("succeeded");
+    result.state = MessageParseState::Succeeded;
+    QVERIFY(writer.enqueueParseResult(result));
+
+    const auto pending = writer.pendingParseResult(messageId);
+    QVERIFY(pending);
+    QCOMPARE(pending->processorId, result.processorId);
+    QCOMPARE(pending->processorRevisionId, result.processorRevisionId);
+    QCOMPARE(pending->processorContentHash, result.processorContentHash);
+    QCOMPARE(pending->processorExecutionState, QStringLiteral("skipped_overload"));
+    QCOMPARE(pending->processorExecutionErrorCode, QStringLiteral("history_writer_overloaded"));
+    QVERIFY(pending->processorResultCbor.isEmpty());
+    QCOMPARE(pending->state, MessageParseState::SkippedOverload);
 }
 
 void HistoryWriterWorkerTest::historyStoreEnablesWalAndBusyTimeout()

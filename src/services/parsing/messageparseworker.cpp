@@ -1,7 +1,9 @@
 #include "messageparseworker.h"
 
 #include "services/payload/payloadcodec.h"
-#include "services/scripting/luarunner.h"
+#include "services/processors/defaultmessageprocessorengine.h"
+#include "services/processors/messageprocessorengine.h"
+#include "services/processors/processorvaluecodec.h"
 
 #include <QDeadlineTimer>
 #include <QMetaObject>
@@ -136,7 +138,7 @@ void MessageParseWorker::start()
     if (m_started) {
         return;
     }
-    m_runtimeCache = std::make_unique<LuaRunner::RuntimeCache>();
+    m_processorEngine = createDefaultMessageProcessorEngine();
     m_started = true;
     if (m_droppedTasks > 0 && !m_dropNotificationPending) {
         m_dropNotificationPending = true;
@@ -148,20 +150,13 @@ void MessageParseWorker::start()
     requestWakeLocked();
 }
 
-void MessageParseWorker::clearRuntimeCache()
-{
-    if (m_runtimeCache) {
-        m_runtimeCache->clear();
-    }
-}
-
 void MessageParseWorker::shutdown()
 {
     QMutexLocker locker(&m_mutex);
     m_started = false;
     m_wakePending = false;
     m_dropNotificationPending = false;
-    m_runtimeCache.reset();
+    m_processorEngine.reset();
     m_drainedCondition.wakeAll();
 }
 
@@ -177,8 +172,8 @@ void MessageParseWorker::processBatch()
             }
             return;
         }
-        if (!m_runtimeCache) {
-            m_runtimeCache = std::make_unique<LuaRunner::RuntimeCache>();
+        if (!m_processorEngine) {
+            m_processorEngine = createDefaultMessageProcessorEngine();
         }
 
         const int batchSize = (std::min)(m_limits.batchSize, int(m_queue.size()));
@@ -228,12 +223,16 @@ void MessageParseWorker::notifyDropped()
 qint64 MessageParseWorker::approximateBytes(const MessageParseTask &task)
 {
     return task.envelope.payloadBytes.size()
-        + stringBytes(task.envelope.sessionId)
+    + stringBytes(task.envelope.sessionId)
         + stringBytes(task.envelope.timestamp)
         + stringBytes(task.envelope.topic)
-        + stringBytes(task.scriptId)
-        + stringBytes(task.scriptName)
-        + stringBytes(task.scriptCode)
+        + stringBytes(task.processorName)
+        + (task.processorRevision
+                ? stringBytes(task.processorRevision->id)
+                    + stringBytes(task.processorRevision->processorId)
+                    + stringBytes(task.processorRevision->contentHash)
+                : 0)
+        + QCborValue(task.processorParameters).toCbor().size()
         + qint64(sizeof(MessageParseTask));
 }
 
@@ -243,8 +242,6 @@ MessageParseResult MessageParseWorker::parse(const MessageParseTask &task)
     result.messageId = task.envelope.messageId;
     result.sequence = task.envelope.sequence;
     result.sessionId = task.envelope.sessionId;
-    result.scriptId = task.scriptId;
-    result.scriptName = task.scriptName;
 
     const PayloadFormat format = PayloadCodec::formatFromInt(task.envelope.payloadFormat);
     QString decodeError;
@@ -253,45 +250,88 @@ MessageParseResult MessageParseWorker::parse(const MessageParseTask &task)
         task.envelope.payloadBytes,
         decodeError);
 
-    if (!task.scriptId.isEmpty()) {
-        LuaScriptContext context;
-        context.topic = task.envelope.topic;
-        context.payloadBytes = task.envelope.payloadBytes;
-        context.decodedPayload = decodedPayload;
-        context.decodeError = decodeError;
-        context.format = format;
-        context.timestamp = task.envelope.timestamp;
-
-        const LuaScriptResult scriptResult = m_runtimeCache->run(
-            task.scriptId,
-            task.scriptCode,
-            context);
-        if (!scriptResult.success) {
-            result.state = MessageParseState::Failed;
-            result.parseError = scriptResult.error;
-            result.parsedFormat = QStringLiteral("Lua: %1").arg(task.scriptName);
-            return result;
-        }
-        result.parsedPayload = scriptResult.output;
-        result.parsedFormat = QStringLiteral("Lua: %1").arg(task.scriptName);
-    } else {
-        result.parsedFormat = PayloadCodec::formatName(format);
+    if (!task.processorRevision) {
+        result.displayFormat = PayloadCodec::formatName(format);
         if (!decodeError.isEmpty()) {
             result.state = MessageParseState::Failed;
-            result.parseError = decodeError;
+            result.displayError = decodeError;
             return result;
         }
-        result.parsedPayload = decodedPayload;
-    }
-
-    if (result.parsedPayload.size() > m_limits.maxResultCharacters) {
-        result.state = MessageParseState::Failed;
-        result.parsedPayload.clear();
-        result.parseError = QStringLiteral("Parsed result exceeds the maximum display length.");
+        result.displayPayload = decodedPayload;
+        if (result.displayPayload.size() > m_limits.maxResultCharacters) {
+            result.state = MessageParseState::Failed;
+            result.displayPayload.clear();
+            result.displayError = QStringLiteral(
+                "Decoded payload exceeds the maximum display length.");
+            return result;
+        }
+        result.state = MessageParseState::Succeeded;
         return result;
     }
 
-    result.state = MessageParseState::Succeeded;
+    const ProcessorRevisionSnapshot &revision = *task.processorRevision;
+    result.processorId = revision.processorId;
+    result.processorRevisionId = revision.id;
+    result.processorName = task.processorName;
+    result.processorLanguageId = revision.languageId;
+    result.processorRuntimeId = revision.runtimeId;
+    result.processorContentHash = revision.contentHash;
+
+    MessageProcessorContext context;
+    context.topic = task.envelope.topic;
+    context.payload = task.envelope.payloadBytes;
+    context.receivedAt = task.envelope.timestamp;
+    context.format = PayloadCodec::formatName(format);
+    context.decoded = decodedPayload;
+    context.decodeError = decodeError;
+    context.parameters = task.processorParameters;
+
+    ProcessorExecutionLimits executionLimits;
+    executionLimits.maxPreviewCharacters = (std::max)(
+        0,
+        m_limits.maxResultCharacters);
+    const ProcessorExecutionResult execution = m_processorEngine->execute(
+        revision,
+        context,
+        executionLimits);
+    result.processorExecutionState = processorExecutionStateName(execution.state);
+    result.processorExecutionDurationUs = execution.durationMicroseconds;
+    result.processorResultPreview = execution.preview;
+    if (execution.succeeded()) {
+        result.processorResultCbor = ProcessorValueCodec::encodeCanonical(execution.value);
+        result.displayPayload = execution.preview;
+        const QString language = revision.languageId == QStringLiteral("javascript")
+            ? QStringLiteral("JavaScript")
+            : revision.languageId == QStringLiteral("lua")
+                ? QStringLiteral("Lua")
+                : revision.languageId;
+        result.displayFormat = task.processorName.isEmpty()
+            ? language
+            : QStringLiteral("%1: %2").arg(language, task.processorName);
+        result.state = MessageParseState::Succeeded;
+        return result;
+    }
+
+    if (!execution.diagnostics.isEmpty()) {
+        result.processorExecutionErrorCode = execution.diagnostics.first().code;
+        QStringList messages;
+        messages.reserve(execution.diagnostics.size());
+        for (const ProcessorDiagnostic &diagnostic : execution.diagnostics) {
+            if (!diagnostic.message.isEmpty()) {
+                messages.append(diagnostic.message);
+            }
+        }
+        result.processorExecutionError = messages.join(QLatin1Char('\n'));
+    }
+    if (result.processorExecutionErrorCode.isEmpty()) {
+        result.processorExecutionErrorCode = QStringLiteral("internal_runtime_error");
+    }
+    if (result.processorExecutionError.isEmpty()) {
+        result.processorExecutionError = QStringLiteral("Processor execution failed.");
+    }
+    result.displayError = result.processorExecutionError;
+    result.displayFormat = QStringLiteral("Processor Error");
+    result.state = MessageParseState::Failed;
     return result;
 }
 

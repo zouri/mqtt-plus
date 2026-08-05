@@ -12,7 +12,6 @@ class HistoryWriterWorker;
 class MessageParseWorker;
 class PreferencesController;
 class QSettings;
-class ScriptService;
 struct MessageCapturePolicy;
 
 struct SessionImportRequest {
@@ -33,7 +32,6 @@ class SessionService : public QObject
 public:
     explicit SessionService(
         QSettings &settings,
-        ScriptService &scriptService,
         HistoryStore &historyStore,
         PreferencesController &preferences,
         QObject *parent = nullptr);
@@ -94,7 +92,6 @@ private:
     SessionState createDefaultSession(const QString &name);
 
     QSettings &m_settings;
-    ScriptService &m_scriptService;
     HistoryStore &m_historyStore;
     HistoryWriterWorker *m_historyWriter = nullptr;
     MessageParseWorker *m_messageParser = nullptr;

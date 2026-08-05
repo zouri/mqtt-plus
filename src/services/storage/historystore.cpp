@@ -12,7 +12,7 @@
 #include <algorithm>
 
 namespace {
-constexpr int kParseStateSchemaVersion = 1;
+constexpr int kHistorySchemaVersion = 2;
 
 QString nonNullString(const QString &value)
 {
@@ -30,18 +30,28 @@ QStringList requiredMessageColumns()
         QStringLiteral("qos"),
         QStringLiteral("retain"),
         QStringLiteral("retain_known"),
-        QStringLiteral("parsed_payload"),
-        QStringLiteral("parsed_format"),
-        QStringLiteral("parse_error"),
-        QStringLiteral("script_id"),
-        QStringLiteral("script_name"),
+        QStringLiteral("display_payload"),
+        QStringLiteral("display_format"),
+        QStringLiteral("display_error"),
+        QStringLiteral("display_state"),
+        QStringLiteral("processor_id"),
+        QStringLiteral("processor_revision_id"),
+        QStringLiteral("processor_name"),
+        QStringLiteral("processor_language_id"),
+        QStringLiteral("processor_runtime_id"),
+        QStringLiteral("processor_content_hash"),
+        QStringLiteral("processor_result_cbor"),
+        QStringLiteral("processor_result_preview"),
+        QStringLiteral("processor_execution_state"),
+        QStringLiteral("processor_execution_error_code"),
+        QStringLiteral("processor_execution_error"),
+        QStringLiteral("processor_execution_duration_us"),
         QStringLiteral("payload_bytes"),
         QStringLiteral("payload_size"),
         QStringLiteral("payload_state"),
         QStringLiteral("payload_preview"),
         QStringLiteral("payload_hash"),
         QStringLiteral("payload_format"),
-        QStringLiteral("parse_state"),
     };
 }
 
@@ -56,23 +66,44 @@ QVariantMap messageRowFromQuery(const QSqlQuery &query)
     row.insert(QStringLiteral("qos"), query.value(4).toInt());
     row.insert(QStringLiteral("retain"), query.value(5).toBool());
     row.insert(QStringLiteral("retain_known"), query.value(6).toBool());
-    row.insert(QStringLiteral("parsed_payload"), query.value(7).toString());
-    row.insert(QStringLiteral("parsed_format"), query.value(8).toString());
-    row.insert(QStringLiteral("parse_error"), query.value(9).toString());
-    row.insert(QStringLiteral("script_id"), query.value(10).toString());
-    row.insert(QStringLiteral("script_name"), query.value(11).toString());
-    row.insert(QStringLiteral("payload_bytes"), query.value(12).toByteArray());
-    row.insert(QStringLiteral("payload_size"), query.value(13).toLongLong());
-    row.insert(QStringLiteral("payload_state"), query.value(14).toString());
-    row.insert(QStringLiteral("payload_preview"), query.value(15).toString());
-    row.insert(QStringLiteral("payload_hash"), query.value(16).toString());
-    row.insert(QStringLiteral("payload_format"), query.value(17).toInt());
-    row.insert(QStringLiteral("parse_state"), query.value(18).toString());
+    row.insert(QStringLiteral("display_payload"), query.value(7).toString());
+    row.insert(QStringLiteral("display_format"), query.value(8).toString());
+    row.insert(QStringLiteral("display_error"), query.value(9).toString());
+    row.insert(QStringLiteral("display_state"), query.value(10).toString());
+    row.insert(QStringLiteral("processor_id"), query.value(11).toString());
+    row.insert(QStringLiteral("processor_revision_id"), query.value(12).toString());
+    row.insert(QStringLiteral("processor_name"), query.value(13).toString());
+    row.insert(QStringLiteral("processor_language_id"), query.value(14).toString());
+    row.insert(QStringLiteral("processor_runtime_id"), query.value(15).toString());
+    row.insert(QStringLiteral("processor_content_hash"), query.value(16).toString());
+    row.insert(QStringLiteral("processor_result_cbor"), query.value(17).toByteArray());
+    row.insert(QStringLiteral("processor_result_preview"), query.value(18).toString());
+    row.insert(QStringLiteral("processor_execution_state"), query.value(19).toString());
+    row.insert(QStringLiteral("processor_execution_error_code"), query.value(20).toString());
+    row.insert(QStringLiteral("processor_execution_error"), query.value(21).toString());
+    row.insert(QStringLiteral("processor_execution_duration_us"), query.value(22).toLongLong());
+    row.insert(QStringLiteral("payload_bytes"), query.value(23).toByteArray());
+    row.insert(QStringLiteral("payload_size"), query.value(24).toLongLong());
+    row.insert(QStringLiteral("payload_state"), query.value(25).toString());
+    row.insert(QStringLiteral("payload_preview"), query.value(26).toString());
+    row.insert(QStringLiteral("payload_hash"), query.value(27).toString());
+    row.insert(QStringLiteral("payload_format"), query.value(28).toInt());
     return row;
 }
 
-bool migrateParseStateColumn(QSqlDatabase &db, QString &error)
+bool resetIncompatibleMessageTable(QSqlDatabase &db, QString &error)
 {
+    QSqlQuery tableQuery(db);
+    if (!tableQuery.exec(QStringLiteral(
+            "SELECT 1 FROM sqlite_master "
+            "WHERE type = 'table' AND name = 'mqtt_messages'"))) {
+        error = tableQuery.lastError().text();
+        return false;
+    }
+    if (!tableQuery.next()) {
+        return true;
+    }
+
     QSqlQuery infoQuery(db);
     if (!infoQuery.exec(QStringLiteral("PRAGMA table_info(mqtt_messages)"))) {
         error = infoQuery.lastError().text();
@@ -84,111 +115,64 @@ bool migrateParseStateColumn(QSqlDatabase &db, QString &error)
         columns.insert(infoQuery.value(1).toString());
     }
     if (columns.isEmpty()) {
+        error = QStringLiteral("Cannot inspect the existing mqtt_messages schema.");
+        return false;
+    }
+
+    QSqlQuery versionQuery(db);
+    if (!versionQuery.exec(QStringLiteral("PRAGMA user_version"))
+        || !versionQuery.next()) {
+        error = versionQuery.lastError().text();
+        return false;
+    }
+
+    const QStringList requiredColumns = requiredMessageColumns();
+    bool isCompatible = versionQuery.value(0).toInt() >= kHistorySchemaVersion;
+    for (const QString &column : requiredColumns) {
+        if (!columns.contains(column)) {
+            isCompatible = false;
+            break;
+        }
+    }
+    if (isCompatible) {
         return true;
     }
 
-    const QStringList canonicalColumns {
-        QStringLiteral("parsed_payload"),
-        QStringLiteral("parsed_format"),
-        QStringLiteral("parse_error"),
-        QStringLiteral("script_id"),
-        QStringLiteral("payload_bytes"),
-        QStringLiteral("payload_state"),
-        QStringLiteral("payload_format"),
-    };
-    for (const QString &column : canonicalColumns) {
-        if (!columns.contains(column)) {
-            return true;
-        }
-    }
-
-    const bool parseStateColumnExists = columns.contains(QStringLiteral("parse_state"));
-    QSqlQuery migrationQuery(db);
-    if (parseStateColumnExists) {
-        if (!migrationQuery.exec(QStringLiteral("PRAGMA user_version"))
-            || !migrationQuery.next()) {
-            error = migrationQuery.lastError().text();
-            return false;
-        }
-        if (migrationQuery.value(0).toInt() >= kParseStateSchemaVersion) {
-            return true;
-        }
-    }
-
-    if (!parseStateColumnExists) {
-        if (!db.transaction()) {
-            error = db.lastError().text();
-            return false;
-        }
-        if (!migrationQuery.exec(QStringLiteral(
-                "ALTER TABLE mqtt_messages "
-                "ADD COLUMN parse_state TEXT NOT NULL DEFAULT 'not_required'"))) {
-            error = migrationQuery.lastError().text();
-            db.rollback();
-            return false;
-        }
-    }
-
-    const QString repairFilter = parseStateColumnExists
-        ? QStringLiteral(
-              " WHERE parse_state = 'not_required' "
-              "AND (parse_error <> '' OR parsed_payload <> '' OR parsed_format <> '')")
-        : QString();
-    if (!migrationQuery.exec(QStringLiteral(
-            "UPDATE mqtt_messages SET parse_state = CASE "
-            "WHEN parse_error <> '' THEN 'failed' "
-            "WHEN parsed_payload <> '' OR parsed_format <> '' THEN 'succeeded' "
-            "ELSE 'not_required' END")
-            + repairFilter)) {
-        error = migrationQuery.lastError().text();
-        if (!parseStateColumnExists) {
-            db.rollback();
-        }
+    QSqlQuery totalsQuery(db);
+    if (!totalsQuery.exec(QStringLiteral(
+            "SELECT 1 FROM sqlite_master "
+            "WHERE type = 'table' AND name = 'mqtt_message_totals'"))) {
+        error = totalsQuery.lastError().text();
         return false;
     }
+    const bool totalsTableExists = totalsQuery.next();
+    tableQuery.finish();
+    infoQuery.finish();
+    versionQuery.finish();
+    totalsQuery.finish();
 
-    if (!migrationQuery.exec(QStringLiteral("PRAGMA user_version = %1")
-            .arg(kParseStateSchemaVersion))) {
-        error = migrationQuery.lastError().text();
-        if (!parseStateColumnExists) {
-            db.rollback();
-        }
-        return false;
-    }
-
-    if (!parseStateColumnExists && !db.commit()) {
+    if (!db.transaction()) {
         error = db.lastError().text();
+        return false;
+    }
+
+    QSqlQuery resetQuery(db);
+    if (!resetQuery.exec(QStringLiteral("DROP TABLE mqtt_messages"))) {
+        error = resetQuery.lastError().text();
         db.rollback();
         return false;
     }
-    return true;
-}
-
-bool resetStaleMessageTable(QSqlDatabase &db, QString &error)
-{
-    QSqlQuery infoQuery(db);
-    if (!infoQuery.exec(QStringLiteral("PRAGMA table_info(mqtt_messages)"))) {
-        error = infoQuery.lastError().text();
+    if (totalsTableExists
+        && !resetQuery.exec(QStringLiteral("DELETE FROM mqtt_message_totals"))) {
+        error = resetQuery.lastError().text();
+        db.rollback();
         return false;
     }
 
-    QSet<QString> columns;
-    while (infoQuery.next()) {
-        columns.insert(infoQuery.value(1).toString());
-    }
-    if (columns.isEmpty()) {
-        return true;
-    }
-
-    for (const QString &column : requiredMessageColumns()) {
-        if (!columns.contains(column)) {
-            QSqlQuery dropQuery(db);
-            if (!dropQuery.exec(QStringLiteral("DROP TABLE mqtt_messages"))) {
-                error = dropQuery.lastError().text();
-                return false;
-            }
-            return true;
-        }
+    if (!db.commit()) {
+        error = db.lastError().text();
+        db.rollback();
+        return false;
     }
     return true;
 }
@@ -313,9 +297,14 @@ HistoryWriteResult HistoryStore::writeMessageBatch(
             QStringLiteral(
                 "INSERT INTO mqtt_messages("
                 "id, session_id, timestamp, direction, topic, qos, retain, retain_known, "
-                "parsed_payload, parsed_format, parse_error, script_id, script_name, "
-                "payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format, parse_state) "
-                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
+                "display_payload, display_format, display_error, display_state, "
+                "processor_id, processor_revision_id, processor_name, processor_language_id, "
+                "processor_runtime_id, processor_content_hash, processor_result_cbor, "
+                "processor_result_preview, processor_execution_state, "
+                "processor_execution_error_code, processor_execution_error, "
+                "processor_execution_duration_us, payload_bytes, payload_size, payload_state, "
+                "payload_preview, payload_hash, payload_format) "
+                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
         m_lastError = insertQuery.lastError().text();
         result.error = m_lastError;
         return result;
@@ -324,8 +313,12 @@ HistoryWriteResult HistoryStore::writeMessageBatch(
     QSqlQuery updateQuery(m_db);
     if (!parseResults.isEmpty() && !updateQuery.prepare(QStringLiteral(
             "UPDATE mqtt_messages SET "
-            "parsed_payload = ?, parsed_format = ?, parse_error = ?, "
-            "script_id = ?, script_name = ?, parse_state = ? "
+            "display_payload = ?, display_format = ?, display_error = ?, display_state = ?, "
+            "processor_id = ?, processor_revision_id = ?, processor_name = ?, "
+            "processor_language_id = ?, processor_runtime_id = ?, processor_content_hash = ?, "
+            "processor_result_cbor = ?, processor_result_preview = ?, processor_execution_state = ?, "
+            "processor_execution_error_code = ?, processor_execution_error = ?, "
+            "processor_execution_duration_us = ? "
             "WHERE id = ?"))) {
         m_lastError = updateQuery.lastError().text();
         result.error = m_lastError;
@@ -353,8 +346,11 @@ HistoryWriteResult HistoryStore::writeMessageBatch(
             message.payloadSize = message.payloadBytes.size();
         }
 
-        if (message.parseState.isEmpty()) {
-            message.parseState = QStringLiteral("not_required");
+        if (message.displayState.isEmpty()) {
+            message.displayState = QStringLiteral("not_required");
+        }
+        if (message.processorExecutionState.isEmpty()) {
+            message.processorExecutionState = QStringLiteral("not_required");
         }
 
         insertQuery.bindValue(0, message.id);
@@ -365,18 +361,28 @@ HistoryWriteResult HistoryStore::writeMessageBatch(
         insertQuery.bindValue(5, message.qos);
         insertQuery.bindValue(6, message.retain);
         insertQuery.bindValue(7, message.retainKnown);
-        insertQuery.bindValue(8, nonNullString(message.parsedPayload));
-        insertQuery.bindValue(9, nonNullString(message.parsedFormat));
-        insertQuery.bindValue(10, nonNullString(message.parseError));
-        insertQuery.bindValue(11, nonNullString(message.scriptId));
-        insertQuery.bindValue(12, nonNullString(message.scriptName));
-        insertQuery.bindValue(13, message.payloadBytes);
-        insertQuery.bindValue(14, message.payloadSize);
-        insertQuery.bindValue(15, nonNullString(message.payloadState));
-        insertQuery.bindValue(16, nonNullString(message.payloadPreview));
-        insertQuery.bindValue(17, nonNullString(message.payloadHash));
-        insertQuery.bindValue(18, message.payloadFormat);
-        insertQuery.bindValue(19, nonNullString(message.parseState));
+        insertQuery.bindValue(8, nonNullString(message.displayPayload));
+        insertQuery.bindValue(9, nonNullString(message.displayFormat));
+        insertQuery.bindValue(10, nonNullString(message.displayError));
+        insertQuery.bindValue(11, nonNullString(message.displayState));
+        insertQuery.bindValue(12, nonNullString(message.processorId));
+        insertQuery.bindValue(13, nonNullString(message.processorRevisionId));
+        insertQuery.bindValue(14, nonNullString(message.processorName));
+        insertQuery.bindValue(15, nonNullString(message.processorLanguageId));
+        insertQuery.bindValue(16, nonNullString(message.processorRuntimeId));
+        insertQuery.bindValue(17, nonNullString(message.processorContentHash));
+        insertQuery.bindValue(18, message.processorResultCbor);
+        insertQuery.bindValue(19, nonNullString(message.processorResultPreview));
+        insertQuery.bindValue(20, nonNullString(message.processorExecutionState));
+        insertQuery.bindValue(21, nonNullString(message.processorExecutionErrorCode));
+        insertQuery.bindValue(22, nonNullString(message.processorExecutionError));
+        insertQuery.bindValue(23, message.processorExecutionDurationUs);
+        insertQuery.bindValue(24, message.payloadBytes);
+        insertQuery.bindValue(25, message.payloadSize);
+        insertQuery.bindValue(26, nonNullString(message.payloadState));
+        insertQuery.bindValue(27, nonNullString(message.payloadPreview));
+        insertQuery.bindValue(28, nonNullString(message.payloadHash));
+        insertQuery.bindValue(29, message.payloadFormat);
         if (!insertQuery.exec()) {
             m_lastError = insertQuery.lastError().text();
             m_db.rollback();
@@ -397,13 +403,23 @@ HistoryWriteResult HistoryStore::writeMessageBatch(
             result.error = m_lastError;
             return result;
         }
-        updateQuery.bindValue(0, nonNullString(parseResult.parsedPayload));
-        updateQuery.bindValue(1, nonNullString(parseResult.parsedFormat));
-        updateQuery.bindValue(2, nonNullString(parseResult.parseError));
-        updateQuery.bindValue(3, nonNullString(parseResult.scriptId));
-        updateQuery.bindValue(4, nonNullString(parseResult.scriptName));
-        updateQuery.bindValue(5, messageParseStateName(parseResult.state));
-        updateQuery.bindValue(6, parseResult.messageId);
+        updateQuery.bindValue(0, nonNullString(parseResult.displayPayload));
+        updateQuery.bindValue(1, nonNullString(parseResult.displayFormat));
+        updateQuery.bindValue(2, nonNullString(parseResult.displayError));
+        updateQuery.bindValue(3, messageParseStateName(parseResult.state));
+        updateQuery.bindValue(4, nonNullString(parseResult.processorId));
+        updateQuery.bindValue(5, nonNullString(parseResult.processorRevisionId));
+        updateQuery.bindValue(6, nonNullString(parseResult.processorName));
+        updateQuery.bindValue(7, nonNullString(parseResult.processorLanguageId));
+        updateQuery.bindValue(8, nonNullString(parseResult.processorRuntimeId));
+        updateQuery.bindValue(9, nonNullString(parseResult.processorContentHash));
+        updateQuery.bindValue(10, parseResult.processorResultCbor);
+        updateQuery.bindValue(11, nonNullString(parseResult.processorResultPreview));
+        updateQuery.bindValue(12, nonNullString(parseResult.processorExecutionState));
+        updateQuery.bindValue(13, nonNullString(parseResult.processorExecutionErrorCode));
+        updateQuery.bindValue(14, nonNullString(parseResult.processorExecutionError));
+        updateQuery.bindValue(15, parseResult.processorExecutionDurationUs);
+        updateQuery.bindValue(16, parseResult.messageId);
         if (!updateQuery.exec() || updateQuery.numRowsAffected() != 1) {
             m_lastError = updateQuery.lastError().text();
             if (m_lastError.isEmpty()) {
@@ -505,13 +521,20 @@ QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) con
     query.prepare(
         QStringLiteral(
             "SELECT id, timestamp, direction, topic, qos, retain, retain_known, "
-            "parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "payload_bytes, "
-            "payload_size, payload_state, payload_preview, payload_hash, payload_format, parse_state "
+            "display_payload, display_format, display_error, display_state, "
+            "processor_id, processor_revision_id, processor_name, processor_language_id, "
+            "processor_runtime_id, processor_content_hash, processor_result_cbor, "
+            "processor_result_preview, processor_execution_state, processor_execution_error_code, "
+            "processor_execution_error, processor_execution_duration_us, payload_bytes, "
+            "payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "FROM ("
             "    SELECT id, timestamp, direction, topic, qos, retain, retain_known, "
-            "    parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "    NULL AS payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format, parse_state "
+            "    display_payload, display_format, display_error, display_state, "
+            "    processor_id, processor_revision_id, processor_name, processor_language_id, "
+            "    processor_runtime_id, processor_content_hash, NULL AS processor_result_cbor, "
+            "    processor_result_preview, processor_execution_state, processor_execution_error_code, "
+            "    processor_execution_error, processor_execution_duration_us, NULL AS payload_bytes, "
+            "    payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "    FROM mqtt_messages "
             "    WHERE session_id = ? "
             "    ORDER BY id DESC "
@@ -543,13 +566,20 @@ QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 b
     query.prepare(
         QStringLiteral(
             "SELECT id, timestamp, direction, topic, qos, retain, retain_known, "
-            "parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "payload_bytes, "
-            "payload_size, payload_state, payload_preview, payload_hash, payload_format, parse_state "
+            "display_payload, display_format, display_error, display_state, "
+            "processor_id, processor_revision_id, processor_name, processor_language_id, "
+            "processor_runtime_id, processor_content_hash, processor_result_cbor, "
+            "processor_result_preview, processor_execution_state, processor_execution_error_code, "
+            "processor_execution_error, processor_execution_duration_us, payload_bytes, "
+            "payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "FROM ("
             "    SELECT id, timestamp, direction, topic, qos, retain, retain_known, "
-            "    parsed_payload, parsed_format, parse_error, script_id, script_name, "
-            "    NULL AS payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format, parse_state "
+            "    display_payload, display_format, display_error, display_state, "
+            "    processor_id, processor_revision_id, processor_name, processor_language_id, "
+            "    processor_runtime_id, processor_content_hash, NULL AS processor_result_cbor, "
+            "    processor_result_preview, processor_execution_state, processor_execution_error_code, "
+            "    processor_execution_error, processor_execution_duration_us, NULL AS payload_bytes, "
+            "    payload_size, payload_state, payload_preview, payload_hash, payload_format "
             "    FROM mqtt_messages "
             "    WHERE session_id = ? AND id < ? "
             "    ORDER BY id DESC "
@@ -580,8 +610,12 @@ QVariantMap HistoryStore::loadMessage(qint64 messageId) const
     QSqlQuery query(m_db);
     query.prepare(QStringLiteral(
         "SELECT id, timestamp, direction, topic, qos, retain, retain_known, "
-        "parsed_payload, parsed_format, parse_error, script_id, script_name, "
-        "payload_bytes, payload_size, payload_state, payload_preview, payload_hash, payload_format, parse_state "
+        "display_payload, display_format, display_error, display_state, "
+        "processor_id, processor_revision_id, processor_name, processor_language_id, "
+        "processor_runtime_id, processor_content_hash, processor_result_cbor, "
+        "processor_result_preview, processor_execution_state, processor_execution_error_code, "
+        "processor_execution_error, processor_execution_duration_us, payload_bytes, "
+        "payload_size, payload_state, payload_preview, payload_hash, payload_format "
         "FROM mqtt_messages WHERE id = ?"));
     query.addBindValue(messageId);
     if (!query.exec() || !query.next()) {
@@ -872,11 +906,7 @@ bool HistoryStore::initialize(const QString &dataPath, int busyTimeoutMs)
         return false;
     }
 
-    if (!migrateParseStateColumn(m_db, m_lastError)) {
-        return false;
-    }
-
-    if (!resetStaleMessageTable(m_db, m_lastError)) {
+    if (!resetIncompatibleMessageTable(m_db, m_lastError)) {
         return false;
     }
 
@@ -891,18 +921,28 @@ bool HistoryStore::initialize(const QString &dataPath, int busyTimeoutMs)
                 "qos INTEGER NOT NULL DEFAULT -1, "
                 "retain INTEGER NOT NULL DEFAULT 0, "
                 "retain_known INTEGER NOT NULL DEFAULT 0, "
-                "parsed_payload TEXT NOT NULL DEFAULT '', "
-                "parsed_format TEXT NOT NULL DEFAULT '', "
-                "parse_error TEXT NOT NULL DEFAULT '', "
-                "script_id TEXT NOT NULL DEFAULT '', "
-                "script_name TEXT NOT NULL DEFAULT '', "
+                "display_payload TEXT NOT NULL DEFAULT '', "
+                "display_format TEXT NOT NULL DEFAULT '', "
+                "display_error TEXT NOT NULL DEFAULT '', "
+                "display_state TEXT NOT NULL DEFAULT 'not_required', "
+                "processor_id TEXT NOT NULL DEFAULT '', "
+                "processor_revision_id TEXT NOT NULL DEFAULT '', "
+                "processor_name TEXT NOT NULL DEFAULT '', "
+                "processor_language_id TEXT NOT NULL DEFAULT '', "
+                "processor_runtime_id TEXT NOT NULL DEFAULT '', "
+                "processor_content_hash TEXT NOT NULL DEFAULT '', "
+                "processor_result_cbor BLOB, "
+                "processor_result_preview TEXT NOT NULL DEFAULT '', "
+                "processor_execution_state TEXT NOT NULL DEFAULT 'not_required', "
+                "processor_execution_error_code TEXT NOT NULL DEFAULT '', "
+                "processor_execution_error TEXT NOT NULL DEFAULT '', "
+                "processor_execution_duration_us INTEGER NOT NULL DEFAULT 0, "
                 "payload_bytes BLOB, "
                 "payload_size INTEGER NOT NULL DEFAULT 0, "
                 "payload_state TEXT NOT NULL DEFAULT 'full', "
                 "payload_preview TEXT NOT NULL DEFAULT '', "
                 "payload_hash TEXT NOT NULL DEFAULT '', "
-                "payload_format INTEGER NOT NULL DEFAULT -1, "
-                "parse_state TEXT NOT NULL DEFAULT 'not_required')"))) {
+                "payload_format INTEGER NOT NULL DEFAULT -1)"))) {
         m_lastError = query.lastError().text();
         return false;
     }
@@ -912,9 +952,9 @@ bool HistoryStore::initialize(const QString &dataPath, int busyTimeoutMs)
         m_lastError = query.lastError().text();
         return false;
     }
-    if (query.value(0).toInt() < kParseStateSchemaVersion
+    if (query.value(0).toInt() < kHistorySchemaVersion
         && !query.exec(QStringLiteral("PRAGMA user_version = %1")
-                .arg(kParseStateSchemaVersion))) {
+                .arg(kHistorySchemaVersion))) {
         m_lastError = query.lastError().text();
         return false;
     }

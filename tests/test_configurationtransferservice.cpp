@@ -3,7 +3,6 @@
 #include "usecases/configurationtransferservice.h"
 #include "usecases/draftlibraryservice.h"
 #include "usecases/preferencescontroller.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 
 #include <QDir>
@@ -64,13 +63,11 @@ void ConfigurationTransferServiceTest::previewsImportsAndExportsWithoutCredentia
         QSettings::IniFormat);
     PreferencesController preferences(&settings);
     HistoryStore historyStore(directory.filePath(QStringLiteral("history")));
-    ScriptService scriptService;
     DraftLibraryService draftService(directory.filePath(QStringLiteral("drafts")));
     draftService.load();
     QTRY_VERIFY(draftService.ready());
     SessionService sessionService(
         settings,
-        scriptService,
         historyStore,
         preferences);
     QVERIFY(sessionService.loadSessions());
@@ -161,7 +158,6 @@ void ConfigurationTransferServiceTest::rollsBackSessionsSettingsAndCertificatesW
 
     PreferencesController preferences(&settings);
     HistoryStore historyStore(directory.filePath(QStringLiteral("history")));
-    ScriptService scriptService;
     const QString blockedDraftRoot =
         directory.filePath(QStringLiteral("draft-storage-blocker"));
     QFile blocker(blockedDraftRoot);
@@ -173,7 +169,6 @@ void ConfigurationTransferServiceTest::rollsBackSessionsSettingsAndCertificatesW
     QTRY_VERIFY(draftService.ready());
     SessionService sessionService(
         settings,
-        scriptService,
         historyStore,
         preferences);
     QVERIFY(sessionService.loadSessions());
@@ -261,7 +256,6 @@ void ConfigurationTransferServiceTest::retainsCertificatesWhenSessionRollbackFai
         format);
     PreferencesController preferences(&settings);
     HistoryStore historyStore(directory.filePath(QStringLiteral("history")));
-    ScriptService scriptService;
     const QString blockedDraftRoot = directory.filePath(QStringLiteral("draft-blocker"));
     QFile blocker(blockedDraftRoot);
     QVERIFY(blocker.open(QIODevice::WriteOnly));
@@ -272,7 +266,6 @@ void ConfigurationTransferServiceTest::retainsCertificatesWhenSessionRollbackFai
     QTRY_VERIFY(draftService.ready());
     SessionService sessionService(
         settings,
-        scriptService,
         historyStore,
         preferences);
     QVERIFY(sessionService.loadSessions());

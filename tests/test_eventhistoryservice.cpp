@@ -1,17 +1,18 @@
 #include "usecases/eventhistoryservice.h"
 #include "usecases/preferencescontroller.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 #include "models/eventstreammodel.h"
 #include "presentation/eventrenderer.h"
 #include "services/payload/payloadcodec.h"
 #include "services/parsing/messageparseworker.h"
+#include "services/processors/processorlibrary.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 
 #include <QtTest/QtTest>
 
 #include <QSettings>
+#include <QCborValue>
 #include <QSemaphore>
 #include <QSqlDatabase>
 #include <QSqlError>
@@ -29,6 +30,7 @@ class EventHistoryServiceTest : public QObject
 private slots:
     void liveRowsDecodeConfiguredPayloadFormatWithoutScript();
     void structuredParseResultPersistsAfterRawCapture();
+    void resolvedProcessorIdentityIsCapturedBeforeExecution();
     void parserOverloadKeepsRawCapture();
     void rejectedParseResultDoesNotPublishTransientState();
     void parserDrainTimeoutStillFlushesWriter();
@@ -45,7 +47,7 @@ private slots:
     void previewOnlyRowsKeepPayloadBodyFreeOfStatusText();
     void skippedRowsKeepPayloadBodyEmpty();
     void publishedRowsAppearWhenOutputPaused();
-    void pausedIncomingRowsAreStoredWithoutScriptParsing();
+    void pausedIncomingRowsPersistUnavailableProcessorBinding();
     void pausedSubscriptionsDoNotAccumulateReceiveRate();
     void aggregateReceiveRateCountsOverlappingSubscriptionsOnce();
     void publishedAndIncomingRowsBothRemainInMessageStream();
@@ -83,7 +85,7 @@ struct Fixture {
     PreferencesController preferences;
     EventStreamModel messages;
     EventStreamModel logs;
-    ScriptService scripts;
+    ProcessorLibrary processors;
     QString launchTimestamp = QStringLiteral("2026-07-04T00:00:00.000Z");
     SessionService sessions;
     SessionState &session;
@@ -98,7 +100,8 @@ struct Fixture {
         , historyWriter(dataDir.path(), historyStore.nextMessageId(), writerLimits)
         , messageParser(parserLimits)
         , preferences(&settings)
-        , sessions(settings, scripts, historyStore, preferences)
+        , processors(dataDir.filePath(QStringLiteral("processors")))
+        , sessions(settings, historyStore, preferences)
         , session(initializeSession(sessions))
         , service(
               sessions,
@@ -107,7 +110,7 @@ struct Fixture {
               messageParser,
               messages,
               logs,
-              scripts,
+              processors,
               launchTimestamp,
               preferences)
     {
@@ -170,10 +173,75 @@ void EventHistoryServiceTest::structuredParseResultPersistsAfterRawCapture()
     const QVariantList rows = fixture.historyStore.loadMessages(fixture.session.id, 10);
     QCOMPARE(rows.size(), 1);
     const QVariantMap row = rows.first().toMap();
-    QCOMPARE(row.value(QStringLiteral("parse_state")).toString(), QStringLiteral("succeeded"));
-    QCOMPARE(row.value(QStringLiteral("parsed_format")).toString(), QStringLiteral("JSON"));
-    QVERIFY(row.value(QStringLiteral("parsed_payload")).toString().contains(QStringLiteral("\"value\": 23")));
+    QCOMPARE(row.value(QStringLiteral("display_state")).toString(), QStringLiteral("succeeded"));
+    QCOMPARE(row.value(QStringLiteral("display_format")).toString(), QStringLiteral("JSON"));
+    QVERIFY(row.value(QStringLiteral("display_payload")).toString().contains(QStringLiteral("\"value\": 23")));
     QCOMPARE(fixture.historyStore.loadMessagePayloadBytes(row.value(QStringLiteral("id")).toLongLong()), payload);
+}
+
+void EventHistoryServiceTest::resolvedProcessorIdentityIsCapturedBeforeExecution()
+{
+    Fixture fixture;
+    SaveProcessorRevisionResult saved;
+    {
+        ProcessorLibraryStore store(fixture.processors.storageDirectory());
+        QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+        SaveProcessorRevisionCommand command;
+        command.name = QStringLiteral("Scale Processor");
+        command.description = QStringLiteral("");
+        command.content.languageId = QStringLiteral("javascript");
+        command.content.runtimeId = QStringLiteral("qt-qjs");
+        command.content.entryFile = QStringLiteral("main.js");
+        command.content.files = {
+            {
+                QStringLiteral("main.js"),
+                QStringLiteral("text/javascript"),
+                QByteArrayLiteral(
+                    "function process(context) { "
+                    "return { scaled: context.parameters.gain }; }\n"),
+                {},
+            },
+        };
+        saved = store.saveRevision(command);
+        QVERIFY2(saved.ok, qPrintable(saved.error));
+    }
+    QVERIFY2(fixture.processors.reload(), qPrintable(fixture.processors.lastError()));
+
+    SubscriptionEntry subscription;
+    subscription.topic = QStringLiteral("devices/processor");
+    subscription.format = static_cast<int>(PayloadFormat::Json);
+    subscription.processor.processorId = saved.processor.id;
+    subscription.processor.parameters.insert(QStringLiteral("gain"), 3);
+    fixture.session.subscriptions.append(subscription);
+    fixture.session.runtime.subscriptionFormats.insert(
+        subscription.topic,
+        subscription.format);
+
+    fixture.service.appendIncomingMessage(
+        fixture.session.id,
+        subscription.topic,
+        QByteArrayLiteral("{}"));
+
+    const QVector<MessageRecord> pending = fixture.historyWriter.pendingMessages(fixture.session.id);
+    QCOMPARE(pending.size(), 1);
+    QCOMPARE(pending.first().processorId, saved.processor.id);
+    QCOMPARE(pending.first().processorRevisionId, saved.revision->id);
+    QCOMPARE(pending.first().processorContentHash, saved.revision->contentHash);
+    QCOMPARE(pending.first().processorExecutionState, QStringLiteral("pending"));
+
+    QVERIFY(fixture.service.flushPendingMessageHistory());
+    const QVariantList rows = fixture.historyStore.loadMessages(fixture.session.id, 10);
+    QCOMPARE(rows.size(), 1);
+    const QVariantMap row = rows.first().toMap();
+    QCOMPARE(row.value(QStringLiteral("processor_id")).toString(), saved.processor.id);
+    QCOMPARE(row.value(QStringLiteral("processor_revision_id")).toString(), saved.revision->id);
+    QCOMPARE(row.value(QStringLiteral("processor_execution_state")).toString(), QStringLiteral("succeeded"));
+    QVERIFY(row.value(QStringLiteral("processor_result_cbor")).toByteArray().isEmpty());
+    const QVariantMap fullRow = fixture.historyStore.loadMessage(
+        row.value(QStringLiteral("id")).toLongLong());
+    const QCborValue result = QCborValue::fromCbor(
+        fullRow.value(QStringLiteral("processor_result_cbor")).toByteArray());
+    QCOMPARE(result.toMap().value(QStringLiteral("scaled")).toInteger(), qint64(3));
 }
 
 void EventHistoryServiceTest::parserOverloadKeepsRawCapture()
@@ -197,7 +265,7 @@ void EventHistoryServiceTest::parserOverloadKeepsRawCapture()
     const QVariantList rows = fixture.historyStore.loadMessages(fixture.session.id, 10);
     QCOMPARE(rows.size(), 1);
     const QVariantMap row = rows.first().toMap();
-    QCOMPARE(row.value(QStringLiteral("parse_state")).toString(), QStringLiteral("skipped_overload"));
+    QCOMPARE(row.value(QStringLiteral("display_state")).toString(), QStringLiteral("skipped_overload"));
     QCOMPARE(fixture.historyStore.loadMessagePayloadBytes(row.value(QStringLiteral("id")).toLongLong()), payload);
 }
 
@@ -220,7 +288,7 @@ void EventHistoryServiceTest::rejectedParseResultDoesNotPublishTransientState()
     prefill.payloadSize = prefill.payloadBytes.size();
     prefill.payloadPreview = QStringLiteral("{}");
     prefill.payloadState = QStringLiteral("full");
-    prefill.parseState = QStringLiteral("pending");
+    prefill.displayState = QStringLiteral("pending");
     const qint64 prefillId = fixture.historyWriter.enqueueMessage(prefill);
     QVERIFY(prefillId > 0);
 
@@ -228,7 +296,7 @@ void EventHistoryServiceTest::rejectedParseResultDoesNotPublishTransientState()
     filler.messageId = prefillId;
     filler.sessionId = fixture.session.id;
     filler.state = MessageParseState::Failed;
-    filler.parseError = QStringLiteral("filler");
+    filler.displayError = QStringLiteral("filler");
     QVERIFY(fixture.historyWriter.enqueueParseResult(filler));
     QVERIFY(fixture.historyWriter.enqueueParseResult(filler));
 
@@ -257,7 +325,7 @@ void EventHistoryServiceTest::rejectedParseResultDoesNotPublishTransientState()
         });
     QVERIFY(storedMessage != rows.cend());
     QCOMPARE(
-        storedMessage->toMap().value(QStringLiteral("parse_state")).toString(),
+        storedMessage->toMap().value(QStringLiteral("display_state")).toString(),
         QStringLiteral("pending"));
 }
 
@@ -296,8 +364,8 @@ void EventHistoryServiceTest::parserDrainTimeoutStillFlushesWriter()
     PreferencesController preferences(&settings);
     EventStreamModel messages;
     EventStreamModel logs;
-    ScriptService scripts;
-    SessionService sessions(settings, scripts, historyStore, preferences);
+    ProcessorLibrary processors(dataDir.filePath(QStringLiteral("processors")));
+    SessionService sessions(settings, historyStore, preferences);
     SessionState &session = initializeSession(sessions);
     sessions.setHistoryWriter(&historyWriter);
     sessions.setMessageParser(messageParser);
@@ -311,7 +379,7 @@ void EventHistoryServiceTest::parserDrainTimeoutStillFlushesWriter()
             *messageParser,
             messages,
             logs,
-            scripts,
+            processors,
             QStringLiteral("2026-08-01T00:00:00.000Z"),
             preferences);
 
@@ -323,7 +391,7 @@ void EventHistoryServiceTest::parserDrainTimeoutStillFlushesWriter()
         record.payloadSize = record.payloadBytes.size();
         record.payloadPreview = QStringLiteral("raw");
         record.payloadState = QStringLiteral("full");
-        record.parseState = QStringLiteral("pending");
+        record.displayState = QStringLiteral("pending");
         messageId = historyWriter.enqueueMessage(record);
         QVERIFY(messageId > 0);
 
@@ -473,7 +541,7 @@ void EventHistoryServiceTest::elevatedWriterSkipsParsingAndRecovers()
     QVERIFY(first != pending.cend());
     QCOMPARE(first->payloadBytes, firstPayload);
     QVERIFY(first->payloadPreview.toUtf8().size() <= 4 * 1024);
-    QCOMPARE(first->parseState, QStringLiteral("skipped_overload"));
+    QCOMPARE(first->displayState, QStringLiteral("skipped_overload"));
 
     QVERIFY(fixture.service.flushPendingMessageHistory());
     QCOMPARE(fixture.service.messagePressureState(), QStringLiteral("normal"));
@@ -494,7 +562,7 @@ void EventHistoryServiceTest::elevatedWriterSkipsParsingAndRecovers()
         });
     QVERIFY(second != rows.cend());
     QCOMPARE(
-        second->toMap().value(QStringLiteral("parse_state")).toString(),
+        second->toMap().value(QStringLiteral("display_state")).toString(),
         QStringLiteral("succeeded"));
 }
 
@@ -717,9 +785,9 @@ void EventHistoryServiceTest::previewOnlyRowsKeepPayloadBodyFreeOfStatusText()
     historyRow.insert(QStringLiteral("payload_preview"), QStringLiteral("abc"));
     historyRow.insert(QStringLiteral("payload_hash"), QString());
     historyRow.insert(QStringLiteral("payload_format"), static_cast<int>(PayloadFormat::Plaintext));
-    historyRow.insert(QStringLiteral("parsed_payload"), QString());
-    historyRow.insert(QStringLiteral("parsed_format"), QString());
-    historyRow.insert(QStringLiteral("parse_error"), QString());
+    historyRow.insert(QStringLiteral("display_payload"), QString());
+    historyRow.insert(QStringLiteral("display_format"), QString());
+    historyRow.insert(QStringLiteral("display_error"), QString());
 
     const QVariantMap row = EventRenderer::renderHistoryRow(historyRow, {}, {});
 
@@ -762,16 +830,17 @@ void EventHistoryServiceTest::publishedRowsAppearWhenOutputPaused()
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payload")).toString(), QStringLiteral("on"));
 }
 
-void EventHistoryServiceTest::pausedIncomingRowsAreStoredWithoutScriptParsing()
+void EventHistoryServiceTest::pausedIncomingRowsPersistUnavailableProcessorBinding()
 {
     Fixture fixture;
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
     fixture.session.outputPaused = true;
+    fixture.preferences.setMaxIncomingPayloadBytes(1);
 
     SubscriptionEntry entry;
     entry.topic = QStringLiteral("devices/paused");
     entry.format = static_cast<int>(PayloadFormat::Json);
-    entry.scriptId = QStringLiteral("missing-script");
+    entry.processor.processorId = QStringLiteral("missing-processor");
     fixture.session.subscriptions.append(entry);
     fixture.session.runtime.subscriptionFormats.insert(entry.topic, entry.format);
 
@@ -788,8 +857,11 @@ void EventHistoryServiceTest::pausedIncomingRowsAreStoredWithoutScriptParsing()
     QCOMPARE(rows.size(), 1);
     const QVariantMap row = rows.first().toMap();
     QCOMPARE(row.value(QStringLiteral("topic")).toString(), QStringLiteral("devices/paused"));
-    QCOMPARE(row.value(QStringLiteral("parse_error")).toString(), QString());
-    QCOMPARE(row.value(QStringLiteral("script_id")).toString(), QString());
+    QCOMPARE(row.value(QStringLiteral("display_state")).toString(), QStringLiteral("failed"));
+    QCOMPARE(row.value(QStringLiteral("processor_id")).toString(), entry.processor.processorId);
+    QCOMPARE(
+        row.value(QStringLiteral("processor_execution_error_code")).toString(),
+        QStringLiteral("processor_not_found"));
 }
 
 void EventHistoryServiceTest::aggregateReceiveRateCountsOverlappingSubscriptionsOnce()

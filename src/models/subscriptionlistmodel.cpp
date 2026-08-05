@@ -1,9 +1,10 @@
 #include "subscriptionlistmodel.h"
 
-#include "domain/script.h"
 #include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
+#include "services/processors/processorlibrary.h"
 
+#include <QCborValue>
 #include <QDateTime>
 
 #include <algorithm>
@@ -62,10 +63,20 @@ QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
         return row.format;
     case FormatNameRole:
         return PayloadCodec::formatName(PayloadCodec::formatFromInt(row.format));
-    case ScriptIdRole:
-        return row.scriptId;
-    case ScriptNameRole:
-        return row.scriptName;
+    case ProcessorIdRole:
+        return row.processorId;
+    case ProcessorNameRole:
+        return row.processorName;
+    case ProcessorRevisionModeRole:
+        return row.processorRevisionMode;
+    case PinnedRevisionIdRole:
+        return row.pinnedRevisionId;
+    case ProcessorParametersCborBase64Role:
+        return row.processorParametersCborBase64;
+    case ProcessorBindingAvailableRole:
+        return row.processorBindingAvailable;
+    case ProcessorBindingDetailRole:
+        return row.processorBindingDetail;
     case ColorRole:
         return row.color;
     case PausedRole:
@@ -91,8 +102,13 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
         {TopicRateHistoryRole, "topicRateHistory"},
         {FormatRole, "format"},
         {FormatNameRole, "formatName"},
-        {ScriptIdRole, "scriptId"},
-        {ScriptNameRole, "scriptName"},
+        {ProcessorIdRole, "processorId"},
+        {ProcessorNameRole, "processorName"},
+        {ProcessorRevisionModeRole, "processorRevisionMode"},
+        {PinnedRevisionIdRole, "pinnedRevisionId"},
+        {ProcessorParametersCborBase64Role, "processorParametersCborBase64"},
+        {ProcessorBindingAvailableRole, "processorBindingAvailable"},
+        {ProcessorBindingDetailRole, "processorBindingDetail"},
         {ColorRole, "topicColor"},
         {PausedRole, "paused"},
         {StateRole, "subscriptionState"},
@@ -113,13 +129,13 @@ QVariantMap SubscriptionListModel::rowAt(int row) const
 void SubscriptionListModel::setSubscriptions(
     const QString &sourceSessionId,
     const QVector<SubscriptionEntry> &subscriptions,
-    const QVector<ScriptEntry> &scripts)
+    const ProcessorLibrary *processorLibrary)
 {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     QVector<SubscriptionRow> rows;
     rows.reserve(subscriptions.size());
     for (const SubscriptionEntry &subscription : subscriptions) {
-        rows.append(rowFromSubscription(subscription, scripts, nowMs));
+        rows.append(rowFromSubscription(subscription, processorLibrary, nowMs));
     }
 
     const bool sourceChanged = sourceSessionId != m_sourceSessionId;
@@ -229,14 +245,24 @@ bool SubscriptionListModel::updateTopicFps(
 
 SubscriptionListModel::SubscriptionRow SubscriptionListModel::rowFromSubscription(
     const SubscriptionEntry &subscription,
-    const QVector<ScriptEntry> &scripts,
+    const ProcessorLibrary *processorLibrary,
     qint64 nowMs)
 {
-    QString scriptName;
-    for (const ScriptEntry &script : scripts) {
-        if (script.id == subscription.scriptId) {
-            scriptName = script.name;
-            break;
+    QString processorName;
+    bool bindingAvailable = true;
+    QString bindingDetail;
+    if (!subscription.processor.processorId.isEmpty()) {
+        if (processorLibrary) {
+            if (const auto processor = processorLibrary->processorById(
+                subscription.processor.processorId)) {
+                processorName = processor->name;
+            }
+            bindingAvailable = processorLibrary->resolve(
+                subscription.processor,
+                &bindingDetail).has_value();
+        } else {
+            bindingAvailable = false;
+            bindingDetail = QStringLiteral("Processor Library is unavailable.");
         }
     }
 
@@ -250,8 +276,16 @@ SubscriptionListModel::SubscriptionRow SubscriptionListModel::rowFromSubscriptio
             : static_cast<qreal>(recentMessageCount(subscription.recentMessages, nowMs)),
         {},
         subscription.format,
-        subscription.scriptId,
-        scriptName,
+        subscription.processor.processorId,
+        processorName,
+        subscription.processor.revisionMode == ProcessorRevisionMode::Pinned
+            ? QStringLiteral("pinned")
+            : QStringLiteral("current"),
+        subscription.processor.pinnedRevisionId,
+        QString::fromLatin1(
+            QCborValue(subscription.processor.parameters).toCbor().toBase64()),
+        bindingAvailable,
+        bindingDetail,
         subscription.color,
         subscription.paused,
         subscription.runtimeState,
@@ -271,8 +305,15 @@ QVariantMap SubscriptionListModel::rowToMap(const SubscriptionRow &row)
     map.insert(QStringLiteral("topicRateHistory"), row.topicRateHistory);
     map.insert(QStringLiteral("format"), row.format);
     map.insert(QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(row.format)));
-    map.insert(QStringLiteral("scriptId"), row.scriptId);
-    map.insert(QStringLiteral("scriptName"), row.scriptName);
+    map.insert(QStringLiteral("processorId"), row.processorId);
+    map.insert(QStringLiteral("processorName"), row.processorName);
+    map.insert(QStringLiteral("processorRevisionMode"), row.processorRevisionMode);
+    map.insert(QStringLiteral("pinnedRevisionId"), row.pinnedRevisionId);
+    map.insert(
+        QStringLiteral("processorParametersCborBase64"),
+        row.processorParametersCborBase64);
+    map.insert(QStringLiteral("processorBindingAvailable"), row.processorBindingAvailable);
+    map.insert(QStringLiteral("processorBindingDetail"), row.processorBindingDetail);
     map.insert(QStringLiteral("color"), row.color);
     map.insert(QStringLiteral("paused"), row.paused);
     map.insert(QStringLiteral("state"), row.state);
@@ -315,11 +356,26 @@ QList<int> SubscriptionListModel::changedRoles(
         roles.append(FormatRole);
         roles.append(FormatNameRole);
     }
-    if (before.scriptId != after.scriptId) {
-        roles.append(ScriptIdRole);
+    if (before.processorId != after.processorId) {
+        roles.append(ProcessorIdRole);
     }
-    if (before.scriptName != after.scriptName) {
-        roles.append(ScriptNameRole);
+    if (before.processorName != after.processorName) {
+        roles.append(ProcessorNameRole);
+    }
+    if (before.processorRevisionMode != after.processorRevisionMode) {
+        roles.append(ProcessorRevisionModeRole);
+    }
+    if (before.pinnedRevisionId != after.pinnedRevisionId) {
+        roles.append(PinnedRevisionIdRole);
+    }
+    if (before.processorParametersCborBase64 != after.processorParametersCborBase64) {
+        roles.append(ProcessorParametersCborBase64Role);
+    }
+    if (before.processorBindingAvailable != after.processorBindingAvailable) {
+        roles.append(ProcessorBindingAvailableRole);
+    }
+    if (before.processorBindingDetail != after.processorBindingDetail) {
+        roles.append(ProcessorBindingDetailRole);
     }
     if (before.color != after.color) {
         roles.append(ColorRole);

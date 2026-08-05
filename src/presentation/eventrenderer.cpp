@@ -205,11 +205,11 @@ QVariantMap renderHistoryRow(
     const PayloadFormat format = storedPayloadFormat >= 0
         ? PayloadCodec::formatFromInt(storedPayloadFormat)
         : PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
-    const QString parserError = row.value(QStringLiteral("parse_error")).toString();
-    const QString parsedFormat = row.value(QStringLiteral("parsed_format")).toString();
+    const QString parserError = row.value(QStringLiteral("display_error")).toString();
+    const QString parsedFormat = row.value(QStringLiteral("display_format")).toString();
     const QString parsedPayload = boundedListText(
-        row.value(QStringLiteral("parsed_payload")).toString());
-    QString parseState = row.value(QStringLiteral("parse_state")).toString();
+        row.value(QStringLiteral("display_payload")).toString());
+    QString parseState = row.value(QStringLiteral("display_state")).toString();
     if (parseState.isEmpty()) {
         parseState = !parserError.isEmpty()
             ? QStringLiteral("failed")
@@ -242,9 +242,9 @@ QVariantMap renderHistoryRow(
     }
 
     if (parseState == QStringLiteral("failed") && !parserError.isEmpty()) {
-        const QString errorLabel = row.value(QStringLiteral("script_id")).toString().isEmpty()
+        const QString errorLabel = row.value(QStringLiteral("processor_id")).toString().isEmpty()
             ? QStringLiteral("Parser Error")
-            : QStringLiteral("Lua Error");
+            : QStringLiteral("Processor Error");
         renderedPayload = renderedPayload.isEmpty()
             ? QStringLiteral("%1: %2").arg(errorLabel, parserError)
             : QStringLiteral("%1\n%2: %3").arg(renderedPayload, errorLabel, parserError);
@@ -279,11 +279,11 @@ QVariantMap renderHistoryRow(
     } else if (parseState == QStringLiteral("skipped_overload")) {
         payloadFormatLabel = QStringLiteral("Parse skipped");
     } else if (parseState == QStringLiteral("failed")) {
-        payloadFormatLabel = row.value(QStringLiteral("script_id")).toString().isEmpty()
+        payloadFormatLabel = row.value(QStringLiteral("processor_id")).toString().isEmpty()
             ? (parsedFormat.isEmpty()
                 ? QStringLiteral("Parser Error")
                 : QStringLiteral("%1 Error").arg(parsedFormat))
-            : QStringLiteral("Lua Error");
+            : QStringLiteral("Processor Error");
     } else if (parseState == QStringLiteral("succeeded")) {
         payloadFormatLabel = parsedFormat;
     } else if (payloadState == QStringLiteral("skipped")) {

@@ -8,7 +8,7 @@
 
 #include "domain/subscription.h"
 
-struct ScriptEntry;
+class ProcessorLibrary;
 
 class SubscriptionListModel : public QAbstractListModel
 {
@@ -26,8 +26,13 @@ public:
         TopicRateHistoryRole,
         FormatRole,
         FormatNameRole,
-        ScriptIdRole,
-        ScriptNameRole,
+        ProcessorIdRole,
+        ProcessorNameRole,
+        ProcessorRevisionModeRole,
+        PinnedRevisionIdRole,
+        ProcessorParametersCborBase64Role,
+        ProcessorBindingAvailableRole,
+        ProcessorBindingDetailRole,
         ColorRole,
         PausedRole,
         StateRole,
@@ -47,7 +52,7 @@ public:
     void setSubscriptions(
         const QString &sourceSessionId,
         const QVector<SubscriptionEntry> &subscriptions,
-        const QVector<ScriptEntry> &scripts);
+        const ProcessorLibrary *processorLibrary = nullptr);
     bool updateTopicFps(const QVector<SubscriptionEntry> &subscriptions, qint64 nowMs);
 
 signals:
@@ -63,8 +68,13 @@ private:
         qreal topicFps = 0.0;
         QVariantList topicRateHistory;
         int format = 0;
-        QString scriptId;
-        QString scriptName;
+        QString processorId;
+        QString processorName;
+        QString processorRevisionMode;
+        QString pinnedRevisionId;
+        QString processorParametersCborBase64;
+        bool processorBindingAvailable = true;
+        QString processorBindingDetail;
         QString color;
         bool paused = false;
         QString state;
@@ -73,7 +83,7 @@ private:
 
     static SubscriptionRow rowFromSubscription(
         const SubscriptionEntry &subscription,
-        const QVector<ScriptEntry> &scripts,
+        const ProcessorLibrary *processorLibrary,
         qint64 nowMs);
     static QVariantMap rowToMap(const SubscriptionRow &row);
     static QString displayName(const SubscriptionRow &row);

@@ -1,13 +1,13 @@
 #include "eventhistoryservice.h"
 
 #include "usecases/sessionservice.h"
-#include "usecases/scriptservice.h"
 #include "usecases/preferencescontroller.h"
 #include "services/apputils.h"
 #include "models/eventstreammodel.h"
 #include "presentation/eventrenderer.h"
 #include "services/payload/payloadcodec.h"
 #include "services/parsing/messageparseworker.h"
+#include "services/processors/processorlibrary.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "domain/messagerecord.h"
@@ -185,23 +185,42 @@ QVariantMap messageRecordRow(const MessageRecord &record)
     row.insert(QStringLiteral("payload_preview"), record.payloadPreview);
     row.insert(QStringLiteral("payload_hash"), record.payloadHash);
     row.insert(QStringLiteral("payload_format"), record.payloadFormat);
-    row.insert(QStringLiteral("parsed_payload"), record.parsedPayload);
-    row.insert(QStringLiteral("parsed_format"), record.parsedFormat);
-    row.insert(QStringLiteral("parse_error"), record.parseError);
-    row.insert(QStringLiteral("parse_state"), record.parseState);
-    row.insert(QStringLiteral("script_id"), record.scriptId);
-    row.insert(QStringLiteral("script_name"), record.scriptName);
+    row.insert(QStringLiteral("display_payload"), record.displayPayload);
+    row.insert(QStringLiteral("display_format"), record.displayFormat);
+    row.insert(QStringLiteral("display_error"), record.displayError);
+    row.insert(QStringLiteral("display_state"), record.displayState);
+    row.insert(QStringLiteral("processor_id"), record.processorId);
+    row.insert(QStringLiteral("processor_revision_id"), record.processorRevisionId);
+    row.insert(QStringLiteral("processor_name"), record.processorName);
+    row.insert(QStringLiteral("processor_language_id"), record.processorLanguageId);
+    row.insert(QStringLiteral("processor_runtime_id"), record.processorRuntimeId);
+    row.insert(QStringLiteral("processor_content_hash"), record.processorContentHash);
+    row.insert(QStringLiteral("processor_result_preview"), record.processorResultPreview);
+    row.insert(QStringLiteral("processor_execution_state"), record.processorExecutionState);
+    row.insert(QStringLiteral("processor_execution_error_code"), record.processorExecutionErrorCode);
+    row.insert(QStringLiteral("processor_execution_error"), record.processorExecutionError);
+    row.insert(QStringLiteral("processor_execution_duration_us"), record.processorExecutionDurationUs);
     return row;
 }
 
 void applyParseResultToStorageRow(QVariantMap &row, const MessageParseResult &result)
 {
-    row.insert(QStringLiteral("parsed_payload"), result.parsedPayload);
-    row.insert(QStringLiteral("parsed_format"), result.parsedFormat);
-    row.insert(QStringLiteral("parse_error"), result.parseError);
-    row.insert(QStringLiteral("parse_state"), messageParseStateName(result.state));
-    row.insert(QStringLiteral("script_id"), result.scriptId);
-    row.insert(QStringLiteral("script_name"), result.scriptName);
+    row.insert(QStringLiteral("display_payload"), result.displayPayload);
+    row.insert(QStringLiteral("display_format"), result.displayFormat);
+    row.insert(QStringLiteral("display_error"), result.displayError);
+    row.insert(QStringLiteral("display_state"), messageParseStateName(result.state));
+    row.insert(QStringLiteral("processor_id"), result.processorId);
+    row.insert(QStringLiteral("processor_revision_id"), result.processorRevisionId);
+    row.insert(QStringLiteral("processor_name"), result.processorName);
+    row.insert(QStringLiteral("processor_language_id"), result.processorLanguageId);
+    row.insert(QStringLiteral("processor_runtime_id"), result.processorRuntimeId);
+    row.insert(QStringLiteral("processor_content_hash"), result.processorContentHash);
+    row.insert(QStringLiteral("processor_result_cbor"), result.processorResultCbor);
+    row.insert(QStringLiteral("processor_result_preview"), result.processorResultPreview);
+    row.insert(QStringLiteral("processor_execution_state"), result.processorExecutionState);
+    row.insert(QStringLiteral("processor_execution_error_code"), result.processorExecutionErrorCode);
+    row.insert(QStringLiteral("processor_execution_error"), result.processorExecutionError);
+    row.insert(QStringLiteral("processor_execution_duration_us"), result.processorExecutionDurationUs);
 }
 
 MessageSubscriptionMatch matchSubscriptionsForMessage(
@@ -270,7 +289,7 @@ EventHistoryService::EventHistoryService(
     MessageParseWorker &messageParser,
     EventStreamModel &messages,
     EventStreamModel &logs,
-    ScriptService &scriptService,
+    ProcessorLibrary &processorLibrary,
     QString launchTimestamp,
     PreferencesController &preferencesController,
     QObject *parent)
@@ -281,7 +300,7 @@ EventHistoryService::EventHistoryService(
     , m_messageParser(messageParser)
     , m_messages(messages)
     , m_logs(logs)
-    , m_scriptService(scriptService)
+    , m_processorLibrary(processorLibrary)
     , m_launchTimestamp(std::move(launchTimestamp))
     , m_preferencesController(preferencesController)
 {
@@ -320,12 +339,6 @@ EventHistoryService::EventHistoryService(
         &EventHistoryService::messageWriterStateChanged,
         Qt::UniqueConnection);
     connect(
-        &m_scriptService,
-        &ScriptService::scriptsChanged,
-        &m_messageParser,
-        &MessageParseWorker::clearRuntimeCache,
-        Qt::QueuedConnection);
-    connect(
         &m_messageParser,
         &MessageParseWorker::parseCompleted,
         this,
@@ -333,9 +346,11 @@ EventHistoryService::EventHistoryService(
             if (!m_historyWriter.enqueueParseResult(result)) {
                 return;
             }
+            MessageParseResult visibleResult = result;
+            visibleResult.processorResultCbor.clear();
             QMetaObject::invokeMethod(
                 this,
-                [this, result]() { handleMessageParseResult(result); },
+                [this, visibleResult]() { handleMessageParseResult(visibleResult); },
                 Qt::QueuedConnection);
         },
         Qt::DirectConnection);
@@ -659,7 +674,8 @@ void EventHistoryService::appendEvent(SessionState &session, const QString &chan
 void EventHistoryService::enqueueMessageParsing(
     const MessageRecord &record,
     qint64 sequence,
-    const QString &scriptCode)
+    const QSharedPointer<const ProcessorRevisionSnapshot> &processorRevision,
+    const QCborMap &processorParameters)
 {
     MessageParseTask task;
     task.envelope.messageId = record.id;
@@ -669,9 +685,9 @@ void EventHistoryService::enqueueMessageParsing(
     task.envelope.topic = record.topic;
     task.envelope.payloadBytes = record.payloadBytes;
     task.envelope.payloadFormat = record.payloadFormat;
-    task.scriptId = record.scriptId;
-    task.scriptName = record.scriptName;
-    task.scriptCode = scriptCode;
+    task.processorRevision = processorRevision;
+    task.processorName = record.processorName;
+    task.processorParameters = processorParameters;
     if (m_messageParser.enqueueTask(task)) {
         return;
     }
@@ -680,10 +696,22 @@ void EventHistoryService::enqueueMessageParsing(
     result.messageId = record.id;
     result.sequence = sequence;
     result.sessionId = record.sessionId;
-    result.scriptId = record.scriptId;
-    result.scriptName = record.scriptName;
+    result.processorId = record.processorId;
+    result.processorRevisionId = record.processorRevisionId;
+    result.processorName = record.processorName;
+    result.processorLanguageId = record.processorLanguageId;
+    result.processorRuntimeId = record.processorRuntimeId;
+    result.processorContentHash = record.processorContentHash;
     result.state = MessageParseState::SkippedOverload;
-    result.parseError = QStringLiteral("Parser skipped because its bounded queue is full.");
+    result.displayFormat = record.processorId.isEmpty()
+        ? QStringLiteral("Parse skipped")
+        : QStringLiteral("Processor skipped");
+    result.displayError = QStringLiteral("Parser skipped because its bounded queue is full.");
+    if (!record.processorId.isEmpty()) {
+        result.processorExecutionState = QStringLiteral("skipped_overload");
+        result.processorExecutionErrorCode = QStringLiteral("processor_queue_overloaded");
+        result.processorExecutionError = result.displayError;
+    }
     if (m_historyWriter.enqueueParseResult(result)) {
         handleMessageParseResult(result);
     }
@@ -708,32 +736,32 @@ void EventHistoryService::updateRenderedParseResult(
             return false;
         }
 
-        const QString visibleParsedPayload = result.parsedPayload.left(kVisibleParsedCharacters);
+        const QString visibleParsedPayload = result.displayPayload.left(kVisibleParsedCharacters);
         row.insert(QStringLiteral("parseState"), messageParseStateName(result.state));
         row.insert(QStringLiteral("parsedPayload"), visibleParsedPayload);
         if (result.state == MessageParseState::Succeeded) {
             row.insert(QStringLiteral("payload"), visibleParsedPayload);
-            row.insert(QStringLiteral("payloadFormat"), result.parsedFormat);
-            if (result.scriptId.isEmpty()) {
+            row.insert(QStringLiteral("payloadFormat"), result.displayFormat);
+            if (result.processorId.isEmpty()) {
                 row.insert(QStringLiteral("testPayload"), visibleParsedPayload);
             }
         } else if (result.state == MessageParseState::Failed) {
-            const QString errorLabel = result.scriptId.isEmpty()
+            const QString errorLabel = result.processorId.isEmpty()
                 ? QStringLiteral("Parser Error")
-                : QStringLiteral("Lua Error");
+                : QStringLiteral("Processor Error");
             const QString basePayload = row.value(QStringLiteral("testPayload")).toString();
             row.insert(
                 QStringLiteral("payload"),
                 basePayload.isEmpty()
-                    ? QStringLiteral("%1: %2").arg(errorLabel, result.parseError)
-                    : QStringLiteral("%1\n%2: %3").arg(basePayload, errorLabel, result.parseError));
+                    ? QStringLiteral("%1: %2").arg(errorLabel, result.displayError)
+                    : QStringLiteral("%1\n%2: %3").arg(basePayload, errorLabel, result.displayError));
             row.insert(
                 QStringLiteral("payloadFormat"),
-                result.scriptId.isEmpty()
-                    ? (result.parsedFormat.isEmpty()
+                result.processorId.isEmpty()
+                    ? (result.displayFormat.isEmpty()
                         ? QStringLiteral("Parser Error")
-                        : QStringLiteral("%1 Error").arg(result.parsedFormat))
-                    : QStringLiteral("Lua Error"));
+                        : QStringLiteral("%1 Error").arg(result.displayFormat))
+                    : QStringLiteral("Processor Error"));
         } else if (result.state == MessageParseState::SkippedOverload) {
             row.insert(QStringLiteral("payloadFormat"), QStringLiteral("Parse skipped"));
         }
@@ -808,24 +836,27 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
         }
     }
 
-    const bool processPayloadForVisibleOutput = !session->outputPaused;
-    const QString requestedScriptId = processPayloadForVisibleOutput
-            && displaySubscription
-            && !displaySubscription->scriptId.isEmpty()
-        ? displaySubscription->scriptId
-        : QString();
-    const ScriptEntry *script = requestedScriptId.isEmpty()
-        ? nullptr
-        : m_scriptService.scriptById(requestedScriptId);
+    const ProcessorReference *processorReference = displaySubscription
+            && !displaySubscription->processor.processorId.isEmpty()
+        ? &displaySubscription->processor
+        : nullptr;
+    std::optional<ResolvedProcessor> resolvedProcessor;
+    QString processorResolutionError;
+    if (processorReference) {
+        resolvedProcessor = m_processorLibrary.resolve(
+            *processorReference,
+            &processorResolutionError);
+    }
     const int payloadFormat = subscriptionMatch.payloadFormat >= 0
         ? subscriptionMatch.payloadFormat
         : static_cast<int>(PayloadCodec::resolveTopicFormat(
             session->runtime.subscriptionFormats,
             topic));
     bool parsingRequired = requiresBackgroundParse(PayloadCodec::formatFromInt(payloadFormat))
-        || !requestedScriptId.isEmpty();
+        || processorReference;
     bool parsingSkippedForPressure = false;
-    QString scriptCode;
+    QSharedPointer<const ProcessorRevisionSnapshot> processorRevision;
+    QCborMap processorParameters;
 
     MessageRecord record;
     record.sessionId = sessionId;
@@ -833,41 +864,73 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     record.direction = MessageDirection::Incoming;
     record.topic = topic;
     record.payloadBytes = payloadPlan.storedBytes;
-    record.scriptId = requestedScriptId;
-    record.scriptName = script ? script->name : QString();
     record.payloadPreview = payloadPlan.preview;
     record.payloadState = payloadPlan.state;
     record.payloadSize = payloadPlan.originalSize;
     record.payloadHash = payloadPlan.hash;
     record.payloadFormat = payloadFormat;
+    if (processorReference) {
+        record.processorId = processorReference->processorId;
+        record.processorRevisionId = processorReference->revisionMode == ProcessorRevisionMode::Pinned
+            ? processorReference->pinnedRevisionId
+            : QString();
+        processorParameters = processorReference->parameters;
+        if (resolvedProcessor) {
+            processorRevision = resolvedProcessor->revision;
+            record.processorRevisionId = resolvedProcessor->revision->id;
+            record.processorName = resolvedProcessor->processor.name;
+            record.processorLanguageId = resolvedProcessor->revision->languageId;
+            record.processorRuntimeId = resolvedProcessor->revision->runtimeId;
+            record.processorContentHash = resolvedProcessor->revision->contentHash;
+        } else if (const auto processor = m_processorLibrary.processorById(record.processorId)) {
+            record.processorName = processor->name;
+        }
+    }
     if (!parsingRequired) {
-        record.parseState = messageParseStateName(MessageParseState::NotRequired);
-    } else if (!payloadPlan.allowFullProcessing) {
-        record.parseState = messageParseStateName(MessageParseState::Failed);
-        record.parseError = requestedScriptId.isEmpty()
-            ? QStringLiteral("Payload parsing skipped because the payload exceeds the configured size limit.")
-            : QStringLiteral("Lua script skipped because the payload exceeds the configured size limit.");
-        record.parsedFormat = requestedScriptId.isEmpty()
-            ? PayloadCodec::formatName(PayloadCodec::formatFromInt(payloadFormat))
-            : QStringLiteral("Lua: %1").arg(record.scriptName);
+        record.displayState = messageParseStateName(MessageParseState::NotRequired);
+    } else if (processorReference && !resolvedProcessor) {
+        record.displayState = messageParseStateName(MessageParseState::Failed);
+        record.displayError = processorResolutionError.isEmpty()
+            ? QStringLiteral("Selected Processor is unavailable.")
+            : processorResolutionError;
+        record.displayFormat = QStringLiteral("Processor Error");
+        record.processorExecutionState = QStringLiteral("preparation_failed");
+        record.processorExecutionErrorCode = QStringLiteral("processor_not_found");
+        record.processorExecutionError = record.displayError;
         parsingRequired = false;
-    } else if (!requestedScriptId.isEmpty() && !script) {
-        record.parseState = messageParseStateName(MessageParseState::Failed);
-        record.parseError = tr("Selected Lua script is missing.");
-        record.parsedFormat = QStringLiteral("Lua");
+    } else if (!payloadPlan.allowFullProcessing) {
+        record.displayState = messageParseStateName(MessageParseState::Failed);
+        record.displayError = processorReference
+            ? QStringLiteral("Processor skipped because the payload exceeds the configured size limit.")
+            : QStringLiteral("Payload parsing skipped because the payload exceeds the configured size limit.");
+        record.displayFormat = processorReference
+            ? QStringLiteral("Processor Error")
+            : PayloadCodec::formatName(PayloadCodec::formatFromInt(payloadFormat));
+        if (processorReference) {
+            record.processorExecutionState = QStringLiteral("skipped_payload_limit");
+            record.processorExecutionErrorCode = QStringLiteral("payload_too_large");
+            record.processorExecutionError = record.displayError;
+        }
         parsingRequired = false;
     } else if (pressureSkipsParsing) {
-        record.parseState = messageParseStateName(MessageParseState::SkippedOverload);
-        record.parseError = QStringLiteral(
+        record.displayState = messageParseStateName(MessageParseState::SkippedOverload);
+        record.displayError = QStringLiteral(
             "Payload parsing skipped while the capture pipeline is under pressure.");
-        record.parsedFormat = requestedScriptId.isEmpty()
-            ? PayloadCodec::formatName(PayloadCodec::formatFromInt(payloadFormat))
-            : QStringLiteral("Lua: %1").arg(record.scriptName);
+        record.displayFormat = processorReference
+            ? QStringLiteral("Processor skipped")
+            : PayloadCodec::formatName(PayloadCodec::formatFromInt(payloadFormat));
+        if (processorReference) {
+            record.processorExecutionState = QStringLiteral("skipped_overload");
+            record.processorExecutionErrorCode = QStringLiteral("capture_pipeline_overloaded");
+            record.processorExecutionError = record.displayError;
+        }
         parsingRequired = false;
         parsingSkippedForPressure = true;
     } else {
-        record.parseState = messageParseStateName(MessageParseState::Pending);
-        scriptCode = script ? script->code : QString();
+        record.displayState = messageParseStateName(MessageParseState::Pending);
+        if (processorReference) {
+            record.processorExecutionState = QStringLiteral("pending");
+        }
     }
 
     const qint64 sequence = m_nextMessageSequence.value(sessionId) + 1;
@@ -903,7 +966,7 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     }
 
     if (parsingRequired) {
-        enqueueMessageParsing(record, sequence, scriptCode);
+        enqueueMessageParsing(record, sequence, processorRevision, processorParameters);
     }
 }
 
@@ -953,22 +1016,22 @@ void EventHistoryService::appendPublishedMessage(
     bool parsingRequired = requiresBackgroundParse(PayloadCodec::formatFromInt(format));
     bool parsingSkippedForPressure = false;
     if (!parsingRequired) {
-        record.parseState = messageParseStateName(MessageParseState::NotRequired);
+        record.displayState = messageParseStateName(MessageParseState::NotRequired);
     } else if (!payloadPlan.allowFullProcessing) {
-        record.parseState = messageParseStateName(MessageParseState::Failed);
-        record.parseError = QStringLiteral(
+        record.displayState = messageParseStateName(MessageParseState::Failed);
+        record.displayError = QStringLiteral(
             "Payload parsing skipped because the payload exceeds the configured size limit.");
-        record.parsedFormat = PayloadCodec::formatName(PayloadCodec::formatFromInt(format));
+        record.displayFormat = PayloadCodec::formatName(PayloadCodec::formatFromInt(format));
         parsingRequired = false;
     } else if (pressureSkipsParsing) {
-        record.parseState = messageParseStateName(MessageParseState::SkippedOverload);
-        record.parseError = QStringLiteral(
+        record.displayState = messageParseStateName(MessageParseState::SkippedOverload);
+        record.displayError = QStringLiteral(
             "Payload parsing skipped while the capture pipeline is under pressure.");
-        record.parsedFormat = PayloadCodec::formatName(PayloadCodec::formatFromInt(format));
+        record.displayFormat = PayloadCodec::formatName(PayloadCodec::formatFromInt(format));
         parsingRequired = false;
         parsingSkippedForPressure = true;
     } else {
-        record.parseState = messageParseStateName(MessageParseState::Pending);
+        record.displayState = messageParseStateName(MessageParseState::Pending);
     }
 
     const qint64 sequence = m_nextMessageSequence.value(sessionId) + 1;
@@ -1004,7 +1067,7 @@ void EventHistoryService::appendPublishedMessage(
     }
 
     if (parsingRequired) {
-        enqueueMessageParsing(record, sequence, {});
+        enqueueMessageParsing(record, sequence);
     }
 }
 
@@ -1082,9 +1145,23 @@ QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
         QStringLiteral("payloadFormat"),
         PayloadCodec::formatName(PayloadCodec::formatFromInt(
             stored.value(QStringLiteral("payload_format"), -1).toInt())));
-    details.insert(QStringLiteral("parsedPayload"), stored.value(QStringLiteral("parsed_payload")));
-    details.insert(QStringLiteral("parseError"), stored.value(QStringLiteral("parse_error")));
-    details.insert(QStringLiteral("parseState"), stored.value(QStringLiteral("parse_state")));
+    details.insert(QStringLiteral("parsedPayload"), stored.value(QStringLiteral("display_payload")));
+    details.insert(QStringLiteral("parseError"), stored.value(QStringLiteral("display_error")));
+    details.insert(QStringLiteral("parseState"), stored.value(QStringLiteral("display_state")));
+    details.insert(QStringLiteral("processorId"), stored.value(QStringLiteral("processor_id")));
+    details.insert(
+        QStringLiteral("processorRevisionId"),
+        stored.value(QStringLiteral("processor_revision_id")));
+    details.insert(QStringLiteral("processorName"), stored.value(QStringLiteral("processor_name")));
+    details.insert(
+        QStringLiteral("processorExecutionState"),
+        stored.value(QStringLiteral("processor_execution_state")));
+    details.insert(
+        QStringLiteral("processorExecutionErrorCode"),
+        stored.value(QStringLiteral("processor_execution_error_code")));
+    details.insert(
+        QStringLiteral("processorExecutionError"),
+        stored.value(QStringLiteral("processor_execution_error")));
     const QByteArray payloadBytes = stored.value(QStringLiteral("payload_bytes")).toByteArray();
     const qint64 payloadSize = stored.value(QStringLiteral("payload_size")).toLongLong();
     const QString payloadState = stored.value(QStringLiteral("payload_state")).toString();

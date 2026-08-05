@@ -132,6 +132,7 @@ target_link_libraries(mqtt_plus_app
         Qt6::Gui
         Qt6::Network
         Qt6::Mqtt
+        Qt6::Qml
         Qt6::Quick
         Qt6::QuickControls2
         Qt6::Sql
@@ -315,14 +316,40 @@ if(BUILD_TESTING)
     )
     add_test(NAME messagecapturepolicy COMMAND test_messagecapturepolicy)
 
-    add_mqtt_plus_qt_test(test_luarunner
-        tests/test_luarunner.cpp
-        src/services/scripting/luarunner.cpp
-        src/services/payload/payloadcodec.cpp
+    add_mqtt_plus_qt_test(test_processorlibrarystore
+        tests/test_processorlibrarystore.cpp
+        src/services/processors/processorpackagehash.cpp
+        src/services/processors/processorlibrarystore.cpp
     )
-    target_compile_definitions(test_luarunner
-        PRIVATE
-            MQTT_PLUS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+
+    add_mqtt_plus_qt_test(test_processorlibrary
+        tests/test_processorlibrary.cpp
+        src/services/processors/processorlibrary.cpp
+        src/services/processors/processorpackagehash.cpp
+        src/services/processors/processorlibrarystore.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_messageprocessorengine
+        tests/test_messageprocessorengine.cpp
+        src/services/processors/messageprocessorengine.cpp
+        src/services/processors/processorruntimeregistry.cpp
+        src/services/processors/processorvaluecodec.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_luaruntimeadapter
+        tests/test_luaruntimeadapter.cpp
+        src/services/processors/messageprocessorengine.cpp
+        src/services/processors/processorruntimeregistry.cpp
+        src/services/processors/processorvaluecodec.cpp
+        src/services/processors/runtimes/luaruntimeadapter.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_javascriptruntimeadapter
+        tests/test_javascriptruntimeadapter.cpp
+        src/services/processors/messageprocessorengine.cpp
+        src/services/processors/processorruntimeregistry.cpp
+        src/services/processors/processorvaluecodec.cpp
+        src/services/processors/runtimes/javascriptruntimeadapter.cpp
     )
 
     add_mqtt_plus_qt_test(test_sessioneditorviewmodel
@@ -386,7 +413,12 @@ if(BUILD_TESTING)
         tests/test_messageparseworker.cpp
         src/services/parsing/messageparseworker.cpp
         src/services/payload/payloadcodec.cpp
-        src/services/scripting/luarunner.cpp
+        src/services/processors/defaultmessageprocessorengine.cpp
+        src/services/processors/messageprocessorengine.cpp
+        src/services/processors/processorruntimeregistry.cpp
+        src/services/processors/processorvaluecodec.cpp
+        src/services/processors/runtimes/javascriptruntimeadapter.cpp
+        src/services/processors/runtimes/luaruntimeadapter.cpp
     )
 
     add_mqtt_plus_qt_test(test_subscriptionlistmodel
@@ -399,20 +431,8 @@ if(BUILD_TESTING)
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
-    add_mqtt_plus_qt_test(test_scripteditorviewmodel
-        tests/test_scripteditorviewmodel.cpp
-        src/viewmodels/scripteditorviewmodel.cpp
-    )
-
-    add_mqtt_plus_qt_test(test_scriptlibrarymodel
-        tests/test_scriptlibrarymodel.cpp
-        src/models/scriptlibrarymodel.cpp
-        src/services/apputils.cpp
-        src/services/storage/scriptstore.cpp
-    )
-
-    add_mqtt_plus_qt_test(test_scriptsviewmodel
-        tests/test_scriptsviewmodel.cpp
+    add_mqtt_plus_qt_test(test_processorsviewmodel
+        tests/test_processorsviewmodel.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 

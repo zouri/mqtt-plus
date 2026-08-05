@@ -1,7 +1,11 @@
 #pragma once
 
+#include "messageprocessor.h"
+
 #include <QByteArray>
+#include <QCborMap>
 #include <QMetaType>
+#include <QSharedPointer>
 #include <QString>
 
 enum class MessageParseState {
@@ -41,20 +45,30 @@ struct MessageEnvelope {
 
 struct MessageParseTask {
     MessageEnvelope envelope;
-    QString scriptId;
-    QString scriptName;
-    QString scriptCode;
+    QSharedPointer<const ProcessorRevisionSnapshot> processorRevision;
+    QString processorName;
+    QCborMap processorParameters;
 };
 
 struct MessageParseResult {
     qint64 messageId = 0;
     qint64 sequence = 0;
     QString sessionId;
-    QString parsedPayload;
-    QString parsedFormat;
-    QString parseError;
-    QString scriptId;
-    QString scriptName;
+    QString displayPayload;
+    QString displayFormat;
+    QString displayError;
+    QString processorId;
+    QString processorRevisionId;
+    QString processorName;
+    QString processorLanguageId;
+    QString processorRuntimeId;
+    QString processorContentHash;
+    QByteArray processorResultCbor;
+    QString processorResultPreview;
+    QString processorExecutionState = QStringLiteral("not_required");
+    QString processorExecutionErrorCode;
+    QString processorExecutionError;
+    qint64 processorExecutionDurationUs = 0;
     MessageParseState state = MessageParseState::NotRequired;
 };
 

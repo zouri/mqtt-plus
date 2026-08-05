@@ -7,7 +7,6 @@
 #include <QMqttSubscription>
 
 class EventHistoryService;
-class ScriptService;
 class SessionService;
 
 class SubscriptionService : public QObject
@@ -17,7 +16,6 @@ class SubscriptionService : public QObject
 public:
     explicit SubscriptionService(
         SessionService &sessionService,
-        ScriptService &scriptService,
         EventHistoryService &eventHistoryService,
         QObject *parent = nullptr);
 
@@ -25,7 +23,7 @@ public:
         const QString &topic,
         int qos,
         int format,
-        const QString &scriptId,
+        const ProcessorReference &processor,
         const QString &color,
         const QString &alias);
     bool updateCurrentSubscription(
@@ -34,7 +32,7 @@ public:
         const QString &alias,
         int qos,
         int format,
-        const QString &scriptId,
+        const ProcessorReference &processor,
         const QString &color);
     void removeCurrentSubscription(const QString &topic);
     Q_INVOKABLE void setCurrentSubscriptionPaused(const QString &topic, bool paused);
@@ -58,6 +56,5 @@ private:
         QMqttSubscription::SubscriptionState state);
 
     SessionService &m_sessionService;
-    ScriptService &m_scriptService;
     EventHistoryService &m_eventHistoryService;
 };

@@ -24,11 +24,9 @@ Application::Application()
           m_historyStore.dataPath(),
           m_historyStore.nextMessageId()))
     , m_messageParser(new MessageParseWorker())
-    , m_scriptService(&m_owner)
     , m_draftService(QString(), &m_owner)
     , m_sessionService(
           m_settings,
-          m_scriptService,
           m_historyStore,
           m_preferences,
           &m_owner)
@@ -39,7 +37,7 @@ Application::Application()
     , m_messagesModel(&m_owner)
     , m_filteredMessagesModel(&m_owner)
     , m_logsModel(&m_owner)
-    , m_scriptsModel(&m_owner)
+    , m_processorsModel(&m_owner)
     , m_draftsModel(&m_owner)
     , m_notifications(&m_owner)
     , m_subscriptionFpsTimer(&m_owner)
@@ -50,13 +48,12 @@ Application::Application()
           *m_messageParser,
           m_messagesModel,
           m_logsModel,
-          m_scriptService,
+          m_processorLibrary,
           timestampNow(),
           m_preferences,
           &m_owner)
     , m_subscriptionService(
           m_sessionService,
-          m_scriptService,
           m_eventHistoryService,
           &m_owner)
     , m_mqttService(
@@ -70,7 +67,7 @@ Application::Application()
           m_mqttService,
           m_subscriptionService,
           m_eventHistoryService,
-          m_scriptService,
+          m_processorLibrary,
           m_draftService,
           m_preferences,
           m_historyStore,
@@ -80,7 +77,7 @@ Application::Application()
           m_messagesModel,
           m_filteredMessagesModel,
           m_logsModel,
-          m_scriptsModel,
+          m_processorsModel,
           m_draftsModel,
           m_notifications,
           m_settings,
@@ -210,13 +207,8 @@ Application::Application()
         });
 
     QObject::connect(
-        &m_scriptService,
-        &ScriptService::storageError,
-        &m_sessionService,
-        [this](const QString &message) { reportStorageError(message); });
-    QObject::connect(
-        &m_scriptService,
-        &ScriptService::scriptsChanged,
+        m_viewModel.processors(),
+        &ProcessorsViewModel::processorLibraryChanged,
         &m_subscriptionsModel,
         [this]() { refreshSubscriptionsModel(); });
 
@@ -366,7 +358,6 @@ Application::Application()
         &m_sessionsModel,
         [this]() { m_sessionsModel.setSessions(m_sessionService.sessions()); });
 
-    m_scriptService.loadScripts();
     m_draftService.load();
     m_sessionService.loadSessions();
     applyMessageRetentionLimit();
@@ -434,7 +425,7 @@ void Application::refreshSubscriptionsModel()
     m_subscriptionsModel.setSubscriptions(
         session ? session->id : QString(),
         session ? session->subscriptions : emptySubscriptions,
-        m_scriptService.scripts());
+        &m_processorLibrary);
 }
 
 void Application::refreshSessionModels()

@@ -11,6 +11,7 @@
 #include "services/payload/payloadcodec.h"
 
 #include <QClipboard>
+#include <QCborValue>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QGuiApplication>
@@ -28,6 +29,32 @@ QStringList topicFiltersFromText(const QString &text)
 {
     return text.split(QRegularExpression(QStringLiteral("[,\\r\\n]+")), Qt::SkipEmptyParts);
 }
+
+ProcessorReference processorReferenceFromSubmission(const QVariantMap &submission)
+{
+    ProcessorReference reference;
+    reference.processorId = submission.value(QStringLiteral("processorId")).toString().trimmed();
+    reference.revisionMode = submission.value(
+        QStringLiteral("processorRevisionMode")).toString() == QStringLiteral("pinned")
+        ? ProcessorRevisionMode::Pinned
+        : ProcessorRevisionMode::FollowCurrent;
+    if (reference.revisionMode == ProcessorRevisionMode::Pinned) {
+        reference.pinnedRevisionId = submission.value(
+            QStringLiteral("pinnedRevisionId")).toString().trimmed();
+    }
+    const QByteArray parametersCbor = QByteArray::fromBase64(
+        submission.value(QStringLiteral("processorParametersCborBase64"))
+            .toString()
+            .toLatin1());
+    if (!parametersCbor.isEmpty()) {
+        QCborParserError error;
+        const QCborValue parameters = QCborValue::fromCbor(parametersCbor, &error);
+        if (error.error == QCborError::NoError && parameters.isMap()) {
+            reference.parameters = parameters.toMap();
+        }
+    }
+    return reference;
+}
 } // namespace
 
 WorkbenchViewModel::WorkbenchViewModel(
@@ -42,7 +69,7 @@ WorkbenchViewModel::WorkbenchViewModel(
     SubscriptionFilterModel &messageFilterSubscriptionsModel,
     EventStreamModel &messagesModel,
     MessageFilterModel &filteredMessagesModel,
-    ScriptLibraryModel &scriptsModel,
+    ProcessorLibraryModel &processorsModel,
     QObject *parent)
     : QObject(parent)
     , m_sessionService(sessionService)
@@ -54,7 +81,7 @@ WorkbenchViewModel::WorkbenchViewModel(
     , m_messageFilterSubscriptionsModel(messageFilterSubscriptionsModel)
     , m_messagesModel(messagesModel)
     , m_filteredMessagesModel(filteredMessagesModel)
-    , m_scriptsModel(scriptsModel)
+    , m_processorsModel(processorsModel)
     , m_publisher(sessionService, mqttService, draftService, draftsModel, this)
 {
     m_displayTotalMessageCountTimer.setInterval(kDisplayTotalMessageCountIntervalMs);
@@ -169,14 +196,14 @@ WorkbenchViewModel::WorkbenchViewModel(
             [this](qint64 historyId) {
                 emit messageDetailsChanged(QString::number(historyId));
             });
-    connect(&m_scriptsModel,
+    connect(&m_processorsModel,
             &QAbstractItemModel::modelReset,
             this,
-            &WorkbenchViewModel::refreshSubscriptionEditorScriptOptions);
-    connect(&m_scriptsModel,
+            &WorkbenchViewModel::refreshSubscriptionEditorProcessorOptions);
+    connect(&m_processorsModel,
             &QAbstractItemModel::dataChanged,
             this,
-            &WorkbenchViewModel::refreshSubscriptionEditorScriptOptions);
+            &WorkbenchViewModel::refreshSubscriptionEditorProcessorOptions);
     connect(&m_subscriptionService,
             &SubscriptionService::subscriptionsChanged,
             this,
@@ -203,7 +230,7 @@ WorkbenchViewModel::WorkbenchViewModel(
             &WorkbenchViewModel::messageTopicFilterStateChanged);
     m_displayTotalMessageCount = totalMessageCount();
     refreshTrafficRates();
-    refreshSubscriptionEditorScriptOptions();
+    refreshSubscriptionEditorProcessorOptions();
 }
 
 SessionListModel *WorkbenchViewModel::sessions() const { return &m_sessionsModel; }
@@ -552,18 +579,18 @@ void WorkbenchViewModel::toggleCurrentSessionConnection()
     m_mqttService.connectCurrentSession();
 }
 
-void WorkbenchViewModel::refreshSubscriptionEditorScriptOptions()
+void WorkbenchViewModel::refreshSubscriptionEditorProcessorOptions()
 {
     QVariantList options;
-    for (int row = 0; row < m_scriptsModel.rowCount(); ++row) {
-        options.append(m_scriptsModel.rowAt(row));
+    for (int row = 0; row < m_processorsModel.rowCount(); ++row) {
+        options.append(m_processorsModel.rowAt(row));
     }
-    m_subscriptionEditor.setScriptOptions(options);
+    m_subscriptionEditor.setProcessorOptions(options);
 }
 
 void WorkbenchViewModel::openSubscriptionEditorForCreate()
 {
-    refreshSubscriptionEditorScriptOptions();
+    refreshSubscriptionEditorProcessorOptions();
     m_subscriptionEditor.openForCreate();
 }
 
@@ -573,7 +600,7 @@ bool WorkbenchViewModel::openSubscriptionEditorForEdit(int filteredIndex)
         return false;
     }
 
-    refreshSubscriptionEditorScriptOptions();
+    refreshSubscriptionEditorProcessorOptions();
     m_subscriptionEditor.openForEdit(m_filteredSubscriptionsModel.rowAt(filteredIndex));
     return true;
 }
@@ -585,6 +612,7 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
     }
 
     const QVariantMap submission = m_subscriptionEditor.submission();
+    const ProcessorReference processor = processorReferenceFromSubmission(submission);
     if (submission.value(QStringLiteral("editMode")).toBool()) {
         return m_subscriptionService.updateCurrentSubscription(
             submission.value(QStringLiteral("editTopic")).toString(),
@@ -592,7 +620,7 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
             submission.value(QStringLiteral("alias")).toString(),
             submission.value(QStringLiteral("qos")).toInt(),
             submission.value(QStringLiteral("format")).toInt(),
-            submission.value(QStringLiteral("scriptId")).toString(),
+            processor,
             submission.value(QStringLiteral("color")).toString());
     }
 
@@ -600,7 +628,7 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
         submission.value(QStringLiteral("topic")).toString(),
         submission.value(QStringLiteral("qos")).toInt(),
         submission.value(QStringLiteral("format")).toInt(),
-        submission.value(QStringLiteral("scriptId")).toString(),
+        processor,
         submission.value(QStringLiteral("color")).toString(),
         submission.value(QStringLiteral("alias")).toString());
 }

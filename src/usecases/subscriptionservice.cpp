@@ -1,7 +1,6 @@
 #include "subscriptionservice.h"
 
 #include "usecases/eventhistoryservice.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 #include "services/apputils.h"
 #include "domain/sessionconfig.h"
@@ -32,16 +31,28 @@ void reloadCurrentMessagesIfNeeded(
         eventHistoryService.reloadCurrentSessionHistory();
     }
 }
+
+ProcessorReference normalizedProcessorReference(const ProcessorReference &source)
+{
+    ProcessorReference result = source;
+    result.processorId = result.processorId.trimmed();
+    result.pinnedRevisionId = result.pinnedRevisionId.trimmed();
+    if (result.processorId.isEmpty()) {
+        return {};
+    }
+    if (result.revisionMode == ProcessorRevisionMode::FollowCurrent) {
+        result.pinnedRevisionId.clear();
+    }
+    return result;
+}
 }
 
 SubscriptionService::SubscriptionService(
     SessionService &sessionService,
-    ScriptService &scriptService,
     EventHistoryService &eventHistoryService,
     QObject *parent)
     : QObject(parent)
     , m_sessionService(sessionService)
-    , m_scriptService(scriptService)
     , m_eventHistoryService(eventHistoryService)
 {
 }
@@ -50,7 +61,7 @@ bool SubscriptionService::upsertCurrentSubscription(
     const QString &topic,
     int qos,
     int format,
-    const QString &scriptId,
+    const ProcessorReference &processor,
     const QString &color,
     const QString &alias)
 {
@@ -71,7 +82,7 @@ bool SubscriptionService::upsertCurrentSubscription(
     }
 
     SubscriptionEntry *entry = subscriptionByTopic(session, filter);
-    const QString sanitizedScriptId = m_scriptService.scriptById(scriptId) ? scriptId : QString();
+    const ProcessorReference normalizedProcessor = normalizedProcessorReference(processor);
     const QString sanitizedColor = sanitizeTopicColor(color);
     const QString displayAlias = alias.trimmed();
     bool shouldReloadMessages = false;
@@ -81,7 +92,7 @@ bool SubscriptionService::upsertCurrentSubscription(
         subscription.alias = displayAlias;
         subscription.requestedQos = SessionConfig::sanitizeQos(qos);
         subscription.format = format;
-        subscription.scriptId = sanitizedScriptId;
+        subscription.processor = normalizedProcessor;
         subscription.color = sanitizedColor;
         session->subscriptions.append(subscription);
         entry = &session->subscriptions.last();
@@ -91,7 +102,7 @@ bool SubscriptionService::upsertCurrentSubscription(
         entry->alias = displayAlias;
         entry->requestedQos = SessionConfig::sanitizeQos(qos);
         entry->format = format;
-        entry->scriptId = sanitizedScriptId;
+        entry->processor = normalizedProcessor;
         entry->color = sanitizedColor;
         entry->paused = false;
         entry->lastError.clear();
@@ -117,7 +128,7 @@ bool SubscriptionService::updateCurrentSubscription(
     const QString &alias,
     int qos,
     int format,
-    const QString &scriptId,
+    const ProcessorReference &processor,
     const QString &color)
 {
     auto *session = m_sessionService.currentSession();
@@ -150,7 +161,7 @@ bool SubscriptionService::updateCurrentSubscription(
         return false;
     }
 
-    const QString sanitizedScriptId = m_scriptService.scriptById(scriptId) ? scriptId : QString();
+    const ProcessorReference normalizedProcessor = normalizedProcessorReference(processor);
     const QString sanitizedColor = sanitizeTopicColor(color);
     const QString displayAlias = alias.trimmed();
     const int sanitizedQos = SessionConfig::sanitizeQos(qos);
@@ -164,7 +175,10 @@ bool SubscriptionService::updateCurrentSubscription(
         && entry->alias == displayAlias
         && entry->requestedQos == sanitizedQos
         && entry->format == sanitizedFormat
-        && entry->scriptId == sanitizedScriptId) {
+        && entry->processor.processorId == normalizedProcessor.processorId
+        && entry->processor.revisionMode == normalizedProcessor.revisionMode
+        && entry->processor.pinnedRevisionId == normalizedProcessor.pinnedRevisionId
+        && entry->processor.parameters == normalizedProcessor.parameters) {
         return true;
     }
 
@@ -194,7 +208,7 @@ bool SubscriptionService::updateCurrentSubscription(
     entry->alias = displayAlias;
     entry->requestedQos = sanitizedQos;
     entry->format = sanitizedFormat;
-    entry->scriptId = sanitizedScriptId;
+    entry->processor = normalizedProcessor;
     entry->color = sanitizedColor;
     session->runtime.subscriptionFormats.insert(entry->topic, entry->format);
 

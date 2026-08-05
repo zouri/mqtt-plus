@@ -1,9 +1,9 @@
 #include "services/storage/historystore.h"
 #include "usecases/preferencescontroller.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 
 #include <QSettings>
+#include <QCborValue>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -47,6 +47,7 @@ class SessionImportTest : public QObject
 private slots:
     void mergesPersistsAndRollsBackImportedSessions();
     void restoresSettingsCacheWhenImportWriteFails();
+    void persistsProcessorReference();
 };
 
 void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
@@ -58,8 +59,7 @@ void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
         QSettings::IniFormat);
     PreferencesController preferences(&settings);
     HistoryStore historyStore(directory.filePath(QStringLiteral("history")));
-    ScriptService scriptService;
-    SessionService service(settings, scriptService, historyStore, preferences);
+    SessionService service(settings, historyStore, preferences);
 
     QVERIFY(service.loadSessions());
     QCOMPARE(service.sessions().size(), 1);
@@ -83,7 +83,7 @@ void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
     active.topic = QStringLiteral("devices/+/state");
     active.alias = QStringLiteral("Devices");
     active.requestedQos = 1;
-    active.scriptId = QStringLiteral("missing-script");
+    active.processor.processorId = QStringLiteral("missing-processor");
     SubscriptionEntry paused;
     paused.topic = QStringLiteral("alerts/#");
     paused.paused = true;
@@ -107,16 +107,16 @@ void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
     QCOMPARE(imported->runtime.client->port(), 8883);
     QCOMPARE(imported->runtime.client->state(), QMqttClient::Disconnected);
     QCOMPARE(imported->subscriptions.size(), 2);
-    QCOMPARE(imported->subscriptions.first().scriptId, QString());
+    QCOMPARE(
+        imported->subscriptions.first().processor.processorId,
+        QStringLiteral("missing-processor"));
     QCOMPARE(imported->subscriptions.last().paused, true);
 
     {
-        ScriptService reloadedScripts;
         PreferencesController reloadedPreferences(&settings);
         HistoryStore reloadedHistory(directory.filePath(QStringLiteral("reloaded-history")));
         SessionService reloaded(
             settings,
-            reloadedScripts,
             reloadedHistory,
             reloadedPreferences);
         QVERIFY(reloaded.loadSessions());
@@ -124,6 +124,9 @@ void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
         const SessionState *stored = reloaded.sessionById(QStringLiteral("imported-session"));
         QVERIFY(stored);
         QCOMPARE(stored->subscriptions.size(), 2);
+        QCOMPARE(
+            stored->subscriptions.first().processor.processorId,
+            QStringLiteral("missing-processor"));
         QCOMPARE(stored->subscriptions.last().paused, true);
     }
 
@@ -147,17 +150,57 @@ void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
     QCOMPARE(indexChangedSpy.size(), 1);
     QCOMPARE(currentChangedSpy.size(), 1);
 
-    ScriptService finalScripts;
     PreferencesController finalPreferences(&settings);
     HistoryStore finalHistory(directory.filePath(QStringLiteral("final-history")));
     SessionService finalService(
         settings,
-        finalScripts,
         finalHistory,
         finalPreferences);
     QVERIFY(finalService.loadSessions());
     QCOMPARE(finalService.sessions().size(), 1);
     QCOMPARE(finalService.sessions().first().id, originalSessionId);
+}
+
+void SessionImportTest::persistsProcessorReference()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString settingsPath = directory.filePath(QStringLiteral("settings.ini"));
+
+    {
+        QSettings settings(settingsPath, QSettings::IniFormat);
+        PreferencesController preferences(&settings);
+        HistoryStore historyStore(directory.filePath(QStringLiteral("history")));
+        SessionService service(settings, historyStore, preferences);
+        QVERIFY(service.loadSessions());
+        service.setCurrentSessionIndex(0);
+
+        SubscriptionEntry entry;
+        entry.topic = QStringLiteral("devices/processor");
+        entry.processor.processorId = QStringLiteral("processor-1");
+        entry.processor.revisionMode = ProcessorRevisionMode::Pinned;
+        entry.processor.pinnedRevisionId = QStringLiteral("revision-7");
+        entry.processor.parameters.insert(QStringLiteral("gain"), 2);
+        entry.processor.parameters.insert(QStringLiteral("unit"), QStringLiteral("C"));
+        service.currentSession()->subscriptions.append(entry);
+        QVERIFY(service.saveSessions());
+    }
+
+    {
+        QSettings settings(settingsPath, QSettings::IniFormat);
+        PreferencesController preferences(&settings);
+        HistoryStore historyStore(directory.filePath(QStringLiteral("reloaded-history")));
+        SessionService service(settings, historyStore, preferences);
+        QVERIFY(service.loadSessions());
+        QCOMPARE(service.sessions().size(), 1);
+        QCOMPARE(service.sessions().first().subscriptions.size(), 1);
+        const SubscriptionEntry &entry = service.sessions().first().subscriptions.first();
+        QCOMPARE(entry.processor.processorId, QStringLiteral("processor-1"));
+        QCOMPARE(entry.processor.revisionMode, ProcessorRevisionMode::Pinned);
+        QCOMPARE(entry.processor.pinnedRevisionId, QStringLiteral("revision-7"));
+        QCOMPARE(entry.processor.parameters.value(QStringLiteral("gain")).toInteger(), qint64(2));
+        QCOMPARE(entry.processor.parameters.value(QStringLiteral("unit")).toString(), QStringLiteral("C"));
+    }
 }
 
 void SessionImportTest::restoresSettingsCacheWhenImportWriteFails()
@@ -175,8 +218,7 @@ void SessionImportTest::restoresSettingsCacheWhenImportWriteFails()
         format);
     PreferencesController preferences(&settings);
     HistoryStore historyStore(directory.filePath(QStringLiteral("history")));
-    ScriptService scriptService;
-    SessionService service(settings, scriptService, historyStore, preferences);
+    SessionService service(settings, historyStore, preferences);
     QVERIFY(service.loadSessions());
     QCOMPARE(service.sessions().size(), 1);
 

@@ -3,6 +3,8 @@
 #include "domain/sessionconfig.h"
 
 #include <QCoreApplication>
+#include <QCborParserError>
+#include <QCborValue>
 #include <QMqttClient>
 #include <QUuid>
 
@@ -43,7 +45,20 @@ QVariantList subscriptionsToVariantList(const QVector<SubscriptionEntry> &subscr
         row.insert(QStringLiteral("alias"), entry.alias);
         row.insert(QStringLiteral("qos"), entry.requestedQos);
         row.insert(QStringLiteral("format"), entry.format);
-        row.insert(QStringLiteral("scriptId"), entry.scriptId);
+        QVariantMap processor;
+        processor.insert(QStringLiteral("processorId"), entry.processor.processorId);
+        processor.insert(
+            QStringLiteral("revisionMode"),
+            entry.processor.revisionMode == ProcessorRevisionMode::Pinned
+                ? QStringLiteral("pinned")
+                : QStringLiteral("current"));
+        if (entry.processor.revisionMode == ProcessorRevisionMode::Pinned) {
+            processor.insert(QStringLiteral("revisionId"), entry.processor.pinnedRevisionId);
+        }
+        processor.insert(
+            QStringLiteral("parametersCborBase64"),
+            QString::fromLatin1(QCborValue(entry.processor.parameters).toCbor().toBase64()));
+        row.insert(QStringLiteral("processor"), processor);
         row.insert(QStringLiteral("color"), entry.color);
         row.insert(QStringLiteral("paused"), entry.paused);
         rows.append(row);
@@ -140,7 +155,24 @@ LoadedSession readSession(QSettings &settings, int index)
         entry.alias = row.value(QStringLiteral("alias")).toString().trimmed();
         entry.requestedQos = SessionConfig::sanitizeQos(row.value(QStringLiteral("qos"), 0).toInt());
         entry.format = row.value(QStringLiteral("format"), 0).toInt();
-        entry.scriptId = row.value(QStringLiteral("scriptId")).toString();
+        const QVariantMap processor = row.value(QStringLiteral("processor")).toMap();
+        entry.processor.processorId = processor.value(QStringLiteral("processorId")).toString().trimmed();
+        entry.processor.revisionMode = processor.value(QStringLiteral("revisionMode")).toString()
+                == QStringLiteral("pinned")
+            ? ProcessorRevisionMode::Pinned
+            : ProcessorRevisionMode::FollowCurrent;
+        if (entry.processor.revisionMode == ProcessorRevisionMode::Pinned) {
+            entry.processor.pinnedRevisionId = processor.value(QStringLiteral("revisionId"))
+                                                       .toString()
+                                                       .trimmed();
+        }
+        QCborParserError parserError;
+        const QByteArray parameterBytes = QByteArray::fromBase64(
+            processor.value(QStringLiteral("parametersCborBase64")).toString().toLatin1());
+        const QCborValue parameters = QCborValue::fromCbor(parameterBytes, &parserError);
+        if (parserError.error == QCborError::NoError && parameters.isMap()) {
+            entry.processor.parameters = parameters.toMap();
+        }
         entry.color = row.value(QStringLiteral("color")).toString().trimmed();
         entry.paused = row.value(QStringLiteral("paused"), false).toBool();
         session.subscriptions.append(entry);

@@ -101,13 +101,55 @@ AppDialog {
             }
         }
 
-        AppComboBox {
-            ui: root.ui
-            id: scriptField
+        ColumnLayout {
             Layout.fillWidth: true
-            model: root.editor.scriptOptionNames
-            currentIndex: root.editor.scriptIndex
-            onActivated: root.editor.scriptIndex = currentIndex
+            spacing: 8
+
+            Label {
+                text: qsTr("Message Processor")
+                color: root.ui.textMuted
+                font.pixelSize: 12
+            }
+
+            AppComboBox {
+                ui: root.ui
+                Layout.fillWidth: true
+                model: root.editor.processorOptionNames
+                currentIndex: root.editor.processorIndex
+                onActivated: root.editor.processorIndex = currentIndex
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                visible: root.editor.processorId.length > 0
+                spacing: 10
+
+                AppComboBox {
+                    ui: root.ui
+                    Layout.fillWidth: true
+                    model: [qsTr("Follow current revision"), qsTr("Pinned revision")]
+                    currentIndex: root.editor.processorRevisionMode
+                    onActivated: root.editor.processorRevisionMode = currentIndex
+                }
+
+                AppComboBox {
+                    ui: root.ui
+                    Layout.fillWidth: true
+                    visible: root.editor.processorRevisionMode === 1
+                    model: root.editor.pinnedRevisionOptionNames
+                    currentIndex: root.editor.pinnedRevisionIndex
+                    onActivated: root.editor.pinnedRevisionIndex = currentIndex
+                }
+            }
+
+            Label {
+                Layout.fillWidth: true
+                visible: root.editor.processorBindingDetail.length > 0
+                text: root.editor.processorBindingDetail
+                color: root.ui.stateColor("error")
+                font.pixelSize: 11
+                wrapMode: Text.Wrap
+            }
         }
 
         RowLayout {

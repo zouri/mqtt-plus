@@ -5,7 +5,7 @@
 
 #include "viewmodels/logsviewmodel.h"
 #include "viewmodels/draftsviewmodel.h"
-#include "viewmodels/scriptsviewmodel.h"
+#include "viewmodels/processorsviewmodel.h"
 #include "viewmodels/settingsviewmodel.h"
 #include "viewmodels/workbenchviewmodel.h"
 #include "usecases/configurationtransferservice.h"
@@ -15,6 +15,8 @@ class DraftLibraryService;
 class DraftLibraryModel;
 class NotificationCenterModel;
 class PreferencesController;
+class ProcessorLibrary;
+class ProcessorLibraryModel;
 class SessionService;
 class SubscriptionService;
 
@@ -24,7 +26,7 @@ class ApplicationViewModel : public QObject
     Q_PROPERTY(WorkbenchViewModel* workbench READ workbench CONSTANT)
     Q_PROPERTY(DraftsViewModel* drafts READ drafts CONSTANT)
     Q_PROPERTY(LogsViewModel* logs READ logs CONSTANT)
-    Q_PROPERTY(ScriptsViewModel* scripts READ scripts CONSTANT)
+    Q_PROPERTY(ProcessorsViewModel* processors READ processors CONSTANT)
     Q_PROPERTY(SettingsViewModel* settings READ settings CONSTANT)
     Q_PROPERTY(ConfigurationTransferService* configurationTransfer READ configurationTransfer CONSTANT)
     Q_PROPERTY(PreferencesController* preferences READ preferences CONSTANT)
@@ -39,7 +41,7 @@ public:
         MqttSessionService &mqttService,
         SubscriptionService &subscriptionService,
         EventHistoryService &eventHistoryService,
-        ScriptService &scriptService,
+        ProcessorLibrary &processorLibrary,
         DraftLibraryService &draftService,
         PreferencesController &preferences,
         HistoryStore &historyStore,
@@ -49,7 +51,7 @@ public:
         EventStreamModel &messages,
         MessageFilterModel &filteredMessages,
         EventStreamModel &logs,
-        ScriptLibraryModel &scripts,
+        ProcessorLibraryModel &processors,
         DraftLibraryModel &drafts,
         NotificationCenterModel &notifications,
         QSettings &settings,
@@ -58,7 +60,7 @@ public:
     WorkbenchViewModel *workbench();
     DraftsViewModel *drafts();
     LogsViewModel *logs();
-    ScriptsViewModel *scripts();
+    ProcessorsViewModel *processors();
     SettingsViewModel *settings();
     ConfigurationTransferService *configurationTransfer();
     PreferencesController *preferences();
@@ -68,11 +70,11 @@ public:
     NotificationCenterModel *notifications();
 
 private:
+    SettingsViewModel m_settings;
+    ProcessorsViewModel m_processors;
     WorkbenchViewModel m_workbench;
     DraftsViewModel m_drafts;
     LogsViewModel m_logs;
-    ScriptsViewModel m_scripts;
-    SettingsViewModel m_settings;
     ConfigurationTransferService m_configurationTransfer;
     PreferencesController *m_preferences;
     EventHistoryService *m_eventHistory;

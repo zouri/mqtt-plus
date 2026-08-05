@@ -1,5 +1,6 @@
 #pragma once
 
+#include "messageprocessor.h"
 #include "recenttrafficwindow.h"
 
 #include <QPointer>
@@ -13,7 +14,7 @@ struct SubscriptionEntry {
     int requestedQos = 0;
     int grantedQos = -1;
     int format = 0;
-    QString scriptId;
+    ProcessorReference processor;
     QString color;
     bool paused = false;
     QString runtimeState = QStringLiteral("saved");
