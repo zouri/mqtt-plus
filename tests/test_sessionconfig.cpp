@@ -54,7 +54,8 @@ void SessionConfigTest::sanitizeEnumsAndModes()
     QCOMPARE(SessionConfig::sanitizeQos(-1), 0);
     QCOMPARE(SessionConfig::sanitizeQos(0), 0);
     QCOMPARE(SessionConfig::sanitizeQos(1), 1);
-    QCOMPARE(SessionConfig::sanitizeQos(2), 1);
+    QCOMPARE(SessionConfig::sanitizeQos(2), 2);
+    QCOMPARE(SessionConfig::sanitizeQos(3), 2);
 
     QCOMPARE(SessionConfig::sanitizeTransport(QStringLiteral(" TLS ")), QStringLiteral("tls"));
     QCOMPARE(SessionConfig::sanitizeTransport(QStringLiteral("websocket")), QStringLiteral("tcp"));

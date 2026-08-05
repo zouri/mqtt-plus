@@ -268,6 +268,7 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_drafteditorviewmodel
         tests/test_drafteditorviewmodel.cpp
+        src/domain/sessionconfig.cpp
         src/services/payload/payloadcodec.cpp
         src/viewmodels/drafteditorviewmodel.cpp
     )
@@ -337,6 +338,7 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_subscriptioneditorviewmodel
         tests/test_subscriptioneditorviewmodel.cpp
+        src/domain/sessionconfig.cpp
         src/viewmodels/subscriptioneditorviewmodel.cpp
     )
 

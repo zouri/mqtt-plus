@@ -1,5 +1,7 @@
 #include "viewmodels/subscriptioneditorviewmodel.h"
 
+#include "domain/sessionconfig.h"
+
 #include <algorithm>
 
 SubscriptionEditorViewModel::SubscriptionEditorViewModel(QObject *parent)
@@ -58,7 +60,7 @@ void SubscriptionEditorViewModel::setAlias(const QString &alias)
 
 void SubscriptionEditorViewModel::setQos(int qos)
 {
-    const int normalized = std::clamp(qos, 0, 1);
+    const int normalized = SessionConfig::sanitizeQos(qos);
     if (m_qos == normalized) {
         return;
     }

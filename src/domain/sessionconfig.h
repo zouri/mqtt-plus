@@ -7,6 +7,7 @@ namespace SessionConfig {
 inline constexpr int kDefaultPort = 1883;
 inline constexpr int kDefaultTlsPort = 8883;
 inline constexpr int kDefaultKeepAlive = 30;
+inline constexpr int kMaximumQos = 2;
 
 QString generateClientId();
 

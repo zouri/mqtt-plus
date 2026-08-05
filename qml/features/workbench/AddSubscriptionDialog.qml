@@ -86,7 +86,7 @@ AppDialog {
                 ui: root.ui
                 id: qosField
                 Layout.fillWidth: true
-                model: [qsTr("QoS 0"), qsTr("QoS 1")]
+                model: [qsTr("QoS 0"), qsTr("QoS 1"), qsTr("QoS 2")]
                 currentIndex: root.editor.qos
                 onActivated: root.editor.qos = currentIndex
             }

@@ -10,7 +10,7 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content);
 
 namespace MqttPlusConfigAdapter {
 
-inline constexpr int kSchemaVersion = 1;
+inline constexpr int kSchemaVersion = 2;
 
 ConfigurationTransfer::ParseResult parse(const QByteArray &content);
 ConfigurationTransfer::SerializeResult serialize(

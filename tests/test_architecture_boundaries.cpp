@@ -35,6 +35,7 @@ private slots:
     void messageInspectorPreservesPayloadFormatting();
     void closingMessageInspectorClearsRowSelection();
     void messageInspectorUsesLeftEdgeShadow();
+    void appUiTranslatesQosTwoPublishStates();
     void qmlMotionPolicyUsesSharedTokens();
     void qmlUsesNativeFocusManagement();
     void qmlMenusAreApplicationRendered();
@@ -850,6 +851,18 @@ void ArchitectureBoundariesTest::messageInspectorUsesLeftEdgeShadow()
             && source.contains(QStringLiteral("anchors.right: inspectorSurface.left"))
             && source.contains(QStringLiteral("orientation: Gradient.Horizontal")),
         "The inspector should render a narrow left-edge gradient toward the message list");
+}
+
+void ArchitectureBoundariesTest::appUiTranslatesQosTwoPublishStates()
+{
+    QString uiSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/AppUi.qml"), uiSource));
+
+    QVERIFY2(uiSource.contains(QStringLiteral("case \"received\":"))
+            && uiSource.contains(QStringLiteral("return qsTr(\"Received\");"))
+            && uiSource.contains(QStringLiteral("case \"released\":"))
+            && uiSource.contains(QStringLiteral("return qsTr(\"Released\");")),
+        "QoS 2 publish progress must use translated labels instead of raw protocol states");
 }
 
 void ArchitectureBoundariesTest::qmlMotionPolicyUsesSharedTokens()

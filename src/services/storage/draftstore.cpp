@@ -1,5 +1,6 @@
 #include "services/storage/draftstore.h"
 
+#include "domain/sessionconfig.h"
 #include "services/payload/payloadcodec.h"
 
 #include <QDateTime>
@@ -16,7 +17,7 @@
 #include <QMqttTopicName>
 
 namespace {
-constexpr int kSchemaVersion = 1;
+constexpr int kSchemaVersion = 2;
 constexpr qsizetype kMaxNameLength = 80;
 constexpr qsizetype kMaxDescriptionLength = 500;
 constexpr qsizetype kMaxPayloadBytes = 16 * 1024 * 1024;
@@ -75,7 +76,7 @@ bool validateDrafts(const QVector<PublishDraft> &drafts, QString &errorMessage)
                 : payloadError;
             return false;
         }
-        if (draft.qos < 0 || draft.qos > 1) {
+        if (draft.qos < 0 || draft.qos > SessionConfig::kMaximumQos) {
             errorMessage = QStringLiteral("Draft library contains an unsupported QoS value.");
             return false;
         }
