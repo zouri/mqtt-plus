@@ -49,6 +49,11 @@
         <translation>QoS 1</translation>
     </message>
     <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="89"/>
+        <source>QoS 2</source>
+        <translation>QoS 2</translation>
+    </message>
+    <message>
         <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="166"/>
         <source>Choose custom topic color</source>
         <translation>选择自定义主题颜色</translation>
@@ -211,37 +216,47 @@
     </message>
     <message>
         <location filename="../qml/AppUi.qml" line="239"/>
+        <source>Received</source>
+        <translation>已接收</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppUi.qml" line="241"/>
+        <source>Released</source>
+        <translation>已释放</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppUi.qml" line="243"/>
         <source>Completed</source>
         <translation>已完成</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="241"/>
+        <location filename="../qml/AppUi.qml" line="245"/>
         <source>Paused</source>
         <translation>已暂停</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="243"/>
+        <location filename="../qml/AppUi.qml" line="247"/>
         <source>Saved</source>
         <translation>已保存</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="245"/>
+        <location filename="../qml/AppUi.qml" line="249"/>
         <source>Unsubscribed</source>
         <translation>已取消订阅</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="247"/>
+        <location filename="../qml/AppUi.qml" line="251"/>
         <source>Error</source>
         <translation>错误</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="249"/>
+        <location filename="../qml/AppUi.qml" line="253"/>
         <source>Failed</source>
         <translation>失败</translation>
     </message>
     <message>
-        <location filename="../qml/AppUi.qml" line="251"/>
-        <location filename="../qml/AppUi.qml" line="253"/>
+        <location filename="../qml/AppUi.qml" line="255"/>
+        <location filename="../qml/AppUi.qml" line="257"/>
         <source>Idle</source>
         <translation>空闲</translation>
     </message>
@@ -322,100 +337,95 @@
 <context>
     <name>ConfigurationAdapters</name>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="234"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="240"/>
         <source>The file is not a supported MQTTX connection export.</source>
         <translation>文件不是受支持的 MQTTX 连接导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="284"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="289"/>
         <source>Imported connection %1</source>
         <translation>导入的连接 %1</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="408"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="413"/>
         <source>MQTT 5 connection user properties are not supported and will be ignored.</source>
         <translation>不支持 MQTT 5 连接用户属性，将忽略。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="416"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="421"/>
         <source>The MQTTX export contains no supported connections.</source>
         <translation>MQTTX 导出中没有受支持的连接。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="423"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="428"/>
         <source>%1 unsupported or incomplete connections will be skipped.</source>
         <translation>将跳过 %1 个不支持或不完整的连接。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="430"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="668"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="435"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="666"/>
         <source>%1 invalid or duplicate subscriptions will be skipped.</source>
         <translation>将跳过 %1 个无效或重复的订阅。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="437"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="442"/>
         <source>Automatic reconnect settings from %1 connections are not supported.</source>
         <translation>不支持 %1 个连接的自动重连设置。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="444"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="449"/>
         <source>Last-will settings from %1 connections are not supported.</source>
         <translation>不支持 %1 个连接的遗嘱设置。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="451"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="456"/>
         <source>%1 MQTTX message records will not be imported as drafts or history.</source>
         <translation>不会将 %1 条 MQTTX 消息记录导入为草稿或历史记录。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="458"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="463"/>
         <source>Advanced MQTT 5 options on %1 subscriptions are not supported.</source>
         <translation>不支持 %1 个订阅中的 MQTT 5 高级选项。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="465"/>
-        <source>%1 QoS 2 subscriptions will be imported as QoS 1.</source>
-        <translation>将把 %1 个 QoS 2 订阅作为 QoS 1 导入。</translation>
-    </message>
-    <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="472"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="470"/>
         <source>%1 certificate fields do not look like PEM data and may require manual repair.</source>
         <translation>%1 个证书字段不像 PEM 数据，可能需要手动修复。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="495"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="493"/>
         <source>The file is not a valid MQTT Plus configuration export.</source>
         <translation>文件不是有效的 MQTT Plus 配置导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="502"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="500"/>
         <source>The file is not an MQTT Plus configuration export.</source>
         <translation>文件不是 MQTT Plus 配置导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="509"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="507"/>
         <source>This configuration export requires a newer application version.</source>
         <translation>此配置导出需要更新版本的应用程序。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="515"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="513"/>
         <source>The configuration export version is not supported.</source>
         <translation>不支持此配置导出版本。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="527"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="534"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="542"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="525"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="532"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="540"/>
         <source>The configuration export has an invalid structure.</source>
         <translation>配置导出的结构无效。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="633"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="631"/>
         <source>%1 scripts are present but script import is not supported yet.</source>
         <translation>检测到 %1 个脚本，但暂不支持导入脚本。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="661"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="659"/>
         <source>%1 incomplete sessions will be skipped.</source>
         <translation>将跳过 %1 个不完整的连接。</translation>
     </message>
@@ -566,68 +576,68 @@
 <context>
     <name>DraftLibraryService</name>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="81"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="82"/>
         <source>Draft name is required.</source>
         <translation>草稿名称不能为空。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="85"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="86"/>
         <source>Draft name must be 80 characters or fewer.</source>
         <translation>草稿名称不能超过 80 个字符。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="89"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="90"/>
         <source>Draft description must be 500 characters or fewer.</source>
         <translation>草稿描述不能超过 500 个字符。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="93"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="94"/>
         <source>A draft with this name already exists.</source>
         <translation>已存在同名草稿。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="98"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="99"/>
         <source>Default topic is not a valid MQTT topic name.</source>
         <translation>默认主题不是有效的 MQTT 主题名称。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="104"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="105"/>
         <source>Unsupported payload format.</source>
         <translation>不支持的 Payload 格式。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="108"/>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="118"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="109"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="119"/>
         <source>Encoded payload exceeds the 16 MiB draft limit.</source>
         <translation>编码后的 Payload 超过 16 MiB 草稿限制。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="122"/>
-        <source>QoS must be 0 or 1.</source>
-        <translation>QoS 必须为 0 或 1。</translation>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="123"/>
+        <source>QoS must be 0, 1, or 2.</source>
+        <translation>QoS 必须为 0、1 或 2。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="130"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="131"/>
         <source>Draft</source>
         <translation>草稿</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="145"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="146"/>
         <source>%1 Copy</source>
         <translation>%1 副本</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="148"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="149"/>
         <source>%1 Copy %2</source>
         <translation>%1 副本 %2</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="253"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="254"/>
         <source>Cannot import drafts with duplicate IDs or names.</source>
         <translation>无法导入 ID 或名称重复的草稿。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="342"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="343"/>
         <source>Draft library contains duplicate IDs.</source>
         <translation>草稿库包含重复 ID。</translation>
     </message>
@@ -736,6 +746,11 @@
         <location filename="../qml/features/drafts/DraftsView.qml" line="273"/>
         <source>QoS 1</source>
         <translation>QoS 1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="273"/>
+        <source>QoS 2</source>
+        <translation>QoS 2</translation>
     </message>
     <message>
         <location filename="../qml/features/drafts/DraftsView.qml" line="284"/>
@@ -1515,7 +1530,7 @@
         <translation>代理确认前连接已关闭。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="356"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="361"/>
         <source>Broker rejected the publish request.</source>
         <translation>代理拒绝了发送请求。</translation>
     </message>
@@ -1588,6 +1603,11 @@
         <location filename="../qml/features/workbench/PublishComposer.qml" line="262"/>
         <source>Expand</source>
         <translation>展开</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="297"/>
+        <source>QoS 2</source>
+        <translation>QoS 2</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/PublishComposer.qml" line="378"/>
@@ -1813,12 +1833,12 @@
 <context>
     <name>PublishComposerViewModel</name>
     <message>
-        <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="139"/>
+        <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="141"/>
         <source>Recent publish</source>
         <translation>最近发送</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="151"/>
+        <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="153"/>
         <source>Publish composer</source>
         <translation>发送编辑器</translation>
     </message>

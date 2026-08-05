@@ -1,5 +1,6 @@
 #include "viewmodels/drafteditorviewmodel.h"
 
+#include "domain/sessionconfig.h"
 #include "services/payload/payloadcodec.h"
 
 #include <algorithm>
@@ -78,7 +79,7 @@ void DraftEditorViewModel::setFormat(int value)
 
 void DraftEditorViewModel::setQos(int value)
 {
-    const int normalized = std::clamp(value, 0, 1);
+    const int normalized = SessionConfig::sanitizeQos(value);
     if (m_qos == normalized) return;
     m_qos = normalized;
     emit qosChanged();

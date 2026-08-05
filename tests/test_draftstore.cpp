@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QtTest/QtTest>
 
@@ -15,7 +16,9 @@ private slots:
     void offersRecoveryWhenPrimaryIsMissing();
     void offersRecoveryForSemanticallyInvalidPrimary();
     void rejectsNewerSchemaVersions();
+    void rejectsPreviousSchemaVersion();
     void rejectsOversizedStoredPayload();
+    void rejectsUnsupportedQos();
 };
 
 namespace {
@@ -28,7 +31,7 @@ PublishDraft draft(const QString &id, const QString &name, const QString &payloa
     result.defaultTopic = QStringLiteral("devices/test/set");
     result.payload = payload;
     result.formatId = QStringLiteral("json");
-    result.qos = 1;
+    result.qos = 2;
     result.retain = true;
     result.createdAt = QStringLiteral("2026-08-03T00:00:00.000");
     result.updatedAt = result.createdAt;
@@ -50,10 +53,19 @@ void DraftStoreTest::savesLoadsAndKeepsBackup()
     const QVector<PublishDraft> first {draft(QStringLiteral("one"), QStringLiteral("First"), QStringLiteral("{}"))};
     QVERIFY(DraftStore::saveDrafts(first, temporaryDirectory.path()).ok);
 
+    QFile primaryFile(DraftStore::primaryFilePath(temporaryDirectory.path()));
+    QVERIFY2(primaryFile.open(QIODevice::ReadOnly), qPrintable(primaryFile.errorString()));
+    const QByteArray storedContent = primaryFile.readAll();
+    primaryFile.close();
+    const QJsonDocument storedDocument = QJsonDocument::fromJson(storedContent);
+    QVERIFY(storedDocument.isObject());
+    QCOMPARE(storedDocument.object().value(QStringLiteral("version")).toInt(), 2);
+
     const DraftStore::LoadResult firstLoad = DraftStore::loadDrafts(temporaryDirectory.path());
     QCOMPARE(firstLoad.state, DraftStore::LoadState::Ready);
     QCOMPARE(firstLoad.drafts.size(), 1);
     QCOMPARE(firstLoad.drafts.first().name, QStringLiteral("First"));
+    QCOMPARE(firstLoad.drafts.first().qos, 2);
 
     const QVector<PublishDraft> second {draft(QStringLiteral("two"), QStringLiteral("Second"), QStringLiteral("{\"v\":2}"))};
     QVERIFY(DraftStore::saveDrafts(second, temporaryDirectory.path()).ok);
@@ -125,7 +137,7 @@ void DraftStoreTest::offersRecoveryForSemanticallyInvalidPrimary()
     QVERIFY(writeBytes(
         DraftStore::primaryFilePath(temporaryDirectory.path()),
         QByteArray(
-            "{\"version\":1,\"drafts\":[{\"id\":\"broken\",\"name\":\"Broken\","
+            "{\"version\":2,\"drafts\":[{\"id\":\"broken\",\"name\":\"Broken\","
             "\"description\":\"\",\"defaultTopic\":\"devices/+/set\",\"payload\":\"\","
             "\"format\":\"text\",\"qos\":0,\"retain\":false,\"createdAt\":\"\","
             "\"updatedAt\":\"\",\"lastUsedAt\":\"\"}]}")));
@@ -160,6 +172,21 @@ void DraftStoreTest::rejectsNewerSchemaVersions()
     QCOMPARE(stillNewer.state, DraftStore::LoadState::Incompatible);
 }
 
+void DraftStoreTest::rejectsPreviousSchemaVersion()
+{
+    QTemporaryDir temporaryDirectory;
+    QVERIFY(temporaryDirectory.isValid());
+    QVERIFY(writeBytes(
+        DraftStore::primaryFilePath(temporaryDirectory.path()),
+        QByteArray("{\"version\":1,\"drafts\":[]}")));
+
+    const DraftStore::LoadResult result = DraftStore::loadDrafts(temporaryDirectory.path());
+    QCOMPARE(result.state, DraftStore::LoadState::Corrupt);
+    QVERIFY(result.drafts.isEmpty());
+    QVERIFY(!result.canRecover);
+    QVERIFY(!result.errorMessage.isEmpty());
+}
+
 void DraftStoreTest::rejectsOversizedStoredPayload()
 {
     QTemporaryDir temporaryDirectory;
@@ -175,6 +202,22 @@ void DraftStoreTest::rejectsOversizedStoredPayload()
         {oversized}, temporaryDirectory.path());
     QVERIFY(!result.ok);
     QVERIFY(result.errorMessage.contains(QStringLiteral("oversized"), Qt::CaseInsensitive));
+}
+
+void DraftStoreTest::rejectsUnsupportedQos()
+{
+    QTemporaryDir temporaryDirectory;
+    QVERIFY(temporaryDirectory.isValid());
+
+    PublishDraft invalidQos = draft(
+        QStringLiteral("invalid-qos"),
+        QStringLiteral("Invalid QoS"),
+        QStringLiteral("{}"));
+    invalidQos.qos = 3;
+    const DraftStore::SaveResult invalidQosResult = DraftStore::saveDrafts(
+        {invalidQos}, temporaryDirectory.path());
+    QVERIFY(!invalidQosResult.ok);
+    QVERIFY(invalidQosResult.errorMessage.contains(QStringLiteral("QoS")));
 }
 
 QTEST_MAIN(DraftStoreTest)

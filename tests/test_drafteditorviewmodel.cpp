@@ -9,6 +9,7 @@ class DraftEditorViewModelTest : public QObject
 private slots:
     void tracksUnsavedState();
     void duplicatesAsIndependentDraft();
+    void supportsQosTwo();
 };
 
 void DraftEditorViewModelTest::tracksUnsavedState()
@@ -58,6 +59,17 @@ void DraftEditorViewModelTest::duplicatesAsIndependentDraft()
     QCOMPARE(editor.defaultTopic(), QStringLiteral("devices/reset"));
     QVERIFY(editor.hasUnsavedChanges());
     QVERIFY(editor.canSave());
+}
+
+void DraftEditorViewModelTest::supportsQosTwo()
+{
+    DraftEditorViewModel editor;
+    editor.newDraft();
+    editor.setQos(2);
+    QCOMPARE(editor.qos(), 2);
+
+    editor.setQos(3);
+    QCOMPARE(editor.qos(), 2);
 }
 
 QTEST_MAIN(DraftEditorViewModelTest)

@@ -294,7 +294,7 @@ Item {
                 ui: root.ui
                 Layout.preferredWidth: 88
                 Layout.preferredHeight: root.metadataControlHeight
-                model: [qsTr("QoS 0"), qsTr("QoS 1")]
+                model: [qsTr("QoS 0"), qsTr("QoS 1"), qsTr("QoS 2")]
                 currentIndex: root.publisher.qos
                 onActivated: root.publisher.qos = currentIndex
             }

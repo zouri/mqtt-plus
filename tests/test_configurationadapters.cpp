@@ -16,6 +16,7 @@ private slots:
     void inspectsExternalMqttxSampleWhenProvided();
     void roundTripsNativeConfiguration();
     void rejectsFutureNativeVersion();
+    void rejectsPreviousNativeVersion();
     void rejectsInvalidNativeStructure();
 };
 
@@ -71,11 +72,11 @@ void ConfigurationAdaptersTest::importsMqttxConnectionsAndWarnings()
     QCOMPARE(session.connectTimeoutSeconds, 10);
     QCOMPARE(session.sslSecure, false);
     QCOMPARE(session.subscriptions.size(), 1);
-    QCOMPARE(session.subscriptions.first().qos, 1);
+    QCOMPARE(session.subscriptions.first().qos, 2);
     QCOMPARE(session.subscriptions.first().paused, true);
     QVERIFY(result.warnings.join(QLatin1Char('\n')).contains(QStringLiteral("reconnect"), Qt::CaseInsensitive));
-    QVERIFY(result.warnings.join(QLatin1Char('\n')).contains(QStringLiteral("QoS 2")));
     QVERIFY(result.warnings.join(QLatin1Char('\n')).contains(QStringLiteral("unsupported"), Qt::CaseInsensitive));
+    QVERIFY(!result.warnings.join(QLatin1Char('\n')).contains(QStringLiteral("QoS 2")));
 }
 
 void ConfigurationAdaptersTest::doesNotReportMissingAdvancedSubscriptionFields()
@@ -134,7 +135,7 @@ void ConfigurationAdaptersTest::roundTripsNativeConfiguration()
     ConfigurationTransfer::SubscriptionData subscription;
     subscription.topic = QStringLiteral("sensors/#");
     subscription.alias = QStringLiteral("Sensors");
-    subscription.qos = 1;
+    subscription.qos = 2;
     subscription.scriptId = QStringLiteral("script-that-must-not-be-exported");
     subscription.paused = true;
     session.subscriptions.append(subscription);
@@ -145,7 +146,7 @@ void ConfigurationAdaptersTest::roundTripsNativeConfiguration()
     draft.name = QStringLiteral("Command");
     draft.payload = QStringLiteral("{}");
     draft.formatId = QStringLiteral("json");
-    draft.qos = 1;
+    draft.qos = 2;
     bundle.drafts.append(draft);
     bundle.preferences.insert(QStringLiteral("appearance/themeMode"), QStringLiteral("dark"));
 
@@ -153,6 +154,8 @@ void ConfigurationAdaptersTest::roundTripsNativeConfiguration()
     QVERIFY(serialized.ok);
     QVERIFY(!serialized.content.contains("script-that-must-not-be-exported"));
     QVERIFY(!serialized.content.contains("scriptId"));
+    const QJsonObject serializedRoot = QJsonDocument::fromJson(serialized.content).object();
+    QCOMPARE(serializedRoot.value(QStringLiteral("version")).toInt(), 2);
     const auto parsed = MqttPlusConfigAdapter::parse(serialized.content);
 
     QVERIFY(parsed.ok);
@@ -160,7 +163,9 @@ void ConfigurationAdaptersTest::roundTripsNativeConfiguration()
     QCOMPARE(parsed.bundle.sessions.first().caCertificate, QByteArrayLiteral("CA DATA"));
     QCOMPARE(parsed.bundle.sessions.first().clientKey, QByteArrayLiteral("KEY DATA"));
     QCOMPARE(parsed.bundle.sessions.first().subscriptions.first().topic, QStringLiteral("sensors/#"));
+    QCOMPARE(parsed.bundle.sessions.first().subscriptions.first().qos, 2);
     QCOMPARE(parsed.bundle.drafts.first().name, draft.name);
+    QCOMPARE(parsed.bundle.drafts.first().qos, 2);
     QCOMPARE(parsed.bundle.preferences.value(QStringLiteral("appearance/themeMode")).toString(), QStringLiteral("dark"));
     QCOMPARE(parsed.sensitiveFieldCount, 2);
 }
@@ -170,6 +175,20 @@ void ConfigurationAdaptersTest::rejectsFutureNativeVersion()
     const QJsonObject root {
         {QStringLiteral("format"), QStringLiteral("mqtt-plus-config")},
         {QStringLiteral("version"), MqttPlusConfigAdapter::kSchemaVersion + 1},
+    };
+    const auto result = MqttPlusConfigAdapter::parse(QJsonDocument(root).toJson());
+    QVERIFY(!result.ok);
+    QVERIFY(!result.errorMessage.isEmpty());
+}
+
+void ConfigurationAdaptersTest::rejectsPreviousNativeVersion()
+{
+    const QJsonObject root {
+        {QStringLiteral("format"), QStringLiteral("mqtt-plus-config")},
+        {QStringLiteral("version"), 1},
+        {QStringLiteral("sessions"), QJsonArray {}},
+        {QStringLiteral("drafts"), QJsonArray {}},
+        {QStringLiteral("preferences"), QJsonObject {}},
     };
     const auto result = MqttPlusConfigAdapter::parse(QJsonDocument(root).toJson());
     QVERIFY(!result.ok);

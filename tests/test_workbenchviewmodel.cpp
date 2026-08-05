@@ -475,20 +475,24 @@ void WorkbenchViewModelTest::updatesPublishDraft()
     publisher->setTopic(QStringLiteral(" sensors/temp "));
     publisher->setPayload(QStringLiteral("{\"value\":23}"));
     publisher->setFormat(2);
-    publisher->setQos(1);
+    publisher->setQos(2);
     publisher->setRetain(true);
     publisher->useMessageAsDraft(QStringLiteral("devices/humidity"), QStringLiteral("raw"), QStringLiteral("decoded"), 0);
 
     QCOMPARE(publisher->topic(), QStringLiteral("devices/humidity"));
     QCOMPARE(publisher->payload(), QStringLiteral("decoded"));
     QCOMPARE(publisher->format(), 0);
-    QCOMPARE(publisher->qos(), 1);
+    QCOMPARE(publisher->qos(), 2);
     QCOMPARE(publisher->retain(), true);
     QCOMPARE(topicSpy.size(), 2);
     QCOMPARE(payloadSpy.size(), 2);
     QCOMPARE(formatSpy.size(), 2);
     QCOMPARE(qosSpy.size(), 1);
     QCOMPARE(retainSpy.size(), 1);
+
+    publisher->setQos(3);
+    QCOMPARE(publisher->qos(), 2);
+    QCOMPARE(qosSpy.size(), 1);
 }
 
 void WorkbenchViewModelTest::savedDraftQuickPublishDoesNotReplaceComposer()
@@ -502,7 +506,7 @@ void WorkbenchViewModelTest::savedDraftQuickPublishDoesNotReplaceComposer()
     draft.defaultTopic = QStringLiteral("devices/reset");
     draft.payload = QStringLiteral("now");
     draft.formatId = QStringLiteral("text");
-    draft.qos = 1;
+    draft.qos = 2;
     draft.retain = true;
     QVERIFY(fixture.draftService.createDraft(draft));
     QTRY_COMPARE(fixture.draftService.drafts().size(), 1);
@@ -527,7 +531,7 @@ void WorkbenchViewModelTest::savedDraftQuickPublishDoesNotReplaceComposer()
     QCOMPARE(publisher->topic(), QStringLiteral("devices/reset"));
     QCOMPARE(publisher->payload(), QStringLiteral("now"));
     QCOMPARE(publisher->format(), 0);
-    QCOMPARE(publisher->qos(), 1);
+    QCOMPARE(publisher->qos(), 2);
     QVERIFY(publisher->retain());
 }
 

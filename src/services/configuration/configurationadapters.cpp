@@ -1,5 +1,7 @@
 #include "services/configuration/configurationadapters.h"
 
+#include "domain/sessionconfig.h"
+
 #include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -210,7 +212,11 @@ ConfigurationTransfer::SubscriptionData parseNativeSubscription(const QJsonObjec
     ConfigurationTransfer::SubscriptionData subscription;
     subscription.topic = object.value(QStringLiteral("topic")).toString().trimmed();
     subscription.alias = object.value(QStringLiteral("alias")).toString().trimmed();
-    subscription.qos = boundedInt(object.value(QStringLiteral("qos")), 0, 0, 1);
+    subscription.qos = boundedInt(
+        object.value(QStringLiteral("qos")),
+        0,
+        0,
+        SessionConfig::kMaximumQos);
     subscription.format = boundedInt(object.value(QStringLiteral("format")), 0, 0, 5);
     subscription.scriptId = object.value(QStringLiteral("scriptId")).toString().trimmed();
     subscription.color = object.value(QStringLiteral("color")).toString().trimmed();
@@ -243,7 +249,6 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
     int ignoredWillConnections = 0;
     int ignoredMessages = 0;
     int advancedSubscriptionCount = 0;
-    int downgradedQosCount = 0;
     int nonPemAssetCount = 0;
 
     const QJsonArray connections = document.array();
@@ -376,11 +381,11 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
             SubscriptionData subscription;
             subscription.topic = topic;
             subscription.alias = row.value(QStringLiteral("alias")).toString().trimmed();
-            const int mqttxQos = boundedInt(row.value(QStringLiteral("qos")), 0, 0, 2);
-            subscription.qos = std::min(mqttxQos, 1);
-            if (mqttxQos > 1) {
-                ++downgradedQosCount;
-            }
+            subscription.qos = boundedInt(
+                row.value(QStringLiteral("qos")),
+                0,
+                0,
+                SessionConfig::kMaximumQos);
             subscription.color = row.value(QStringLiteral("color")).toString().trimmed();
             subscription.paused = row.value(QStringLiteral("disabled")).toBool(false);
             const QJsonValue subscriptionIdentifier =
@@ -459,13 +464,6 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
                      "ConfigurationAdapters",
                      "Advanced MQTT 5 options on %1 subscriptions are not supported."))
                 .arg(advancedSubscriptionCount));
-    }
-    if (downgradedQosCount > 0) {
-        result.warnings.append(
-            text(QT_TRANSLATE_NOOP(
-                     "ConfigurationAdapters",
-                     "%1 QoS 2 subscriptions will be imported as QoS 1."))
-                .arg(downgradedQosCount));
     }
     if (nonPemAssetCount > 0) {
         result.warnings.append(
