@@ -270,7 +270,7 @@ Item {
                             ui: root.ui
                             Layout.fillWidth: true
                             enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
-                            model: [qsTr("QoS 0"), qsTr("QoS 1")]
+                            model: [qsTr("QoS 0"), qsTr("QoS 1"), qsTr("QoS 2")]
                             currentIndex: root.editor.qos
                             onActivated: root.editor.qos = currentIndex
                         }

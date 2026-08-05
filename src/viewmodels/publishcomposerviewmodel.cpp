@@ -1,5 +1,6 @@
 #include "viewmodels/publishcomposerviewmodel.h"
 
+#include "domain/sessionconfig.h"
 #include "models/draftlibrarymodel.h"
 #include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
@@ -87,8 +88,9 @@ void PublishComposerViewModel::setFormat(int format)
 
 void PublishComposerViewModel::setQos(int qos)
 {
-    if (m_qos == qos) return;
-    m_qos = qos;
+    const int normalized = SessionConfig::sanitizeQos(qos);
+    if (m_qos == normalized) return;
+    m_qos = normalized;
     emit qosChanged();
     emit composerStateChanged();
 }

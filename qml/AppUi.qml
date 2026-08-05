@@ -235,6 +235,10 @@ QtObject {
             return qsTr("Published");
         case "acknowledged":
             return qsTr("Acknowledged");
+        case "received":
+            return qsTr("Received");
+        case "released":
+            return qsTr("Released");
         case "completed":
             return qsTr("Completed");
         case "paused":

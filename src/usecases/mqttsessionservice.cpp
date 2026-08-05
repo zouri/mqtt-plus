@@ -325,7 +325,12 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
                 pending->updatedAt = timestampNow();
                 emitPublishProgress(*pending);
             }
-            if (boundSession->runtime.publishStatus.messageId == messageId) {
+            const QString currentState = boundSession->runtime.publishStatus.state;
+            const bool brokerConfirmationRecorded = currentState == QStringLiteral("failed")
+                || currentState == QStringLiteral("acknowledged")
+                || currentState == QStringLiteral("completed");
+            if (boundSession->runtime.publishStatus.messageId == messageId
+                && !brokerConfirmationRecorded) {
                 updatePublishStatus(*boundSession, QStringLiteral("sent"), QString(), messageId);
             }
         }

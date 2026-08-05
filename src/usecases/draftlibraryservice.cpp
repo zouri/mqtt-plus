@@ -1,5 +1,6 @@
 #include "usecases/draftlibraryservice.h"
 
+#include "domain/sessionconfig.h"
 #include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
 
@@ -118,8 +119,8 @@ bool DraftLibraryService::validateDraft(
         errorMessage = tr("Encoded payload exceeds the 16 MiB draft limit.");
         return false;
     }
-    if (draft.qos < 0 || draft.qos > 1) {
-        errorMessage = tr("QoS must be 0 or 1.");
+    if (draft.qos < 0 || draft.qos > SessionConfig::kMaximumQos) {
+        errorMessage = tr("QoS must be 0, 1, or 2.");
         return false;
     }
     return true;

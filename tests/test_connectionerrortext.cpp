@@ -66,6 +66,13 @@ public:
         emit readyRead();
     }
 
+    QByteArray takeWritten()
+    {
+        const QByteArray written = m_written;
+        m_written.clear();
+        return written;
+    }
+
     qint64 bytesAvailable() const override
     {
         return m_incoming.size() + QIODevice::bytesAvailable();
@@ -83,14 +90,45 @@ protected:
         return bytesToRead;
     }
 
-    qint64 writeData(const char *, qint64 maxSize) override
+    qint64 writeData(const char *data, qint64 maxSize) override
     {
+        m_written.append(data, maxSize);
         return maxSize;
     }
 
 private:
     QByteArray m_incoming;
+    QByteArray m_written;
 };
+
+QByteArray acknowledgmentPacket(quint8 packetType, qint32 messageId)
+{
+    QByteArray packet;
+    packet.append(static_cast<char>(packetType));
+    packet.append(static_cast<char>(0x02));
+    packet.append(static_cast<char>((messageId >> 8) & 0xff));
+    packet.append(static_cast<char>(messageId & 0xff));
+    return packet;
+}
+
+quint16 packetIdentifier(const QByteArray &packet)
+{
+    if (packet.size() < 4 || (static_cast<quint8>(packet.at(1)) & 0x80) != 0) {
+        return 0;
+    }
+    return static_cast<quint16>(
+        (static_cast<quint8>(packet.at(2)) << 8)
+        | static_cast<quint8>(packet.at(3)));
+}
+
+QStringList publishProgressStates(const QSignalSpy &spy)
+{
+    QStringList states;
+    for (const QList<QVariant> &arguments : spy) {
+        states.append(arguments.first().toMap().value(QStringLiteral("state")).toString());
+    }
+    return states;
+}
 
 struct MqttFixture
 {
@@ -178,6 +216,8 @@ private slots:
     void connectionTimeoutIgnoresApplicationTranslator();
     void pendingReconnectStartsAfterDisconnectedSignal();
     void qosZeroPublishDoesNotRemainQueued();
+    void qosTwoPublishCompletesHandshake();
+    void qosTwoSubscriptionIsRequestedAndGranted();
 };
 
 void ConnectionErrorTextTest::clientErrorNamesIgnoreApplicationTranslator_data()
@@ -357,6 +397,95 @@ void ConnectionErrorTextTest::qosZeroPublishDoesNotRemainQueued()
         session.runtime.recentPublishedTraffic.byteCount(QDateTime::currentMSecsSinceEpoch()),
         qint64(7));
     QCOMPARE(messageSentSpy.count(), 0);
+}
+
+void ConnectionErrorTextTest::qosTwoPublishCompletesHandshake()
+{
+    TestMqttTransport transport;
+    QVERIFY(transport.open(QIODevice::ReadWrite));
+    MqttFixture fixture;
+    QVERIFY2(fixture.initialize(), qPrintable(fixture.historyStore.lastError()));
+    SessionState &session = *fixture.sessions.currentSession();
+    auto *client = session.runtime.client;
+    QVERIFY(client);
+    client->setTransport(&transport, QMqttClient::IODevice);
+    client->setProtocolVersion(QMqttClient::MQTT_5_0);
+
+    fixture.mqtt.connectCurrentSession();
+    transport.appendIncoming(QByteArray::fromHex("2003000000"));
+    QTRY_COMPARE(client->state(), QMqttClient::Connected);
+    transport.takeWritten();
+    QSignalSpy progressSpy(&fixture.mqtt, &MqttSessionService::publishProgress);
+
+    QVERIFY(fixture.mqtt.publishCurrentSession(
+        QStringLiteral("mqtt-plus/qos2"),
+        QStringLiteral("payload"),
+        0,
+        2,
+        false));
+    QCOMPARE(session.runtime.publishStatus.qos, 2);
+    QCOMPARE(session.runtime.publishStatus.state, QStringLiteral("queued"));
+    QVERIFY(session.runtime.publishStatus.messageId > 0);
+
+    const QByteArray publishPacket = transport.takeWritten();
+    QVERIFY(!publishPacket.isEmpty());
+    QCOMPARE(static_cast<quint8>(publishPacket.front()), quint8(0x34));
+
+    const qint32 messageId = session.runtime.publishStatus.messageId;
+    transport.appendIncoming(acknowledgmentPacket(0x50, messageId));
+    QTRY_VERIFY(publishProgressStates(progressSpy).contains(QStringLiteral("received")));
+
+    const QByteArray releasePacket = transport.takeWritten();
+    QVERIFY(!releasePacket.isEmpty());
+    QCOMPARE(static_cast<quint8>(releasePacket.front()), quint8(0x62));
+
+    transport.appendIncoming(acknowledgmentPacket(0x70, messageId));
+    QTRY_COMPARE(session.runtime.publishStatus.state, QStringLiteral("completed"));
+    QTRY_VERIFY(publishProgressStates(progressSpy).contains(QStringLiteral("completed")));
+}
+
+void ConnectionErrorTextTest::qosTwoSubscriptionIsRequestedAndGranted()
+{
+    TestMqttTransport transport;
+    QVERIFY(transport.open(QIODevice::ReadWrite));
+    MqttFixture fixture;
+    QVERIFY2(fixture.initialize(), qPrintable(fixture.historyStore.lastError()));
+    SessionState &session = *fixture.sessions.currentSession();
+    auto *client = session.runtime.client;
+    QVERIFY(client);
+    client->setTransport(&transport, QMqttClient::IODevice);
+    client->setProtocolVersion(QMqttClient::MQTT_5_0);
+
+    fixture.mqtt.connectCurrentSession();
+    transport.appendIncoming(QByteArray::fromHex("2003000000"));
+    QTRY_COMPARE(client->state(), QMqttClient::Connected);
+    transport.takeWritten();
+
+    QVERIFY(fixture.subscriptions.upsertCurrentSubscription(
+        QStringLiteral("mqtt-plus/qos2/#"),
+        2,
+        0,
+        QString(),
+        QString(),
+        QStringLiteral("QoS 2")));
+    QCOMPARE(session.subscriptions.size(), 1);
+    QCOMPARE(session.subscriptions.first().requestedQos, 2);
+
+    const QByteArray subscribePacket = transport.takeWritten();
+    QVERIFY(subscribePacket.size() >= 5);
+    QCOMPARE(static_cast<quint8>(subscribePacket.front()), quint8(0x82));
+    QCOMPARE(static_cast<quint8>(subscribePacket.back()) & quint8(0x03), quint8(0x02));
+    const quint16 messageId = packetIdentifier(subscribePacket);
+    QVERIFY(messageId > 0);
+
+    QByteArray subAck = acknowledgmentPacket(0x90, messageId);
+    subAck[1] = static_cast<char>(0x04);
+    subAck.append(static_cast<char>(0x00));
+    subAck.append(static_cast<char>(0x02));
+    transport.appendIncoming(subAck);
+
+    QTRY_COMPARE(session.subscriptions.first().runtimeState, QStringLiteral("subscribed"));
+    QCOMPARE(session.subscriptions.first().grantedQos, 2);
 }
 
 QTEST_GUILESS_MAIN(ConnectionErrorTextTest)

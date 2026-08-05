@@ -30,12 +30,13 @@ void DraftLibraryServiceTest::createsUpdatesTouchesAndDeletesDurably()
     created.name = QStringLiteral("Reset device");
     created.payload = QString();
     created.formatId = QStringLiteral("json");
-    created.qos = 1;
+    created.qos = 2;
     QVERIFY(service.createDraft(created));
     QVERIFY(service.busy());
     QCOMPARE(service.drafts().size(), 0);
     QTRY_COMPARE(operationSpy.size(), 1);
     QCOMPARE(service.drafts().size(), 1);
+    QCOMPARE(service.drafts().first().qos, 2);
 
     PublishDraft updated = service.drafts().first();
     updated.description = QStringLiteral("Factory reset request");
@@ -99,6 +100,13 @@ void DraftLibraryServiceTest::enforcesNamesTopicsAndEncodedPayloads()
     oversizedStoredPayload.formatId = QStringLiteral("hex");
     QVERIFY(!service.validateDraft(oversizedStoredPayload, error));
     QVERIFY(error.contains(QStringLiteral("16 MiB")));
+
+    PublishDraft invalidQos;
+    invalidQos.name = QStringLiteral("Invalid QoS");
+    invalidQos.formatId = QStringLiteral("text");
+    invalidQos.qos = 3;
+    QVERIFY(!service.validateDraft(invalidQos, error));
+    QVERIFY(error.contains(QStringLiteral("0, 1, or 2")));
 }
 
 void DraftLibraryServiceTest::importsDraftsInOneAtomicSave()
@@ -119,7 +127,7 @@ void DraftLibraryServiceTest::importsDraftsInOneAtomicSave()
     second.name = QStringLiteral("Imported two");
     second.payload = QStringLiteral("{}");
     second.formatId = QStringLiteral("json");
-    second.qos = 1;
+    second.qos = 2;
 
     QSignalSpy operationSpy(&service, &DraftLibraryService::operationSucceeded);
     QVERIFY(service.importDrafts({first, second}));

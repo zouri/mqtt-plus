@@ -100,13 +100,13 @@ void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
         QStringLiteral("devices/temp"),
         QStringLiteral("devices/temp"),
         QStringLiteral("Temperature"),
-        1,
+        2,
         2,
         QString(),
         QStringLiteral("#0071E3")));
 
     QCOMPARE(currentSession.subscriptions.size(), 1);
-    QCOMPARE(currentSession.subscriptions.first().requestedQos, 1);
+    QCOMPARE(currentSession.subscriptions.first().requestedQos, 2);
     QCOMPARE(currentSession.subscriptions.first().format, 2);
     QCOMPARE(currentSession.runtime.subscriptionFormats.value(QStringLiteral("devices/temp")), 2);
     QCOMPARE(changedSpy.count(), 1);

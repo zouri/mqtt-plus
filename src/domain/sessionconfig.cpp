@@ -116,7 +116,7 @@ quint32 sanitizeOptionalUInt32(const QVariant &value)
 
 int sanitizeQos(int qos)
 {
-    return std::clamp(qos, 0, 1);
+    return std::clamp(qos, 0, kMaximumQos);
 }
 
 QString sanitizeTransport(const QVariant &value)
