@@ -5,9 +5,9 @@
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
+#include "services/processors/processorlibrary.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/preferencescontroller.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 
 #include <QtTest/QtTest>
@@ -24,6 +24,7 @@ class SubscriptionServiceTest : public QObject
 
 private slots:
     void updateCurrentSubscriptionEditsQosAndFormat();
+    void preservesUnresolvedAndPinnedProcessorReferences();
     void setsAllCurrentSubscriptionsPausedWithSingleSignal();
     void detectsActiveCurrentSubscriptionFps();
 };
@@ -39,7 +40,7 @@ struct Fixture {
     PreferencesController preferences;
     EventStreamModel messages;
     EventStreamModel logs;
-    ScriptService scripts;
+    ProcessorLibrary processors;
     QString launchTimestamp = QStringLiteral("2026-07-25T00:00:00.000Z");
     SessionService sessions;
     EventHistoryService eventHistory;
@@ -50,7 +51,8 @@ struct Fixture {
         , historyStore(dataDir.path())
         , historyWriter(dataDir.path(), historyStore.nextMessageId())
         , preferences(&settings)
-        , sessions(settings, scripts, historyStore, preferences)
+        , processors(dataDir.filePath(QStringLiteral("processors")))
+        , sessions(settings, historyStore, preferences)
         , eventHistory(
               sessions,
               historyStore,
@@ -58,10 +60,10 @@ struct Fixture {
               messageParser,
               messages,
               logs,
-              scripts,
+              processors,
               launchTimestamp,
               preferences)
-        , service(sessions, scripts, eventHistory)
+        , service(sessions, eventHistory)
     {
         historyWriter.start();
         messageParser.start();
@@ -102,7 +104,7 @@ void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
         QStringLiteral("Temperature"),
         2,
         2,
-        QString(),
+        ProcessorReference {},
         QStringLiteral("#0071E3")));
 
     QCOMPARE(currentSession.subscriptions.size(), 1);
@@ -110,6 +112,41 @@ void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
     QCOMPARE(currentSession.subscriptions.first().format, 2);
     QCOMPARE(currentSession.runtime.subscriptionFormats.value(QStringLiteral("devices/temp")), 2);
     QCOMPARE(changedSpy.count(), 1);
+}
+
+void SubscriptionServiceTest::preservesUnresolvedAndPinnedProcessorReferences()
+{
+    Fixture fixture;
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    SessionState &currentSession = fixture.setCurrentSession(std::move(session));
+
+    QVERIFY(fixture.service.upsertCurrentSubscription(
+        QStringLiteral("devices/processor"),
+        1,
+        1,
+        ProcessorReference {.processorId = QStringLiteral("missing-processor")},
+        QString(),
+        QString()));
+    QCOMPARE(currentSession.subscriptions.size(), 1);
+    SubscriptionEntry &entry = currentSession.subscriptions.first();
+    QCOMPARE(entry.processor.processorId, QStringLiteral("missing-processor"));
+
+    entry.processor.revisionMode = ProcessorRevisionMode::Pinned;
+    entry.processor.pinnedRevisionId = QStringLiteral("revision-3");
+    entry.processor.parameters.insert(QStringLiteral("gain"), 4);
+    QVERIFY(fixture.service.updateCurrentSubscription(
+        entry.topic,
+        entry.topic,
+        QStringLiteral("Processor topic"),
+        1,
+        2,
+        entry.processor,
+        QString()));
+    QCOMPARE(entry.processor.revisionMode, ProcessorRevisionMode::Pinned);
+    QCOMPARE(entry.processor.pinnedRevisionId, QStringLiteral("revision-3"));
+    QCOMPARE(entry.processor.parameters.value(QStringLiteral("gain")).toInteger(), qint64(4));
 }
 
 void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleSignal()

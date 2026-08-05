@@ -1,5 +1,6 @@
 #include "services/parsing/messageparseworker.h"
 #include "services/payload/payloadcodec.h"
+#include "services/processors/processorvaluecodec.h"
 
 #include <QtTest/QtTest>
 
@@ -23,6 +24,32 @@ MessageParseTask makeTask(
     task.envelope.payloadBytes = payload;
     task.envelope.payloadFormat = static_cast<int>(PayloadFormat::Json);
     return task;
+}
+
+QSharedPointer<const ProcessorRevisionSnapshot> javascriptRevision(
+    const QString &revisionId,
+    const QByteArray &source)
+{
+    auto revision = QSharedPointer<ProcessorRevisionSnapshot>::create();
+    revision->id = revisionId;
+    revision->processorId = QStringLiteral("processor-1");
+    revision->revisionNumber = revisionId.endsWith(QLatin1Char('2')) ? 2 : 1;
+    revision->contractId = QStringLiteral("mqtt-plus.message-processor/v1");
+    revision->languageId = QStringLiteral("javascript");
+    revision->runtimeId = QStringLiteral("qt-qjs");
+    revision->entryFile = QStringLiteral("main.js");
+    revision->entrySymbol = QStringLiteral("process");
+    revision->contentHash = revisionId + QStringLiteral("-hash");
+    revision->files = {
+        {
+            QStringLiteral("main.js"),
+            QStringLiteral("text/javascript"),
+            source,
+            {},
+        },
+    };
+    revision->createdAt = QStringLiteral("2026-08-05T08:00:00.000Z");
+    return revision;
 }
 
 class ThreadedParser
@@ -65,7 +92,8 @@ private slots:
     void rejectsTasksAtCountAndByteLimits();
     void reportsQueuePressureAndRecovers();
     void preservesPerSessionSequenceWhileDecoding();
-    void runsLuaWithWorkerOwnedRuntimeCache();
+    void runsProcessorEngineWithImmutableRevision();
+    void queuedTasksKeepTheirResolvedRevision();
 };
 
 void MessageParseWorkerTest::rejectsTasksAtCountAndByteLimits()
@@ -136,11 +164,11 @@ void MessageParseWorkerTest::preservesPerSessionSequenceWhileDecoding()
     QCOMPARE(resultSpy.at(1).at(0).value<MessageParseResult>().sessionId, QStringLiteral("session-2"));
     QCOMPARE(resultSpy.at(2).at(0).value<MessageParseResult>().sequence, 2);
     QCOMPARE(resultSpy.at(2).at(0).value<MessageParseResult>().state, MessageParseState::Succeeded);
-    QVERIFY(resultSpy.at(2).at(0).value<MessageParseResult>().parsedPayload.contains(QStringLiteral("\"value\": 3")));
+    QVERIFY(resultSpy.at(2).at(0).value<MessageParseResult>().displayPayload.contains(QStringLiteral("\"value\": 3")));
     QVERIFY(threaded.worker->drain(2000));
 }
 
-void MessageParseWorkerTest::runsLuaWithWorkerOwnedRuntimeCache()
+void MessageParseWorkerTest::runsProcessorEngineWithImmutableRevision()
 {
     ThreadedParser threaded;
     QSignalSpy resultSpy(threaded.worker, &MessageParseWorker::parseCompleted);
@@ -150,17 +178,66 @@ void MessageParseWorkerTest::runsLuaWithWorkerOwnedRuntimeCache()
         QStringLiteral("session-1"),
         1,
         QByteArrayLiteral("{\"value\":7}"));
-    task.scriptId = QStringLiteral("script-1");
-    task.scriptName = QStringLiteral("Value parser");
-    task.scriptCode = QStringLiteral(
-        "function parse(ctx) return ctx.topic .. ':' .. ctx.decoded end");
+    task.processorRevision = javascriptRevision(
+        QStringLiteral("revision-1"),
+        QByteArrayLiteral(
+            "function process(context) {\n"
+            "    return { topic: context.topic, value: context.parameters.value }\n"
+            "}\n"));
+    task.processorName = QStringLiteral("Value processor");
+    task.processorParameters.insert(QStringLiteral("value"), 7);
 
     QVERIFY(threaded.worker->enqueueTask(task));
     QTRY_COMPARE_WITH_TIMEOUT(resultSpy.count(), 1, 2000);
     const MessageParseResult result = resultSpy.first().at(0).value<MessageParseResult>();
     QCOMPARE(result.state, MessageParseState::Succeeded);
-    QCOMPARE(result.parsedFormat, QStringLiteral("Lua: Value parser"));
-    QVERIFY(result.parsedPayload.startsWith(QStringLiteral("devices/7:")));
+    QCOMPARE(result.processorId, QStringLiteral("processor-1"));
+    QCOMPARE(result.processorRevisionId, QStringLiteral("revision-1"));
+    QCOMPARE(result.processorExecutionState, QStringLiteral("succeeded"));
+    QCOMPARE(result.displayFormat, QStringLiteral("JavaScript: Value processor"));
+    QCborParserError error = {};
+    const QCborValue value = QCborValue::fromCbor(result.processorResultCbor, &error);
+    QCOMPARE(error.error, QCborError::NoError);
+    QCOMPARE(value.toMap().value(QStringLiteral("topic")).toString(), QStringLiteral("devices/7"));
+    QCOMPARE(value.toMap().value(QStringLiteral("value")).toInteger(), qint64(7));
+}
+
+void MessageParseWorkerTest::queuedTasksKeepTheirResolvedRevision()
+{
+    MessageParseWorker worker;
+    QSignalSpy resultSpy(&worker, &MessageParseWorker::parseCompleted);
+
+    MessageParseTask first = makeTask(
+        8,
+        QStringLiteral("session-1"),
+        1,
+        QByteArrayLiteral("{}"));
+    first.processorRevision = javascriptRevision(
+        QStringLiteral("revision-1"),
+        QByteArrayLiteral("function process(context) { return 1 }\n"));
+    first.processorName = QStringLiteral("Versioned processor");
+    MessageParseTask second = makeTask(
+        9,
+        QStringLiteral("session-1"),
+        2,
+        QByteArrayLiteral("{}"));
+    second.processorRevision = javascriptRevision(
+        QStringLiteral("revision-2"),
+        QByteArrayLiteral("function process(context) { return 2 }\n"));
+    second.processorName = first.processorName;
+
+    QVERIFY(worker.enqueueTask(first));
+    QVERIFY(worker.enqueueTask(second));
+    worker.start();
+    QVERIFY(worker.drain(2000));
+    QCOMPARE(resultSpy.count(), 2);
+
+    const MessageParseResult firstResult = resultSpy.at(0).at(0).value<MessageParseResult>();
+    const MessageParseResult secondResult = resultSpy.at(1).at(0).value<MessageParseResult>();
+    QCOMPARE(firstResult.processorRevisionId, QStringLiteral("revision-1"));
+    QCOMPARE(secondResult.processorRevisionId, QStringLiteral("revision-2"));
+    QCOMPARE(QCborValue::fromCbor(firstResult.processorResultCbor).toInteger(), qint64(1));
+    QCOMPARE(QCborValue::fromCbor(secondResult.processorResultCbor).toInteger(), qint64(2));
 }
 
 QTEST_MAIN(MessageParseWorkerTest)

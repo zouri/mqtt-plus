@@ -4,17 +4,17 @@
 <context>
     <name>AddSubscriptionDialog</name>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="118"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="160"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="140"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="182"/>
         <source>No topic color</source>
         <translation>不使用主题颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="141"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="183"/>
         <source>Topic color %1</source>
         <translation>主题颜色 %1</translation>
     </message>
@@ -54,32 +54,47 @@
         <translation>QoS 2</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="166"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="109"/>
+        <source>Message Processor</source>
+        <translation>消息处理器</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="130"/>
+        <source>Follow current revision</source>
+        <translation>跟随当前版本</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="130"/>
+        <source>Pinned revision</source>
+        <translation>固定版本</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="208"/>
         <source>Choose custom topic color</source>
         <translation>选择自定义主题颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="191"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="233"/>
         <source>Choose custom color</source>
         <translation>选择自定义颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="215"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="257"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="227"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="269"/>
         <source>Save subscription</source>
         <translation>保存订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="227"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="269"/>
         <source>Add subscription</source>
         <translation>添加订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="236"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="278"/>
         <source>Choose topic color</source>
         <translation>选择主题颜色</translation>
     </message>
@@ -264,72 +279,72 @@
 <context>
     <name>Application</name>
     <message>
-        <location filename="../src/app/application.cpp" line="235"/>
+        <location filename="../src/app/application.cpp" line="227"/>
         <source>Draft library error</source>
         <translation>草稿库错误</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="240"/>
+        <location filename="../src/app/application.cpp" line="232"/>
         <source>Restore backup</source>
         <translation>恢复备份</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="255"/>
+        <location filename="../src/app/application.cpp" line="247"/>
         <source>Draft saved</source>
         <translation>草稿已保存</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="260"/>
+        <location filename="../src/app/application.cpp" line="252"/>
         <source>Draft deleted</source>
         <translation>草稿已删除</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="261"/>
+        <location filename="../src/app/application.cpp" line="253"/>
         <source>The draft was removed from the library.</source>
         <translation>该草稿已从草稿库中移除。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="264"/>
+        <location filename="../src/app/application.cpp" line="256"/>
         <source>Draft library restored</source>
         <translation>草稿库已恢复</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="265"/>
+        <location filename="../src/app/application.cpp" line="257"/>
         <source>The backup was restored successfully.</source>
         <translation>备份已成功恢复。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="302"/>
+        <location filename="../src/app/application.cpp" line="294"/>
         <source>Publish failed</source>
         <translation>发送失败</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="304"/>
+        <location filename="../src/app/application.cpp" line="296"/>
         <source>View logs</source>
         <translation>查看日志</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="309"/>
+        <location filename="../src/app/application.cpp" line="301"/>
         <source>Message sent</source>
         <translation>消息已发送</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="314"/>
+        <location filename="../src/app/application.cpp" line="306"/>
         <source>Waiting for broker confirmation</source>
         <translation>正在等待代理确认</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="315"/>
+        <location filename="../src/app/application.cpp" line="307"/>
         <source>Publish queued</source>
         <translation>发送已排队</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="321"/>
+        <location filename="../src/app/application.cpp" line="313"/>
         <source>QoS %1</source>
         <translation>QoS %1</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="323"/>
+        <location filename="../src/app/application.cpp" line="315"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
@@ -337,95 +352,95 @@
 <context>
     <name>ConfigurationAdapters</name>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="240"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="239"/>
         <source>The file is not a supported MQTTX connection export.</source>
         <translation>文件不是受支持的 MQTTX 连接导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="289"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="288"/>
         <source>Imported connection %1</source>
         <translation>导入的连接 %1</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="413"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="412"/>
         <source>MQTT 5 connection user properties are not supported and will be ignored.</source>
         <translation>不支持 MQTT 5 连接用户属性，将忽略。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="421"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="420"/>
         <source>The MQTTX export contains no supported connections.</source>
         <translation>MQTTX 导出中没有受支持的连接。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="428"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="427"/>
         <source>%1 unsupported or incomplete connections will be skipped.</source>
         <translation>将跳过 %1 个不支持或不完整的连接。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="435"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="666"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="434"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="665"/>
         <source>%1 invalid or duplicate subscriptions will be skipped.</source>
         <translation>将跳过 %1 个无效或重复的订阅。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="442"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="441"/>
         <source>Automatic reconnect settings from %1 connections are not supported.</source>
         <translation>不支持 %1 个连接的自动重连设置。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="449"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="448"/>
         <source>Last-will settings from %1 connections are not supported.</source>
         <translation>不支持 %1 个连接的遗嘱设置。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="456"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="455"/>
         <source>%1 MQTTX message records will not be imported as drafts or history.</source>
         <translation>不会将 %1 条 MQTTX 消息记录导入为草稿或历史记录。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="463"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="462"/>
         <source>Advanced MQTT 5 options on %1 subscriptions are not supported.</source>
         <translation>不支持 %1 个订阅中的 MQTT 5 高级选项。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="470"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="469"/>
         <source>%1 certificate fields do not look like PEM data and may require manual repair.</source>
         <translation>%1 个证书字段不像 PEM 数据，可能需要手动修复。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="493"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="492"/>
         <source>The file is not a valid MQTT Plus configuration export.</source>
         <translation>文件不是有效的 MQTT Plus 配置导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="500"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="499"/>
         <source>The file is not an MQTT Plus configuration export.</source>
         <translation>文件不是 MQTT Plus 配置导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="507"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="506"/>
         <source>This configuration export requires a newer application version.</source>
         <translation>此配置导出需要更新版本的应用程序。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="513"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="512"/>
         <source>The configuration export version is not supported.</source>
         <translation>不支持此配置导出版本。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="525"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="532"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="540"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="524"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="531"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="539"/>
         <source>The configuration export has an invalid structure.</source>
         <translation>配置导出的结构无效。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="631"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="630"/>
         <source>%1 scripts are present but script import is not supported yet.</source>
         <translation>检测到 %1 个脚本，但暂不支持导入脚本。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="659"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="658"/>
         <source>%1 incomplete sessions will be skipped.</source>
         <translation>将跳过 %1 个不完整的连接。</translation>
     </message>
@@ -439,41 +454,36 @@
         <translation>所选配置文件大于 64 MiB。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="169"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="152"/>
         <source> (Imported %1)</source>
         <translation>（导入 %1）</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="187"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="170"/>
         <source>A TLS certificate file could not be included: %1</source>
         <translation>无法包含 TLS 证书文件：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="232"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="217"/>
         <source>Cannot import drafts.</source>
         <translation>无法导入草稿。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="268"/>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="297"/>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="771"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="253"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="282"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="761"/>
         <source>Import failed</source>
         <translation>导入失败</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="269"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="254"/>
         <source>Select a local configuration file.</source>
         <translation>请选择本地配置文件。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="287"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="272"/>
         <source>The configuration file is not supported.</source>
         <translation>不支持此配置文件。</translation>
-    </message>
-    <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="145"/>
-        <source>%1 subscription script assignments will be ignored because script import is not supported yet.</source>
-        <translation>由于暂不支持脚本导入，将忽略 %1 个订阅的脚本绑定。</translation>
     </message>
     <message>
         <location filename="../src/usecases/configurationtransferservice.cpp" line="43"/>
@@ -486,89 +496,89 @@
         <translation>无法限制私有文件的访问权限。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="319"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="304"/>
         <source>The configuration could not be imported.</source>
         <translation>无法导入配置。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="337"/>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="354"/>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="363"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="322"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="339"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="348"/>
         <source>Export failed</source>
         <translation>导出失败</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="338"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="323"/>
         <source>Select a local destination file.</source>
         <translation>请选择本地目标文件。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="367"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="352"/>
         <source>Configuration exported to %1.</source>
         <translation>配置已导出到 %1。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="378"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="363"/>
         <source>Configuration exported</source>
         <translation>配置已导出</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="492"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="477"/>
         <source>Cannot write imported settings: access denied.</source>
         <translation>无法写入导入的设置：访问被拒绝。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="495"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="480"/>
         <source>Cannot write imported settings: invalid settings format.</source>
         <translation>无法写入导入的设置：设置格式无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="512"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="497"/>
         <source>The Draft Library is not ready for import.</source>
         <translation>草稿库尚未就绪，无法导入。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="539"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="524"/>
         <source>Imported draft</source>
         <translation>导入的草稿</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="625"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="610"/>
         <source>Cannot save imported drafts.</source>
         <translation>无法保存导入的草稿。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="657"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="647"/>
         <source>The imported certificate directory already exists.</source>
         <translation>导入的证书目录已存在。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="663"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="653"/>
         <source>Cannot create the imported certificate directory.</source>
         <translation>无法创建导入的证书目录。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="714"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="704"/>
         <source>Configuration imported</source>
         <translation>配置已导入</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="740"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="730"/>
         <source>Cannot remove an imported certificate file: %1</source>
         <translation>无法删除导入的证书文件：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="750"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="740"/>
         <source>Cannot remove an imported certificate directory: %1</source>
         <translation>无法删除导入的证书目录：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="762"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="752"/>
         <source>Rollback also reported: %1</source>
         <translation>回滚还报告了以下问题：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="801"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="791"/>
         <source>Imported %1 connections, %2 subscriptions, and %3 drafts.</source>
         <translation>已导入 %1 个连接、%2 个订阅和 %3 个草稿。</translation>
     </message>
@@ -893,27 +903,22 @@
 <context>
     <name>EventHistoryService</name>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="377"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="392"/>
         <source>Cannot clear message history: %1</source>
         <translation>无法清除消息历史：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="378"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="393"/>
         <source>Cannot clear log history: %1</source>
         <translation>无法清除日志历史：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="462"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="477"/>
         <source>Cannot clear history: %1</source>
         <translation>无法清除历史记录：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="856"/>
-        <source>Selected Lua script is missing.</source>
-        <translation>选择的 Lua 脚本不存在。</translation>
-    </message>
-    <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="1211"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="1288"/>
         <source>Timed out while saving queued messages.</source>
         <translation>保存排队消息时超时。</translation>
     </message>
@@ -1171,6 +1176,16 @@
         <translation>工作台</translation>
     </message>
     <message>
+        <location filename="../qml/Main.qml" line="242"/>
+        <source>Processors</source>
+        <translation>处理器</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="244"/>
+        <source>Processor Library</source>
+        <translation>处理器库</translation>
+    </message>
+    <message>
         <location filename="../qml/Main.qml" line="251"/>
         <source>Drafts</source>
         <translation>草稿</translation>
@@ -1185,16 +1200,6 @@
         <location filename="../qml/Main.qml" line="262"/>
         <source>Logs</source>
         <translation>日志</translation>
-    </message>
-    <message>
-        <location filename="../qml/Main.qml" line="242"/>
-        <source>Scripts</source>
-        <translation>脚本</translation>
-    </message>
-    <message>
-        <location filename="../qml/Main.qml" line="244"/>
-        <source>Lua scripts</source>
-        <translation>脚本管理</translation>
     </message>
     <message>
         <location filename="../qml/Main.qml" line="281"/>
@@ -1549,6 +1554,243 @@
     </message>
 </context>
 <context>
+    <name>ProcessorEditor</name>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="26"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="37"/>
+        <source>Processor name</source>
+        <translation>处理器名称</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="47"/>
+        <source>Description</source>
+        <translation>说明</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="56"/>
+        <source>Device protocol or payload structure</source>
+        <translation>设备协议或 Payload 结构</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="71"/>
+        <source>Language</source>
+        <translation>语言</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="91"/>
+        <source>Runtime</source>
+        <translation>运行时</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="109"/>
+        <source>Entry file</source>
+        <translation>入口文件</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="128"/>
+        <source>Entry symbol</source>
+        <translation>入口符号</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="158"/>
+        <source>%1 source</source>
+        <translation>%1 源码</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="168"/>
+        <source>Current revision</source>
+        <translation>当前版本</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="169"/>
+        <source>Historical revision</source>
+        <translation>历史版本</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="187"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="188"/>
+        <source>function process(context)</source>
+        <translation>function process(context)</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="233"/>
+        <source>Revision history</source>
+        <translation>版本历史</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="274"/>
+        <source>Processor Revision %1</source>
+        <translation>处理器版本 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="285"/>
+        <source>Revision %1 · %2</source>
+        <translation>版本 %1 · %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="296"/>
+        <source>Current</source>
+        <translation>当前</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="298"/>
+        <source>Ready</source>
+        <translation>就绪</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="299"/>
+        <source>Unavailable</source>
+        <translation>不可用</translation>
+    </message>
+</context>
+<context>
+    <name>ProcessorEditorViewModel</name>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="63"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="247"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="574"/>
+        <source>Not validated</source>
+        <translation>未验证</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="259"/>
+        <source>Processor is unavailable.</source>
+        <translation>处理器不可用。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="271"/>
+        <source>Current Processor Revision is unavailable.</source>
+        <translation>当前处理器版本不可用。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="298"/>
+        <source>Processor Revision is unavailable.</source>
+        <translation>处理器版本不可用。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="316"/>
+        <source>Processor name is required.</source>
+        <translation>处理器名称不能为空。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="329"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="355"/>
+        <source>Validation failed</source>
+        <translation>验证失败</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="354"/>
+        <source>Ready</source>
+        <translation>就绪</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="396"/>
+        <source>Operation failed</source>
+        <translation>操作失败</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="415"/>
+        <source>New Lua Processor</source>
+        <translation>新建 Lua 处理器</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="418"/>
+        <source>Transform MQTT messages with Lua.</source>
+        <translation>使用 Lua 转换 MQTT 消息。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="434"/>
+        <source>New JavaScript Processor</source>
+        <translation>新建 JavaScript 处理器</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="437"/>
+        <source>Transform MQTT messages with JavaScript.</source>
+        <translation>使用 JavaScript 转换 MQTT 消息。</translation>
+    </message>
+</context>
+<context>
+    <name>ProcessorListPane</name>
+    <message>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="31"/>
+        <source>Search processors, languages, or source</source>
+        <translation>搜索处理器、语言或源码</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="70"/>
+        <source>Message Processor %1</source>
+        <translation>消息处理器 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="118"/>
+        <source>No description</source>
+        <translation>无说明</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="129"/>
+        <source>Revision %1</source>
+        <translation>版本 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="136"/>
+        <source>Archived</source>
+        <translation>已归档</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="138"/>
+        <source>Ready</source>
+        <translation>就绪</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="139"/>
+        <source>Unavailable</source>
+        <translation>不可用</translation>
+    </message>
+</context>
+<context>
+    <name>ProcessorsView</name>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="45"/>
+        <source>Processor Library</source>
+        <translation>处理器库</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="68"/>
+        <source>New Lua</source>
+        <translation>新建 Lua</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="75"/>
+        <source>New JavaScript</source>
+        <translation>新建 JavaScript</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="145"/>
+        <source>Unsaved revision</source>
+        <translation>版本未保存</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="158"/>
+        <source>Restore</source>
+        <translation>恢复</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="158"/>
+        <source>Archive</source>
+        <translation>归档</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="175"/>
+        <source>Validate</source>
+        <translation>验证</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="183"/>
+        <source>Save Revision</source>
+        <translation>保存版本</translation>
+    </message>
+</context>
+<context>
     <name>PublishComposer</name>
     <message>
         <location filename="../qml/features/workbench/PublishComposer.qml" line="33"/>
@@ -1841,96 +2083,6 @@
         <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="153"/>
         <source>Publish composer</source>
         <translation>发送编辑器</translation>
-    </message>
-</context>
-<context>
-    <name>ScriptListPane</name>
-    <message>
-        <location filename="../qml/features/scripts/ScriptListPane.qml" line="31"/>
-        <source>Search script name or description</source>
-        <translation>搜索脚本名称或说明</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptListPane.qml" line="99"/>
-        <source>Lua decoder · %1</source>
-        <translation>Lua decoder · %1</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptListPane.qml" line="65"/>
-        <source>Lua script %1</source>
-        <translation>Lua 脚本 %1</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptListPane.qml" line="99"/>
-        <source>Not saved</source>
-        <translation>未保存</translation>
-    </message>
-</context>
-<context>
-    <name>ScriptService</name>
-    <message>
-        <location filename="../src/usecases/scriptservice.cpp" line="54"/>
-        <source>Untitled Script</source>
-        <translation>未命名脚本</translation>
-    </message>
-    <message>
-        <location filename="../src/usecases/scriptservice.cpp" line="99"/>
-        <source>Cannot save scripts.</source>
-        <translation>无法保存脚本。</translation>
-    </message>
-</context>
-<context>
-    <name>ScriptsView</name>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="214"/>
-        <source>Unsaved</source>
-        <translation>未保存</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="50"/>
-        <source>Script Manager</source>
-        <translation>脚本管理</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="144"/>
-        <source>Description</source>
-        <translation>说明</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="154"/>
-        <source>Device protocol or payload structure</source>
-        <translation>设备协议或 Payload 结构</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="166"/>
-        <source>Lua decoder code</source>
-        <translation>Lua 解码代码</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="226"/>
-        <source>Validate structure</source>
-        <translation>校验结构</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="233"/>
-        <source>Save Script</source>
-        <translation>保存脚本</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="73"/>
-        <source>New Lua Script</source>
-        <translation>新建 Lua 脚本</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="124"/>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="134"/>
-        <source>Script name</source>
-        <translation>脚本名称</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/scripts/ScriptsView.qml" line="181"/>
-        <source>function parse(ctx)</source>
-        <translation>function parse(ctx)</translation>
     </message>
 </context>
 <context>
@@ -2245,72 +2397,72 @@
 <context>
     <name>SessionService</name>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="184"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="196"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="175"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="187"/>
         <source>Session 1</source>
         <translation>会话 1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="189"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="180"/>
         <source>Cannot read session settings: access denied.</source>
         <translation>无法读取会话设置：访问被拒绝。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="190"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="181"/>
         <source>Cannot read session settings: invalid settings format.</source>
         <translation>无法读取会话设置：设置格式无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="144"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="213"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="276"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="315"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="141"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="204"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="267"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="306"/>
         <source>Cannot save sessions.</source>
         <translation>无法保存会话。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="351"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="342"/>
         <source>Imported connection</source>
         <translation>导入的连接</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="356"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="347"/>
         <source>%1 (Imported %2)</source>
         <translation>%1（导入 %2）</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="422"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="409"/>
         <source>Cannot save imported sessions.</source>
         <translation>无法保存导入的连接。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="457"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="444"/>
         <source>Cannot roll back imported sessions.</source>
         <translation>无法回滚导入的连接。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="549"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="536"/>
         <source>Cannot delete session history: queued message parsing timed out.</source>
         <translation>无法删除会话历史：排队中的消息解析超时。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="559"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="567"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="546"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="554"/>
         <source>Cannot delete session history: %1</source>
         <translation>无法删除会话历史：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="557"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="544"/>
         <source>Timed out while saving queued messages.</source>
         <translation>保存排队消息时超时。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="301"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="292"/>
         <source>Session %1</source>
         <translation>会话 %1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="513"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="500"/>
         <source>%1 Copy</source>
         <translation>%1 副本</translation>
     </message>
@@ -2318,17 +2470,17 @@
 <context>
     <name>SessionSettingsStore</name>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="104"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="119"/>
         <source>%1 Copy</source>
         <translation>%1 副本</translation>
     </message>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="232"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="264"/>
         <source>Cannot write session settings: access denied.</source>
         <translation>无法写入会话设置：访问被拒绝。</translation>
     </message>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="233"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="265"/>
         <source>Cannot write session settings: invalid settings format.</source>
         <translation>无法写入会话设置：设置格式无效。</translation>
     </message>
@@ -2884,14 +3036,54 @@
     </message>
 </context>
 <context>
+    <name>SubscriptionEditorViewModel</name>
+    <message>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="21"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="287"/>
+        <source>None</source>
+        <translation>无</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="318"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="358"/>
+        <source>Unavailable: %1</source>
+        <translation>不可用：%1</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="342"/>
+        <source>Revision %1 · %2 · %3</source>
+        <translation>版本 %1 · %2 · %3</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="401"/>
+        <source>The selected Message Processor is unavailable. The binding will be preserved.</source>
+        <translation>所选消息处理器不可用，将保留此绑定。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="405"/>
+        <source>The selected Message Processor is archived. The binding will be preserved.</source>
+        <translation>所选消息处理器已归档，将保留此绑定。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="413"/>
+        <source>The current Processor Revision is unavailable.</source>
+        <translation>当前处理器版本不可用。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="431"/>
+        <source>The pinned Processor Revision is unavailable. The binding will be preserved.</source>
+        <translation>固定的处理器版本不可用，将保留此绑定。</translation>
+    </message>
+</context>
+<context>
     <name>SubscriptionService</name>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="389"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="403"/>
         <source>Invalid topic filter.</source>
         <translation>主题过滤器无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="402"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="416"/>
         <source>Qt MQTT returned no subscription object.</source>
         <translation>Qt MQTT 未返回订阅对象。</translation>
     </message>
@@ -3210,27 +3402,27 @@
 <context>
     <name>WorkbenchViewModel</name>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="259"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="286"/>
         <source>%1 • %2:%3 • %4</source>
         <translation>%1 • %2:%3 • %4</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="265"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="292"/>
         <source> • session restored</source>
         <translation> • 会话已恢复</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="268"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="295"/>
         <source>Connecting to %1:%2 over %3</source>
         <translation>正在通过 %3 连接到 %1:%2</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="273"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="300"/>
         <source>Disconnecting from broker</source>
         <translation>正在断开代理连接</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="277"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="304"/>
         <source>Disconnected</source>
         <translation>已断开</translation>
     </message>

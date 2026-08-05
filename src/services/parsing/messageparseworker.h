@@ -9,9 +9,7 @@
 
 #include <memory>
 
-namespace LuaRunner {
-class RuntimeCache;
-}
+class MessageProcessorEngine;
 
 struct MessageParseLimits
 {
@@ -55,7 +53,6 @@ signals:
 
 public slots:
     void start();
-    void clearRuntimeCache();
     void shutdown();
 
 private slots:
@@ -82,7 +79,7 @@ private:
     int m_processingTaskCount = 0;
     bool m_wakePending = false;
     bool m_dropNotificationPending = false;
-    std::unique_ptr<LuaRunner::RuntimeCache> m_runtimeCache;
+    std::unique_ptr<MessageProcessorEngine> m_processorEngine;
 };
 
 Q_DECLARE_METATYPE(MessageParseWorker::PressureState)

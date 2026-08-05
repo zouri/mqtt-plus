@@ -3,9 +3,9 @@
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
+#include "services/processors/processorlibrary.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/preferencescontroller.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 #include "viewmodels/logsviewmodel.h"
 
@@ -36,7 +36,7 @@ struct LogsFixture
     PreferencesController preferences;
     EventStreamModel messages;
     EventStreamModel logs;
-    ScriptService scripts;
+    ProcessorLibrary processors;
     QString launchTimestamp = QStringLiteral("2026-07-25T00:00:00.000Z");
     SessionService sessions;
     SessionState &session;
@@ -48,7 +48,8 @@ struct LogsFixture
         , historyStore(dataDir.path())
         , historyWriter(dataDir.path(), historyStore.nextMessageId())
         , preferences(&settings)
-        , sessions(settings, scripts, historyStore, preferences)
+        , processors(dataDir.filePath(QStringLiteral("processors")))
+        , sessions(settings, historyStore, preferences)
         , session(initializeSession(sessions))
         , history(
               sessions,
@@ -57,7 +58,7 @@ struct LogsFixture
               messageParser,
               messages,
               logs,
-              scripts,
+              processors,
               launchTimestamp,
               preferences)
         , viewModel(history, logs)

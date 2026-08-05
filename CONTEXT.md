@@ -1,6 +1,6 @@
 # MQTT Workbench
 
-This context describes the language used to prepare and publish MQTT messages from the workbench.
+This context describes the language used to prepare and publish MQTT messages and to transform received MQTT payloads in the workbench.
 
 ## Publishing
 
@@ -19,3 +19,25 @@ _Avoid_: Session drafts, connection drafts
 **Quick Publish**:
 An explicit action that immediately publishes a saved Publish Draft through the current MQTT connection without changing the current composer contents. It uses the draft's default topic when present; otherwise, the user supplies a topic for that publish only.
 _Avoid_: Load draft, queued publish
+
+## Message Processing
+
+**Message Processor**:
+An application-wide reusable definition that transforms one received MQTT message into a structured result. A Message Processor is identified independently of the language used to implement it.
+_Avoid_: Script, decoder, parser script
+
+**Processor Library**:
+The application-wide collection of Message Processors available for subscription bindings.
+_Avoid_: Script library, session processors
+
+**Processor Revision**:
+An immutable saved version of a Message Processor. Editing and saving a processor creates another revision instead of changing an existing revision.
+_Avoid_: Script file, mutable processor
+
+**Processor Binding**:
+A subscription's selection of a Message Processor, including whether it follows the processor's current revision or remains pinned to a specific revision.
+_Avoid_: Script ID, decoder selection
+
+**Processor Result**:
+The structured value or failure produced by applying a specific Processor Revision to one MQTT message.
+_Avoid_: Parsed string, script output

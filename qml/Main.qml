@@ -6,7 +6,7 @@ import QtQuick.Controls.Material
 import QtQuick.Layouts
 import "features/drafts"
 import "features/logs"
-import "features/scripts"
+import "features/processors"
 import "features/settings"
 import "features/workbench"
 
@@ -239,10 +239,10 @@ ApplicationWindow {
                     RailButton {
                         ui: appUi
                         iconSource: appUi.materialIcon("script-development")
-                        text: qsTr("Scripts")
-                        active: root.currentAppView === "scripts"
-                        accessibleLabel: qsTr("Lua scripts")
-                        onClicked: root.requestAppView("scripts")
+                        text: qsTr("Processors")
+                        active: root.currentAppView === "processors"
+                        accessibleLabel: qsTr("Processor Library")
+                        onClicked: root.requestAppView("processors")
                     }
 
                     RailButton {
@@ -292,7 +292,7 @@ ApplicationWindow {
                 z: 2
                 currentIndex: root.currentAppView === "drafts" ? 1
                               : (root.currentAppView === "logs" ? 2
-                                 : (root.currentAppView === "scripts" ? 3
+                                 : (root.currentAppView === "processors" ? 3
                                     : (root.currentAppView === "settings" ? 4 : 0)))
 
                 WorkbenchView {
@@ -342,13 +342,13 @@ ApplicationWindow {
                 Loader {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    active: root.currentAppView === "scripts"
+                    active: root.currentAppView === "processors"
                     asynchronous: true
 
                     sourceComponent: Component {
-                        ScriptsView {
+                        ProcessorsView {
                             ui: appUi
-                            viewModel: root.app.scripts
+                            viewModel: root.app.processors
                         }
                     }
                 }

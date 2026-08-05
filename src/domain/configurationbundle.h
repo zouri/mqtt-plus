@@ -15,7 +15,6 @@ struct SubscriptionData {
     QString alias;
     int qos = 0;
     int format = 0;
-    QString scriptId;
     QString color;
     bool paused = false;
 };

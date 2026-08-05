@@ -1,11 +1,12 @@
-#include "domain/script.h"
 #include "domain/session.h"
 #include "models/subscriptionfiltermodel.h"
 #include "models/subscriptionlistmodel.h"
 #include "services/apputils.h"
+#include "services/processors/processorlibrary.h"
 
 #include <QDateTime>
 #include <QStandardItemModel>
+#include <QTemporaryDir>
 #include <QtTest/QtTest>
 
 class SubscriptionListModelTest : public QObject
@@ -14,7 +15,7 @@ class SubscriptionListModelTest : public QObject
 
 private slots:
     void setSubscriptionsOwnsSnapshot();
-    void setSubscriptionsRebuildsScriptNameCache();
+    void setSubscriptionsRebuildsProcessorBindingPresentation();
     void sourceSessionChangeClearsTopicRateHistory();
     void samplesTopicRateHistory();
     void separatesNumericRateAndHistoryNotifications();
@@ -42,29 +43,50 @@ void SubscriptionListModelTest::setSubscriptionsOwnsSnapshot()
     QCOMPARE(model.rowAt(0).value(QStringLiteral("topic")).toString(), QStringLiteral("devices/second"));
 }
 
-void SubscriptionListModelTest::setSubscriptionsRebuildsScriptNameCache()
+void SubscriptionListModelTest::setSubscriptionsRebuildsProcessorBindingPresentation()
 {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    ProcessorLibrary library(directory.path());
+    SaveProcessorRevisionCommand command;
+    command.name = QStringLiteral("Processor");
+    command.content.languageId = QStringLiteral("javascript");
+    command.content.runtimeId = QStringLiteral("qt-qjs");
+    command.content.entryFile = QStringLiteral("main.js");
+    command.content.files = {
+        {
+            QStringLiteral("main.js"),
+            QStringLiteral("text/javascript"),
+            QByteArrayLiteral("function process(context) { return context.topic }\n"),
+            {},
+        },
+    };
+    const SaveProcessorRevisionResult saved = library.saveRevision(command);
+    QVERIFY2(saved.ok, qPrintable(saved.error));
+
     SubscriptionListModel model;
 
     SubscriptionEntry subscription;
     subscription.topic = QStringLiteral("devices/temp");
-    subscription.scriptId = QStringLiteral("script-1");
+    subscription.processor.processorId = saved.processor.id;
     QVector<SubscriptionEntry> subscriptions {subscription};
-    QVector<ScriptEntry> scripts {
-        ScriptEntry {.id = QStringLiteral("script-1"), .name = QStringLiteral("Decoder")},
-    };
 
-    model.setSubscriptions(QStringLiteral("session-1"), subscriptions, scripts);
-    QCOMPARE(model.rowAt(0).value(QStringLiteral("scriptName")).toString(), QStringLiteral("Decoder"));
+    model.setSubscriptions(QStringLiteral("session-1"), subscriptions, &library);
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("processorName")).toString(), QStringLiteral("Processor"));
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("processorRevisionMode")).toString(), QStringLiteral("current"));
+    QVERIFY(model.rowAt(0).value(QStringLiteral("processorBindingAvailable")).toBool());
 
     QSignalSpy dataSpy(&model, &SubscriptionListModel::dataChanged);
     QSignalSpy resetSpy(&model, &SubscriptionListModel::modelReset);
     QSignalSpy countSpy(&model, &SubscriptionListModel::countChanged);
 
-    scripts[0].name = QStringLiteral("Pretty Decoder");
-    model.setSubscriptions(QStringLiteral("session-1"), subscriptions, scripts);
+    command.processorId = saved.processor.id;
+    command.name = QStringLiteral("Renamed Processor");
+    const SaveProcessorRevisionResult renamed = library.saveRevision(command);
+    QVERIFY2(renamed.ok, qPrintable(renamed.error));
+    model.setSubscriptions(QStringLiteral("session-1"), subscriptions, &library);
 
-    QCOMPARE(model.rowAt(0).value(QStringLiteral("scriptName")).toString(), QStringLiteral("Pretty Decoder"));
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("processorName")).toString(), QStringLiteral("Renamed Processor"));
     QCOMPARE(resetSpy.count(), 0);
     QCOMPARE(countSpy.count(), 0);
     QCOMPARE(dataSpy.count(), 1);

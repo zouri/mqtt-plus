@@ -130,23 +130,6 @@ ConfigurationTransfer::ParseResult inspectFile(const QString &path)
     if (!result.ok) {
         return result;
     }
-
-    int ignoredScriptAssignments = 0;
-    for (auto &session : result.bundle.sessions) {
-        for (auto &subscription : session.subscriptions) {
-            if (!subscription.scriptId.isEmpty()) {
-                subscription.scriptId.clear();
-                ++ignoredScriptAssignments;
-            }
-        }
-    }
-    if (ignoredScriptAssignments > 0) {
-        result.warnings.append(
-            text(QT_TRANSLATE_NOOP(
-                     "ConfigurationTransferService",
-                     "%1 subscription script assignments will be ignored because script import is not supported yet."))
-                .arg(ignoredScriptAssignments));
-    }
     return result;
 }
 

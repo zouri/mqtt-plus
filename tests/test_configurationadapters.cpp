@@ -115,7 +115,6 @@ void ConfigurationAdaptersTest::roundTripsNativeConfiguration()
     subscription.topic = QStringLiteral("sensors/#");
     subscription.alias = QStringLiteral("Sensors");
     subscription.qos = 2;
-    subscription.scriptId = QStringLiteral("script-that-must-not-be-exported");
     subscription.paused = true;
     session.subscriptions.append(subscription);
     bundle.sessions.append(session);
@@ -131,8 +130,6 @@ void ConfigurationAdaptersTest::roundTripsNativeConfiguration()
 
     const auto serialized = MqttPlusConfigAdapter::serialize(bundle, true);
     QVERIFY(serialized.ok);
-    QVERIFY(!serialized.content.contains("script-that-must-not-be-exported"));
-    QVERIFY(!serialized.content.contains("scriptId"));
     const QJsonObject serializedRoot = QJsonDocument::fromJson(serialized.content).object();
     QCOMPARE(serializedRoot.value(QStringLiteral("version")).toInt(), 2);
     const auto parsed = MqttPlusConfigAdapter::parse(serialized.content);

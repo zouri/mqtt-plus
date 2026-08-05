@@ -3,10 +3,10 @@
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
+#include "services/processors/processorlibrary.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/mqttsessionservice.h"
 #include "usecases/preferencescontroller.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 #include "usecases/subscriptionservice.h"
 
@@ -138,7 +138,7 @@ struct MqttFixture
     HistoryWriterWorker historyWriter;
     MessageParseWorker messageParser;
     PreferencesController preferences;
-    ScriptService scripts;
+    ProcessorLibrary processors;
     SessionService sessions;
     EventStreamModel messages;
     EventStreamModel logs;
@@ -152,7 +152,8 @@ struct MqttFixture
         , historyStore(dataDir.path())
         , historyWriter(dataDir.path(), historyStore.nextMessageId())
         , preferences(&settings)
-        , sessions(settings, scripts, historyStore, preferences)
+        , processors(dataDir.filePath(QStringLiteral("processors")))
+        , sessions(settings, historyStore, preferences)
         , events(
               sessions,
               historyStore,
@@ -160,10 +161,10 @@ struct MqttFixture
               messageParser,
               messages,
               logs,
-              scripts,
+              processors,
               launchTimestamp,
               preferences)
-        , subscriptions(sessions, scripts, events)
+        , subscriptions(sessions, events)
         , mqtt(sessions, subscriptions, events)
     {
         historyWriter.start();
@@ -467,7 +468,7 @@ void ConnectionErrorTextTest::qosTwoSubscriptionIsRequestedAndGranted()
         QStringLiteral("mqtt-plus/qos2/#"),
         2,
         0,
-        QString(),
+        ProcessorReference {},
         QString(),
         QStringLiteral("QoS 2")));
     QCOMPARE(session.subscriptions.size(), 1);

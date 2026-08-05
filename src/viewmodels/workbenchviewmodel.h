@@ -8,7 +8,7 @@
 
 #include "models/eventstreammodel.h"
 #include "models/messagefiltermodel.h"
-#include "models/scriptlibrarymodel.h"
+#include "models/processorlibrarymodel.h"
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
 #include "viewmodels/publishcomposerviewmodel.h"
@@ -62,7 +62,7 @@ public:
         SubscriptionFilterModel &messageFilterSubscriptionsModel,
         EventStreamModel &messagesModel,
         MessageFilterModel &filteredMessagesModel,
-        ScriptLibraryModel &scriptsModel,
+        ProcessorLibraryModel &processorsModel,
         QObject *parent = nullptr);
 
     SessionListModel *sessions() const;
@@ -158,7 +158,7 @@ private:
         const QString &payload,
         const QString &testPayload,
         int format) const;
-    void refreshSubscriptionEditorScriptOptions();
+    void refreshSubscriptionEditorProcessorOptions();
     void clearPendingSubscriptionDelete();
     void scheduleDisplayTotalMessageCountUpdate();
     void syncDisplayTotalMessageCount();
@@ -173,7 +173,7 @@ private:
     SubscriptionFilterModel &m_messageFilterSubscriptionsModel;
     EventStreamModel &m_messagesModel;
     MessageFilterModel &m_filteredMessagesModel;
-    ScriptLibraryModel &m_scriptsModel;
+    ProcessorLibraryModel &m_processorsModel;
     PublishComposerViewModel m_publisher;
     QTimer m_displayTotalMessageCountTimer;
     QTimer m_trafficRateTimer;

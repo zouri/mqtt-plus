@@ -8,7 +8,6 @@
 #include "services/parsing/messageparseworker.h"
 #include "services/storage/sessionsettingsstore.h"
 #include "usecases/preferencescontroller.h"
-#include "usecases/scriptservice.h"
 
 #include <QMqttClient>
 #include <QMqttConnectionProperties>
@@ -56,13 +55,11 @@ bool capturePoliciesEqual(
 
 SessionService::SessionService(
     QSettings &settings,
-    ScriptService &scriptService,
     HistoryStore &historyStore,
     PreferencesController &preferences,
     QObject *parent)
     : QObject(parent)
     , m_settings(settings)
-    , m_scriptService(scriptService)
     , m_historyStore(historyStore)
     , m_preferences(preferences)
 {
@@ -162,12 +159,6 @@ bool SessionService::loadSessions()
     m_sessions.reserve(count > 0 ? count : 1);
     for (int i = 0; i < count; ++i) {
         SessionSettingsStore::LoadedSession loaded = SessionSettingsStore::readSession(m_settings, i);
-        for (SubscriptionEntry &subscription : loaded.session.subscriptions) {
-            if (!subscription.scriptId.isEmpty()
-                    && !m_scriptService.scriptById(subscription.scriptId)) {
-                subscription.scriptId.clear();
-            }
-        }
 
         initializeSessionRuntime(loaded.session);
         applyConfig(loaded.session, loaded.config, false);
@@ -387,10 +378,6 @@ bool SessionService::importSessions(
             subscription.requestedQos = SessionConfig::sanitizeQos(subscription.requestedQos);
             subscription.format = std::clamp(subscription.format, 0, 5);
             subscription.color = subscription.color.trimmed();
-            if (!subscription.scriptId.isEmpty()
-                && !m_scriptService.scriptById(subscription.scriptId)) {
-                subscription.scriptId.clear();
-            }
             subscription.runtimeSubscription.clear();
             subscription.runtimeState = subscription.paused
                 ? QStringLiteral("paused")

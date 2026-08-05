@@ -3,8 +3,8 @@
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
+#include "services/processors/processorlibrary.h"
 #include "usecases/eventhistoryservice.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 #include "viewmodels/settingsviewmodel.h"
 
@@ -21,7 +21,8 @@ public:
         , preferencesController(&settings)
         , historyStore(dataDir.path())
         , historyWriter(dataDir.path(), historyStore.nextMessageId())
-        , sessionService(settings, scriptService, historyStore, preferencesController)
+        , processorLibrary(dataDir.filePath(QStringLiteral("processors")))
+        , sessionService(settings, historyStore, preferencesController)
         , eventHistoryService(
               sessionService,
               historyStore,
@@ -29,7 +30,7 @@ public:
               messageParser,
               messages,
               logs,
-              scriptService,
+              processorLibrary,
               launchTimestamp,
               preferencesController)
     {
@@ -45,7 +46,7 @@ public:
     HistoryStore historyStore;
     HistoryWriterWorker historyWriter;
     MessageParseWorker messageParser;
-    ScriptService scriptService;
+    ProcessorLibrary processorLibrary;
     SessionService sessionService;
     EventStreamModel messages;
     EventStreamModel logs;

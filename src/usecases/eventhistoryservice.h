@@ -19,7 +19,7 @@ class HistoryStore;
 class HistoryWriterWorker;
 class MessageParseWorker;
 class PreferencesController;
-class ScriptService;
+class ProcessorLibrary;
 class SessionService;
 struct MessageRecord;
 
@@ -35,7 +35,7 @@ public:
         MessageParseWorker &messageParser,
         EventStreamModel &messages,
         EventStreamModel &logs,
-        ScriptService &scriptService,
+        ProcessorLibrary &processorLibrary,
         QString launchTimestamp,
         PreferencesController &preferencesController,
         QObject *parent = nullptr);
@@ -107,7 +107,8 @@ private:
     void enqueueMessageParsing(
         const MessageRecord &record,
         qint64 sequence,
-        const QString &scriptCode);
+        const QSharedPointer<const ProcessorRevisionSnapshot> &processorRevision = {},
+        const QCborMap &processorParameters = {});
     void handleMessageParseResult(const MessageParseResult &result);
     void updateRenderedParseResult(SessionState &session, const MessageParseResult &result);
     bool clearStream(Stream kind, bool allSessions);
@@ -133,7 +134,7 @@ private:
     MessageParseWorker &m_messageParser;
     EventStreamModel &m_messages;
     EventStreamModel &m_logs;
-    ScriptService &m_scriptService;
+    ProcessorLibrary &m_processorLibrary;
     const QString m_launchTimestamp;
     PreferencesController &m_preferencesController;
     QTimer m_visibleMessageRowsFlushTimer;
