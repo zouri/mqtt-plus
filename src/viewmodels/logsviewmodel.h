@@ -2,7 +2,6 @@
 
 #include <QObject>
 #include <QString>
-#include <QVariantMap>
 #include <QVector>
 
 class EventHistoryService;
@@ -22,8 +21,6 @@ public:
 
     EventStreamModel *logs() const;
     QString logText() const;
-    static QString formattedLogRow(const QVariantMap &row);
-    static QString renderedLogText(const EventStreamModel *model);
 
 signals:
     void logTextChanged();

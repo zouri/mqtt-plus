@@ -48,9 +48,7 @@ public:
 
     void setRows(const QVariantList &rows);
     void appendRow(const QVariantMap &row);
-    void appendRows(const QVariantList &rows);
     int appendRowsAndTrimFront(const QVariantList &rows, int limit);
-    void prependRows(const QVariantList &rows);
     int prependRowsAndTrimBack(const QVariantList &rows, int limit);
     bool updateRowByHistoryId(qint64 historyId, const QVariantMap &row);
     void clear();

@@ -392,7 +392,9 @@ void ConnectionErrorTextTest::qosZeroPublishDoesNotRemainQueued()
         false));
     QCOMPARE(session.runtime.publishStatus.messageId, 0);
     QCOMPARE(session.runtime.publishStatus.state, QStringLiteral("sent"));
-    QCOMPARE(session.runtime.recentPublishedTraffic.storedEventCount(), 1);
+    QCOMPARE(
+        session.runtime.recentPublishedTraffic.eventCount(QDateTime::currentMSecsSinceEpoch()),
+        1);
     QCOMPARE(
         session.runtime.recentPublishedTraffic.byteCount(QDateTime::currentMSecsSinceEpoch()),
         qint64(7));

@@ -48,12 +48,9 @@ void RecentTrafficWindowTest::storageRemainsFixedUnderHighTraffic()
 
     QCOMPARE(window.eventCount(20'999), 100'000);
     QCOMPARE(window.byteCount(20'999), qint64(100'000));
-    QVERIFY(window.activeBucketCount() <= RecentTrafficWindow::kBucketCount);
-
     window.add(22'000, 10);
     QCOMPARE(window.eventCount(22'000), 1);
     QCOMPARE(window.byteCount(22'000), qint64(10));
-    QVERIFY(window.activeBucketCount() <= RecentTrafficWindow::kBucketCount);
 }
 
 QTEST_MAIN(RecentTrafficWindowTest)

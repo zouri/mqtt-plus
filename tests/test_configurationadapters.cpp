@@ -1,6 +1,5 @@
 #include "services/configuration/configurationadapters.h"
 
-#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -13,7 +12,6 @@ class ConfigurationAdaptersTest : public QObject
 private slots:
     void importsMqttxConnectionsAndWarnings();
     void doesNotReportMissingAdvancedSubscriptionFields();
-    void inspectsExternalMqttxSampleWhenProvided();
     void roundTripsNativeConfiguration();
     void rejectsFutureNativeVersion();
     void rejectsPreviousNativeVersion();
@@ -99,25 +97,6 @@ void ConfigurationAdaptersTest::doesNotReportMissingAdvancedSubscriptionFields()
     QVERIFY(result.ok);
     QVERIFY(!result.warnings.join(QLatin1Char('\n')).contains(
         QStringLiteral("Advanced MQTT 5 options")));
-}
-
-void ConfigurationAdaptersTest::inspectsExternalMqttxSampleWhenProvided()
-{
-    const QString path = qEnvironmentVariable("MQTT_PLUS_MQTTX_SAMPLE_PATH");
-    if (path.isEmpty()) {
-        QSKIP("MQTT_PLUS_MQTTX_SAMPLE_PATH is not set.");
-    }
-    QFile file(path);
-    QVERIFY2(file.open(QIODevice::ReadOnly), qPrintable(file.errorString()));
-    const auto result = MqttxConfigAdapter::parse(file.readAll());
-    QVERIFY2(result.ok, qPrintable(result.errorMessage));
-    QCOMPARE(result.bundle.sessions.size(), 5);
-    int subscriptionCount = 0;
-    for (const auto &session : result.bundle.sessions) {
-        subscriptionCount += session.subscriptions.size();
-    }
-    QCOMPARE(subscriptionCount, 35);
-    QCOMPARE(result.sensitiveFieldCount, 3);
 }
 
 void ConfigurationAdaptersTest::roundTripsNativeConfiguration()

@@ -31,6 +31,7 @@ public:
         DraftLibraryService &draftService,
         PreferencesController &preferences,
         QSettings &settings,
+        QString importedCertificateRoot = {},
         QObject *parent = nullptr);
 
     bool busy() const;
@@ -83,6 +84,7 @@ private:
     DraftLibraryService &m_draftService;
     PreferencesController &m_preferences;
     QSettings &m_settings;
+    QString m_importedCertificateRoot;
     QFutureWatcher<ConfigurationTransfer::ParseResult> m_inspectWatcher;
     ConfigurationTransfer::ParseResult m_preview;
     QString m_pendingPreviewFileName;

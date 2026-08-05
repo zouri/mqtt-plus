@@ -55,7 +55,6 @@ public:
     bool enqueueParseResult(const MessageParseResult &result);
     int pendingMessageCount() const;
     qint64 pendingBytes() const;
-    qint64 pendingMessageCountForSession(const QString &sessionId) const;
     qint64 droppedMessageCount() const;
     qint64 droppedParseResultCount() const;
     QString lastError() const;

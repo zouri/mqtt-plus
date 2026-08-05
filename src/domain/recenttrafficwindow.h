@@ -55,29 +55,11 @@ public:
         return total;
     }
 
-    int storedEventCount() const
-    {
-        qint64 total = 0;
-        for (const Bucket &bucket : m_buckets) {
-            total += bucket.eventCount;
-        }
-        return static_cast<int>((std::min)(
-            total,
-            qint64((std::numeric_limits<int>::max)())));
-    }
-
-    int activeBucketCount() const
-    {
-        int total = 0;
-        for (const Bucket &bucket : m_buckets) {
-            total += bucket.eventCount > 0 ? 1 : 0;
-        }
-        return total;
-    }
-
     bool isEmpty() const
     {
-        return activeBucketCount() == 0;
+        return std::ranges::none_of(
+            m_buckets,
+            [](const Bucket &bucket) { return bucket.eventCount > 0; });
     }
 
     void clear()

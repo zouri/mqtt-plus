@@ -57,6 +57,7 @@ ApplicationViewModel::ApplicationViewModel(
           draftService,
           preferences,
           settings,
+          {},
           this)
     , m_preferences(&preferences)
     , m_eventHistory(&eventHistoryService)
