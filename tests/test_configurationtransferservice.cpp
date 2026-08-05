@@ -13,7 +13,6 @@
 #include <QJsonObject>
 #include <QSettings>
 #include <QSignalSpy>
-#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -80,7 +79,8 @@ void ConfigurationTransferServiceTest::previewsImportsAndExportsWithoutCredentia
         sessionService,
         draftService,
         preferences,
-        settings);
+        settings,
+        directory.filePath(QStringLiteral("imported-certificates")));
     QSignalSpy operationSpy(
         &transfer,
         &ConfigurationTransferService::operationFinished);
@@ -179,11 +179,14 @@ void ConfigurationTransferServiceTest::rollsBackSessionsSettingsAndCertificatesW
     QVERIFY(sessionService.loadSessions());
     QCOMPARE(sessionService.sessions().size(), 1);
 
+    const QString importedCertificateRoot =
+        directory.filePath(QStringLiteral("imported-certificates"));
     ConfigurationTransferService transfer(
         sessionService,
         draftService,
         preferences,
-        settings);
+        settings,
+        importedCertificateRoot);
     QSignalSpy operationSpy(
         &transfer,
         &ConfigurationTransferService::operationFinished);
@@ -219,14 +222,8 @@ void ConfigurationTransferServiceTest::rollsBackSessionsSettingsAndCertificatesW
     QCOMPARE(importFile.write(serialized.content), serialized.content.size());
     importFile.close();
 
-    const QString configRoot =
-        QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-    const QString baseRoot = configRoot.isEmpty()
-        ? QDir::homePath() + QStringLiteral("/.config")
-        : configRoot;
-    QDir importedCertificateRoot(
-        QDir(baseRoot).filePath(QStringLiteral("mqtt_plus/imported-certificates")));
-    const QStringList certificateDirectoriesBefore = importedCertificateRoot.entryList(
+    QDir importedCertificateDirectory(importedCertificateRoot);
+    const QStringList certificateDirectoriesBefore = importedCertificateDirectory.entryList(
         QDir::Dirs | QDir::NoDotAndDotDot,
         QDir::Name);
 
@@ -242,9 +239,9 @@ void ConfigurationTransferServiceTest::rollsBackSessionsSettingsAndCertificatesW
         QStringLiteral("light"));
     QCOMPARE(preferences.messageRetentionLimit(), 1000);
     QVERIFY(draftService.drafts().isEmpty());
-    importedCertificateRoot.refresh();
+    importedCertificateDirectory.refresh();
     QCOMPARE(
-        importedCertificateRoot.entryList(
+        importedCertificateDirectory.entryList(
             QDir::Dirs | QDir::NoDotAndDotDot,
             QDir::Name),
         certificateDirectoriesBefore);
@@ -281,11 +278,14 @@ void ConfigurationTransferServiceTest::retainsCertificatesWhenSessionRollbackFai
     QVERIFY(sessionService.loadSessions());
     QCOMPARE(sessionService.sessions().size(), 1);
 
+    const QString importedCertificateRoot =
+        directory.filePath(QStringLiteral("imported-certificates"));
     ConfigurationTransferService transfer(
         sessionService,
         draftService,
         preferences,
-        settings);
+        settings,
+        importedCertificateRoot);
     QSignalSpy operationSpy(
         &transfer,
         &ConfigurationTransferService::operationFinished);

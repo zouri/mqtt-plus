@@ -200,12 +200,14 @@ ConfigurationTransferService::ConfigurationTransferService(
     DraftLibraryService &draftService,
     PreferencesController &preferences,
     QSettings &settings,
+    QString importedCertificateRoot,
     QObject *parent)
     : QObject(parent)
     , m_sessionService(sessionService)
     , m_draftService(draftService)
     , m_preferences(preferences)
     , m_settings(settings)
+    , m_importedCertificateRoot(std::move(importedCertificateRoot))
 {
     connect(
         &m_inspectWatcher,
@@ -647,12 +649,17 @@ bool ConfigurationTransferService::materializeSessionAssets(
     if (!hasAssets) {
         return true;
     }
-    const QString configRoot = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-    const QString baseRoot = configRoot.isEmpty()
-        ? QDir::homePath() + QStringLiteral("/.config")
-        : configRoot;
-    const QString directory = QDir(baseRoot).filePath(
-        QStringLiteral("mqtt_plus/imported-certificates/%1").arg(sessionId));
+    QString certificateRoot = m_importedCertificateRoot;
+    if (certificateRoot.isEmpty()) {
+        const QString configRoot = QStandardPaths::writableLocation(
+            QStandardPaths::GenericConfigLocation);
+        const QString baseRoot = configRoot.isEmpty()
+            ? QDir::homePath() + QStringLiteral("/.config")
+            : configRoot;
+        certificateRoot = QDir(baseRoot).filePath(
+            QStringLiteral("mqtt_plus/imported-certificates"));
+    }
+    const QString directory = QDir(certificateRoot).filePath(sessionId);
     if (QFileInfo::exists(directory)) {
         errorMessage = text(QT_TRANSLATE_NOOP(
             "ConfigurationTransferService",

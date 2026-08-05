@@ -77,53 +77,36 @@ class LogsViewModelTest : public QObject
 
 private slots:
     void formatsLogRows();
-    void rendersLogTextFromModel();
     void emitsIncrementalTextChanges();
 };
 
 void LogsViewModelTest::formatsLogRows()
 {
-    QCOMPARE(
-        LogsViewModel::formattedLogRow(QVariantMap {
+    LogsFixture fixture;
+    fixture.logs.setRows(QVariantList {
+        QVariantMap {
             {QStringLiteral("timestamp"), QStringLiteral("10:00:00")},
             {QStringLiteral("title"), QStringLiteral("mqtt")},
             {QStringLiteral("payload"), QStringLiteral("connected\nsession ready")},
-        }),
-        QStringLiteral("[10:00:00] [INFO] [mqtt] connected\n    session ready"));
-
-    QCOMPARE(
-        LogsViewModel::formattedLogRow(QVariantMap {
+        },
+        QVariantMap {
             {QStringLiteral("timestamp"), QStringLiteral("10:00:01")},
             {QStringLiteral("title"), QStringLiteral("warn")},
             {QStringLiteral("payload"), QStringLiteral("invalid topic")},
-        }),
-        QStringLiteral("[10:00:01] [WARN] invalid topic"));
-
-    QCOMPARE(
-        LogsViewModel::formattedLogRow(QVariantMap {
+        },
+        QVariantMap {
             {QStringLiteral("kind"), QStringLiteral("divider")},
             {QStringLiteral("title"), QStringLiteral("Current launch")},
-        }),
-        QStringLiteral("--- Current launch ---"));
-}
-
-void LogsViewModelTest::rendersLogTextFromModel()
-{
-    EventStreamModel model;
-    model.appendRow(QVariantMap {
-        {QStringLiteral("timestamp"), QStringLiteral("10:00:00")},
-        {QStringLiteral("title"), QStringLiteral("debug")},
-        {QStringLiteral("payload"), QStringLiteral("packet received")},
-    });
-    model.appendRow(QVariantMap {
-        {QStringLiteral("timestamp"), QStringLiteral("10:00:01")},
-        {QStringLiteral("title"), QStringLiteral("broker")},
-        {QStringLiteral("payload"), QStringLiteral("timeout")},
+        },
     });
 
     QCOMPARE(
-        LogsViewModel::renderedLogText(&model),
-        QStringLiteral("[10:00:00] [DEBUG] packet received\n[10:00:01] [ERROR] [broker] timeout"));
+        fixture.viewModel.logText(),
+        QStringLiteral(
+            "[10:00:00] [INFO] [mqtt] connected\n"
+            "    session ready\n"
+            "[10:00:01] [WARN] invalid topic\n"
+            "--- Current launch ---"));
 }
 
 void LogsViewModelTest::emitsIncrementalTextChanges()
@@ -147,11 +130,13 @@ void LogsViewModelTest::emitsIncrementalTextChanges()
     QCOMPARE(insertSpy.first().at(1).toString(), QStringLiteral("[10:00:00] [INFO] [broker] connected"));
     QCOMPARE(fixture.viewModel.logText(), insertSpy.first().at(1).toString());
 
-    fixture.logs.prependRows({QVariantMap {
-        {QStringLiteral("timestamp"), QStringLiteral("09:59:59")},
-        {QStringLiteral("title"), QStringLiteral("debug")},
-        {QStringLiteral("payload"), QStringLiteral("packet")},
-    }});
+    fixture.logs.prependRowsAndTrimBack(
+        {QVariantMap {
+            {QStringLiteral("timestamp"), QStringLiteral("09:59:59")},
+            {QStringLiteral("title"), QStringLiteral("debug")},
+            {QStringLiteral("payload"), QStringLiteral("packet")},
+        }},
+        2);
     QCOMPARE(textSpy.count(), 3);
     QCOMPARE(insertSpy.count(), 2);
     QCOMPARE(insertSpy.last().at(0).toInt(), 0);

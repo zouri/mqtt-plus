@@ -805,12 +805,13 @@ void EventHistoryServiceTest::aggregateReceiveRateCountsOverlappingSubscriptions
         QStringLiteral("devices/room/temp"),
         QByteArrayLiteral("23"));
 
-    QCOMPARE(fixture.session.runtime.recentReceivedTraffic.storedEventCount(), 1);
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    QCOMPARE(fixture.session.runtime.recentReceivedTraffic.eventCount(nowMs), 1);
     QCOMPARE(
         fixture.session.runtime.recentReceivedTraffic.byteCount(QDateTime::currentMSecsSinceEpoch()),
         qint64(2));
-    QCOMPARE(fixture.session.subscriptions.at(0).recentMessages.storedEventCount(), 1);
-    QCOMPARE(fixture.session.subscriptions.at(1).recentMessages.storedEventCount(), 1);
+    QCOMPARE(fixture.session.subscriptions.at(0).recentMessages.eventCount(nowMs), 1);
+    QCOMPARE(fixture.session.subscriptions.at(1).recentMessages.eventCount(nowMs), 1);
     QCOMPARE(activitySpy.count(), 1);
 }
 

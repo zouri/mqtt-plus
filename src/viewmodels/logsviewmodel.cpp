@@ -28,6 +28,29 @@ QString indentedPayload(QString payload)
 {
     return payload.replace(QLatin1Char('\n'), QStringLiteral("\n    "));
 }
+
+QString formattedLogRow(const QVariantMap &row)
+{
+    if (row.isEmpty()) {
+        return QString();
+    }
+    if (row.value(QStringLiteral("kind")).toString() == QStringLiteral("divider")) {
+        return QStringLiteral("--- %1 ---").arg(row.value(QStringLiteral("title")).toString());
+    }
+
+    const QString title = row.value(QStringLiteral("title")).toString();
+    const QString payload = row.value(QStringLiteral("payload")).toString();
+    const QString level = logLevel(title, payload);
+    const QString channel = !title.isEmpty() && title.toUpper() != level
+        ? QStringLiteral(" [%1]").arg(title)
+        : QString();
+    return QStringLiteral("[%1] [%2]%3 %4")
+        .arg(
+            row.value(QStringLiteral("timestamp")).toString(),
+            level,
+            channel,
+            indentedPayload(payload));
+}
 }
 
 LogsViewModel::LogsViewModel(
@@ -82,43 +105,6 @@ EventStreamModel *LogsViewModel::logs() const
 QString LogsViewModel::logText() const
 {
     return m_logText;
-}
-
-QString LogsViewModel::formattedLogRow(const QVariantMap &row)
-{
-    if (row.isEmpty()) {
-        return QString();
-    }
-    if (row.value(QStringLiteral("kind")).toString() == QStringLiteral("divider")) {
-        return QStringLiteral("--- %1 ---").arg(row.value(QStringLiteral("title")).toString());
-    }
-
-    const QString title = row.value(QStringLiteral("title")).toString();
-    const QString payload = row.value(QStringLiteral("payload")).toString();
-    const QString level = logLevel(title, payload);
-    const QString channel = !title.isEmpty() && title.toUpper() != level
-        ? QStringLiteral(" [%1]").arg(title)
-        : QString();
-    return QStringLiteral("[%1] [%2]%3 %4")
-        .arg(
-            row.value(QStringLiteral("timestamp")).toString(),
-            level,
-            channel,
-            indentedPayload(payload));
-}
-
-QString LogsViewModel::renderedLogText(const EventStreamModel *model)
-{
-    if (!model) {
-        return QString();
-    }
-
-    QStringList rows;
-    rows.reserve(model->count());
-    for (int row = 0; row < model->count(); ++row) {
-        rows.append(formattedLogRow(model->rowAt(row)));
-    }
-    return rows.join(QLatin1Char('\n'));
 }
 
 void LogsViewModel::rebuildCachedText()
