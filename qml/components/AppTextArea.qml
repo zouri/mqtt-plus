@@ -154,8 +154,22 @@ Control {
             height: contentRoot.height - 2
             sourceComponent: Component {
                 Rectangle {
+                    readonly property real gutterRadius: Math.max(0,
+                                                                  control.backgroundRadius
+                                                                  - control.backgroundBorderWidth)
+
+                    radius: gutterRadius
                     color: control.ui.themePalette.innerPanelBg
                     clip: true
+
+                    // Preserve the rounded outer edge without rounding the editor-facing edge.
+                    Rectangle {
+                        anchors.top: parent.top
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        width: Math.max(0, parent.width - parent.gutterRadius)
+                        color: parent.color
+                    }
 
                     ListView {
                         id: lineNumberList
