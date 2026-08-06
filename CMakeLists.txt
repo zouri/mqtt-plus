@@ -11,6 +11,13 @@ find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core Gui Network Qml Quick 
 include(GNUInstallDirs)
 include(CTest)
 
+set(MQTT_PLUS_QT_DEPLOY_OPTIONS)
+if(MSVC)
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    include(InstallRequiredSystemLibraries)
+    list(APPEND MQTT_PLUS_QT_DEPLOY_OPTIONS NO_COMPILER_RUNTIME)
+endif()
+
 set(MQTT_PLUS_LUA_VERSION "5.5.0" CACHE STRING "Lua source release to build")
 set(MQTT_PLUS_LUA_URL "https://www.lua.org/ftp/lua-${MQTT_PLUS_LUA_VERSION}.tar.gz")
 set(MQTT_PLUS_LUA_SHA256 "57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d")
@@ -100,9 +107,6 @@ list(SORT SVG_RESOURCES)
 qt_add_qml_module(mqtt_plus_app
     URI MqttPlusApp
     VERSION 1.0
-    # Qt 6.11 qmlimportscanner currently hangs on the generated module qmldir.
-    # Direct qmllint remains available through the generated qmllint targets.
-    NO_IMPORT_SCAN
     QML_FILES
         ${QML_FILES}
     RESOURCES
@@ -166,6 +170,7 @@ qt_generate_deploy_qml_app_script(
     TARGET mqtt_plus_app
     INCLUDE_PLUGINS qsqlite
     EXCLUDE_PLUGINS qsqlodbc qsqlpsql
+    ${MQTT_PLUS_QT_DEPLOY_OPTIONS}
     OUTPUT_SCRIPT mqtt_plus_qt_deploy_script
 )
 install(SCRIPT ${mqtt_plus_qt_deploy_script})

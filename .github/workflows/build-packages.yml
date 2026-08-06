@@ -1,0 +1,105 @@
+name: Build and package
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-package-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: 6.11.1
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: qtmqtt
+          cache: true
+
+      - name: Configure
+        shell: bash
+        run: >-
+          cmake --fresh -S . -B build/test
+          -G "Unix Makefiles"
+          -DCMAKE_BUILD_TYPE=Debug
+          -DBUILD_TESTING=ON
+          -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+
+      - name: Build
+        run: cmake --build build/test --parallel 4
+
+      - name: Lint QML
+        run: cmake --build build/test --target all_qmllint --parallel 4
+
+      - name: Run tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build/test --build-config Debug --output-on-failure
+
+  package:
+    name: ${{ matrix.name }}
+    needs: test
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-2022
+            artifact: windows-x64
+          - name: Linux x64
+            os: ubuntu-22.04
+            artifact: linux-x64
+          - name: macOS x64
+            os: macos-15-intel
+            artifact: macos-x64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: qtmqtt
+          cache: true
+
+      - name: Build and package on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/package-windows.ps1 -QtPrefix $env:QT_ROOT_DIR
+
+      - name: Build and package on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ./scripts/package-linux.sh "$QT_ROOT_DIR"
+
+      - name: Build and package on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: ./scripts/package-macos.sh "$QT_ROOT_DIR"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: mqtt-plus-${{ matrix.artifact }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
