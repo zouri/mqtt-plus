@@ -53,7 +53,7 @@
 ├── assets/                 # 应用图标等资源
 ├── scripts/                # 平台打包脚本
 ├── CMakeLists.txt          # CMake 工程定义
-└── CMakePresets.json       # 本地构建和打包 preset
+└── .github/workflows/      # 三平台持续集成与打包
 ```
 
 `build/` 和 `dist/` 是生成目录，不需要手动编辑或提交其中产物。
@@ -147,7 +147,7 @@ macOS 调试构建完成后，可以直接运行 app bundle 内的可执行文�
 
 ## 打包
 
-打包需要在目标平台本机执行。平台 preset 只会在对应系统上出现。
+打包需要在目标平台本机执行。打包脚本会完成 Release 配置、构建、QML lint 和 CPack 打包。
 项目通过 Qt 官方 CMake Deployment API 生成部署脚本：CMake 先安装应用目标，再由 `qt_generate_deploy_qml_app_script()` 收集 Qt 运行库、QML 模块和需要的插件，最后交给 CPack 生成平台包。
 
 ### macOS
@@ -190,6 +190,16 @@ cd C:\path\to\mqtts
 ```
 
 生成的 ZIP 会写入 `dist/`。
+
+### GitHub Actions
+
+`.github/workflows/build-packages.yml` 会在每次 push、pull request 和手动触发时，并行构建以下产物：
+
+- Windows x64 ZIP
+- Linux x64 tar.gz
+- macOS x64 DMG
+
+工作流使用 Qt 6.11.1，并安装额外的 `qtmqtt` 模块。Linux 测试任务会先执行 Debug 构建、QML lint 和全部 Qt Test；验证通过后，Windows、Linux 和 macOS 才会并行生成并上传构建产物。产物在对应的 GitHub Actions run 中保留 14 天。
 
 ## Lua 接收脚本
 
