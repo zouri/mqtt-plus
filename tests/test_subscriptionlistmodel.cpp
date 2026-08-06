@@ -73,7 +73,6 @@ void SubscriptionListModelTest::setSubscriptionsRebuildsProcessorBindingPresenta
 
     model.setSubscriptions(QStringLiteral("session-1"), subscriptions, &library);
     QCOMPARE(model.rowAt(0).value(QStringLiteral("processorName")).toString(), QStringLiteral("Processor"));
-    QCOMPARE(model.rowAt(0).value(QStringLiteral("processorRevisionMode")).toString(), QStringLiteral("current"));
     QVERIFY(model.rowAt(0).value(QStringLiteral("processorBindingAvailable")).toBool());
 
     QSignalSpy dataSpy(&model, &SubscriptionListModel::dataChanged);

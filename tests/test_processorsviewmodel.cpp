@@ -13,9 +13,10 @@ class ProcessorsViewModelTest : public QObject
 
 private slots:
     void createsValidLuaAndJavaScriptRevisions();
-    void switchesCurrentRevisionWithoutMutatingHistory();
+    void savesChangesWithoutExposingRevisionHistory();
     void preservesUnexposedSourceFilesWhenSavingEntry();
-    void filtersAndArchivesProcessors();
+    void filtersProcessors();
+    void blocksDeletionWhileUsedAndDeletesAfterUnbinding();
 };
 
 void ProcessorsViewModelTest::createsValidLuaAndJavaScriptRevisions()
@@ -44,7 +45,7 @@ void ProcessorsViewModelTest::createsValidLuaAndJavaScriptRevisions()
     QCOMPARE(library.revisions(viewModel.editor()->currentProcessorId()).size(), 1);
 }
 
-void ProcessorsViewModelTest::switchesCurrentRevisionWithoutMutatingHistory()
+void ProcessorsViewModelTest::savesChangesWithoutExposingRevisionHistory()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -55,14 +56,14 @@ void ProcessorsViewModelTest::switchesCurrentRevisionWithoutMutatingHistory()
     viewModel.newProcessor(QStringLiteral("lua"));
     QVERIFY(viewModel.saveEditor());
     const QString processorId = viewModel.editor()->currentProcessorId();
-    const QString firstRevisionId = viewModel.editor()->currentRevisionId();
+    const QString firstRevisionId = library.processorById(processorId)->currentRevisionId;
 
     viewModel.editor()->setSource(QStringLiteral(
         "function process(context)\n"
         "    return { topic = context.topic }\n"
         "end\n"));
     QVERIFY(viewModel.saveEditor());
-    const QString secondRevisionId = viewModel.editor()->currentRevisionId();
+    const QString secondRevisionId = library.processorById(processorId)->currentRevisionId;
     QVERIFY(secondRevisionId != firstRevisionId);
     QCOMPARE(library.revisions(processorId).size(), 2);
 
@@ -74,15 +75,11 @@ void ProcessorsViewModelTest::switchesCurrentRevisionWithoutMutatingHistory()
     QCOMPARE(library.revisionById(firstRevisionId)->languageId, QStringLiteral("lua"));
     QCOMPARE(library.revisionById(secondRevisionId)->languageId, QStringLiteral("lua"));
     QCOMPARE(
-        library.revisionById(viewModel.editor()->currentRevisionId())->languageId,
+        library.revisionById(library.processorById(processorId)->currentRevisionId)->languageId,
         QStringLiteral("javascript"));
-
-    QVERIFY(viewModel.selectRevisionAt(2));
-    QCOMPARE(viewModel.editor()->selectedRevisionId(), firstRevisionId);
-    QVERIFY(viewModel.editor()->canSave());
-    QVERIFY(viewModel.saveEditor());
-    QCOMPARE(viewModel.editor()->currentRevisionId(), firstRevisionId);
-    QCOMPARE(library.revisions(processorId).size(), 3);
+    const QVariantMap processorRow = model.rowAt(model.indexOfId(processorId));
+    QVERIFY(!processorRow.contains(QStringLiteral("currentRevisionNumber")));
+    QVERIFY(!processorRow.contains(QStringLiteral("revisions")));
 }
 
 void ProcessorsViewModelTest::preservesUnexposedSourceFilesWhenSavingEntry()
@@ -133,7 +130,7 @@ void ProcessorsViewModelTest::preservesUnexposedSourceFilesWhenSavingEntry()
     QCOMPARE(helper->content, QByteArrayLiteral("function helper() { return 1; }\n"));
 }
 
-void ProcessorsViewModelTest::filtersAndArchivesProcessors()
+void ProcessorsViewModelTest::filtersProcessors()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -153,11 +150,39 @@ void ProcessorsViewModelTest::filtersAndArchivesProcessors()
     viewModel.setProcessorFilterText(QStringLiteral("context.decoded"));
     QCOMPARE(viewModel.filteredProcessors()->count(), 1);
 
-    QVERIFY(viewModel.archiveCurrent());
-    QVERIFY(viewModel.editor()->archived());
-    QCOMPARE(model.rowAt(0).value(QStringLiteral("archived")).toBool(), true);
-    QVERIFY(viewModel.restoreCurrent());
-    QVERIFY(!viewModel.editor()->archived());
+    QVERIFY(!model.rowAt(0).contains(QStringLiteral("archived")));
+}
+
+void ProcessorsViewModelTest::blocksDeletionWhileUsedAndDeletesAfterUnbinding()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    ProcessorLibrary library(directory.path());
+    ProcessorLibraryModel model;
+    bool used = true;
+    ProcessorsViewModel viewModel(
+        library,
+        model,
+        [&used](const QString &) {
+            return used ? QStringList {QStringLiteral("Production")} : QStringList {};
+        });
+
+    viewModel.newProcessor(QStringLiteral("lua"));
+    viewModel.editor()->setName(QStringLiteral("Bound processor"));
+    QVERIFY(viewModel.saveEditor());
+    const QString processorId = viewModel.editor()->currentProcessorId();
+    const QString revisionId = library.processorById(processorId)->currentRevisionId;
+
+    QVERIFY(!viewModel.deleteCurrent());
+    QVERIFY(library.processorById(processorId));
+    QVERIFY(viewModel.editor()->diagnostics().contains(QStringLiteral("Production")));
+
+    used = false;
+    QVERIFY(viewModel.deleteCurrent());
+    QVERIFY(!library.processorById(processorId));
+    QVERIFY(library.revisionById(revisionId).isNull());
+    QCOMPARE(model.count(), 0);
+    QVERIFY(viewModel.editor()->currentProcessorId().isEmpty());
 }
 
 QTEST_MAIN(ProcessorsViewModelTest)

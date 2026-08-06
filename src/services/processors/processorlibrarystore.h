@@ -28,12 +28,6 @@ struct SaveProcessorRevisionResult
     QString error;
 };
 
-struct ProcessorLibraryStoreResult
-{
-    bool ok = false;
-    QString error;
-};
-
 class ProcessorLibraryStore
 {
 public:
@@ -50,8 +44,9 @@ public:
     QString databasePath() const;
 
     SaveProcessorRevisionResult saveRevision(const SaveProcessorRevisionCommand &command);
+    bool deleteProcessor(const QString &processorId);
     std::optional<ProcessorDefinition> processorById(const QString &processorId) const;
-    QVector<ProcessorDefinition> processors(bool includeArchived = false) const;
+    QVector<ProcessorDefinition> processors() const;
     QVector<QSharedPointer<const ProcessorRevisionSnapshot>> revisions(
         const QString &processorId) const;
     QSharedPointer<const ProcessorRevisionSnapshot> revisionById(
@@ -59,8 +54,6 @@ public:
     QSharedPointer<const ProcessorRevisionSnapshot> resolve(
         const ProcessorReference &reference,
         QString *error = nullptr) const;
-    ProcessorLibraryStoreResult archiveProcessor(const QString &processorId);
-    ProcessorLibraryStoreResult restoreProcessor(const QString &processorId);
 
 private:
     bool initialize(const QString &storageDirectory);
@@ -69,7 +62,6 @@ private:
     QSharedPointer<const ProcessorRevisionSnapshot> loadRevision(
         const QString &revisionId,
         QString *error = nullptr) const;
-    ProcessorLibraryStoreResult setArchived(const QString &processorId, bool archived);
 
     QSqlDatabase m_db;
     QString m_connectionName;

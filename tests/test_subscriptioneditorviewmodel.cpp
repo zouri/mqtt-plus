@@ -11,23 +11,6 @@ QVariantList processorOptions()
             {QStringLiteral("id"), QStringLiteral("processor-1")},
             {QStringLiteral("name"), QStringLiteral("Parser")},
             {QStringLiteral("readinessState"), QStringLiteral("ready")},
-            {QStringLiteral("archived"), false},
-            {QStringLiteral("revisions"), QVariantList {
-                 QVariantMap {
-                     {QStringLiteral("id"), QStringLiteral("revision-2")},
-                     {QStringLiteral("revisionNumber"), 2},
-                     {QStringLiteral("languageName"), QStringLiteral("JavaScript")},
-                     {QStringLiteral("createdAt"), QStringLiteral("2026-08-05 12:00")},
-                     {QStringLiteral("selectable"), true},
-                 },
-                 QVariantMap {
-                     {QStringLiteral("id"), QStringLiteral("revision-1")},
-                     {QStringLiteral("revisionNumber"), 1},
-                     {QStringLiteral("languageName"), QStringLiteral("Lua")},
-                     {QStringLiteral("createdAt"), QStringLiteral("2026-08-04 12:00")},
-                     {QStringLiteral("selectable"), true},
-                 },
-             }},
         },
     };
 }
@@ -42,7 +25,7 @@ private slots:
     void opensForCreateWithDefaults();
     void opensForEditWithExistingProcessorBinding();
     void preservesUnavailableBindingWhenOptionsRefresh();
-    void validatesAndCollectsPinnedSubmission();
+    void validatesAndCollectsCurrentSubmission();
 };
 
 void SubscriptionEditorViewModelTest::opensForCreateWithDefaults()
@@ -57,8 +40,6 @@ void SubscriptionEditorViewModelTest::opensForCreateWithDefaults()
     QCOMPARE(editor.qos(), 0);
     QCOMPARE(editor.format(), 0);
     QVERIFY(editor.processorId().isEmpty());
-    QCOMPARE(editor.processorRevisionMode(), 0);
-    QVERIFY(editor.pinnedRevisionId().isEmpty());
     QVERIFY(!editor.canSubmit());
 }
 
@@ -72,8 +53,6 @@ void SubscriptionEditorViewModelTest::opensForEditWithExistingProcessorBinding()
         {QStringLiteral("requestedQos"), 2},
         {QStringLiteral("format"), 1},
         {QStringLiteral("processorId"), QStringLiteral("processor-1")},
-        {QStringLiteral("processorRevisionMode"), QStringLiteral("pinned")},
-        {QStringLiteral("pinnedRevisionId"), QStringLiteral("revision-1")},
         {QStringLiteral("processorParametersCborBase64"), QStringLiteral("oWRnYWluBA==")},
         {QStringLiteral("color"), QStringLiteral("#34C759")},
     });
@@ -85,8 +64,6 @@ void SubscriptionEditorViewModelTest::opensForEditWithExistingProcessorBinding()
     QCOMPARE(editor.qos(), 2);
     QCOMPARE(editor.format(), 1);
     QCOMPARE(editor.processorId(), QStringLiteral("processor-1"));
-    QCOMPARE(editor.processorRevisionMode(), 1);
-    QCOMPARE(editor.pinnedRevisionId(), QStringLiteral("revision-1"));
     QVERIFY(editor.processorBindingDetail().isEmpty());
 }
 
@@ -95,17 +72,14 @@ void SubscriptionEditorViewModelTest::preservesUnavailableBindingWhenOptionsRefr
     SubscriptionEditorViewModel editor;
     editor.setProcessorOptions(processorOptions());
     editor.setProcessorId(QStringLiteral("missing-processor"));
-    editor.setProcessorRevisionMode(1);
-    editor.setPinnedRevisionId(QStringLiteral("missing-revision"));
     editor.setProcessorOptions(processorOptions());
 
     QCOMPARE(editor.processorOptionIds().last(), QStringLiteral("missing-processor"));
     QVERIFY(editor.processorOptionNames().last().contains(QStringLiteral("Unavailable")));
-    QCOMPARE(editor.pinnedRevisionOptionIds(), QStringList {QStringLiteral("missing-revision")});
     QVERIFY(editor.processorBindingDetail().contains(QStringLiteral("preserved")));
 }
 
-void SubscriptionEditorViewModelTest::validatesAndCollectsPinnedSubmission()
+void SubscriptionEditorViewModelTest::validatesAndCollectsCurrentSubmission()
 {
     SubscriptionEditorViewModel editor;
     editor.setProcessorOptions(processorOptions());
@@ -115,15 +89,11 @@ void SubscriptionEditorViewModelTest::validatesAndCollectsPinnedSubmission()
     editor.setQos(2);
     editor.setFormat(2);
     editor.setProcessorId(QStringLiteral("processor-1"));
-    editor.setProcessorRevisionMode(1);
-    editor.setPinnedRevisionId(QStringLiteral("revision-1"));
 
     QVERIFY(editor.canSubmit());
     const QVariantMap submission = editor.submission();
     QCOMPARE(submission.value(QStringLiteral("topic")).toString(), QStringLiteral("sensors/+/temp"));
     QCOMPARE(submission.value(QStringLiteral("processorId")).toString(), QStringLiteral("processor-1"));
-    QCOMPARE(submission.value(QStringLiteral("processorRevisionMode")).toString(), QStringLiteral("pinned"));
-    QCOMPARE(submission.value(QStringLiteral("pinnedRevisionId")).toString(), QStringLiteral("revision-1"));
 
     editor.setQos(3);
     QCOMPARE(editor.qos(), 2);

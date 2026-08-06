@@ -1,6 +1,5 @@
 #pragma once
 
-#include "models/processorrevisionmodel.h"
 #include "services/processors/processorlibrarystore.h"
 
 #include <QObject>
@@ -14,9 +13,6 @@ class ProcessorEditorViewModel : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString currentProcessorId READ currentProcessorId NOTIFY identityChanged)
-    Q_PROPERTY(QString selectedRevisionId READ selectedRevisionId NOTIFY identityChanged)
-    Q_PROPERTY(QString currentRevisionId READ currentRevisionId NOTIFY identityChanged)
-    Q_PROPERTY(qint64 currentRevisionNumber READ currentRevisionNumber NOTIFY identityChanged)
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)
     Q_PROPERTY(QString description READ description WRITE setDescription NOTIFY descriptionChanged)
     Q_PROPERTY(QString languageId READ languageId NOTIFY languageChanged)
@@ -33,12 +29,8 @@ class ProcessorEditorViewModel : public QObject
     Q_PROPERTY(QString validationStatus READ validationStatus NOTIFY validationChanged)
     Q_PROPERTY(QString diagnostics READ diagnostics NOTIFY validationChanged)
     Q_PROPERTY(bool validationOk READ validationOk NOTIFY validationChanged)
-    Q_PROPERTY(bool archived READ archived NOTIFY archivedChanged)
     Q_PROPERTY(bool hasUnsavedChanges READ hasUnsavedChanges NOTIFY editorStateChanged)
     Q_PROPERTY(bool canSave READ canSave NOTIFY editorStateChanged)
-    Q_PROPERTY(bool canArchive READ canArchive NOTIFY editorStateChanged)
-    Q_PROPERTY(bool canRestore READ canRestore NOTIFY editorStateChanged)
-    Q_PROPERTY(ProcessorRevisionModel* revisions READ revisions CONSTANT)
 
 public:
     explicit ProcessorEditorViewModel(
@@ -47,9 +39,6 @@ public:
         QObject *parent = nullptr);
 
     QString currentProcessorId() const;
-    QString selectedRevisionId() const;
-    QString currentRevisionId() const;
-    qint64 currentRevisionNumber() const;
     QString name() const;
     QString description() const;
     QString languageId() const;
@@ -66,12 +55,8 @@ public:
     QString validationStatus() const;
     QString diagnostics() const;
     bool validationOk() const;
-    bool archived() const;
     bool hasUnsavedChanges() const;
     bool canSave() const;
-    bool canArchive() const;
-    bool canRestore() const;
-    ProcessorRevisionModel *revisions();
 
     void setName(const QString &name);
     void setDescription(const QString &description);
@@ -82,7 +67,6 @@ public:
 
     void newProcessor(const QString &languageId);
     bool loadProcessor(const QString &processorId);
-    bool loadRevision(const QString &revisionId);
     bool validateDraft();
     SaveProcessorRevisionCommand saveCommand() const;
     void setOperationError(const QString &message);
@@ -96,7 +80,6 @@ signals:
     void entrySymbolChanged();
     void sourceChanged();
     void validationChanged();
-    void archivedChanged();
     void editorStateChanged();
 
 private:
@@ -119,7 +102,6 @@ private:
     static QString validationStateName(int state);
     void applyTemplate(int index, bool replaceMetadata);
     void loadRevisionSnapshot(const ProcessorRevisionSnapshot &revision);
-    void refreshRevisions();
     void captureSavedState();
     void invalidateValidation();
     void setValidation(
@@ -131,10 +113,7 @@ private:
 
     ProcessorLibrary &m_library;
     MessageProcessorEngine &m_engine;
-    ProcessorRevisionModel m_revisions;
     QString m_currentProcessorId;
-    QString m_selectedRevisionId;
-    QString m_currentRevisionId;
     qint64 m_currentRevisionNumber = 0;
     QString m_name;
     QString m_description;
@@ -149,7 +128,6 @@ private:
     QString m_validationStatus;
     QString m_diagnostics;
     bool m_validationOk = false;
-    bool m_archived = false;
     QString m_savedName;
     QString m_savedDescription;
     QString m_savedLanguageId;

@@ -48,15 +48,6 @@ Item {
         root.runEditorAction(action, draftId)
     }
 
-    function requestSendCurrent() {
-        if (root.viewModel.currentNeedsTopic()) {
-            temporaryTopicField.text = ""
-            temporaryTopicDialog.open()
-        } else {
-            root.viewModel.sendCurrent()
-        }
-    }
-
     Component.onCompleted: root.viewModel.ensureEditorSelection()
 
     Connections {
@@ -389,22 +380,6 @@ Item {
                     elide: Label.ElideRight
                 }
 
-                AppComboBox {
-                    ui: root.ui
-                    Layout.preferredWidth: 176
-                    model: root.viewModel.sessionNames
-                    currentIndex: root.viewModel.currentSessionIndex
-                    enabled: model.length > 0
-                    onActivated: root.viewModel.currentSessionIndex = currentIndex
-                }
-
-                Label {
-                    text: root.ui.statusLabel(root.viewModel.sessionStatus.state || "disconnected")
-                    color: root.ui.stateColor(root.viewModel.sessionStatus.state || "disconnected")
-                    font.pixelSize: root.ui.textXs
-                    font.bold: true
-                }
-
                 AppButton {
                     ui: root.ui
                     text: qsTr("Duplicate")
@@ -424,17 +399,6 @@ Item {
                              && !root.viewModel.busy
                              && !root.viewModel.readOnly
                     onClicked: deleteDraftDialog.open()
-                }
-
-                AppButton {
-                    ui: root.ui
-                    text: qsTr("Send")
-                    minimumWidth: 72
-                    enabled: Boolean(root.viewModel.sessionStatus.connected)
-                    toolTipText: root.editor.retain
-                                     ? qsTr("Retain is enabled for this publish")
-                                     : qsTr("Send through the selected connection")
-                    onClicked: root.requestSendCurrent()
                 }
 
                 AppButton {
@@ -593,75 +557,4 @@ Item {
         }
     }
 
-    AppDialog {
-        id: temporaryTopicDialog
-
-        ui: root.ui
-        width: 460
-        height: 250
-        closePolicy: Popup.CloseOnEscape
-        header: Item { implicitHeight: 0; visible: false }
-        background: Rectangle {
-            radius: root.ui.radiusLg
-            color: root.ui.themePalette.dialogBg
-            border.color: root.ui.themePalette.dialogBorder
-        }
-        onOpened: temporaryTopicField.forceActiveFocus()
-        contentItem: ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 20
-            spacing: 12
-
-            Label {
-                Layout.fillWidth: true
-                text: qsTr("Topic for this publish")
-                color: root.ui.textStrong
-                font.pixelSize: root.ui.text2xl
-                font.bold: true
-            }
-
-            Label {
-                Layout.fillWidth: true
-                text: qsTr("This draft has no default Topic. The value below is used once and is not saved.")
-                color: root.ui.textMuted
-                font.pixelSize: root.ui.textSm
-                wrapMode: Text.Wrap
-            }
-
-            AppTextField {
-                id: temporaryTopicField
-
-                ui: root.ui
-                Layout.fillWidth: true
-                placeholderText: qsTr("devices/example/set")
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Item { Layout.fillWidth: true }
-
-                AppButton {
-                    ui: root.ui
-                    text: qsTr("Cancel")
-                    minimumWidth: 76
-                    onClicked: temporaryTopicDialog.close()
-                }
-
-                AppButton {
-                    ui: root.ui
-                    text: qsTr("Send")
-                    primary: true
-                    minimumWidth: 76
-                    enabled: temporaryTopicField.text.trim().length > 0
-                    onClicked: {
-                        if (root.viewModel.sendCurrent(temporaryTopicField.text)) {
-                            temporaryTopicDialog.close()
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

@@ -24,7 +24,7 @@ class SubscriptionServiceTest : public QObject
 
 private slots:
     void updateCurrentSubscriptionEditsQosAndFormat();
-    void preservesUnresolvedAndPinnedProcessorReferences();
+    void preservesUnresolvedProcessorReferences();
     void setsAllCurrentSubscriptionsPausedWithSingleSignal();
     void detectsActiveCurrentSubscriptionFps();
 };
@@ -114,7 +114,7 @@ void SubscriptionServiceTest::updateCurrentSubscriptionEditsQosAndFormat()
     QCOMPARE(changedSpy.count(), 1);
 }
 
-void SubscriptionServiceTest::preservesUnresolvedAndPinnedProcessorReferences()
+void SubscriptionServiceTest::preservesUnresolvedProcessorReferences()
 {
     Fixture fixture;
     SessionState session;
@@ -133,8 +133,6 @@ void SubscriptionServiceTest::preservesUnresolvedAndPinnedProcessorReferences()
     SubscriptionEntry &entry = currentSession.subscriptions.first();
     QCOMPARE(entry.processor.processorId, QStringLiteral("missing-processor"));
 
-    entry.processor.revisionMode = ProcessorRevisionMode::Pinned;
-    entry.processor.pinnedRevisionId = QStringLiteral("revision-3");
     entry.processor.parameters.insert(QStringLiteral("gain"), 4);
     QVERIFY(fixture.service.updateCurrentSubscription(
         entry.topic,
@@ -144,8 +142,6 @@ void SubscriptionServiceTest::preservesUnresolvedAndPinnedProcessorReferences()
         2,
         entry.processor,
         QString()));
-    QCOMPARE(entry.processor.revisionMode, ProcessorRevisionMode::Pinned);
-    QCOMPARE(entry.processor.pinnedRevisionId, QStringLiteral("revision-3"));
     QCOMPARE(entry.processor.parameters.value(QStringLiteral("gain")).toInteger(), qint64(4));
 }
 

@@ -7,6 +7,8 @@
 #include "usecases/sessionservice.h"
 #include "usecases/subscriptionservice.h"
 
+#include <algorithm>
+
 ApplicationViewModel::ApplicationViewModel(
     SessionService &sessionService,
     MqttSessionService &mqttService,
@@ -35,7 +37,25 @@ ApplicationViewModel::ApplicationViewModel(
           sessionService.sessions(),
           settings,
           this)
-    , m_processors(processorLibrary, processors, this)
+    , m_processors(
+          processorLibrary,
+          processors,
+          [&sessionService](const QString &processorId) {
+              QStringList sessionNames;
+              for (const SessionState &session : sessionService.sessions()) {
+                  const bool used = std::any_of(
+                      session.subscriptions.cbegin(),
+                      session.subscriptions.cend(),
+                      [&processorId](const SubscriptionEntry &subscription) {
+                          return subscription.processor.processorId == processorId;
+                      });
+                  if (used) {
+                      sessionNames.append(session.name);
+                  }
+              }
+              return sessionNames;
+          },
+          this)
     , m_workbench(
           sessionService,
           mqttService,
@@ -50,7 +70,7 @@ ApplicationViewModel::ApplicationViewModel(
           filteredMessages,
           processors,
           this)
-    , m_drafts(draftService, drafts, sessionService, mqttService, this)
+    , m_drafts(draftService, drafts, this)
     , m_logs(eventHistoryService, logs, this)
     , m_configurationTransfer(
           sessionService,

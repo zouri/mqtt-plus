@@ -44,8 +44,9 @@ class ProcessorLibraryTest : public QObject
 
 private slots:
     void resolvesFromAnImmutableInMemorySnapshot();
-    void rejectsMissingAndCrossProcessorReferences();
-    void writesAndArchivesThroughTheLibrary();
+    void rejectsMissingProcessorReferences();
+    void writesThroughTheLibrary();
+    void deletesProcessorFromTheLibrary();
 };
 
 void ProcessorLibraryTest::resolvesFromAnImmutableInMemorySnapshot()
@@ -84,38 +85,19 @@ void ProcessorLibraryTest::resolvesFromAnImmutableInMemorySnapshot()
     QCOMPARE(resolvedFirst->revision->id, first.revision->id);
 }
 
-void ProcessorLibraryTest::rejectsMissingAndCrossProcessorReferences()
+void ProcessorLibraryTest::rejectsMissingProcessorReferences()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    ProcessorLibraryStore store(directory.path());
-    const SaveProcessorRevisionResult first = save(
-        store,
-        {},
-        QByteArrayLiteral("function process(context) { return 1 }\n"));
-    const SaveProcessorRevisionResult second = save(
-        store,
-        {},
-        QByteArrayLiteral("function process(context) { return 2 }\n"));
-    QVERIFY(first.ok);
-    QVERIFY(second.ok);
-
     ProcessorLibrary library(directory.path());
     ProcessorReference missing;
     missing.processorId = QStringLiteral("missing");
     QString error;
     QVERIFY(!library.resolve(missing, &error));
     QVERIFY(error.contains(QStringLiteral("not found")));
-
-    ProcessorReference crossProcessor;
-    crossProcessor.processorId = first.processor.id;
-    crossProcessor.revisionMode = ProcessorRevisionMode::Pinned;
-    crossProcessor.pinnedRevisionId = second.revision->id;
-    QVERIFY(!library.resolve(crossProcessor, &error));
-    QVERIFY(error.contains(QStringLiteral("does not belong")));
 }
 
-void ProcessorLibraryTest::writesAndArchivesThroughTheLibrary()
+void ProcessorLibraryTest::writesThroughTheLibrary()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -131,14 +113,25 @@ void ProcessorLibraryTest::writesAndArchivesThroughTheLibrary()
     QCOMPARE(library.revisions(saved.processor.id).size(), 1);
     QCOMPARE(library.revisionById(saved.revision->id)->id, saved.revision->id);
 
-    const ProcessorLibraryStoreResult archived = library.archiveProcessor(saved.processor.id);
-    QVERIFY2(archived.ok, qPrintable(archived.error));
-    QVERIFY(library.processors().isEmpty());
-    QCOMPARE(library.processors(true).size(), 1);
+}
 
-    const ProcessorLibraryStoreResult restored = library.restoreProcessor(saved.processor.id);
-    QVERIFY2(restored.ok, qPrintable(restored.error));
-    QCOMPARE(library.processors().size(), 1);
+void ProcessorLibraryTest::deletesProcessorFromTheLibrary()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    ProcessorLibrary library(directory.path());
+
+    SaveProcessorRevisionCommand command;
+    command.name = QStringLiteral("Disposable processor");
+    command.content = javascriptContent(
+        QByteArrayLiteral("function process(context) { return context.payload }\n"));
+    const SaveProcessorRevisionResult saved = library.saveRevision(command);
+    QVERIFY2(saved.ok, qPrintable(saved.error));
+
+    QVERIFY(library.deleteProcessor(saved.processor.id));
+    QVERIFY(library.processors().isEmpty());
+    QVERIFY(!library.processorById(saved.processor.id));
+    QVERIFY(library.revisionById(saved.revision->id).isNull());
 }
 
 QTEST_GUILESS_MAIN(ProcessorLibraryTest)

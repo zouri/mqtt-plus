@@ -14,7 +14,6 @@ struct ProcessorDefinition
     QString currentRevisionId;
     QString createdAt;
     QString updatedAt;
-    QString archivedAt;
 };
 
 struct ProcessorSourceFile
@@ -52,16 +51,8 @@ struct ProcessorRevisionSnapshot
     QString createdAt;
 };
 
-enum class ProcessorRevisionMode
-{
-    FollowCurrent,
-    Pinned,
-};
-
 struct ProcessorReference
 {
     QString processorId;
-    ProcessorRevisionMode revisionMode = ProcessorRevisionMode::FollowCurrent;
-    QString pinnedRevisionId;
     QCborMap parameters;
 };

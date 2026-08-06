@@ -537,9 +537,7 @@ void WorkbenchViewModelTest::draftEditorSelectionFollowsPopulatedModel()
     WorkbenchFixture fixture;
     DraftsViewModel draftsViewModel(
         fixture.draftService,
-        fixture.draftsModel,
-        fixture.sessionService,
-        fixture.mqttService);
+        fixture.draftsModel);
     QObject::connect(
         &fixture.draftService,
         &DraftLibraryService::draftsChanged,
@@ -564,9 +562,7 @@ void WorkbenchViewModelTest::failedEditorSaveDoesNotConsumeComposerSave()
     WorkbenchFixture fixture;
     DraftsViewModel draftsViewModel(
         fixture.draftService,
-        fixture.draftsModel,
-        fixture.sessionService,
-        fixture.mqttService);
+        fixture.draftsModel);
     fixture.draftService.load();
     QTRY_VERIFY(fixture.draftService.ready());
 

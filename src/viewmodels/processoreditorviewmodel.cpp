@@ -1,7 +1,6 @@
 #include "processoreditorviewmodel.h"
 
 #include "domain/processorexecution.h"
-#include "services/apputils.h"
 #include "services/processors/messageprocessorengine.h"
 #include "services/processors/processorpackagehash.h"
 #include "services/processors/processorlibrary.h"
@@ -9,8 +8,6 @@
 #include <QCoreApplication>
 
 #include <algorithm>
-
-using namespace AppUtils;
 
 namespace {
 
@@ -43,13 +40,6 @@ QString diagnosticText(const QVector<ProcessorDiagnostic> &diagnostics)
     return lines.join(QLatin1Char('\n'));
 }
 
-QString languageDisplayName(const QString &languageId)
-{
-    return languageId == QStringLiteral("javascript")
-        ? QStringLiteral("JavaScript")
-        : (languageId == QStringLiteral("lua") ? QStringLiteral("Lua") : languageId);
-}
-
 } // namespace
 
 ProcessorEditorViewModel::ProcessorEditorViewModel(
@@ -59,7 +49,6 @@ ProcessorEditorViewModel::ProcessorEditorViewModel(
     : QObject(parent)
     , m_library(library)
     , m_engine(engine)
-    , m_revisions(this)
     , m_validationStatus(editorText(QT_TRANSLATE_NOOP(
           "ProcessorEditorViewModel",
           "Not validated")))
@@ -67,9 +56,6 @@ ProcessorEditorViewModel::ProcessorEditorViewModel(
 }
 
 QString ProcessorEditorViewModel::currentProcessorId() const { return m_currentProcessorId; }
-QString ProcessorEditorViewModel::selectedRevisionId() const { return m_selectedRevisionId; }
-QString ProcessorEditorViewModel::currentRevisionId() const { return m_currentRevisionId; }
-qint64 ProcessorEditorViewModel::currentRevisionNumber() const { return m_currentRevisionNumber; }
 QString ProcessorEditorViewModel::name() const { return m_name; }
 QString ProcessorEditorViewModel::description() const { return m_description; }
 QString ProcessorEditorViewModel::languageId() const { return m_languageId; }
@@ -120,8 +106,6 @@ QString ProcessorEditorViewModel::validationState() const { return m_validationS
 QString ProcessorEditorViewModel::validationStatus() const { return m_validationStatus; }
 QString ProcessorEditorViewModel::diagnostics() const { return m_diagnostics; }
 bool ProcessorEditorViewModel::validationOk() const { return m_validationOk; }
-bool ProcessorEditorViewModel::archived() const { return m_archived; }
-
 bool ProcessorEditorViewModel::hasUnsavedChanges() const
 {
     return m_name != m_savedName
@@ -135,26 +119,8 @@ bool ProcessorEditorViewModel::hasUnsavedChanges() const
 
 bool ProcessorEditorViewModel::canSave() const
 {
-    return !m_archived
-        && !m_name.trimmed().isEmpty()
-        && (m_currentProcessorId.isEmpty()
-            || hasUnsavedChanges()
-            || m_selectedRevisionId != m_currentRevisionId);
-}
-
-bool ProcessorEditorViewModel::canArchive() const
-{
-    return !m_currentProcessorId.isEmpty() && !m_archived;
-}
-
-bool ProcessorEditorViewModel::canRestore() const
-{
-    return !m_currentProcessorId.isEmpty() && m_archived;
-}
-
-ProcessorRevisionModel *ProcessorEditorViewModel::revisions()
-{
-    return &m_revisions;
+    return !m_name.trimmed().isEmpty()
+        && (m_currentProcessorId.isEmpty() || hasUnsavedChanges());
 }
 
 void ProcessorEditorViewModel::setName(const QString &name)
@@ -235,12 +201,8 @@ void ProcessorEditorViewModel::setSource(const QString &source)
 void ProcessorEditorViewModel::newProcessor(const QString &languageId)
 {
     m_currentProcessorId.clear();
-    m_selectedRevisionId.clear();
-    m_currentRevisionId.clear();
     m_currentRevisionNumber = 0;
-    m_archived = false;
     applyTemplate(std::max(0, templateIndex(languageId)), true);
-    m_revisions.setRows({});
     captureSavedState();
     setValidation(
         QStringLiteral("not_validated"),
@@ -248,7 +210,6 @@ void ProcessorEditorViewModel::newProcessor(const QString &languageId)
         {},
         false);
     emit identityChanged();
-    emit archivedChanged();
     emitEditorStateChanged();
 }
 
@@ -262,48 +223,25 @@ bool ProcessorEditorViewModel::loadProcessor(const QString &processorId)
         return false;
     }
     m_currentProcessorId = processor->id;
-    m_currentRevisionId = processor->currentRevisionId;
     m_name = processor->name;
     m_description = processor->description;
-    m_archived = !processor->archivedAt.isEmpty();
     const auto revision = m_library.revisionById(processor->currentRevisionId);
     if (revision.isNull()) {
         setOperationError(editorText(QT_TRANSLATE_NOOP(
             "ProcessorEditorViewModel",
-            "Current Processor Revision is unavailable.")));
-        refreshRevisions();
+            "Message Processor content is unavailable.")));
         emit identityChanged();
         emit nameChanged();
         emit descriptionChanged();
-        emit archivedChanged();
         emitEditorStateChanged();
         return false;
     }
     loadRevisionSnapshot(*revision);
-    refreshRevisions();
     captureSavedState();
     validateDraft();
     emit identityChanged();
     emit nameChanged();
     emit descriptionChanged();
-    emit archivedChanged();
-    emitEditorStateChanged();
-    return true;
-}
-
-bool ProcessorEditorViewModel::loadRevision(const QString &revisionId)
-{
-    const auto revision = m_library.revisionById(revisionId);
-    if (revision.isNull() || revision->processorId != m_currentProcessorId) {
-        setOperationError(editorText(QT_TRANSLATE_NOOP(
-            "ProcessorEditorViewModel",
-            "Processor Revision is unavailable.")));
-        return false;
-    }
-    loadRevisionSnapshot(*revision);
-    captureSavedState();
-    validateDraft();
-    emit identityChanged();
     emitEditorStateChanged();
     return true;
 }
@@ -508,7 +446,6 @@ void ProcessorEditorViewModel::applyTemplate(int index, bool replaceMetadata)
 void ProcessorEditorViewModel::loadRevisionSnapshot(
     const ProcessorRevisionSnapshot &revision)
 {
-    m_selectedRevisionId = revision.id;
     m_currentRevisionNumber = revision.revisionNumber;
     m_languageId = revision.languageId;
     m_runtimeId = revision.runtimeId;
@@ -528,32 +465,6 @@ void ProcessorEditorViewModel::loadRevisionSnapshot(
     emit entryFileChanged();
     emit entrySymbolChanged();
     emit sourceChanged();
-}
-
-void ProcessorEditorViewModel::refreshRevisions()
-{
-    QVariantList rows;
-    QVector<QSharedPointer<const ProcessorRevisionSnapshot>> revisions = m_library.revisions(
-        m_currentProcessorId);
-    std::reverse(revisions.begin(), revisions.end());
-    for (const auto &revision : revisions) {
-        const ProcessorValidationResult validation = m_engine.validate(*revision);
-        rows.append(QVariantMap {
-            {QStringLiteral("id"), revision->id},
-            {QStringLiteral("revisionNumber"), revision->revisionNumber},
-            {QStringLiteral("languageId"), revision->languageId},
-            {QStringLiteral("languageName"), languageDisplayName(revision->languageId)},
-            {QStringLiteral("runtimeId"), revision->runtimeId},
-            {QStringLiteral("entryFile"), revision->entryFile},
-            {QStringLiteral("entrySymbol"), revision->entrySymbol},
-            {QStringLiteral("createdAt"), displayTimestamp(revision->createdAt)},
-            {QStringLiteral("current"), revision->id == m_currentRevisionId},
-            {QStringLiteral("readinessState"), validationStateName(static_cast<int>(validation.state))},
-            {QStringLiteral("readinessDetail"), diagnosticText(validation.diagnostics)},
-            {QStringLiteral("selectable"), validation.isReady()},
-        });
-    }
-    m_revisions.setRows(rows);
 }
 
 void ProcessorEditorViewModel::captureSavedState()

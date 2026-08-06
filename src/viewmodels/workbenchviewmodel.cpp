@@ -34,14 +34,6 @@ ProcessorReference processorReferenceFromSubmission(const QVariantMap &submissio
 {
     ProcessorReference reference;
     reference.processorId = submission.value(QStringLiteral("processorId")).toString().trimmed();
-    reference.revisionMode = submission.value(
-        QStringLiteral("processorRevisionMode")).toString() == QStringLiteral("pinned")
-        ? ProcessorRevisionMode::Pinned
-        : ProcessorRevisionMode::FollowCurrent;
-    if (reference.revisionMode == ProcessorRevisionMode::Pinned) {
-        reference.pinnedRevisionId = submission.value(
-            QStringLiteral("pinnedRevisionId")).toString().trimmed();
-    }
     const QByteArray parametersCbor = QByteArray::fromBase64(
         submission.value(QStringLiteral("processorParametersCborBase64"))
             .toString()

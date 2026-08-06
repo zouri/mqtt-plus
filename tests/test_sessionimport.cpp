@@ -178,8 +178,6 @@ void SessionImportTest::persistsProcessorReference()
         SubscriptionEntry entry;
         entry.topic = QStringLiteral("devices/processor");
         entry.processor.processorId = QStringLiteral("processor-1");
-        entry.processor.revisionMode = ProcessorRevisionMode::Pinned;
-        entry.processor.pinnedRevisionId = QStringLiteral("revision-7");
         entry.processor.parameters.insert(QStringLiteral("gain"), 2);
         entry.processor.parameters.insert(QStringLiteral("unit"), QStringLiteral("C"));
         service.currentSession()->subscriptions.append(entry);
@@ -196,8 +194,6 @@ void SessionImportTest::persistsProcessorReference()
         QCOMPARE(service.sessions().first().subscriptions.size(), 1);
         const SubscriptionEntry &entry = service.sessions().first().subscriptions.first();
         QCOMPARE(entry.processor.processorId, QStringLiteral("processor-1"));
-        QCOMPARE(entry.processor.revisionMode, ProcessorRevisionMode::Pinned);
-        QCOMPARE(entry.processor.pinnedRevisionId, QStringLiteral("revision-7"));
         QCOMPARE(entry.processor.parameters.value(QStringLiteral("gain")).toInteger(), qint64(2));
         QCOMPARE(entry.processor.parameters.value(QStringLiteral("unit")).toString(), QStringLiteral("C"));
     }
