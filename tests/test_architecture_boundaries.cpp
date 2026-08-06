@@ -14,10 +14,14 @@ private slots:
     void usecasesDoNotDependOnApplicationLayer();
     void messageHistoryWritesUseDedicatedWorker();
     void messageAdmissionChecksMetadataBeforePayloadWork();
+    void processorCallersUseEngineSeamOnly();
+    void messagePipelineUsesResolvedProcessorSnapshots();
     void messageQmlUsesTypedObjectProperties();
     void qmlUsesApplicationViewModelRootOnly();
     void messageProfilerUsesIsolatedApplicationData();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
+    void processorLibraryUiUsesProcessorContracts();
+    void subscriptionEditorUsesProcessorBindings();
     void subscriptionsPanelDoesNotReadModelRowsForEditing();
     void subscriptionsPanelDoesNotOwnBusinessState();
     void workbenchViewsDoNotInterpretContextMenuActions();
@@ -29,8 +33,7 @@ private slots:
     void workbenchViewModelDoesNotForwardNonWorkbenchSignals();
     void featureViewModelsDoNotDependOnApplicationLayer();
     void editorViewModelsDoNotExposeInternalWorkflowHelpers();
-    void scriptEditorViewModelDoesNotExposeInternalWorkflowHelpers();
-    void scriptsViewModelDoesNotExposeCoreScriptCrud();
+    void legacyScriptingSubsystemIsRemoved();
     void settingsViewModelDoesNotExposeWritableRawOptions();
     void settingsViewModelDoesNotExposeInternalOptionHelpers();
 
@@ -139,6 +142,114 @@ void ArchitectureBoundariesTest::messageAdmissionChecksMetadataBeforePayloadWork
         "The MQTT receive callback must not wait for storage or parsing workers");
 }
 
+void ArchitectureBoundariesTest::processorCallersUseEngineSeamOnly()
+{
+    QString engineHeader;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/services/processors/messageprocessorengine.h"),
+        engineHeader));
+    QVERIFY2(!engineHeader.contains(QStringLiteral("processorruntimeregistry.h")),
+        "MessageProcessorEngine must keep the runtime registry behind its interface");
+    QVERIFY2(!engineHeader.contains(QStringLiteral("processorruntimeadapter.h")),
+        "MessageProcessorEngine must not expose the internal adapter header to callers");
+
+    QString luaAdapterSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/services/processors/runtimes/luaruntimeadapter.cpp"),
+        luaAdapterSource));
+    QVERIFY2(!luaAdapterSource.contains(QStringLiteral("luarunner.h"))
+            && !luaAdapterSource.contains(QStringLiteral("LuaRunner")),
+        "The new Lua runtime adapter must not depend on the legacy LuaRunner contract");
+
+    QString javascriptAdapterSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/services/processors/runtimes/javascriptruntimeadapter.cpp"),
+        javascriptAdapterSource));
+    QVERIFY2(javascriptAdapterSource.contains(QStringLiteral("QJSEngine"))
+            && javascriptAdapterSource.contains(QStringLiteral("setInterrupted")),
+        "The JavaScript adapter must use QJSEngine with watchdog interruption");
+    const QStringList forbiddenJavaScriptHostBridges {
+        QStringLiteral("newQObject"),
+        QStringLiteral("newQMetaObject"),
+        QStringLiteral("QQmlContext"),
+        QStringLiteral("rootContext"),
+        QStringLiteral("QCoreApplication::instance"),
+        QStringLiteral("qApp"),
+    };
+    for (const QString &token : forbiddenJavaScriptHostBridges) {
+        QVERIFY2(!javascriptAdapterSource.contains(token),
+            qPrintable(QStringLiteral(
+                "The JavaScript adapter must not expose host objects through %1")
+                           .arg(token)));
+    }
+
+    const QString sourceRoot = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/src");
+    QDirIterator sourceFiles(
+        sourceRoot,
+        {QStringLiteral("*.h"), QStringLiteral("*.cpp")},
+        QDir::Files,
+        QDirIterator::Subdirectories);
+    while (sourceFiles.hasNext()) {
+        const QString path = sourceFiles.next();
+        if (path.contains(QStringLiteral("/src/services/processors/"))) {
+            continue;
+        }
+        QFile file(path);
+        QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text),
+            qPrintable(QStringLiteral("Cannot read %1").arg(path)));
+        const QString source = QString::fromUtf8(file.readAll());
+        QVERIFY2(!source.contains(QStringLiteral("processorruntimeregistry.h")),
+            qPrintable(QStringLiteral("%1 must use MessageProcessorEngine instead of its registry")
+                           .arg(path)));
+        QVERIFY2(!source.contains(QStringLiteral("processorruntimeadapter.h")),
+            qPrintable(QStringLiteral("%1 must not depend on the internal runtime adapter seam")
+                           .arg(path)));
+    }
+}
+
+void ArchitectureBoundariesTest::messagePipelineUsesResolvedProcessorSnapshots()
+{
+    QString envelopeHeader;
+    QVERIFY(readSourceFile(QStringLiteral("src/domain/messageenvelope.h"), envelopeHeader));
+    QVERIFY2(envelopeHeader.contains(
+            QStringLiteral("QSharedPointer<const ProcessorRevisionSnapshot> processorRevision")),
+        "Parser tasks must hold the immutable revision resolved at capture admission");
+    QVERIFY2(!envelopeHeader.contains(QStringLiteral("scriptCode"))
+            && !envelopeHeader.contains(QStringLiteral("scriptId")),
+        "Parser tasks and results must not copy legacy script source or identity");
+
+    QString eventHistoryHeader;
+    QString eventHistorySource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/usecases/eventhistoryservice.h"),
+        eventHistoryHeader));
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/usecases/eventhistoryservice.cpp"),
+        eventHistorySource));
+    QVERIFY2(eventHistoryHeader.contains(QStringLiteral("ProcessorLibrary &m_processorLibrary"))
+            && eventHistorySource.contains(QStringLiteral("m_processorLibrary.resolve")),
+        "EventHistoryService must resolve Processor References from the in-memory library before enqueueing");
+    QVERIFY2(!eventHistoryHeader.contains(QStringLiteral("ScriptService"))
+            && !eventHistorySource.contains(QStringLiteral("scriptById"))
+            && !eventHistorySource.contains(QStringLiteral("clearRuntimeCache")),
+        "The message pipeline must not depend on the legacy ScriptService or caller-driven runtime invalidation");
+
+    QString subscriptionHeader;
+    QVERIFY(readSourceFile(QStringLiteral("src/domain/subscription.h"), subscriptionHeader));
+    QVERIFY2(subscriptionHeader.contains(QStringLiteral("ProcessorReference processor"))
+            && !subscriptionHeader.contains(QStringLiteral("QString scriptId")),
+        "Subscriptions must store ProcessorReference instead of legacy script IDs");
+
+    QString sessionStoreSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/services/storage/sessionsettingsstore.cpp"),
+        sessionStoreSource));
+    QVERIFY2(sessionStoreSource.contains(QStringLiteral("parametersCborBase64"))
+            && sessionStoreSource.contains(QStringLiteral("revisionMode"))
+            && !sessionStoreSource.contains(QStringLiteral("row.insert(QStringLiteral(\"scriptId\")")),
+        "Subscription persistence must use the nested Processor Reference representation");
+}
+
 void ArchitectureBoundariesTest::messageQmlUsesTypedObjectProperties()
 {
     QString source;
@@ -234,6 +345,134 @@ void ArchitectureBoundariesTest::addSubscriptionDialogDoesNotBuildScriptOptions(
         "AddSubscriptionDialog.qml must not push script options into the editor ViewModel");
     QVERIFY2(!source.contains(QStringLiteral("scriptLibraryChanged")),
         "AddSubscriptionDialog.qml must not synchronize script library state");
+}
+
+void ArchitectureBoundariesTest::processorLibraryUiUsesProcessorContracts()
+{
+    QString mainSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), mainSource));
+    QVERIFY2(mainSource.contains(QStringLiteral("ProcessorsView"))
+            && mainSource.contains(QStringLiteral("root.app.processors")),
+        "Main.qml must route the navigation rail to the Processor Library ViewModel");
+    QVERIFY2(!mainSource.contains(QStringLiteral("ScriptsView"))
+            && !mainSource.contains(QStringLiteral("root.app.scripts")),
+        "The user-visible application route must not expose the legacy Script Manager");
+
+    QString processorView;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/processors/ProcessorsView.qml"),
+        processorView));
+    QVERIFY2(processorView.contains(QStringLiteral("Save Revision"))
+            && processorView.contains(QStringLiteral("newProcessor(\"lua\")"))
+            && processorView.contains(QStringLiteral("newProcessor(\"javascript\")")),
+        "Processor Library must expose revision saves and both initial runtime templates");
+
+    QString applicationViewModel;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/viewmodels/applicationviewmodel.h"),
+        applicationViewModel));
+    QVERIFY2(applicationViewModel.contains(
+            QStringLiteral("Q_PROPERTY(ProcessorsViewModel* processors"))
+            && !applicationViewModel.contains(
+                QStringLiteral("Q_PROPERTY(ScriptsViewModel* scripts")),
+        "ApplicationViewModel must expose Processor Library rather than legacy Scripts");
+}
+
+void ArchitectureBoundariesTest::legacyScriptingSubsystemIsRemoved()
+{
+    const QString sourceRoot = QStringLiteral(MQTT_PLUS_SOURCE_DIR);
+    const QStringList removedPaths {
+        QStringLiteral("src/domain/script.h"),
+        QStringLiteral("src/models/scriptfiltermodel.cpp"),
+        QStringLiteral("src/models/scriptfiltermodel.h"),
+        QStringLiteral("src/models/scriptlibrarymodel.cpp"),
+        QStringLiteral("src/models/scriptlibrarymodel.h"),
+        QStringLiteral("src/services/scripting/luarunner.cpp"),
+        QStringLiteral("src/services/scripting/luarunner.h"),
+        QStringLiteral("src/services/storage/scriptstore.cpp"),
+        QStringLiteral("src/services/storage/scriptstore.h"),
+        QStringLiteral("src/usecases/scriptservice.cpp"),
+        QStringLiteral("src/usecases/scriptservice.h"),
+        QStringLiteral("src/viewmodels/scripteditorviewmodel.cpp"),
+        QStringLiteral("src/viewmodels/scripteditorviewmodel.h"),
+        QStringLiteral("src/viewmodels/scriptsviewmodel.cpp"),
+        QStringLiteral("src/viewmodels/scriptsviewmodel.h"),
+        QStringLiteral("qml/features/scripts/ScriptListPane.qml"),
+        QStringLiteral("qml/features/scripts/ScriptsView.qml"),
+        QStringLiteral("tests/test_luarunner.cpp"),
+        QStringLiteral("tests/test_scripteditorviewmodel.cpp"),
+        QStringLiteral("tests/test_scriptlibrarymodel.cpp"),
+        QStringLiteral("tests/test_scriptsviewmodel.cpp"),
+    };
+    for (const QString &relativePath : removedPaths) {
+        QVERIFY2(!QFile::exists(sourceRoot + QLatin1Char('/') + relativePath),
+            qPrintable(QStringLiteral("Legacy scripting file still exists: %1").arg(relativePath)));
+    }
+
+    const QStringList forbiddenTokens {
+        QStringLiteral("ScriptEntry"),
+        QStringLiteral("ScriptService"),
+        QStringLiteral("ScriptStore"),
+        QStringLiteral("LuaRunner"),
+        QStringLiteral("scriptId"),
+    };
+    const QStringList productionRoots {
+        sourceRoot + QStringLiteral("/src"),
+        sourceRoot + QStringLiteral("/qml"),
+    };
+    for (const QString &root : productionRoots) {
+        QDirIterator sourceFiles(
+            root,
+            {QStringLiteral("*.h"), QStringLiteral("*.cpp"), QStringLiteral("*.qml")},
+            QDir::Files,
+            QDirIterator::Subdirectories);
+        while (sourceFiles.hasNext()) {
+            const QString path = sourceFiles.next();
+            QFile file(path);
+            QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text),
+                qPrintable(QStringLiteral("Cannot read %1").arg(path)));
+            const QString source = QString::fromUtf8(file.readAll());
+            for (const QString &token : forbiddenTokens) {
+                QVERIFY2(!source.contains(token),
+                    qPrintable(QStringLiteral("%1 still contains legacy scripting token %2")
+                                   .arg(path, token)));
+            }
+        }
+    }
+
+    QString cmakeSource;
+    QVERIFY(readSourceFile(QStringLiteral("CMakeLists.txt"), cmakeSource));
+    const QStringList removedTargets {
+        QStringLiteral("test_luarunner"),
+        QStringLiteral("test_scripteditorviewmodel"),
+        QStringLiteral("test_scriptlibrarymodel"),
+        QStringLiteral("test_scriptsviewmodel"),
+    };
+    for (const QString &target : removedTargets) {
+        QVERIFY2(!cmakeSource.contains(target),
+            qPrintable(QStringLiteral("CMake still registers removed target %1").arg(target)));
+    }
+}
+
+void ArchitectureBoundariesTest::subscriptionEditorUsesProcessorBindings()
+{
+    QString editorHeader;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/viewmodels/subscriptioneditorviewmodel.h"),
+        editorHeader));
+    QVERIFY2(editorHeader.contains(QStringLiteral("processorRevisionMode"))
+            && editorHeader.contains(QStringLiteral("pinnedRevisionId"))
+            && !editorHeader.contains(QStringLiteral("scriptId")),
+        "SubscriptionEditorViewModel must represent current and pinned Processor Bindings");
+
+    QString dialogSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/workbench/AddSubscriptionDialog.qml"),
+        dialogSource));
+    QVERIFY2(dialogSource.contains(QStringLiteral("processorOptionNames"))
+            && dialogSource.contains(QStringLiteral("pinnedRevisionOptionNames"))
+            && !dialogSource.contains(QStringLiteral("scriptOptionNames")),
+        "The subscription dialog must bind through Processor and Processor Revision options");
 }
 
 void ArchitectureBoundariesTest::subscriptionsPanelDoesNotReadModelRowsForEditing()
@@ -529,45 +768,6 @@ void ArchitectureBoundariesTest::editorViewModelsDoNotExposeInternalWorkflowHelp
             QVERIFY2(!source.contains(token),
                 qPrintable(QStringLiteral("%1 must not expose internal workflow helper %2").arg(it.key(), token)));
         }
-    }
-}
-
-void ArchitectureBoundariesTest::scriptEditorViewModelDoesNotExposeInternalWorkflowHelpers()
-{
-    QString source;
-    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/scripteditorviewmodel.h"), source));
-
-    const QStringList forbiddenInvokables {
-        QStringLiteral("Q_INVOKABLE QString defaultCode"),
-        QStringLiteral("Q_INVOKABLE void loadScript"),
-        QStringLiteral("Q_INVOKABLE void newScript"),
-        QStringLiteral("Q_INVOKABLE bool validateStructure"),
-        QStringLiteral("Q_INVOKABLE void markSaved"),
-    };
-
-    for (const QString &token : forbiddenInvokables) {
-        QVERIFY2(!source.contains(token),
-            qPrintable(QStringLiteral("ScriptEditorViewModel must not expose internal workflow helper %1").arg(token)));
-    }
-}
-
-void ArchitectureBoundariesTest::scriptsViewModelDoesNotExposeCoreScriptCrud()
-{
-    QString source;
-    QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/scriptsviewmodel.h"), source));
-
-    const QStringList forbiddenTokens {
-        QStringLiteral("Q_INVOKABLE QString upsertScript"),
-        QStringLiteral("Q_INVOKABLE bool deleteScript"),
-        QStringLiteral("Q_INVOKABLE QVariantMap testScript"),
-        QStringLiteral("Q_PROPERTY(ScriptTestSamplesModel* scriptTestSamples"),
-        QStringLiteral("Q_PROPERTY(QStringList payloadFormats"),
-        QStringLiteral("ScriptTestSamplesModel *scriptTestSamples()"),
-    };
-
-    for (const QString &token : forbiddenTokens) {
-        QVERIFY2(!source.contains(token),
-            qPrintable(QStringLiteral("ScriptsViewModel must expose page intent commands instead of core script API %1").arg(token)));
     }
 }
 

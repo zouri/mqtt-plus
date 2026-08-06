@@ -102,9 +102,16 @@ bool HistoryWriterWorker::enqueueParseResult(const MessageParseResult &result)
     MessageParseResult pending = result;
     qint64 bytes = approximateBytes(pending);
     if (bytes > m_limits.maxBytes) {
-        pending.parsedPayload.clear();
-        pending.parsedFormat.clear();
-        pending.parseError = QStringLiteral("Parser result discarded because the history writer is overloaded.");
+        const QString error = QStringLiteral(
+            "Processor result discarded because the history writer is overloaded.");
+        pending.displayPayload.clear();
+        pending.displayFormat = QStringLiteral("Processor Error");
+        pending.displayError = error;
+        pending.processorResultCbor.clear();
+        pending.processorResultPreview.clear();
+        pending.processorExecutionState = QStringLiteral("skipped_overload");
+        pending.processorExecutionErrorCode = QStringLiteral("history_writer_overloaded");
+        pending.processorExecutionError = error;
         pending.state = MessageParseState::SkippedOverload;
         bytes = approximateBytes(pending);
     }
@@ -444,15 +451,24 @@ void HistoryWriterWorker::notifyDropped()
 qint64 HistoryWriterWorker::approximateBytes(const MessageRecord &message)
 {
     return message.payloadBytes.size()
+        + message.processorResultCbor.size()
         + stringBytes(message.sessionId)
         + stringBytes(message.timestamp)
         + stringBytes(message.topic)
-        + stringBytes(message.parsedPayload)
-        + stringBytes(message.parsedFormat)
-        + stringBytes(message.parseError)
-        + stringBytes(message.parseState)
-        + stringBytes(message.scriptId)
-        + stringBytes(message.scriptName)
+        + stringBytes(message.displayPayload)
+        + stringBytes(message.displayFormat)
+        + stringBytes(message.displayError)
+        + stringBytes(message.displayState)
+        + stringBytes(message.processorId)
+        + stringBytes(message.processorRevisionId)
+        + stringBytes(message.processorName)
+        + stringBytes(message.processorLanguageId)
+        + stringBytes(message.processorRuntimeId)
+        + stringBytes(message.processorContentHash)
+        + stringBytes(message.processorResultPreview)
+        + stringBytes(message.processorExecutionState)
+        + stringBytes(message.processorExecutionErrorCode)
+        + stringBytes(message.processorExecutionError)
         + stringBytes(message.payloadPreview)
         + stringBytes(message.payloadState)
         + stringBytes(message.payloadHash)
@@ -461,12 +477,21 @@ qint64 HistoryWriterWorker::approximateBytes(const MessageRecord &message)
 
 qint64 HistoryWriterWorker::approximateBytes(const MessageParseResult &result)
 {
-    return stringBytes(result.sessionId)
-        + stringBytes(result.parsedPayload)
-        + stringBytes(result.parsedFormat)
-        + stringBytes(result.parseError)
-        + stringBytes(result.scriptId)
-        + stringBytes(result.scriptName)
+    return result.processorResultCbor.size()
+        + stringBytes(result.sessionId)
+        + stringBytes(result.displayPayload)
+        + stringBytes(result.displayFormat)
+        + stringBytes(result.displayError)
+        + stringBytes(result.processorId)
+        + stringBytes(result.processorRevisionId)
+        + stringBytes(result.processorName)
+        + stringBytes(result.processorLanguageId)
+        + stringBytes(result.processorRuntimeId)
+        + stringBytes(result.processorContentHash)
+        + stringBytes(result.processorResultPreview)
+        + stringBytes(result.processorExecutionState)
+        + stringBytes(result.processorExecutionErrorCode)
+        + stringBytes(result.processorExecutionError)
         + qint64(sizeof(MessageParseResult));
 }
 
@@ -495,12 +520,22 @@ void HistoryWriterWorker::applyParseResult(
     MessageRecord &message,
     const MessageParseResult &result)
 {
-    message.parsedPayload = result.parsedPayload;
-    message.parsedFormat = result.parsedFormat;
-    message.parseError = result.parseError;
-    message.parseState = messageParseStateName(result.state);
-    message.scriptId = result.scriptId;
-    message.scriptName = result.scriptName;
+    message.displayPayload = result.displayPayload;
+    message.displayFormat = result.displayFormat;
+    message.displayError = result.displayError;
+    message.displayState = messageParseStateName(result.state);
+    message.processorId = result.processorId;
+    message.processorRevisionId = result.processorRevisionId;
+    message.processorName = result.processorName;
+    message.processorLanguageId = result.processorLanguageId;
+    message.processorRuntimeId = result.processorRuntimeId;
+    message.processorContentHash = result.processorContentHash;
+    message.processorResultCbor = result.processorResultCbor;
+    message.processorResultPreview = result.processorResultPreview;
+    message.processorExecutionState = result.processorExecutionState;
+    message.processorExecutionErrorCode = result.processorExecutionErrorCode;
+    message.processorExecutionError = result.processorExecutionError;
+    message.processorExecutionDurationUs = result.processorExecutionDurationUs;
 }
 
 HistoryWriterWorker::PressureState HistoryWriterWorker::pressureStateForQueueLocked() const

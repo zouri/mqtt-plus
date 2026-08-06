@@ -3,16 +3,17 @@
 
 #include "domain/session.h"
 #include "models/draftlibrarymodel.h"
+#include "models/processorlibrarymodel.h"
 #include "models/subscriptionlistmodel.h"
 #include "services/messaging/messagecapturepolicy.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
+#include "services/processors/processorlibrary.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/draftlibraryservice.h"
 #include "usecases/mqttsessionservice.h"
 #include "usecases/preferencescontroller.h"
-#include "usecases/scriptservice.h"
 #include "usecases/sessionservice.h"
 #include "usecases/subscriptionservice.h"
 
@@ -55,9 +56,9 @@ struct WorkbenchFixture
         , preferences(&settings)
         , historyStore(temporaryDirectory.path())
         , historyWriter(temporaryDirectory.path(), historyStore.nextMessageId())
+        , processorLibrary(temporaryDirectory.filePath(QStringLiteral("processors")))
         , sessionService(
               settings,
-              scriptService,
               historyStore,
               preferences)
         , eventHistoryService(
@@ -67,12 +68,11 @@ struct WorkbenchFixture
               messageParser,
               messagesModel,
               logsModel,
-              scriptService,
+              processorLibrary,
               launchTimestamp,
               preferences)
         , subscriptionService(
               sessionService,
-              scriptService,
               eventHistoryService)
         , mqttService(
               sessionService,
@@ -91,15 +91,14 @@ struct WorkbenchFixture
               messageFilterSubscriptionsModel,
               messagesModel,
               filteredMessagesModel,
-              scriptsModel)
+              processorsModel)
     {
         historyWriter.start();
         messageParser.start();
         sessionService.setHistoryWriter(&historyWriter);
         sessionService.setMessageParser(&messageParser);
         sessionsModel.setSessions(sessionService.sessions());
-        scriptsModel.setScripts(scriptService.scripts());
-        subscriptionsModel.setSubscriptions(QString(), {}, scriptService.scripts());
+        subscriptionsModel.setSubscriptions(QString(), {}, &processorLibrary);
         filteredSubscriptionsModel.setSourceModel(&subscriptionsModel);
         messageFilterSubscriptionsModel.setSourceModel(&subscriptionsModel);
         filteredMessagesModel.setSourceModel(&messagesModel);
@@ -111,7 +110,7 @@ struct WorkbenchFixture
     HistoryStore historyStore;
     HistoryWriterWorker historyWriter;
     MessageParseWorker messageParser;
-    ScriptService scriptService;
+    ProcessorLibrary processorLibrary;
     SessionService sessionService;
     SessionListModel sessionsModel;
     SubscriptionListModel subscriptionsModel;
@@ -120,7 +119,7 @@ struct WorkbenchFixture
     EventStreamModel messagesModel;
     EventStreamModel logsModel;
     MessageFilterModel filteredMessagesModel;
-    ScriptLibraryModel scriptsModel;
+    ProcessorLibraryModel processorsModel;
     QString launchTimestamp = QStringLiteral("2026-07-25T00:00:00.000");
     EventHistoryService eventHistoryService;
     SubscriptionService subscriptionService;
@@ -255,7 +254,6 @@ void WorkbenchViewModelTest::persistsAndDuplicatesMessageCapturePolicy()
     PreferencesController reloadedPreferences(&reloadedSettings);
     SessionService reloadedService(
         reloadedSettings,
-        fixture.scriptService,
         fixture.historyStore,
         reloadedPreferences);
     QVERIFY(reloadedService.loadSessions());
@@ -311,8 +309,7 @@ void WorkbenchViewModelTest::recoversFromInvalidSessionSettingsWithoutOverwritin
     QSettings settings(settingsPath, QSettings::IniFormat);
     PreferencesController preferences(&settings);
     HistoryStore historyStore(dataDir.path());
-    ScriptService scriptService;
-    SessionService sessionService(settings, scriptService, historyStore, preferences);
+    SessionService sessionService(settings, historyStore, preferences);
     QSignalSpy errorSpy(&sessionService, &SessionService::storageError);
 
     QVERIFY(!sessionService.loadSessions());
@@ -879,7 +876,7 @@ void WorkbenchViewModelTest::exposesUnfilteredSubscriptionsAndSelectedTopicState
     subscriptions.setSubscriptions(
         session.id,
         session.subscriptions,
-        fixture.scriptService.scripts());
+        &fixture.processorLibrary);
     fixture.filteredSubscriptionsModel.setSourceModel(&subscriptions);
     fixture.filteredSubscriptionsModel.setFilterText(QStringLiteral("Light"));
     fixture.messageFilterSubscriptionsModel.setSourceModel(&subscriptions);
@@ -905,7 +902,7 @@ void WorkbenchViewModelTest::exposesUnfilteredSubscriptionsAndSelectedTopicState
     subscriptions.setSubscriptions(
         session.id,
         session.subscriptions,
-        fixture.scriptService.scripts());
+        &fixture.processorLibrary);
 
     QCOMPARE(stateSpy.count(), 1);
     QCOMPARE(

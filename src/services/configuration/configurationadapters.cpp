@@ -218,7 +218,6 @@ ConfigurationTransfer::SubscriptionData parseNativeSubscription(const QJsonObjec
         0,
         SessionConfig::kMaximumQos);
     subscription.format = boundedInt(object.value(QStringLiteral("format")), 0, 0, 5);
-    subscription.scriptId = object.value(QStringLiteral("scriptId")).toString().trimmed();
     subscription.color = object.value(QStringLiteral("color")).toString().trimmed();
     subscription.paused = object.value(QStringLiteral("paused")).toBool(false);
     return subscription;
