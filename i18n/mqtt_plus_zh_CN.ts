@@ -1533,8 +1533,8 @@
     </message>
     <message>
         <location filename="../qml/features/processors/ProcessorEditor.qml" line="97"/>
-        <source>Runtime: %1 · follows the script language</source>
-        <translation>运行时：%1 · 随脚本语言自动切换</translation>
+        <source>Runtime: %1</source>
+        <translation>运行时：%1</translation>
     </message>
     <message>
         <location filename="../qml/features/processors/ProcessorEditor.qml" line="119"/>
