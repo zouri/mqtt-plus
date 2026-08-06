@@ -67,10 +67,6 @@ QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
         return row.processorId;
     case ProcessorNameRole:
         return row.processorName;
-    case ProcessorRevisionModeRole:
-        return row.processorRevisionMode;
-    case PinnedRevisionIdRole:
-        return row.pinnedRevisionId;
     case ProcessorParametersCborBase64Role:
         return row.processorParametersCborBase64;
     case ProcessorBindingAvailableRole:
@@ -104,8 +100,6 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
         {FormatNameRole, "formatName"},
         {ProcessorIdRole, "processorId"},
         {ProcessorNameRole, "processorName"},
-        {ProcessorRevisionModeRole, "processorRevisionMode"},
-        {PinnedRevisionIdRole, "pinnedRevisionId"},
         {ProcessorParametersCborBase64Role, "processorParametersCborBase64"},
         {ProcessorBindingAvailableRole, "processorBindingAvailable"},
         {ProcessorBindingDetailRole, "processorBindingDetail"},
@@ -278,10 +272,6 @@ SubscriptionListModel::SubscriptionRow SubscriptionListModel::rowFromSubscriptio
         subscription.format,
         subscription.processor.processorId,
         processorName,
-        subscription.processor.revisionMode == ProcessorRevisionMode::Pinned
-            ? QStringLiteral("pinned")
-            : QStringLiteral("current"),
-        subscription.processor.pinnedRevisionId,
         QString::fromLatin1(
             QCborValue(subscription.processor.parameters).toCbor().toBase64()),
         bindingAvailable,
@@ -307,8 +297,6 @@ QVariantMap SubscriptionListModel::rowToMap(const SubscriptionRow &row)
     map.insert(QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(row.format)));
     map.insert(QStringLiteral("processorId"), row.processorId);
     map.insert(QStringLiteral("processorName"), row.processorName);
-    map.insert(QStringLiteral("processorRevisionMode"), row.processorRevisionMode);
-    map.insert(QStringLiteral("pinnedRevisionId"), row.pinnedRevisionId);
     map.insert(
         QStringLiteral("processorParametersCborBase64"),
         row.processorParametersCborBase64);
@@ -361,12 +349,6 @@ QList<int> SubscriptionListModel::changedRoles(
     }
     if (before.processorName != after.processorName) {
         roles.append(ProcessorNameRole);
-    }
-    if (before.processorRevisionMode != after.processorRevisionMode) {
-        roles.append(ProcessorRevisionModeRole);
-    }
-    if (before.pinnedRevisionId != after.pinnedRevisionId) {
-        roles.append(PinnedRevisionIdRole);
     }
     if (before.processorParametersCborBase64 != after.processorParametersCborBase64) {
         roles.append(ProcessorParametersCborBase64Role);

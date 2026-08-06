@@ -245,7 +245,8 @@ void ArchitectureBoundariesTest::messagePipelineUsesResolvedProcessorSnapshots()
         QStringLiteral("src/services/storage/sessionsettingsstore.cpp"),
         sessionStoreSource));
     QVERIFY2(sessionStoreSource.contains(QStringLiteral("parametersCborBase64"))
-            && sessionStoreSource.contains(QStringLiteral("revisionMode"))
+            && sessionStoreSource.contains(QStringLiteral("processorId"))
+            && !sessionStoreSource.contains(QStringLiteral("revisionMode"))
             && !sessionStoreSource.contains(QStringLiteral("row.insert(QStringLiteral(\"scriptId\")")),
         "Subscription persistence must use the nested Processor Reference representation");
 }
@@ -362,10 +363,11 @@ void ArchitectureBoundariesTest::processorLibraryUiUsesProcessorContracts()
     QVERIFY(readSourceFile(
         QStringLiteral("qml/features/processors/ProcessorsView.qml"),
         processorView));
-    QVERIFY2(processorView.contains(QStringLiteral("Save Revision"))
+    QVERIFY2(processorView.contains(QStringLiteral("text: qsTr(\"Save\")"))
+            && !processorView.contains(QStringLiteral("Revision history"))
             && processorView.contains(QStringLiteral("newProcessor(\"lua\")"))
             && processorView.contains(QStringLiteral("newProcessor(\"javascript\")")),
-        "Processor Library must expose revision saves and both initial runtime templates");
+        "Processor Library must expose simple saves and both initial runtime templates");
 
     QString applicationViewModel;
     QVERIFY(readSourceFile(
@@ -460,19 +462,19 @@ void ArchitectureBoundariesTest::subscriptionEditorUsesProcessorBindings()
     QVERIFY(readSourceFile(
         QStringLiteral("src/viewmodels/subscriptioneditorviewmodel.h"),
         editorHeader));
-    QVERIFY2(editorHeader.contains(QStringLiteral("processorRevisionMode"))
-            && editorHeader.contains(QStringLiteral("pinnedRevisionId"))
+    QVERIFY2(!editorHeader.contains(QStringLiteral("processorRevisionMode"))
+            && !editorHeader.contains(QStringLiteral("pinnedRevisionId"))
             && !editorHeader.contains(QStringLiteral("scriptId")),
-        "SubscriptionEditorViewModel must represent current and pinned Processor Bindings");
+        "SubscriptionEditorViewModel must expose only current Processor Bindings");
 
     QString dialogSource;
     QVERIFY(readSourceFile(
         QStringLiteral("qml/features/workbench/AddSubscriptionDialog.qml"),
         dialogSource));
     QVERIFY2(dialogSource.contains(QStringLiteral("processorOptionNames"))
-            && dialogSource.contains(QStringLiteral("pinnedRevisionOptionNames"))
+            && !dialogSource.contains(QStringLiteral("pinnedRevisionOptionNames"))
             && !dialogSource.contains(QStringLiteral("scriptOptionNames")),
-        "The subscription dialog must bind through Processor and Processor Revision options");
+        "The subscription dialog must bind directly to the current Processor");
 }
 
 void ArchitectureBoundariesTest::subscriptionsPanelDoesNotReadModelRowsForEditing()

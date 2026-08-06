@@ -35,7 +35,7 @@ An immutable saved version of a Message Processor. Editing and saving a processo
 _Avoid_: Script file, mutable processor
 
 **Processor Binding**:
-A subscription's selection of a Message Processor, including whether it follows the processor's current revision or remains pinned to a specific revision.
+A subscription's selection of a Message Processor. Processing always uses the processor's current saved content.
 _Avoid_: Script ID, decoder selection
 
 **Processor Result**:

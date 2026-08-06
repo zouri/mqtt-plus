@@ -28,8 +28,6 @@ public:
         FormatNameRole,
         ProcessorIdRole,
         ProcessorNameRole,
-        ProcessorRevisionModeRole,
-        PinnedRevisionIdRole,
         ProcessorParametersCborBase64Role,
         ProcessorBindingAvailableRole,
         ProcessorBindingDetailRole,
@@ -70,8 +68,6 @@ private:
         int format = 0;
         QString processorId;
         QString processorName;
-        QString processorRevisionMode;
-        QString pinnedRevisionId;
         QString processorParametersCborBase64;
         bool processorBindingAvailable = true;
         QString processorBindingDetail;
