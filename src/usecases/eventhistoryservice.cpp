@@ -871,9 +871,6 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     record.payloadFormat = payloadFormat;
     if (processorReference) {
         record.processorId = processorReference->processorId;
-        record.processorRevisionId = processorReference->revisionMode == ProcessorRevisionMode::Pinned
-            ? processorReference->pinnedRevisionId
-            : QString();
         processorParameters = processorReference->parameters;
         if (resolvedProcessor) {
             processorRevision = resolvedProcessor->revision;

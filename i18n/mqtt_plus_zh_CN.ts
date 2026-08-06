@@ -4,17 +4,17 @@
 <context>
     <name>AddSubscriptionDialog</name>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="160"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="137"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="182"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="159"/>
         <source>No topic color</source>
         <translation>不使用主题颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="183"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="160"/>
         <source>Topic color %1</source>
         <translation>主题颜色 %1</translation>
     </message>
@@ -59,42 +59,32 @@
         <translation>消息处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="130"/>
-        <source>Follow current revision</source>
-        <translation>跟随当前版本</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="130"/>
-        <source>Pinned revision</source>
-        <translation>固定版本</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="208"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="185"/>
         <source>Choose custom topic color</source>
         <translation>选择自定义主题颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="233"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="210"/>
         <source>Choose custom color</source>
         <translation>选择自定义颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="257"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="234"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="269"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="246"/>
         <source>Save subscription</source>
         <translation>保存订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="269"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="246"/>
         <source>Add subscription</source>
         <translation>添加订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="278"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="255"/>
         <source>Choose topic color</source>
         <translation>选择主题颜色</translation>
     </message>
@@ -698,206 +688,166 @@
 <context>
     <name>DraftsView</name>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="97"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="88"/>
         <source>Draft Library</source>
         <translation>草稿库</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="120"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="111"/>
         <source>New Draft</source>
         <translation>新建草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="179"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="170"/>
         <source>Restore backup</source>
         <translation>恢复备份</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="195"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="186"/>
         <source>Draft name</source>
         <translation>草稿名称</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="208"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="199"/>
         <source>Required, unique across the library</source>
         <translation>必填，且在草稿库中唯一</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="218"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="209"/>
         <source>Description</source>
         <translation>说明</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="229"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="220"/>
         <source>Optional searchable note</source>
         <translation>可选的搜索备注</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="244"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="235"/>
         <source>Default Topic</source>
         <translation>默认主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="254"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="245"/>
         <source>Optional; requested when sending if empty</source>
         <translation>可选；留空时将在发送时填写</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="264"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="255"/>
         <source>QoS</source>
         <translation>QoS</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="273"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="264"/>
         <source>QoS 0</source>
         <translation>QoS 0</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="273"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="264"/>
         <source>QoS 1</source>
         <translation>QoS 1</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="273"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="264"/>
         <source>QoS 2</source>
         <translation>QoS 2</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="284"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="275"/>
         <source>Format</source>
         <translation>格式</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="304"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="295"/>
         <source>Delivery</source>
         <translation>投递</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="313"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="304"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="325"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="316"/>
         <source>Retain is enabled. The broker may replace its retained message for this Topic.</source>
         <translation>已启用保留。代理可能会替换此主题的保留消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="334"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="325"/>
         <source>Payload</source>
         <translation>Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="347"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="338"/>
         <source>Empty payload is valid</source>
         <translation>允许空 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="383"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="374"/>
         <source>Saving…</source>
         <translation>正在保存…</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="384"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="375"/>
         <source>Unsaved changes</source>
         <translation>有未保存的更改</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="384"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="375"/>
         <source>Saved</source>
         <translation>已保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="410"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="385"/>
         <source>Duplicate</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="420"/>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="582"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="395"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="546"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="431"/>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="654"/>
-        <source>Send</source>
-        <translation>发送</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="435"/>
-        <source>Retain is enabled for this publish</source>
-        <translation>本次发送已启用保留</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="436"/>
-        <source>Send through the selected connection</source>
-        <translation>通过所选连接发送</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="442"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="406"/>
         <source>Save Draft</source>
         <translation>保存草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="475"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="439"/>
         <source>Save changes to this draft?</source>
         <translation>保存对此草稿的更改？</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="483"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="447"/>
         <source>You have unsaved changes. Save them before continuing, or discard them.</source>
         <translation>存在未保存的更改。继续前请保存，或放弃这些更改。</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="497"/>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="575"/>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="647"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="461"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="539"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="508"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="472"/>
         <source>Discard</source>
         <translation>放弃</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="519"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="483"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="553"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="517"/>
         <source>Delete draft?</source>
         <translation>删除草稿？</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="561"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="525"/>
         <source>“%1” will be permanently removed from the Draft Library.</source>
         <translation>“%1”将从草稿库中永久移除。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="617"/>
-        <source>Topic for this publish</source>
-        <translation>本次发送的主题</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="625"/>
-        <source>This draft has no default Topic. The value below is used once and is not saved.</source>
-        <translation>此草稿没有默认主题。下方值仅使用一次，不会保存。</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="636"/>
-        <source>devices/example/set</source>
-        <translation>devices/example/set</translation>
-    </message>
-</context>
-<context>
-    <name>DraftsViewModel</name>
-    <message>
-        <location filename="../src/viewmodels/draftsviewmodel.cpp" line="199"/>
-        <source>Draft editor</source>
-        <translation>草稿编辑器</translation>
     </message>
 </context>
 <context>
@@ -918,7 +868,7 @@
         <translation>无法清除历史记录：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="1288"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="1285"/>
         <source>Timed out while saving queued messages.</source>
         <translation>保存排队消息时超时。</translation>
     </message>
@@ -1556,155 +1506,100 @@
 <context>
     <name>ProcessorEditor</name>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="26"/>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="37"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="27"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="38"/>
         <source>Processor name</source>
         <translation>处理器名称</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="47"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="49"/>
         <source>Description</source>
         <translation>说明</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="56"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="58"/>
         <source>Device protocol or payload structure</source>
         <translation>设备协议或 Payload 结构</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="71"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="69"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="91"/>
-        <source>Runtime</source>
-        <translation>运行时</translation>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="96"/>
+        <source>Runtime information</source>
+        <translation>运行时信息</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="109"/>
-        <source>Entry file</source>
-        <translation>入口文件</translation>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="97"/>
+        <source>Runtime: %1 · follows the script language</source>
+        <translation>运行时：%1 · 随脚本语言自动切换</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="128"/>
-        <source>Entry symbol</source>
-        <translation>入口符号</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="158"/>
-        <source>%1 source</source>
-        <translation>%1 源码</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="168"/>
-        <source>Current revision</source>
-        <translation>当前版本</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="169"/>
-        <source>Historical revision</source>
-        <translation>历史版本</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="187"/>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="188"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="119"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="120"/>
         <source>function process(context)</source>
         <translation>function process(context)</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="233"/>
-        <source>Revision history</source>
-        <translation>版本历史</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="274"/>
-        <source>Processor Revision %1</source>
-        <translation>处理器版本 %1</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="285"/>
-        <source>Revision %1 · %2</source>
-        <translation>版本 %1 · %2</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="296"/>
-        <source>Current</source>
-        <translation>当前</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="298"/>
-        <source>Ready</source>
-        <translation>就绪</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="299"/>
-        <source>Unavailable</source>
-        <translation>不可用</translation>
     </message>
 </context>
 <context>
     <name>ProcessorEditorViewModel</name>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="63"/>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="247"/>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="574"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="52"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="209"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="485"/>
         <source>Not validated</source>
         <translation>未验证</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="259"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="220"/>
         <source>Processor is unavailable.</source>
         <translation>处理器不可用。</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="271"/>
-        <source>Current Processor Revision is unavailable.</source>
-        <translation>当前处理器版本不可用。</translation>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="230"/>
+        <source>Message Processor content is unavailable.</source>
+        <translation>消息处理器内容不可用。</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="298"/>
-        <source>Processor Revision is unavailable.</source>
-        <translation>处理器版本不可用。</translation>
-    </message>
-    <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="316"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="254"/>
         <source>Processor name is required.</source>
         <translation>处理器名称不能为空。</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="329"/>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="355"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="267"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="293"/>
         <source>Validation failed</source>
         <translation>验证失败</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="354"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="292"/>
         <source>Ready</source>
         <translation>就绪</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="396"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="334"/>
         <source>Operation failed</source>
         <translation>操作失败</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="415"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="353"/>
         <source>New Lua Processor</source>
         <translation>新建 Lua 处理器</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="418"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="356"/>
         <source>Transform MQTT messages with Lua.</source>
         <translation>使用 Lua 转换 MQTT 消息。</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="434"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="372"/>
         <source>New JavaScript Processor</source>
         <translation>新建 JavaScript 处理器</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="437"/>
+        <location filename="../src/viewmodels/processoreditorviewmodel.cpp" line="375"/>
         <source>Transform MQTT messages with JavaScript.</source>
         <translation>使用 JavaScript 转换 MQTT 消息。</translation>
     </message>
@@ -1712,37 +1607,22 @@
 <context>
     <name>ProcessorListPane</name>
     <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="31"/>
-        <source>Search processors, languages, or source</source>
-        <translation>搜索处理器、语言或源码</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="70"/>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="86"/>
         <source>Message Processor %1</source>
         <translation>消息处理器 %1</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="118"/>
-        <source>No description</source>
-        <translation>无说明</translation>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="34"/>
+        <source>Search name or source code</source>
+        <translation>搜索名称或源代码</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="129"/>
-        <source>Revision %1</source>
-        <translation>版本 %1</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="136"/>
-        <source>Archived</source>
-        <translation>已归档</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="138"/>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="158"/>
         <source>Ready</source>
         <translation>就绪</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="139"/>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="159"/>
         <source>Unavailable</source>
         <translation>不可用</translation>
     </message>
@@ -1755,39 +1635,78 @@
         <translation>处理器库</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="68"/>
-        <source>New Lua</source>
-        <translation>新建 Lua</translation>
-    </message>
-    <message>
         <location filename="../qml/features/processors/ProcessorsView.qml" line="75"/>
-        <source>New JavaScript</source>
-        <translation>新建 JavaScript</translation>
+        <source>New Processor</source>
+        <translation>新建处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="145"/>
-        <source>Unsaved revision</source>
-        <translation>版本未保存</translation>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="157"/>
+        <source>Lua Processor</source>
+        <translation>Lua 处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="158"/>
-        <source>Restore</source>
-        <translation>恢复</translation>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="197"/>
+        <source>JavaScript Processor</source>
+        <translation>JavaScript 处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="158"/>
-        <source>Archive</source>
-        <translation>归档</translation>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="203"/>
+        <source>Qt runtime</source>
+        <translation>Qt 运行时</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="175"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="286"/>
+        <source>Unsaved changes</source>
+        <translation>有未保存的更改</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="288"/>
+        <source>Validated · current content is available</source>
+        <translation>已验证 · 当前内容可用</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="345"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="444"/>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="376"/>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="406"/>
+        <source>Delete processor?</source>
+        <translation>删除处理器？</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="414"/>
+        <source>“%1” will be permanently removed from the Processor Library. This cannot be undone.</source>
+        <translation>“%1”将从处理器库中永久删除。此操作无法撤销。</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="423"/>
+        <source>Unsaved changes will also be discarded.</source>
+        <translation>未保存的更改也将被丢弃。</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="437"/>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="308"/>
         <source>Validate</source>
         <translation>验证</translation>
     </message>
+</context>
+<context>
+    <name>ProcessorsViewModel</name>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="183"/>
-        <source>Save Revision</source>
-        <translation>保存版本</translation>
+        <location filename="../src/viewmodels/processorsviewmodel.cpp" line="97"/>
+        <source>This processor is used by subscriptions in: %1. Remove those bindings before deleting it.</source>
+        <translation>此处理器正被以下连接中的订阅使用：%1。请先移除这些绑定，再删除处理器。</translation>
     </message>
 </context>
 <context>
@@ -2470,17 +2389,17 @@
 <context>
     <name>SessionSettingsStore</name>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="119"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="111"/>
         <source>%1 Copy</source>
         <translation>%1 副本</translation>
     </message>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="264"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="247"/>
         <source>Cannot write session settings: access denied.</source>
         <translation>无法写入会话设置：访问被拒绝。</translation>
     </message>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="265"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="248"/>
         <source>Cannot write session settings: invalid settings format.</source>
         <translation>无法写入会话设置：设置格式无效。</translation>
     </message>
@@ -3039,51 +2958,35 @@
     <name>SubscriptionEditorViewModel</name>
     <message>
         <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="21"/>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="287"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="205"/>
         <source>None</source>
         <translation>无</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="318"/>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="358"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="226"/>
         <source>Unavailable: %1</source>
         <translation>不可用：%1</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="342"/>
-        <source>Revision %1 · %2 · %3</source>
-        <translation>版本 %1 · %2 · %3</translation>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="263"/>
+        <source>The selected Message Processor is unavailable.</source>
+        <translation>所选消息处理器不可用。</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="401"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="256"/>
         <source>The selected Message Processor is unavailable. The binding will be preserved.</source>
         <translation>所选消息处理器不可用，将保留此绑定。</translation>
-    </message>
-    <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="405"/>
-        <source>The selected Message Processor is archived. The binding will be preserved.</source>
-        <translation>所选消息处理器已归档，将保留此绑定。</translation>
-    </message>
-    <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="413"/>
-        <source>The current Processor Revision is unavailable.</source>
-        <translation>当前处理器版本不可用。</translation>
-    </message>
-    <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="431"/>
-        <source>The pinned Processor Revision is unavailable. The binding will be preserved.</source>
-        <translation>固定的处理器版本不可用，将保留此绑定。</translation>
     </message>
 </context>
 <context>
     <name>SubscriptionService</name>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="403"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="397"/>
         <source>Invalid topic filter.</source>
         <translation>主题过滤器无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="416"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="410"/>
         <source>Qt MQTT returned no subscription object.</source>
         <translation>Qt MQTT 未返回订阅对象。</translation>
     </message>
@@ -3402,27 +3305,27 @@
 <context>
     <name>WorkbenchViewModel</name>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="286"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="278"/>
         <source>%1 • %2:%3 • %4</source>
         <translation>%1 • %2:%3 • %4</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="292"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="284"/>
         <source> • session restored</source>
         <translation> • 会话已恢复</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="295"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="287"/>
         <source>Connecting to %1:%2 over %3</source>
         <translation>正在通过 %3 连接到 %1:%2</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="300"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="292"/>
         <source>Disconnecting from broker</source>
         <translation>正在断开代理连接</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="304"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="296"/>
         <source>Disconnected</source>
         <translation>已断开</translation>
     </message>

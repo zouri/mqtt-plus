@@ -40,7 +40,6 @@ ProcessorDefinition processorFromQuery(const QSqlQuery &query)
     processor.currentRevisionId = query.value(3).toString();
     processor.createdAt = query.value(4).toString();
     processor.updatedAt = query.value(5).toString();
-    processor.archivedAt = query.value(6).toString();
     return processor;
 }
 
@@ -145,7 +144,9 @@ bool ProcessorLibraryStore::initialize(const QString &storageDirectory)
     if (schemaVersion == 0 && !createSchema()) {
         return false;
     }
-    return true;
+    // Archived processors from older builds become ordinary editable processors.
+    return executeStatement(QStringLiteral(
+        "UPDATE processors SET archived_at = NULL WHERE archived_at IS NOT NULL"));
 }
 
 bool ProcessorLibraryStore::createSchema()
@@ -290,8 +291,8 @@ SaveProcessorRevisionResult ProcessorLibraryStore::saveRevision(
         QSqlQuery insertProcessor(m_db);
         insertProcessor.prepare(QStringLiteral(
             "INSERT INTO processors("
-            "id, name, description, current_revision_id, created_at, updated_at, archived_at) "
-            "VALUES(?, ?, ?, NULL, ?, ?, NULL)"));
+            "id, name, description, current_revision_id, created_at, updated_at) "
+            "VALUES(?, ?, ?, NULL, ?, ?)"));
         insertProcessor.addBindValue(processorId);
         insertProcessor.addBindValue(command.name);
         insertProcessor.addBindValue(command.description);
@@ -420,6 +421,40 @@ SaveProcessorRevisionResult ProcessorLibraryStore::saveRevision(
     return result;
 }
 
+bool ProcessorLibraryStore::deleteProcessor(const QString &processorId)
+{
+    if (!isReady()) {
+        return false;
+    }
+    const QString id = normalizedId(processorId);
+    if (id.isEmpty()) {
+        m_lastError = QStringLiteral("Processor ID is required.");
+        return false;
+    }
+    if (!m_db.transaction()) {
+        m_lastError = m_db.lastError().text();
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("DELETE FROM processors WHERE id = ?"));
+    query.addBindValue(id);
+    if (!query.exec() || query.numRowsAffected() != 1) {
+        m_lastError = query.lastError().text();
+        if (m_lastError.isEmpty()) {
+            m_lastError = QStringLiteral("Processor was not found.");
+        }
+        m_db.rollback();
+        return false;
+    }
+    if (!m_db.commit()) {
+        m_lastError = m_db.lastError().text();
+        return false;
+    }
+    m_lastError.clear();
+    return true;
+}
+
 std::optional<ProcessorDefinition> ProcessorLibraryStore::processorById(
     const QString &processorId) const
 {
@@ -428,7 +463,7 @@ std::optional<ProcessorDefinition> ProcessorLibraryStore::processorById(
     }
     QSqlQuery query(m_db);
     query.prepare(QStringLiteral(
-        "SELECT id, name, description, current_revision_id, created_at, updated_at, archived_at "
+        "SELECT id, name, description, current_revision_id, created_at, updated_at "
         "FROM processors WHERE id = ?"));
     query.addBindValue(normalizedId(processorId));
     if (!query.exec()) {
@@ -443,7 +478,7 @@ std::optional<ProcessorDefinition> ProcessorLibraryStore::processorById(
     return processorFromQuery(query);
 }
 
-QVector<ProcessorDefinition> ProcessorLibraryStore::processors(bool includeArchived) const
+QVector<ProcessorDefinition> ProcessorLibraryStore::processors() const
 {
     QVector<ProcessorDefinition> result;
     if (!isReady()) {
@@ -451,14 +486,9 @@ QVector<ProcessorDefinition> ProcessorLibraryStore::processors(bool includeArchi
     }
 
     QSqlQuery query(m_db);
-    const QString statement = includeArchived
-        ? QStringLiteral(
-              "SELECT id, name, description, current_revision_id, created_at, updated_at, archived_at "
-              "FROM processors ORDER BY name COLLATE NOCASE, id")
-        : QStringLiteral(
-              "SELECT id, name, description, current_revision_id, created_at, updated_at, archived_at "
-              "FROM processors WHERE archived_at IS NULL ORDER BY name COLLATE NOCASE, id");
-    if (!query.exec(statement)) {
+    if (!query.exec(QStringLiteral(
+            "SELECT id, name, description, current_revision_id, created_at, updated_at "
+            "FROM processors ORDER BY name COLLATE NOCASE, id"))) {
         m_lastError = query.lastError().text();
         return result;
     }
@@ -615,93 +645,18 @@ QSharedPointer<const ProcessorRevisionSnapshot> ProcessorLibraryStore::resolve(
         return {};
     }
 
-    if (reference.revisionMode == ProcessorRevisionMode::FollowCurrent) {
-        const std::optional<ProcessorDefinition> processor = processorById(processorId);
-        if (!processor) {
-            if (error) {
-                *error = QStringLiteral("Processor was not found.");
-            }
-            return {};
-        }
-        if (processor->currentRevisionId.isEmpty()) {
-            if (error) {
-                *error = QStringLiteral("Processor has no current revision.");
-            }
-            return {};
-        }
-        return loadRevision(processor->currentRevisionId, error);
-    }
-
-    const QString revisionId = normalizedId(reference.pinnedRevisionId);
-    if (revisionId.isEmpty()) {
+    const std::optional<ProcessorDefinition> processor = processorById(processorId);
+    if (!processor) {
         if (error) {
-            *error = QStringLiteral("Pinned Processor Binding requires a revision ID.");
+            *error = QStringLiteral("Processor was not found.");
         }
         return {};
     }
-    const auto revision = loadRevision(revisionId, error);
-    if (!revision) {
-        return {};
-    }
-    if (revision->processorId != processorId) {
+    if (processor->currentRevisionId.isEmpty()) {
         if (error) {
-            *error = QStringLiteral("Pinned revision does not belong to the selected processor.");
+            *error = QStringLiteral("Processor has no content.");
         }
         return {};
     }
-    return revision;
-}
-
-ProcessorLibraryStoreResult ProcessorLibraryStore::archiveProcessor(
-    const QString &processorId)
-{
-    return setArchived(processorId, true);
-}
-
-ProcessorLibraryStoreResult ProcessorLibraryStore::restoreProcessor(
-    const QString &processorId)
-{
-    return setArchived(processorId, false);
-}
-
-ProcessorLibraryStoreResult ProcessorLibraryStore::setArchived(
-    const QString &processorId,
-    bool archived)
-{
-    ProcessorLibraryStoreResult result;
-    if (!isReady()) {
-        result.error = m_lastError.isEmpty()
-            ? QStringLiteral("Processor Library is not ready.")
-            : m_lastError;
-        return result;
-    }
-    const QString id = normalizedId(processorId);
-    if (id.isEmpty()) {
-        result.error = QStringLiteral("Processor ID is required.");
-        return result;
-    }
-
-    QSqlQuery query(m_db);
-    query.prepare(archived
-            ? QStringLiteral(
-                  "UPDATE processors SET archived_at = ?, updated_at = ? WHERE id = ?")
-            : QStringLiteral(
-                  "UPDATE processors SET archived_at = NULL, updated_at = ? WHERE id = ?"));
-    const QString now = timestampNow();
-    if (archived) {
-        query.addBindValue(now);
-    }
-    query.addBindValue(now);
-    query.addBindValue(id);
-    if (!query.exec()) {
-        result.error = query.lastError().text();
-        return result;
-    }
-    if (query.numRowsAffected() != 1) {
-        result.error = QStringLiteral("Processor was not found.");
-        return result;
-    }
-    result.ok = true;
-    m_lastError.clear();
-    return result;
+    return loadRevision(processor->currentRevisionId, error);
 }

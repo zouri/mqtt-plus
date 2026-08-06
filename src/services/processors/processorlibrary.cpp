@@ -32,7 +32,7 @@ bool ProcessorLibrary::reload()
 
     QHash<QString, ProcessorDefinition> processors;
     QHash<QString, QSharedPointer<const ProcessorRevisionSnapshot>> revisions;
-    const QVector<ProcessorDefinition> definitions = m_store.processors(true);
+    const QVector<ProcessorDefinition> definitions = m_store.processors();
     if (!m_store.lastError().isEmpty()) {
         m_lastError = m_store.lastError();
         return false;
@@ -55,14 +55,12 @@ bool ProcessorLibrary::reload()
     return true;
 }
 
-QVector<ProcessorDefinition> ProcessorLibrary::processors(bool includeArchived) const
+QVector<ProcessorDefinition> ProcessorLibrary::processors() const
 {
     QVector<ProcessorDefinition> result;
     result.reserve(m_processors.size());
     for (const ProcessorDefinition &processor : m_processors) {
-        if (includeArchived || processor.archivedAt.isEmpty()) {
-            result.append(processor);
-        }
+        result.append(processor);
     }
     std::sort(
         result.begin(),
@@ -123,14 +121,10 @@ std::optional<ResolvedProcessor> ProcessorLibrary::resolve(
         return std::nullopt;
     }
 
-    const QString revisionId = reference.revisionMode == ProcessorRevisionMode::Pinned
-        ? reference.pinnedRevisionId.trimmed()
-        : processorIt->currentRevisionId;
+    const QString revisionId = processorIt->currentRevisionId;
     if (revisionId.isEmpty()) {
         if (error) {
-            *error = reference.revisionMode == ProcessorRevisionMode::Pinned
-                ? QStringLiteral("Pinned Processor Revision is required.")
-                : QStringLiteral("Processor has no current revision: %1").arg(processorId);
+            *error = QStringLiteral("Processor has no content: %1").arg(processorId);
         }
         return std::nullopt;
     }
@@ -138,13 +132,13 @@ std::optional<ResolvedProcessor> ProcessorLibrary::resolve(
     const auto revisionIt = m_revisions.constFind(revisionId);
     if (revisionIt == m_revisions.cend()) {
         if (error) {
-            *error = QStringLiteral("Processor Revision was not found: %1").arg(revisionId);
+            *error = QStringLiteral("Processor content was not found: %1").arg(revisionId);
         }
         return std::nullopt;
     }
     if ((*revisionIt)->processorId != processorId) {
         if (error) {
-            *error = QStringLiteral("Processor Revision does not belong to Processor %1.")
+            *error = QStringLiteral("Processor content does not belong to Processor %1.")
                          .arg(processorId);
         }
         return std::nullopt;
@@ -184,32 +178,11 @@ SaveProcessorRevisionResult ProcessorLibrary::saveRevision(
     return result;
 }
 
-ProcessorLibraryStoreResult ProcessorLibrary::archiveProcessor(
-    const QString &processorId)
+bool ProcessorLibrary::deleteProcessor(const QString &processorId)
 {
-    ProcessorLibraryStoreResult result = m_store.archiveProcessor(processorId);
-    if (!result.ok) {
-        m_lastError = result.error;
-        return result;
+    if (!m_store.deleteProcessor(processorId)) {
+        m_lastError = m_store.lastError();
+        return false;
     }
-    if (!reload()) {
-        result.ok = false;
-        result.error = m_lastError;
-    }
-    return result;
-}
-
-ProcessorLibraryStoreResult ProcessorLibrary::restoreProcessor(
-    const QString &processorId)
-{
-    ProcessorLibraryStoreResult result = m_store.restoreProcessor(processorId);
-    if (!result.ok) {
-        m_lastError = result.error;
-        return result;
-    }
-    if (!reload()) {
-        result.ok = false;
-        result.error = m_lastError;
-    }
-    return result;
+    return reload();
 }

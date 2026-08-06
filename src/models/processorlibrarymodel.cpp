@@ -5,7 +5,6 @@
 #include "services/processors/messageprocessorengine.h"
 #include "services/processors/processorlibrary.h"
 
-#include <algorithm>
 #include <utility>
 
 using namespace AppUtils;
@@ -76,28 +75,6 @@ QString revisionSourceText(const ProcessorRevisionSnapshot &revision)
     return parts.join(QLatin1Char('\n'));
 }
 
-QVariantMap revisionRow(
-    const ProcessorRevisionSnapshot &revision,
-    const QString &currentRevisionId,
-    MessageProcessorEngine &engine)
-{
-    const ProcessorValidationResult validation = engine.validate(revision);
-    return {
-        {QStringLiteral("id"), revision.id},
-        {QStringLiteral("revisionNumber"), revision.revisionNumber},
-        {QStringLiteral("languageId"), revision.languageId},
-        {QStringLiteral("languageName"), languageName(revision.languageId)},
-        {QStringLiteral("runtimeId"), revision.runtimeId},
-        {QStringLiteral("entryFile"), revision.entryFile},
-        {QStringLiteral("entrySymbol"), revision.entrySymbol},
-        {QStringLiteral("createdAt"), displayTimestamp(revision.createdAt)},
-        {QStringLiteral("current"), revision.id == currentRevisionId},
-        {QStringLiteral("readinessState"), validationStateName(validation.state)},
-        {QStringLiteral("readinessDetail"), diagnosticsText(validation.diagnostics)},
-        {QStringLiteral("selectable"), validation.isReady()},
-    };
-}
-
 } // namespace
 
 ProcessorLibraryModel::ProcessorLibraryModel(QObject *parent)
@@ -134,24 +111,14 @@ QVariant ProcessorLibraryModel::data(const QModelIndex &index, int role) const
         return row.languageName;
     case RuntimeIdRole:
         return row.runtimeId;
-    case CurrentRevisionIdRole:
-        return row.currentRevisionId;
-    case CurrentRevisionNumberRole:
-        return row.currentRevisionNumber;
     case ReadinessStateRole:
         return row.readinessState;
     case ReadinessDetailRole:
         return row.readinessDetail;
-    case ArchivedRole:
-        return row.archived;
-    case ArchivedAtRole:
-        return row.archivedAt;
     case UpdatedAtRole:
         return row.updatedAt;
     case SourceTextRole:
         return row.sourceText;
-    case RevisionsRole:
-        return row.revisions;
     default:
         return {};
     }
@@ -166,15 +133,10 @@ QHash<int, QByteArray> ProcessorLibraryModel::roleNames() const
         {LanguageIdRole, "languageId"},
         {LanguageNameRole, "languageName"},
         {RuntimeIdRole, "runtimeId"},
-        {CurrentRevisionIdRole, "currentRevisionId"},
-        {CurrentRevisionNumberRole, "currentRevisionNumber"},
         {ReadinessStateRole, "readinessState"},
         {ReadinessDetailRole, "readinessDetail"},
-        {ArchivedRole, "archived"},
-        {ArchivedAtRole, "archivedAt"},
         {UpdatedAtRole, "updatedAt"},
         {SourceTextRole, "sourceText"},
-        {RevisionsRole, "revisions"},
     };
     return roles;
 }
@@ -199,43 +161,27 @@ void ProcessorLibraryModel::refresh(
     MessageProcessorEngine &engine)
 {
     QVector<Row> rows;
-    const QVector<ProcessorDefinition> processors = library.processors(true);
+    const QVector<ProcessorDefinition> processors = library.processors();
     rows.reserve(processors.size());
     for (const ProcessorDefinition &processor : processors) {
         Row row;
         row.id = processor.id;
         row.name = processor.name;
         row.description = processor.description;
-        row.currentRevisionId = processor.currentRevisionId;
-        row.archived = !processor.archivedAt.isEmpty();
-        row.archivedAt = displayTimestamp(processor.archivedAt);
         row.updatedAt = displayTimestamp(processor.updatedAt);
 
-        QVector<QSharedPointer<const ProcessorRevisionSnapshot>> revisions = library.revisions(
-            processor.id);
-        std::reverse(revisions.begin(), revisions.end());
-        row.revisions.reserve(revisions.size());
-        for (const auto &revision : revisions) {
-            const QVariantMap revisionMap = revisionRow(
-                *revision,
-                processor.currentRevisionId,
-                engine);
-            row.revisions.append(revisionMap);
-            if (revision->id == processor.currentRevisionId) {
-                row.languageId = revision->languageId;
-                row.languageName = languageName(revision->languageId);
-                row.runtimeId = revision->runtimeId;
-                row.currentRevisionNumber = revision->revisionNumber;
-                row.readinessState = revisionMap.value(
-                    QStringLiteral("readinessState")).toString();
-                row.readinessDetail = revisionMap.value(
-                    QStringLiteral("readinessDetail")).toString();
-                row.sourceText = revisionSourceText(*revision);
-            }
-        }
-        if (row.currentRevisionNumber == 0) {
+        const auto revision = library.revisionById(processor.currentRevisionId);
+        if (revision) {
+            const ProcessorValidationResult validation = engine.validate(*revision);
+            row.languageId = revision->languageId;
+            row.languageName = languageName(revision->languageId);
+            row.runtimeId = revision->runtimeId;
+            row.readinessState = validationStateName(validation.state);
+            row.readinessDetail = diagnosticsText(validation.diagnostics);
+            row.sourceText = revisionSourceText(*revision);
+        } else {
             row.readinessState = QStringLiteral("revision_not_found");
-            row.readinessDetail = QStringLiteral("Current Processor Revision is unavailable.");
+            row.readinessDetail = QStringLiteral("The Message Processor is unavailable.");
         }
         rows.append(std::move(row));
     }
@@ -258,14 +204,9 @@ QVariantMap ProcessorLibraryModel::rowToMap(const Row &row)
         {QStringLiteral("languageId"), row.languageId},
         {QStringLiteral("languageName"), row.languageName},
         {QStringLiteral("runtimeId"), row.runtimeId},
-        {QStringLiteral("currentRevisionId"), row.currentRevisionId},
-        {QStringLiteral("currentRevisionNumber"), row.currentRevisionNumber},
         {QStringLiteral("readinessState"), row.readinessState},
         {QStringLiteral("readinessDetail"), row.readinessDetail},
-        {QStringLiteral("archived"), row.archived},
-        {QStringLiteral("archivedAt"), row.archivedAt},
         {QStringLiteral("updatedAt"), row.updatedAt},
         {QStringLiteral("sourceText"), row.sourceText},
-        {QStringLiteral("revisions"), row.revisions},
     };
 }

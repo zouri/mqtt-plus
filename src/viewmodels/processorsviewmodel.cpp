@@ -5,13 +5,17 @@
 #include "services/processors/messageprocessorengine.h"
 #include "services/processors/processorlibrary.h"
 
+#include <utility>
+
 ProcessorsViewModel::ProcessorsViewModel(
     ProcessorLibrary &library,
     ProcessorLibraryModel &processors,
+    ProcessorUsageLookup usageLookup,
     QObject *parent)
     : QObject(parent)
     , m_library(library)
     , m_processors(processors)
+    , m_usageLookup(std::move(usageLookup))
     , m_engine(createDefaultMessageProcessorEngine())
     , m_filteredProcessors(this)
     , m_editor(library, *m_engine, this)
@@ -59,13 +63,6 @@ void ProcessorsViewModel::newProcessor(const QString &languageId)
     m_editor.newProcessor(languageId);
 }
 
-bool ProcessorsViewModel::selectRevisionAt(int index)
-{
-    const QVariantMap revision = m_editor.revisions()->rowAt(index);
-    return !revision.isEmpty()
-        && m_editor.loadRevision(revision.value(QStringLiteral("id")).toString());
-}
-
 bool ProcessorsViewModel::validateEditor()
 {
     return m_editor.validateDraft();
@@ -89,36 +86,33 @@ bool ProcessorsViewModel::saveEditor()
     return true;
 }
 
-bool ProcessorsViewModel::archiveCurrent()
+bool ProcessorsViewModel::deleteCurrent()
 {
-    if (!m_editor.canArchive()) {
-        return false;
-    }
     const QString processorId = m_editor.currentProcessorId();
-    const ProcessorLibraryStoreResult result = m_library.archiveProcessor(processorId);
-    if (!result.ok) {
-        m_editor.setOperationError(result.error);
+    if (processorId.isEmpty()) {
         return false;
     }
-    refreshLibrary();
-    m_editor.loadProcessor(processorId);
-    emit processorLibraryChanged();
-    return true;
-}
+    const QStringList usage = m_usageLookup ? m_usageLookup(processorId) : QStringList {};
+    if (!usage.isEmpty()) {
+        m_editor.setOperationError(tr(
+            "This processor is used by subscriptions in: %1. Remove those bindings before deleting it.")
+                                       .arg(usage.join(QStringLiteral(", "))));
+        return false;
+    }
 
-bool ProcessorsViewModel::restoreCurrent()
-{
-    if (!m_editor.canRestore()) {
+    const QString languageId = m_editor.languageId();
+    if (!m_library.deleteProcessor(processorId)) {
+        m_editor.setOperationError(m_library.lastError());
         return false;
     }
-    const QString processorId = m_editor.currentProcessorId();
-    const ProcessorLibraryStoreResult result = m_library.restoreProcessor(processorId);
-    if (!result.ok) {
-        m_editor.setOperationError(result.error);
-        return false;
-    }
+
     refreshLibrary();
-    m_editor.loadProcessor(processorId);
+    if (m_filteredProcessors.rowCount() > 0) {
+        m_editor.loadProcessor(
+            m_filteredProcessors.rowAt(0).value(QStringLiteral("id")).toString());
+    } else {
+        m_editor.newProcessor(languageId);
+    }
     emit processorLibraryChanged();
     return true;
 }

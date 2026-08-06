@@ -1,23 +1,15 @@
 #include "viewmodels/draftsviewmodel.h"
 
-#include "domain/sessionconfig.h"
 #include "models/draftlibrarymodel.h"
-#include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
 #include "usecases/draftlibraryservice.h"
-#include "usecases/mqttsessionservice.h"
-#include "usecases/sessionservice.h"
 
 DraftsViewModel::DraftsViewModel(
     DraftLibraryService &draftService,
     DraftLibraryModel &draftsModel,
-    SessionService &sessionService,
-    MqttSessionService &mqttService,
     QObject *parent)
     : QObject(parent)
     , m_draftService(draftService)
-    , m_sessionService(sessionService)
-    , m_mqttService(mqttService)
     , m_filteredDrafts(this)
     , m_editor(this)
 {
@@ -36,14 +28,6 @@ DraftsViewModel::DraftsViewModel(
                 m_waitingForEditorSave = false;
                 m_pendingDeleteId.clear();
             });
-    connect(&m_sessionService, &SessionService::currentSessionChanged,
-            this, &DraftsViewModel::currentSessionChanged);
-    connect(&m_sessionService, &SessionService::currentSessionIndexChanged,
-            this, &DraftsViewModel::currentSessionChanged);
-    connect(&m_sessionService, &SessionService::sessionsChanged,
-            this, &DraftsViewModel::currentSessionChanged);
-    connect(&m_mqttService, &MqttSessionService::sessionStateChanged,
-            this, &DraftsViewModel::currentSessionChanged);
 }
 
 DraftFilterModel *DraftsViewModel::filteredDrafts() { return &m_filteredDrafts; }
@@ -55,48 +39,6 @@ bool DraftsViewModel::ready() const { return m_draftService.ready(); }
 bool DraftsViewModel::readOnly() const { return m_draftService.readOnly(); }
 bool DraftsViewModel::canRecover() const { return m_draftService.canRecover(); }
 QString DraftsViewModel::storageError() const { return m_draftService.errorMessage(); }
-
-QStringList DraftsViewModel::sessionNames() const
-{
-    QStringList names;
-    names.reserve(m_sessionService.sessions().size());
-    for (const SessionState &session : m_sessionService.sessions()) {
-        names.append(session.name);
-    }
-    return names;
-}
-
-int DraftsViewModel::currentSessionIndex() const { return m_sessionService.currentIndex(); }
-
-QVariantMap DraftsViewModel::currentSession() const
-{
-    const SessionState *session = m_sessionService.currentSession();
-    if (!session) return {};
-    const auto *client = session->runtime.client;
-    return {
-        {QStringLiteral("id"), session->id},
-        {QStringLiteral("name"), session->name},
-        {QStringLiteral("host"), client ? client->hostname() : QString()},
-        {QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort},
-    };
-}
-
-QVariantMap DraftsViewModel::sessionStatus() const
-{
-    const SessionState *session = m_sessionService.currentSession();
-    if (!session) return {{QStringLiteral("state"), QStringLiteral("disconnected")}};
-    const QString state = AppUtils::sessionStateName(*session, session->runtime.client);
-    return {
-        {QStringLiteral("state"), state},
-        {QStringLiteral("connected"), state == QStringLiteral("connected")},
-        {QStringLiteral("lastError"), session->runtime.lastError},
-    };
-}
-
-void DraftsViewModel::setCurrentSessionIndex(int index)
-{
-    m_sessionService.setCurrentSessionIndex(index);
-}
 
 void DraftsViewModel::setFilterText(const QString &text)
 {
@@ -184,28 +126,6 @@ bool DraftsViewModel::deleteCurrentDraft()
         return false;
     }
     return true;
-}
-
-bool DraftsViewModel::sendCurrent(const QString &temporaryTopic)
-{
-    QString topic = m_editor.defaultTopic().trimmed();
-    if (topic.isEmpty()) topic = temporaryTopic.trimmed();
-    const bool sent = m_mqttService.publishCurrentSession(
-        topic,
-        m_editor.payload(),
-        m_editor.format(),
-        m_editor.qos(),
-        m_editor.retain(),
-        m_editor.name().trimmed().isEmpty() ? tr("Draft editor") : m_editor.name().trimmed());
-    if (sent && !m_editor.currentDraftId().isEmpty()) {
-        m_draftService.markUsed(m_editor.currentDraftId());
-    }
-    return sent;
-}
-
-bool DraftsViewModel::currentNeedsTopic() const
-{
-    return m_editor.defaultTopic().trimmed().isEmpty();
 }
 
 bool DraftsViewModel::recoverBackup()

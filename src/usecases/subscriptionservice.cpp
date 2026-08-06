@@ -36,12 +36,8 @@ ProcessorReference normalizedProcessorReference(const ProcessorReference &source
 {
     ProcessorReference result = source;
     result.processorId = result.processorId.trimmed();
-    result.pinnedRevisionId = result.pinnedRevisionId.trimmed();
     if (result.processorId.isEmpty()) {
         return {};
-    }
-    if (result.revisionMode == ProcessorRevisionMode::FollowCurrent) {
-        result.pinnedRevisionId.clear();
     }
     return result;
 }
@@ -176,8 +172,6 @@ bool SubscriptionService::updateCurrentSubscription(
         && entry->requestedQos == sanitizedQos
         && entry->format == sanitizedFormat
         && entry->processor.processorId == normalizedProcessor.processorId
-        && entry->processor.revisionMode == normalizedProcessor.revisionMode
-        && entry->processor.pinnedRevisionId == normalizedProcessor.pinnedRevisionId
         && entry->processor.parameters == normalizedProcessor.parameters) {
         return true;
     }

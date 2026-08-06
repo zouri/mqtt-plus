@@ -8,4 +8,4 @@ The Processor Library will use a dedicated SQLite database containing stable pro
 
 ## Consequences
 
-Existing script index files and mutable Lua entries are not migrated. Normal deletion archives a processor, while immutable revisions remain available for pinned bindings and historical identity.
+Existing script index files and mutable Lua entries are not migrated. The UI has no archive action; processors enter the library only through an explicit save. A processor may be permanently deleted only when no saved subscription references it, and its internal revisions are deleted with it. Immutable revisions otherwise remain available internally for historical message identity and reproducible queued work.

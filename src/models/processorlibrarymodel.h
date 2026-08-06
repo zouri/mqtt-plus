@@ -21,15 +21,10 @@ public:
         LanguageIdRole,
         LanguageNameRole,
         RuntimeIdRole,
-        CurrentRevisionIdRole,
-        CurrentRevisionNumberRole,
         ReadinessStateRole,
         ReadinessDetailRole,
-        ArchivedRole,
-        ArchivedAtRole,
         UpdatedAtRole,
         SourceTextRole,
-        RevisionsRole,
     };
     Q_ENUM(Role)
 
@@ -57,15 +52,10 @@ private:
         QString languageId;
         QString languageName;
         QString runtimeId;
-        QString currentRevisionId;
-        qint64 currentRevisionNumber = 0;
         QString readinessState;
         QString readinessDetail;
-        bool archived = false;
-        QString archivedAt;
         QString updatedAt;
         QString sourceText;
-        QVariantList revisions;
     };
 
     static QVariantMap rowToMap(const Row &row);

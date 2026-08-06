@@ -9,8 +9,6 @@
 
 class DraftLibraryModel;
 class DraftLibraryService;
-class MqttSessionService;
-class SessionService;
 
 class DraftsViewModel : public QObject
 {
@@ -24,17 +22,11 @@ class DraftsViewModel : public QObject
     Q_PROPERTY(bool readOnly READ readOnly NOTIFY libraryStateChanged)
     Q_PROPERTY(bool canRecover READ canRecover NOTIFY libraryStateChanged)
     Q_PROPERTY(QString storageError READ storageError NOTIFY libraryStateChanged)
-    Q_PROPERTY(QStringList sessionNames READ sessionNames NOTIFY currentSessionChanged)
-    Q_PROPERTY(int currentSessionIndex READ currentSessionIndex WRITE setCurrentSessionIndex NOTIFY currentSessionChanged)
-    Q_PROPERTY(QVariantMap currentSession READ currentSession NOTIFY currentSessionChanged)
-    Q_PROPERTY(QVariantMap sessionStatus READ sessionStatus NOTIFY currentSessionChanged)
 
 public:
     explicit DraftsViewModel(
         DraftLibraryService &draftService,
         DraftLibraryModel &draftsModel,
-        SessionService &sessionService,
-        MqttSessionService &mqttService,
         QObject *parent = nullptr);
 
     DraftFilterModel *filteredDrafts();
@@ -46,11 +38,6 @@ public:
     bool readOnly() const;
     bool canRecover() const;
     QString storageError() const;
-    QStringList sessionNames() const;
-    int currentSessionIndex() const;
-    QVariantMap currentSession() const;
-    QVariantMap sessionStatus() const;
-    void setCurrentSessionIndex(int index);
 
     Q_INVOKABLE void setFilterText(const QString &text);
     Q_INVOKABLE void ensureEditorSelection();
@@ -61,13 +48,10 @@ public:
     Q_INVOKABLE bool duplicateCurrentDraft();
     Q_INVOKABLE bool saveEditor();
     Q_INVOKABLE bool deleteCurrentDraft();
-    Q_INVOKABLE bool sendCurrent(const QString &temporaryTopic = QString());
-    Q_INVOKABLE bool currentNeedsTopic() const;
     Q_INVOKABLE bool recoverBackup();
 
 signals:
     void libraryStateChanged();
-    void currentSessionChanged();
     void editorSaveSucceeded();
     void editorDeleteSucceeded();
 
@@ -76,8 +60,6 @@ private:
     void handleOperationSucceeded(const QString &operation, const QString &draftId);
 
     DraftLibraryService &m_draftService;
-    SessionService &m_sessionService;
-    MqttSessionService &m_mqttService;
     DraftFilterModel m_filteredDrafts;
     DraftEditorViewModel m_editor;
     bool m_waitingForEditorSave = false;

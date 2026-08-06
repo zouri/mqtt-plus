@@ -71,7 +71,7 @@ A Processor Revision is an immutable saved source package. Saving edited source 
 
 ### 3.3 Processor Binding
 
-A Processor Binding belongs to a subscription. It either follows the processor's current revision or remains pinned to one specific revision. The binding may also contain per-subscription parameters.
+A Processor Binding belongs to a subscription and always follows the processor's current content. The binding may also contain per-subscription parameters.
 
 ### 3.4 Processor Result
 
@@ -101,7 +101,7 @@ Mutable source keyed only by processor ID creates cache invalidation races and m
 - editing a processor cannot alter tasks already queued;
 - runtime caches are keyed by immutable content and need no public invalidation operation;
 - a historical message can identify exactly which source package produced its result;
-- pinned bindings remain stable while follow-current bindings advance intentionally.
+- subscriptions advance to newly saved content without separate version controls.
 
 ### 4.4 Store authoritative source in SQLite
 
@@ -160,7 +160,6 @@ struct ProcessorDefinition
     std::optional<ProcessorRevisionId> currentRevisionId;
     QDateTime createdAt;
     QDateTime updatedAt;
-    std::optional<QDateTime> archivedAt;
 };
 
 struct ProcessorSourceFile
@@ -187,17 +186,9 @@ struct ProcessorRevisionSnapshot
     QDateTime createdAt;
 };
 
-enum class ProcessorRevisionMode
-{
-    FollowCurrent,
-    Pinned,
-};
-
 struct ProcessorReference
 {
     ProcessorId processorId;
-    ProcessorRevisionMode revisionMode = ProcessorRevisionMode::FollowCurrent;
-    std::optional<ProcessorRevisionId> pinnedRevisionId;
     QCborMap parameters;
 };
 ```
@@ -565,9 +556,7 @@ Failure before commit leaves the database and visible library unchanged.
 
 ### 11.7 Archiving and deletion
 
-Normal deletion archives a processor by setting `archived_at`. Archived processors disappear from new-binding choices but their revisions remain available to pinned bindings and historical inspection.
-
-Permanent purge is a separate explicit operation. It must refuse to remove a processor or revision while a current subscription binding references it. Historical message rows live in another database and cannot provide a cross-database foreign key, so the product must either retain all historical revisions or perform an explicit reference audit before purge. The initial delivery retains revisions indefinitely.
+There is no archive action. A processor enters the library only when the user explicitly saves it. Users may permanently delete a processor after confirmation, provided no saved subscription currently references it. Deleting a processor also deletes its internal revisions and source files. The legacy `archived_at` column is retained only for on-disk compatibility and is cleared when the library opens.
 
 ## 12. Runtime artifact cache
 
@@ -609,8 +598,6 @@ public:
     void load();
     void createProcessor(const CreateProcessorCommand &command);
     void saveRevision(const SaveProcessorRevisionCommand &command);
-    void archiveProcessor(const ProcessorId &id);
-    void restoreProcessor(const ProcessorId &id);
 
     QSharedPointer<const ProcessorLibrarySnapshot> snapshot() const;
     QSharedPointer<const ProcessorRevisionSnapshot> resolve(
@@ -697,14 +684,10 @@ The persisted subscription representation is conceptually:
 {
   "processor": {
     "processorId": "uuid",
-    "revisionMode": "current",
-    "revisionId": null,
     "parametersCborBase64": "..."
   }
 }
 ```
-
-When `revisionMode` is `pinned`, `revisionId` is mandatory and must belong to `processorId`. When it is `current`, `revisionId` is omitted.
 
 Old `scriptId` values are ignored rather than migrated. Other subscription fields remain intact.
 
@@ -834,7 +817,7 @@ Source validity and local runtime readiness are different:
 
 Revision source data remains immutable regardless of local readiness. Machine-specific readiness is derived from the runtime registry and artifact cache, not treated as authoritative domain data.
 
-Saving a revision performs structural validation. The UI then schedules runtime preparation. A revision may be saved but not selectable for new bindings until its current machine status is ready. Existing pinned bindings surface a clear unavailable state if their runtime later disappears.
+Saving performs structural validation. The UI then schedules runtime preparation. A processor may not be selectable for new bindings until its current content is ready on the local machine.
 
 ## 23. UI design
 
@@ -846,9 +829,7 @@ Each row shows:
 
 - processor name;
 - language badge;
-- current revision number;
 - local readiness status;
-- archived state when applicable;
 - updated timestamp.
 
 Filtering searches name, description, language, and source text maintained by the model rather than QML delegate scans.
@@ -861,24 +842,16 @@ The editor shows:
 
 - name and description;
 - language and runtime;
-- entry file and entry symbol;
 - source files;
 - binding-parameter schema when introduced;
 - validation diagnostics;
-- revision history;
-- Save Revision action.
+- Save action.
 
 Changing the language creates a new revision template; it does not rewrite an existing revision.
 
 ### 23.3 Subscription binding
 
-The subscription editor selects:
-
-- no processor;
-- a processor following its current revision;
-- a specific pinned revision.
-
-Only locally ready revisions are selectable by default. Missing or unavailable existing bindings remain visible with an explanation rather than silently selecting another processor.
+The subscription editor selects either no processor or one processor. Bindings always use its current content. Only locally ready processors are selectable by default. Missing or unavailable existing bindings remain visible with an explanation rather than silently selecting another processor.
 
 ## 24. Error model
 
@@ -956,9 +929,7 @@ The external interfaces are the primary test surface.
 - reject invalid paths and duplicate normalized paths;
 - validate entry-file ownership;
 - preserve the visible snapshot after failed commits;
-- resolve current and pinned references;
-- prevent cross-processor pinned revisions;
-- archive without removing revisions;
+- resolve processor references to their current content;
 - reopen the database and reproduce hashes and snapshots;
 - reject unsupported newer schema versions without overwriting them.
 
@@ -1027,7 +998,6 @@ src/services/processors/
 src/models/
     processorlibrarymodel.h/.cpp
     processorfiltermodel.h/.cpp
-    processorrevisionmodel.h/.cpp
 
 src/viewmodels/
     processorsviewmodel.h/.cpp
@@ -1048,7 +1018,7 @@ Each phase should remain buildable and independently reviewed.
 - add processor domain types;
 - implement package normalization and hashing;
 - implement SQLite schema and transactional store;
-- add current and pinned reference resolution;
+- add current-content reference resolution;
 - add store and hashing tests;
 - keep the old scripting subsystem temporarily untouched.
 
@@ -1116,8 +1086,8 @@ Exit criteria:
 - parse-result writer ordering remains correct;
 - no script source is copied into each task.
 
-Implementation status (2026-08-05): complete. The capture path resolves current or pinned
-references from the in-memory `ProcessorLibrary`, persists the six-field revision identity
+Implementation status (2026-08-05): complete. The capture path resolves current content
+from the in-memory `ProcessorLibrary`, persists the six-field revision identity
 before execution, sends immutable snapshots to `MessageParseWorker`, stores canonical CBOR
 results and stable execution failures, and keeps processor identity on queue-pressure skips.
 Subscription settings now use the nested Processor Reference representation with CBOR
@@ -1130,27 +1100,24 @@ history, subscription, and architecture tests, and 38/38 CTest targets.
 ### Phase 6: Processor Library UI
 
 - replace Script Manager with Processor Library;
-- expose runtime catalog, language selection, revision save, and validation;
+- expose runtime catalog, language selection, save, and validation;
 - replace subscription script selection with Processor Binding;
 - add translations and QML architecture assertions.
 
 Exit criteria:
 
-- users can create, validate, save, bind, edit, and revision both Lua and JavaScript processors;
-- pinned and follow-current bindings are distinguishable;
+- users can create, validate, save, bind, and edit both Lua and JavaScript processors;
 - unavailable bindings are not silently discarded.
 
 Implementation status (2026-08-05): complete. The application root and navigation now
 expose `ProcessorsViewModel` and Processor Library QML instead of the legacy Script Manager.
-The library list presents language, current revision, readiness, archive state, and update
+The library list presents language, readiness, and update
 time; model-side filtering includes metadata, language, and current source. The editor can
 create Lua 5.5 or Qt QJSEngine templates, validate through `MessageProcessorEngine`, preserve
-unexposed files in multi-file packages, save immutable revisions, revisit revision history,
-and archive or restore a processor.
+unexposed files in multi-file packages and save immutable content internally.
 
-Subscription editing now constructs a full `ProcessorReference`, distinguishes follow-current
-and pinned bindings, preserves CBOR parameters, restricts normal choices to locally ready
-revisions, and keeps missing, archived, or unavailable existing bindings visible with an
+Subscription editing now constructs a `ProcessorReference`, preserves CBOR parameters,
+restricts normal choices to locally ready processors, and keeps missing or unavailable existing bindings visible with an
 explanation. Chinese translations and architecture assertions cover the new surfaces.
 
 Phase validation completed with generated `all_qmllint`, a full debug build, focused Processor
@@ -1215,7 +1182,7 @@ The Lua and JavaScript delivery is complete when:
 - Processor Library storage is the only authoritative processor store;
 - saving always creates or reuses an immutable revision;
 - source packages support multiple files even if the initial editor exposes one;
-- subscriptions support follow-current and pinned references;
+- subscriptions always use the processor's current content;
 - messages store the exact executed revision and normalized CBOR result;
 - Lua and JavaScript pass the same runtime conformance suite;
 - execution occurs outside MQTT receive and GUI threads;

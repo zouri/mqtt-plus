@@ -48,14 +48,6 @@ QVariantList subscriptionsToVariantList(const QVector<SubscriptionEntry> &subscr
         QVariantMap processor;
         processor.insert(QStringLiteral("processorId"), entry.processor.processorId);
         processor.insert(
-            QStringLiteral("revisionMode"),
-            entry.processor.revisionMode == ProcessorRevisionMode::Pinned
-                ? QStringLiteral("pinned")
-                : QStringLiteral("current"));
-        if (entry.processor.revisionMode == ProcessorRevisionMode::Pinned) {
-            processor.insert(QStringLiteral("revisionId"), entry.processor.pinnedRevisionId);
-        }
-        processor.insert(
             QStringLiteral("parametersCborBase64"),
             QString::fromLatin1(QCborValue(entry.processor.parameters).toCbor().toBase64()));
         row.insert(QStringLiteral("processor"), processor);
@@ -157,15 +149,6 @@ LoadedSession readSession(QSettings &settings, int index)
         entry.format = row.value(QStringLiteral("format"), 0).toInt();
         const QVariantMap processor = row.value(QStringLiteral("processor")).toMap();
         entry.processor.processorId = processor.value(QStringLiteral("processorId")).toString().trimmed();
-        entry.processor.revisionMode = processor.value(QStringLiteral("revisionMode")).toString()
-                == QStringLiteral("pinned")
-            ? ProcessorRevisionMode::Pinned
-            : ProcessorRevisionMode::FollowCurrent;
-        if (entry.processor.revisionMode == ProcessorRevisionMode::Pinned) {
-            entry.processor.pinnedRevisionId = processor.value(QStringLiteral("revisionId"))
-                                                       .toString()
-                                                       .trimmed();
-        }
         QCborParserError parserError;
         const QByteArray parameterBytes = QByteArray::fromBase64(
             processor.value(QStringLiteral("parametersCborBase64")).toString().toLatin1());

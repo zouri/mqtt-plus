@@ -14,11 +14,11 @@ Rectangle {
 
     signal processorRequested(int index)
 
-    Layout.preferredWidth: 320
-    Layout.minimumWidth: 320
-    Layout.maximumWidth: 320
+    Layout.preferredWidth: 270
+    Layout.minimumWidth: 230
+    Layout.maximumWidth: 270
     Layout.fillHeight: true
-    color: root.ui.themePalette.windowBg
+    color: root.ui.themePalette.sidebarBg
 
     ColumnLayout {
         anchors.fill: parent
@@ -26,11 +26,31 @@ Rectangle {
         spacing: 10
 
         AppTextField {
+            id: searchField
+
             ui: root.ui
             Layout.fillWidth: true
-            placeholderText: qsTr("Search processors, languages, or source")
+            leftPadding: 34
+            placeholderText: qsTr("Search name or source code")
             text: root.viewModel.filteredProcessors.filterText
             onTextEdited: root.viewModel.setProcessorFilterText(text)
+
+            AppIconButton {
+                ui: root.ui
+                anchors.left: parent.left
+                anchors.leftMargin: 3
+                anchors.verticalCenter: parent.verticalCenter
+                implicitWidth: 28
+                implicitHeight: 28
+                iconSize: 16
+                iconSource: root.ui.materialIcon("search")
+                restBg: "transparent"
+                hoverBg: "transparent"
+                pressedBg: "transparent"
+                outlineColor: "transparent"
+                onClicked: searchField.forceActiveFocus()
+                Accessible.ignored: true
+            }
         }
 
         Item {
@@ -43,7 +63,7 @@ Rectangle {
 
                 anchors.fill: parent
                 clip: true
-                spacing: 8
+                spacing: 7
                 model: root.viewModel.filteredProcessors
                 reuseItems: true
 
@@ -59,35 +79,46 @@ Rectangle {
                     required property string name
                     required property string description
                     required property string languageName
-                    required property int currentRevisionNumber
                     required property string readinessState
-                    required property bool archived
                     required property string updatedAt
 
                     width: ListView.view.width
-                    implicitHeight: 98
+                    implicitHeight: 68
                     Accessible.role: Accessible.Button
                     Accessible.name: qsTr("Message Processor %1").arg(processorDelegate.name)
                     activeFocusOnTab: true
 
                     Rectangle {
                         anchors.fill: parent
-                        radius: 10
+                        radius: 8
                         color: processorMouse.containsMouse
                                ? root.ui.rowHover
                                : root.ui.themePalette.itemBg
                         border.color: processorDelegate.id === root.currentProcessorId
-                                      ? root.ui.themePalette.selectedBorder
-                                      : root.ui.themePalette.itemBorder
+                                      ? root.ui.textStrong
+                                      : (processorMouse.containsMouse
+                                         ? root.ui.themePalette.fieldBorder
+                                         : root.ui.themePalette.itemBorder)
                         border.width: 1
+
+                        Rectangle {
+                            visible: processorDelegate.id === root.currentProcessorId
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: 3
+                            radius: 2
+                            color: root.ui.textStrong
+                            Accessible.ignored: true
+                        }
 
                         ColumnLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            anchors.topMargin: 9
-                            anchors.bottomMargin: 9
-                            spacing: 5
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            anchors.topMargin: 8
+                            anchors.bottomMargin: 8
+                            spacing: 6
 
                             RowLayout {
                                 Layout.fillWidth: true
@@ -97,28 +128,27 @@ Rectangle {
                                     Layout.fillWidth: true
                                     text: processorDelegate.name
                                     color: root.ui.textStrong
-                                    font.pixelSize: 13
+                                    font.pixelSize: 12
                                     font.bold: true
                                     elide: Label.ElideRight
                                 }
 
-                                AppBadge {
-                                    ui: root.ui
-                                    label: processorDelegate.languageName
-                                    horizontalPadding: 7
-                                    verticalPadding: 3
-                                    badgeRadius: 8
-                                }
-                            }
+                                Rectangle {
+                                    Layout.preferredWidth: languageLabel.implicitWidth + 12
+                                    Layout.preferredHeight: 20
+                                    radius: 5
+                                    color: root.ui.themePalette.innerPanelBg
 
-                            Label {
-                                Layout.fillWidth: true
-                                text: processorDelegate.description.length > 0
-                                      ? processorDelegate.description
-                                      : qsTr("No description")
-                                color: root.ui.themePalette.textSubtle
-                                font.pixelSize: 11
-                                elide: Label.ElideRight
+                                    Label {
+                                        id: languageLabel
+
+                                        anchors.centerIn: parent
+                                        text: processorDelegate.languageName
+                                        color: root.ui.textMuted
+                                        font.pixelSize: 9
+                                        font.bold: true
+                                    }
+                                }
                             }
 
                             RowLayout {
@@ -126,24 +156,11 @@ Rectangle {
                                 spacing: 6
 
                                 Label {
-                                    text: qsTr("Revision %1").arg(processorDelegate.currentRevisionNumber)
+                                    text: processorDelegate.readinessState === "ready"
+                                          ? qsTr("Ready")
+                                          : qsTr("Unavailable")
                                     color: root.ui.textMuted
                                     font.pixelSize: 10
-                                }
-
-                                Label {
-                                    text: processorDelegate.archived
-                                          ? qsTr("Archived")
-                                          : (processorDelegate.readinessState === "ready"
-                                             ? qsTr("Ready")
-                                             : qsTr("Unavailable"))
-                                    color: processorDelegate.archived
-                                           ? root.ui.textMuted
-                                           : (processorDelegate.readinessState === "ready"
-                                              ? root.ui.stateColor("completed")
-                                              : root.ui.stateColor("error"))
-                                    font.pixelSize: 10
-                                    font.bold: true
                                 }
 
                                 Item {
@@ -154,6 +171,7 @@ Rectangle {
                                     text: processorDelegate.updatedAt
                                     color: root.ui.themePalette.textSubtle
                                     font.pixelSize: 10
+                                    elide: Label.ElideRight
                                 }
                             }
                         }

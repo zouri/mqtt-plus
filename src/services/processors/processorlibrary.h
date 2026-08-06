@@ -26,7 +26,7 @@ public:
     QString storageDirectory() const;
     bool reload();
 
-    QVector<ProcessorDefinition> processors(bool includeArchived = false) const;
+    QVector<ProcessorDefinition> processors() const;
     std::optional<ProcessorDefinition> processorById(const QString &processorId) const;
     QVector<QSharedPointer<const ProcessorRevisionSnapshot>> revisions(
         const QString &processorId) const;
@@ -36,8 +36,7 @@ public:
         const ProcessorReference &reference,
         QString *error = nullptr) const;
     SaveProcessorRevisionResult saveRevision(const SaveProcessorRevisionCommand &command);
-    ProcessorLibraryStoreResult archiveProcessor(const QString &processorId);
-    ProcessorLibraryStoreResult restoreProcessor(const QString &processorId);
+    bool deleteProcessor(const QString &processorId);
 
 private:
     ProcessorLibraryStore m_store;
