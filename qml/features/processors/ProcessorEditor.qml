@@ -35,6 +35,7 @@ ColumnLayout {
 
                 ui: root.ui
                 Layout.fillWidth: true
+                Layout.preferredHeight: root.ui.compactControlHeight
                 text: root.editor.name
                 placeholderText: qsTr("Processor name")
                 onTextEdited: root.editor.name = text
@@ -56,6 +57,7 @@ ColumnLayout {
             AppTextField {
                 ui: root.ui
                 Layout.fillWidth: true
+                Layout.preferredHeight: root.ui.compactControlHeight
                 text: root.editor.description
                 placeholderText: qsTr("Device protocol or payload structure")
                 onTextEdited: root.editor.description = text
@@ -81,6 +83,7 @@ ColumnLayout {
                 AppComboBox {
                     ui: root.ui
                     Layout.fillWidth: true
+                    Layout.preferredHeight: root.ui.compactControlHeight
                     model: root.editor.languageOptionNames
                     currentIndex: root.editor.languageIndex
                     onActivated: root.editor.languageIndex = currentIndex
@@ -89,7 +92,7 @@ ColumnLayout {
                 AppIconButton {
                     ui: root.ui
                     Layout.preferredWidth: 24
-                    Layout.preferredHeight: 36
+                    Layout.preferredHeight: root.ui.compactControlHeight
                     iconSize: 15
                     iconSource: root.ui.materialIcon("info")
                     restBg: "transparent"
@@ -97,7 +100,7 @@ ColumnLayout {
                     outlineColor: "transparent"
                     symbolColor: root.ui.textMuted
                     accessibleName: qsTr("Runtime information")
-                    toolTipText: qsTr("Runtime: %1 · follows the script language").arg(root.editor.runtimeName)
+                    toolTipText: qsTr("Runtime: %1").arg(root.editor.runtimeName)
                     toolTipPosition: AppToolTip.Position.Bottom
                 }
             }
@@ -118,12 +121,10 @@ ColumnLayout {
             clip: true
             showLineNumbers: true
             wrapMode: TextEdit.NoWrap
-            placeholderText: root.editor.languageId === "javascript"
-                             ? qsTr("function process(context)")
-                             : qsTr("function process(context)")
+            placeholderText: root.editor.languageId === "javascript" ? qsTr("function process(context)") : qsTr("function process(context)")
             onTextChanged: {
                 if (text !== root.editor.source) {
-                    root.editor.source = text
+                    root.editor.source = text;
                 }
             }
         }
@@ -134,9 +135,7 @@ ColumnLayout {
             visible: root.editor.diagnostics.length > 0
             radius: 8
             color: root.ui.themePalette.innerPanelBg
-            border.color: root.editor.validationOk
-                          ? root.ui.stateColor("completed")
-                          : root.ui.themePalette.innerPanelBorder
+            border.color: root.editor.validationOk ? root.ui.stateColor("completed") : root.ui.themePalette.innerPanelBorder
 
             Label {
                 id: diagnosticsText
