@@ -4,14 +4,28 @@
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
 #include "services/processors/processorlibrary.h"
+#include "usecases/draftlibraryservice.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/sessionservice.h"
 #include "viewmodels/settingsviewmodel.h"
 
 #include <QtTest/QtTest>
 
+#include <QDesktopServices>
 #include <QFontDatabase>
 #include <QTemporaryDir>
+#include <QUrl>
+
+class DirectoryUrlReceiver : public QObject
+{
+    Q_OBJECT
+
+public slots:
+    void handleUrl(const QUrl &url) { urls.append(url); }
+
+public:
+    QList<QUrl> urls;
+};
 
 class SettingsFixture
 {
@@ -22,6 +36,7 @@ public:
         , historyStore(dataDir.path())
         , historyWriter(dataDir.path(), historyStore.nextMessageId())
         , processorLibrary(dataDir.filePath(QStringLiteral("processors")))
+        , draftLibraryService(dataDir.filePath(QStringLiteral("drafts")))
         , sessionService(settings, historyStore, preferencesController)
         , eventHistoryService(
               sessionService,
@@ -47,6 +62,7 @@ public:
     HistoryWriterWorker historyWriter;
     MessageParseWorker messageParser;
     ProcessorLibrary processorLibrary;
+    DraftLibraryService draftLibraryService;
     SessionService sessionService;
     EventStreamModel messages;
     EventStreamModel logs;
@@ -70,6 +86,7 @@ private slots:
     void fontSettingPersistsAndEmitsSignal();
     void languageChangesEmitSignals();
     void messagePayloadDisplayModePersistsAndEmitsSignal();
+    void opensStorageDirectories();
 };
 
 void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
@@ -79,6 +96,8 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
 
@@ -100,6 +119,9 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(deps.preferencesController.autoCollapseConnectionListOnConnect(), true);
     QCOMPARE(settings.clearMessagesOnExitIndex(), 0);
     QCOMPARE(settings.clearLogsOnExitIndex(), 0);
+    QCOMPARE(settings.scriptStorageDirectory(), deps.processorLibrary.storageDirectory());
+    QCOMPARE(settings.draftStorageDirectory(), deps.draftLibraryService.storageDirectory());
+    QCOMPARE(settings.databaseStorageDirectory(), deps.historyStore.dataPath());
     QCOMPARE(deps.preferencesController.subscriptionPaneWidth(), 320);
     QCOMPARE(deps.preferencesController.publishComposerHeight(), 168);
     QCOMPARE(deps.preferencesController.connectionPaneCollapsed(), false);
@@ -132,6 +154,8 @@ void SettingsOptionsViewModelTest::readsSettings()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
 
@@ -186,6 +210,8 @@ void SettingsOptionsViewModelTest::messageRetentionChangeDefersCleanup()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QSignalSpy messageSpy(&deps.eventHistoryService, &EventHistoryService::messageStreamChanged);
@@ -221,6 +247,8 @@ void SettingsOptionsViewModelTest::portableLogRetentionImportPrunesImmediately()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QSignalSpy messageSpy(
@@ -251,6 +279,8 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QSignalSpy reloadSpy(&deps.eventHistoryService, &EventHistoryService::totalMessageCountChanged);
@@ -313,6 +343,8 @@ void SettingsOptionsViewModelTest::themeChangesEmitSignals()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
 
@@ -333,6 +365,8 @@ void SettingsOptionsViewModelTest::themeColorPersistsAndEmitsSignal()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QSignalSpy colorSpy(&settings, &SettingsViewModel::themeColorChanged);
@@ -354,6 +388,8 @@ void SettingsOptionsViewModelTest::animationsSettingPersistsAndEmitsSignal()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QSignalSpy animationsSpy(&settings, &SettingsViewModel::animationsEnabledChanged);
@@ -368,6 +404,8 @@ void SettingsOptionsViewModelTest::animationsSettingPersistsAndEmitsSignal()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QCOMPARE(restoredSettings.animationsEnabled(), false);
@@ -380,6 +418,8 @@ void SettingsOptionsViewModelTest::fontSettingPersistsAndEmitsSignal()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     if (settings.availableFontFamilies().size() < 2) {
@@ -401,6 +441,8 @@ void SettingsOptionsViewModelTest::fontSettingPersistsAndEmitsSignal()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QCOMPARE(restoredSettings.effectiveFontFamily(), selectedFamily);
@@ -419,6 +461,8 @@ void SettingsOptionsViewModelTest::languageChangesEmitSignals()
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QSignalSpy modeSpy(&settings, &SettingsViewModel::languageModeChanged);
@@ -436,6 +480,8 @@ void SettingsOptionsViewModelTest::messagePayloadDisplayModePersistsAndEmitsSign
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QSignalSpy modeSpy(&settings, &SettingsViewModel::messagePayloadDisplayModeChanged);
@@ -450,9 +496,39 @@ void SettingsOptionsViewModelTest::messagePayloadDisplayModePersistsAndEmitsSign
         deps.preferencesController,
         deps.eventHistoryService,
         deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
         deps.sessionService.sessions(),
         deps.settings);
     QCOMPARE(restoredSettings.messagePayloadDisplayModeIndex(), 2);
+}
+
+void SettingsOptionsViewModelTest::opensStorageDirectories()
+{
+    SettingsFixture deps;
+    SettingsViewModel settings(
+        deps.preferencesController,
+        deps.eventHistoryService,
+        deps.historyStore,
+        deps.processorLibrary,
+        deps.draftLibraryService,
+        deps.sessionService.sessions(),
+        deps.settings);
+    DirectoryUrlReceiver receiver;
+    QDesktopServices::setUrlHandler(QStringLiteral("file"), &receiver, "handleUrl");
+
+    const bool scriptOpened = settings.openScriptStorageDirectory();
+    const bool draftOpened = settings.openDraftStorageDirectory();
+    const bool databaseOpened = settings.openDatabaseStorageDirectory();
+    QDesktopServices::unsetUrlHandler(QStringLiteral("file"));
+
+    QVERIFY(scriptOpened);
+    QVERIFY(draftOpened);
+    QVERIFY(databaseOpened);
+    QCOMPARE(receiver.urls.size(), 3);
+    QCOMPARE(receiver.urls.at(0).toLocalFile(), settings.scriptStorageDirectory());
+    QCOMPARE(receiver.urls.at(1).toLocalFile(), settings.draftStorageDirectory());
+    QCOMPARE(receiver.urls.at(2).toLocalFile(), settings.databaseStorageDirectory());
 }
 
 QTEST_MAIN(SettingsOptionsViewModelTest)

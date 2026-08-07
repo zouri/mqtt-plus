@@ -543,6 +543,57 @@ Rectangle {
 
                 SettingsSection {
                     ui: root.ui
+                    title: qsTr("Storage locations")
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    Layout.maximumWidth: 760
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Scripts")
+                        detail: root.viewModel.scriptStorageDirectory
+
+                        AppIconButton {
+                            ui: root.ui
+                            iconSource: root.ui.materialIcon("folder-open")
+                            accessibleName: qsTr("Open script storage folder")
+                            toolTipText: accessibleName
+                            onClicked: root.viewModel.openScriptStorageDirectory()
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Drafts")
+                        detail: root.viewModel.draftStorageDirectory
+
+                        AppIconButton {
+                            ui: root.ui
+                            iconSource: root.ui.materialIcon("folder-open")
+                            accessibleName: qsTr("Open draft storage folder")
+                            toolTipText: accessibleName
+                            onClicked: root.viewModel.openDraftStorageDirectory()
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Database")
+                        detail: root.viewModel.databaseStorageDirectory
+                        showDivider: false
+
+                        AppIconButton {
+                            ui: root.ui
+                            iconSource: root.ui.materialIcon("folder-open")
+                            accessibleName: qsTr("Open database storage folder")
+                            toolTipText: accessibleName
+                            onClicked: root.viewModel.openDatabaseStorageDirectory()
+                        }
+                    }
+                }
+
+                SettingsSection {
+                    ui: root.ui
                     title: qsTr("Data transfer")
                     Layout.leftMargin: 14
                     Layout.rightMargin: 14

@@ -57,6 +57,10 @@ bool DraftLibraryService::ready() const { return m_ready; }
 bool DraftLibraryService::readOnly() const { return m_readOnly; }
 bool DraftLibraryService::canRecover() const { return m_canRecover; }
 QString DraftLibraryService::errorMessage() const { return m_errorMessage; }
+QString DraftLibraryService::storageDirectory() const
+{
+    return DraftStore::storageDirectory(m_storageRoot);
+}
 
 void DraftLibraryService::load()
 {
