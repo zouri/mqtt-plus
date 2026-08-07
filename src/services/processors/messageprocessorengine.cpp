@@ -740,8 +740,11 @@ ProcessorExecutionResult MessageProcessorEngine::execute(
                     kResultLimitExceeded,
                     QStringLiteral("Processor result exceeds the configured byte limit.")));
             } else {
+                const QString preview = result.value.isString()
+                    ? result.value.toString()
+                    : result.value.toDiagnosticNotation(QCborValue::Compact);
                 result.preview = truncateCharacters(
-                    result.value.toDiagnosticNotation(QCborValue::Compact),
+                    preview,
                     limits.maxPreviewCharacters);
             }
         }
