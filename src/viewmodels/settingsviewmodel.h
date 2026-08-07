@@ -10,8 +10,10 @@
 #include <QVector>
 
 class EventHistoryService;
+class DraftLibraryService;
 class HistoryStore;
 class PreferencesController;
+class ProcessorLibrary;
 
 class SettingsViewModel : public QObject
 {
@@ -31,12 +33,17 @@ class SettingsViewModel : public QObject
     Q_PROPERTY(int maxIncomingPayloadBytesIndex READ maxIncomingPayloadBytesIndex NOTIFY maxIncomingPayloadBytesChanged)
     Q_PROPERTY(int clearMessagesOnExitIndex READ clearMessagesOnExitIndex NOTIFY clearMessagesOnExitChanged)
     Q_PROPERTY(int clearLogsOnExitIndex READ clearLogsOnExitIndex NOTIFY clearLogsOnExitChanged)
+    Q_PROPERTY(QString scriptStorageDirectory READ scriptStorageDirectory CONSTANT)
+    Q_PROPERTY(QString draftStorageDirectory READ draftStorageDirectory CONSTANT)
+    Q_PROPERTY(QString databaseStorageDirectory READ databaseStorageDirectory CONSTANT)
 
 public:
     explicit SettingsViewModel(
         PreferencesController &preferencesController,
         EventHistoryService &eventController,
         HistoryStore &historyStore,
+        ProcessorLibrary &processorLibrary,
+        DraftLibraryService &draftLibraryService,
         QVector<SessionState> &sessions,
         QSettings &settings,
         QObject *parent = nullptr);
@@ -64,6 +71,9 @@ public:
     int maxIncomingPayloadBytesIndex() const;
     int clearMessagesOnExitIndex() const;
     int clearLogsOnExitIndex() const;
+    QString scriptStorageDirectory() const;
+    QString draftStorageDirectory() const;
+    QString databaseStorageDirectory() const;
 
     Q_INVOKABLE void setThemeModeIndex(int index);
     Q_INVOKABLE void setThemeColor(const QString &color);
@@ -77,6 +87,9 @@ public:
     Q_INVOKABLE void setMaxIncomingPayloadBytesIndex(int index);
     Q_INVOKABLE void setClearMessagesOnExitIndex(int index);
     Q_INVOKABLE void setClearLogsOnExitIndex(int index);
+    Q_INVOKABLE bool openScriptStorageDirectory() const;
+    Q_INVOKABLE bool openDraftStorageDirectory() const;
+    Q_INVOKABLE bool openDatabaseStorageDirectory() const;
 
 public slots:
     void reloadPortableSettings(bool logRetentionLimitChanged);
@@ -106,12 +119,16 @@ private:
     void refreshSystemColorScheme();
     QString resolvedLanguage() const;
     void applyCurrentLanguage();
+    bool openDirectory(const QString &path) const;
 
     QSettings &m_settings;
     PreferencesController &m_preferencesController;
     EventHistoryService &m_eventController;
     HistoryStore &m_historyStore;
     QVector<SessionState> &m_sessions;
+    QString m_scriptStorageDirectory;
+    QString m_draftStorageDirectory;
+    QString m_databaseStorageDirectory;
 
     QString m_themeMode = QStringLiteral("system");
     QString m_themeColor = QStringLiteral("mint");
