@@ -32,6 +32,12 @@ Control {
     readonly property int lineNumberGutterWidth: control.showLineNumbers
                                                ? Math.max(42, 24 + String(control.lineCount).length * 8)
                                                : 0
+    readonly property real lineNumberLineHeight: control.showLineNumbers
+                                                 && control.lineCount > 0
+                                                 ? Math.max(1,
+                                                            textArea.contentHeight
+                                                            / control.lineCount)
+                                                 : lineNumberFontMetrics.lineSpacing
 
     signal submitRequested
     clip: true
@@ -191,7 +197,7 @@ Control {
                             required property int index
 
                             width: ListView.view.width
-                            height: lineNumberFontMetrics.lineSpacing
+                            height: control.lineNumberLineHeight
                             horizontalAlignment: Text.AlignRight
                             verticalAlignment: Text.AlignTop
                             text: lineNumberDelegate.index + 1
