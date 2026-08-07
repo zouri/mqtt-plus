@@ -15,6 +15,7 @@ Control {
     property alias placeholderTextColor: textArea.placeholderTextColor
     property alias selectByMouse: textArea.selectByMouse
     property alias wrapMode: textArea.wrapMode
+    property string syntaxLanguage: ""
     property bool showLineNumbers: false
     property bool submitOnCtrlEnter: false
     property int backgroundRadius: 8
@@ -72,6 +73,12 @@ Control {
 
         font.family: control.font.family
         font.pixelSize: control.font.pixelSize
+    }
+
+    CodeSyntaxHighlighter {
+        textDocument: textArea.textDocument
+        language: control.syntaxLanguage
+        darkTheme: control.ui.isDarkTheme
     }
 
     background: Rectangle {

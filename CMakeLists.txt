@@ -118,6 +118,7 @@ qt_add_resources(mqtt_plus_app app_icons
 target_include_directories(mqtt_plus_app
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/presentation"
 )
 
 target_compile_definitions(mqtt_plus_app
@@ -434,6 +435,11 @@ if(BUILD_TESTING)
     add_mqtt_plus_qt_test(test_processorsviewmodel
         tests/test_processorsviewmodel.cpp
         ${MQTT_PLUS_APP_LIBRARY_SOURCES}
+    )
+
+    add_mqtt_plus_qt_test(test_codesyntaxhighlighter
+        tests/test_codesyntaxhighlighter.cpp
+        src/presentation/codesyntaxhighlighter.cpp
     )
 
     add_mqtt_plus_qt_test(test_settingsviewmodel
