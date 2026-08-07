@@ -195,6 +195,7 @@ private slots:
     void containsPreparationAndExecutionFailures();
     void enforcesNormalizedResultLimits();
     void boundsDiagnosticsAndPreview();
+    void preservesStringPreviewText();
     void passesCommonRuntimeConformanceHarness();
 };
 
@@ -537,6 +538,24 @@ void MessageProcessorEngineTest::boundsDiagnosticsAndPreview()
     result = engine.execute(sourceRevision, context, previewLimits);
     QVERIFY(result.succeeded());
     QCOMPARE(result.preview.size(), previewLimits.maxPreviewCharacters);
+}
+
+void MessageProcessorEngineTest::preservesStringPreviewText()
+{
+    const auto adapter = QSharedPointer<FakeRuntimeAdapter>::create(
+        descriptor(QStringLiteral("qt-qjs"), QStringLiteral("javascript")));
+    MessageProcessorEngine engine({adapter});
+    const QString displayText = QStringLiteral("消息类型: 操作台控制量\n消息ID: 8");
+    adapter->resultFactory = [&displayText](const MessageProcessorContext &) {
+        return successfulResult(displayText);
+    };
+
+    const ProcessorExecutionResult result = engine.execute(
+        revision(),
+        ProcessorRuntimeConformance::context());
+
+    QVERIFY(result.succeeded());
+    QCOMPARE(result.preview, displayText);
 }
 
 void MessageProcessorEngineTest::passesCommonRuntimeConformanceHarness()
