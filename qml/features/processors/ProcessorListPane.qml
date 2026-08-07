@@ -81,6 +81,7 @@ Rectangle {
                     required property string languageName
                     required property string readinessState
                     required property string updatedAt
+                    readonly property bool selected: processorDelegate.id === root.currentProcessorId
 
                     width: ListView.view.width
                     implicitHeight: 68
@@ -88,29 +89,11 @@ Rectangle {
                     Accessible.name: qsTr("Message Processor %1").arg(processorDelegate.name)
                     activeFocusOnTab: true
 
-                    Rectangle {
+                    AppSelectableCard {
                         anchors.fill: parent
-                        radius: 8
-                        color: processorMouse.containsMouse
-                               ? root.ui.rowHover
-                               : root.ui.themePalette.itemBg
-                        border.color: processorDelegate.id === root.currentProcessorId
-                                      ? root.ui.textStrong
-                                      : (processorMouse.containsMouse
-                                         ? root.ui.themePalette.fieldBorder
-                                         : root.ui.themePalette.itemBorder)
-                        border.width: 1
-
-                        Rectangle {
-                            visible: processorDelegate.id === root.currentProcessorId
-                            anchors.left: parent.left
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            width: 3
-                            radius: 2
-                            color: root.ui.textStrong
-                            Accessible.ignored: true
-                        }
+                        ui: root.ui
+                        selected: processorDelegate.selected
+                        hovered: processorMouse.containsMouse
 
                         ColumnLayout {
                             anchors.fill: parent
