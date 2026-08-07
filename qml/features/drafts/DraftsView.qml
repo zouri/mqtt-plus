@@ -349,6 +349,7 @@ Item {
                         Layout.minimumHeight: 260
                         enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                         text: root.editor.payload
+                        showLineNumbers: true
                         wrapMode: TextEdit.Wrap
                         placeholderText: qsTr("Empty payload is valid")
                         onTextChanged: {
