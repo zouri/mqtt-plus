@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.29)
 
 project(mqtt-plus VERSION 0.1.0 LANGUAGES C CXX)
 
@@ -16,13 +16,84 @@ set(MQTT_PLUS_LUA_URL "https://www.lua.org/ftp/lua-${MQTT_PLUS_LUA_VERSION}.tar.
 set(MQTT_PLUS_LUA_SHA256 "57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d")
 
 include(FetchContent)
+set(
+    MQTT_PLUS_FETCHCONTENT_BASE_DIR
+    "${CMAKE_SOURCE_DIR}/build/fetchcontent"
+    CACHE PATH
+    "Shared source and download cache for FetchContent dependencies"
+)
+set(FETCHCONTENT_BASE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}")
+
+function(mqtt_plus_reuse_cached_dependency dependency marker)
+    string(TOUPPER "${dependency}" dependency_upper)
+    set(source_override "FETCHCONTENT_SOURCE_DIR_${dependency_upper}")
+    set(source_dir "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/${dependency}-src")
+    if(NOT DEFINED "${source_override}" AND EXISTS "${source_dir}/${marker}")
+        set("${source_override}" "${source_dir}" PARENT_SCOPE)
+    endif()
+endfunction()
+
+set(MQTT_PLUS_BUILD_TESTING "${BUILD_TESTING}")
+set(MQTT_PLUS_BUILD_DOC "${BUILD_DOC}")
+set(MQTT_PLUS_BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS}")
+set(BUILD_TESTING OFF)
+set(BUILD_DOC OFF)
+mqtt_plus_reuse_cached_dependency(lua "src/lua.c")
 FetchContent_Declare(
     lua
     URL "${MQTT_PLUS_LUA_URL}"
     URL_HASH SHA256=${MQTT_PLUS_LUA_SHA256}
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/lua-src"
+    BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/lua-build"
 )
 FetchContent_MakeAvailable(lua)
+
+mqtt_plus_reuse_cached_dependency(extra_cmake_modules "CMakeLists.txt")
+FetchContent_Declare(
+    extra_cmake_modules
+    URL "https://github.com/KDE/extra-cmake-modules/archive/refs/tags/v6.28.0.tar.gz"
+    URL_HASH "SHA256=279e172cfc909b2c22dbe7780a6b9af610c4c6b4067e8c30cfe390df65cbb3de"
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/extra_cmake_modules-src"
+    BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/extra_cmake_modules-build"
+    EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(extra_cmake_modules)
+set(MQTT_PLUS_ECM_CONFIG_DIR "${CMAKE_CURRENT_BINARY_DIR}/mqtt-plus-ecm")
+file(MAKE_DIRECTORY "${MQTT_PLUS_ECM_CONFIG_DIR}")
+file(WRITE "${MQTT_PLUS_ECM_CONFIG_DIR}/ECMConfig.cmake"
+    "set(ECM_FIND_MODULE_DIR \"${extra_cmake_modules_SOURCE_DIR}/find-modules\")\n"
+    "set(ECM_MODULE_DIR \"${extra_cmake_modules_SOURCE_DIR}/modules\")\n"
+    "set(ECM_KDE_MODULE_DIR \"${extra_cmake_modules_SOURCE_DIR}/kde-modules\")\n"
+    "set(ECM_MODULE_PATH \"\${ECM_MODULE_DIR}\" \"\${ECM_FIND_MODULE_DIR}\" \"\${ECM_KDE_MODULE_DIR}\")\n"
+    "include(\"\${ECM_MODULE_DIR}/ECMUseFindModules.cmake\")\n"
+)
+configure_file(
+    "${extra_cmake_modules_BINARY_DIR}/ECMConfigVersion.cmake"
+    "${MQTT_PLUS_ECM_CONFIG_DIR}/ECMConfigVersion.cmake"
+    COPYONLY
+)
+set(ECM_DIR "${MQTT_PLUS_ECM_CONFIG_DIR}" CACHE PATH "" FORCE)
+
+set(KSYNTAXHIGHLIGHTING_USE_GUI ON CACHE BOOL "" FORCE)
+set(QRC_SYNTAX ON CACHE BOOL "" FORCE)
+set(NO_STANDARD_PATHS ON CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF)
+mqtt_plus_reuse_cached_dependency(ksyntaxhighlighting "CMakeLists.txt")
+FetchContent_Declare(
+    ksyntaxhighlighting
+    URL "https://github.com/KDE/syntax-highlighting/archive/refs/tags/v6.28.1.tar.gz"
+    URL_HASH "SHA256=a40ce6c08c93dd1673eb7330c9792c9fe326f43e021e11b95474c496692c8ad3"
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    SOURCE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/ksyntaxhighlighting-src"
+    BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/ksyntaxhighlighting-build"
+    EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(ksyntaxhighlighting)
+set(BUILD_TESTING "${MQTT_PLUS_BUILD_TESTING}")
+set(BUILD_DOC "${MQTT_PLUS_BUILD_DOC}")
+set(BUILD_SHARED_LIBS "${MQTT_PLUS_BUILD_SHARED_LIBS}")
 
 file(
     GLOB MQTT_PLUS_LUA_SOURCES
@@ -138,6 +209,7 @@ target_link_libraries(mqtt_plus_app
         Qt6::QuickControls2
         Qt6::Sql
         Qt6::Svg
+        KF6SyntaxHighlighting
         MqttPlus::Lua
 )
 
@@ -209,6 +281,7 @@ if(BUILD_TESTING)
                 Qt6::Sql
                 Qt6::Svg
                 Qt6::Test
+                KF6SyntaxHighlighting
                 MqttPlus::Lua
         )
         add_test(NAME ${target} COMMAND ${target})

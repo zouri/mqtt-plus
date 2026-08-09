@@ -210,7 +210,7 @@ bool EventStreamModel::updateRowByHistoryId(qint64 historyId, const QVariantMap 
     }
 
     const EventStreamRow updated = rowFromMap(row);
-    for (int index = 0; index < m_rows.size(); ++index) {
+    for (int index = m_rows.size() - 1; index >= 0; --index) {
         if (m_rows.at(index).historyId != historyId) {
             continue;
         }
