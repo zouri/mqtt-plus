@@ -12,6 +12,7 @@ docs/*
 !docs/adr/*.md
 
 CMakeUserPresets.json
+aqtinstall.log
 compile_commands.json
 
 
