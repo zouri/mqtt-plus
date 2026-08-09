@@ -6,7 +6,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core Gui Network Qml Quick QuickControls2 Sql Mqtt Svg Test LinguistTools)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core CorePrivate Gui Network Qml Quick QuickControls2 Sql Svg Test LinguistTools)
+
+option(
+    MQTT_PLUS_FORCE_BUNDLED_QTMQTT
+    "Build the pinned Qt MQTT source even when an installed package is available"
+    OFF
+)
+if(NOT MQTT_PLUS_FORCE_BUNDLED_QTMQTT)
+    find_package(Qt6 6.11 QUIET COMPONENTS Mqtt)
+endif()
 
 include(GNUInstallDirs)
 include(CTest)
@@ -142,6 +151,99 @@ elseif(UNIX)
 endif()
 
 qt_standard_project_setup(REQUIRES 6.11)
+
+if(NOT TARGET Qt6::Mqtt)
+    mqtt_plus_reuse_cached_dependency(qtmqtt "src/mqtt/qmqttclient.cpp")
+    FetchContent_Declare(
+        qtmqtt
+        URL "https://github.com/qt/qtmqtt/archive/refs/tags/v6.11.1.tar.gz"
+        URL_HASH "SHA256=704c74568156f0fe16fa13dbae21bc3ea62629d37b97162bac70c4195a123df2"
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        SOURCE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/qtmqtt-src"
+        SOURCE_SUBDIR mqtt-plus-unused
+    )
+    FetchContent_MakeAvailable(qtmqtt)
+
+    set(MQTT_PLUS_QTMQTT_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/qtmqtt-include")
+    file(MAKE_DIRECTORY "${MQTT_PLUS_QTMQTT_INCLUDE_DIR}/QtMqtt")
+    set(MQTT_PLUS_QTMQTT_PUBLIC_HEADERS
+        qmqttauthenticationproperties.h
+        qmqttclient.h
+        qmqttconnectionproperties.h
+        qmqttglobal.h
+        qmqttmessage.h
+        qmqttpublishproperties.h
+        qmqttsubscription.h
+        qmqttsubscriptionproperties.h
+        qmqtttopicfilter.h
+        qmqtttopicname.h
+        qmqtttype.h
+    )
+    foreach(header IN LISTS MQTT_PLUS_QTMQTT_PUBLIC_HEADERS)
+        configure_file(
+            "${qtmqtt_SOURCE_DIR}/src/mqtt/${header}"
+            "${MQTT_PLUS_QTMQTT_INCLUDE_DIR}/QtMqtt/${header}"
+            COPYONLY
+        )
+    endforeach()
+    file(WRITE "${MQTT_PLUS_QTMQTT_INCLUDE_DIR}/QtMqtt/qtmqttexports.h" [[
+#ifndef QTMQTTEXPORTS_H
+#define QTMQTTEXPORTS_H
+#define Q_MQTT_EXPORT
+#endif
+]])
+
+    set(MQTT_PLUS_QTMQTT_FORWARD_HEADERS
+        QMqttAuthenticationProperties:qmqttauthenticationproperties.h
+        QMqttClient:qmqttclient.h
+        QMqttConnectionProperties:qmqttconnectionproperties.h
+        QMqttMessage:qmqttmessage.h
+        QMqttPublishProperties:qmqttpublishproperties.h
+        QMqttSubscription:qmqttsubscription.h
+        QMqttSubscriptionProperties:qmqttsubscriptionproperties.h
+        QMqttTopicFilter:qmqtttopicfilter.h
+        QMqttTopicName:qmqtttopicname.h
+        QMqttType:qmqtttype.h
+    )
+    foreach(header_pair IN LISTS MQTT_PLUS_QTMQTT_FORWARD_HEADERS)
+        string(REPLACE ":" ";" header_pair "${header_pair}")
+        list(GET header_pair 0 forwarding_header)
+        list(GET header_pair 1 source_header)
+        file(WRITE
+            "${MQTT_PLUS_QTMQTT_INCLUDE_DIR}/QtMqtt/${forwarding_header}"
+            "#include \"${source_header}\"\n"
+        )
+    endforeach()
+
+    set(MQTT_PLUS_QTMQTT_SOURCE_DIR "${qtmqtt_SOURCE_DIR}/src/mqtt")
+    add_library(mqtt_plus_qtmqtt STATIC
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttauthenticationproperties.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttclient.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttconnection.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttconnectionproperties.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttcontrolpacket.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttmessage.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttpublishproperties.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttsubscription.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqttsubscriptionproperties.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqtttopicfilter.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqtttopicname.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqtttype.cpp"
+    )
+    add_library(Qt6::Mqtt ALIAS mqtt_plus_qtmqtt)
+    target_include_directories(mqtt_plus_qtmqtt
+        PUBLIC
+            "${MQTT_PLUS_QTMQTT_INCLUDE_DIR}/QtMqtt"
+            "${MQTT_PLUS_QTMQTT_INCLUDE_DIR}"
+        PRIVATE
+            "${MQTT_PLUS_QTMQTT_SOURCE_DIR}"
+    )
+    target_link_libraries(mqtt_plus_qtmqtt
+        PUBLIC Qt6::Core Qt6::Network
+        PRIVATE Qt6::CorePrivate
+    )
+    set_target_properties(mqtt_plus_qtmqtt PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
 
 file(
     GLOB_RECURSE MQTT_PLUS_APP_SOURCES
