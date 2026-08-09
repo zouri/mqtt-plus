@@ -114,6 +114,12 @@ FetchContent_Declare(
     EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(ksyntaxhighlighting)
+if(MSVC)
+    get_target_property(MQTT_PLUS_KSYNTAX_SOURCES KF6SyntaxHighlighting SOURCES)
+    list(REMOVE_ITEM MQTT_PLUS_KSYNTAX_SOURCES "$<TARGET_OBJECTS:SyntaxHighlightingData>")
+    set_property(TARGET KF6SyntaxHighlighting PROPERTY SOURCES ${MQTT_PLUS_KSYNTAX_SOURCES})
+    target_link_libraries(KF6SyntaxHighlighting PRIVATE SyntaxHighlightingData)
+endif()
 set(BUILD_TESTING "${MQTT_PLUS_BUILD_TESTING}")
 set(BUILD_DOC "${MQTT_PLUS_BUILD_DOC}")
 if(MQTT_PLUS_BUILD_SHARED_LIBS_WAS_DEFINED)
