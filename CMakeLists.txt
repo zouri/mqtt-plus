@@ -29,7 +29,9 @@ set(
     CACHE PATH
     "Shared source and download cache for FetchContent dependencies"
 )
-set(FETCHCONTENT_BASE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}")
+# Keep generator-specific sub-build state inside the active build tree. Only the
+# downloaded/extracted sources are shared between local build directories.
+set(FETCHCONTENT_BASE_DIR "${CMAKE_BINARY_DIR}/_deps")
 
 function(mqtt_plus_reuse_cached_dependency dependency marker)
     string(TOUPPER "${dependency}" dependency_upper)
@@ -42,7 +44,12 @@ endfunction()
 
 set(MQTT_PLUS_BUILD_TESTING "${BUILD_TESTING}")
 set(MQTT_PLUS_BUILD_DOC "${BUILD_DOC}")
-set(MQTT_PLUS_BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS}")
+if(DEFINED BUILD_SHARED_LIBS)
+    set(MQTT_PLUS_BUILD_SHARED_LIBS_WAS_DEFINED TRUE)
+    set(MQTT_PLUS_BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS}")
+else()
+    set(MQTT_PLUS_BUILD_SHARED_LIBS_WAS_DEFINED FALSE)
+endif()
 set(BUILD_TESTING OFF)
 set(BUILD_DOC OFF)
 mqtt_plus_reuse_cached_dependency(lua "src/lua.c")
@@ -59,8 +66,8 @@ FetchContent_MakeAvailable(lua)
 mqtt_plus_reuse_cached_dependency(extra_cmake_modules "CMakeLists.txt")
 FetchContent_Declare(
     extra_cmake_modules
-    URL "https://github.com/KDE/extra-cmake-modules/archive/refs/tags/v6.28.0.tar.gz"
-    URL_HASH "SHA256=279e172cfc909b2c22dbe7780a6b9af610c4c6b4067e8c30cfe390df65cbb3de"
+    URL "https://download.kde.org/stable/frameworks/6.28/extra-cmake-modules-6.28.0.tar.xz"
+    URL_HASH "SHA256=a32e24b267e8528d0253bc8df18bdc00e676560a43b796533e1b1406f4eef4db"
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     SOURCE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/extra_cmake_modules-src"
     BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/extra_cmake_modules-build"
@@ -86,12 +93,12 @@ set(ECM_DIR "${MQTT_PLUS_ECM_CONFIG_DIR}" CACHE PATH "" FORCE)
 set(KSYNTAXHIGHLIGHTING_USE_GUI ON CACHE BOOL "" FORCE)
 set(QRC_SYNTAX ON CACHE BOOL "" FORCE)
 set(NO_STANDARD_PATHS ON CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS OFF)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 mqtt_plus_reuse_cached_dependency(ksyntaxhighlighting "CMakeLists.txt")
 FetchContent_Declare(
     ksyntaxhighlighting
-    URL "https://github.com/KDE/syntax-highlighting/archive/refs/tags/v6.28.1.tar.gz"
-    URL_HASH "SHA256=a40ce6c08c93dd1673eb7330c9792c9fe326f43e021e11b95474c496692c8ad3"
+    URL "https://download.kde.org/stable/frameworks/6.28/syntax-highlighting-6.28.1.tar.xz"
+    URL_HASH "SHA256=fe0d4133af62c6b9c0cf7728928c64d2deb55fe808a264a5de871f4b6bc86f65"
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     SOURCE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/ksyntaxhighlighting-src"
     BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/ksyntaxhighlighting-build"
@@ -100,7 +107,11 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(ksyntaxhighlighting)
 set(BUILD_TESTING "${MQTT_PLUS_BUILD_TESTING}")
 set(BUILD_DOC "${MQTT_PLUS_BUILD_DOC}")
-set(BUILD_SHARED_LIBS "${MQTT_PLUS_BUILD_SHARED_LIBS}")
+if(MQTT_PLUS_BUILD_SHARED_LIBS_WAS_DEFINED)
+    set(BUILD_SHARED_LIBS "${MQTT_PLUS_BUILD_SHARED_LIBS}" CACHE BOOL "Build shared libraries" FORCE)
+else()
+    unset(BUILD_SHARED_LIBS CACHE)
+endif()
 
 file(
     GLOB MQTT_PLUS_LUA_SOURCES
@@ -242,26 +253,48 @@ install(TARGETS mqtt_plus_app
 qt_generate_deploy_qml_app_script(
     TARGET mqtt_plus_app
     INCLUDE_PLUGINS qsqlite
-    EXCLUDE_PLUGINS qsqlodbc qsqlpsql
+    EXCLUDE_PLUGINS qsqlmimer qsqlodbc qsqlpsql
     ${MQTT_PLUS_QT_DEPLOY_OPTIONS}
     OUTPUT_SCRIPT mqtt_plus_qt_deploy_script
 )
 install(SCRIPT ${mqtt_plus_qt_deploy_script})
 
+if(APPLE)
+    install(CODE [[
+        set(app_bundle "${CMAKE_INSTALL_PREFIX}/mqtt_plus_app.app")
+        file(REMOVE
+            "${app_bundle}/Contents/PlugIns/sqldrivers/libqsqlmimer.dylib"
+        )
+        execute_process(
+            COMMAND /usr/bin/codesign --force --deep --sign - "${app_bundle}"
+            RESULT_VARIABLE codesign_result
+        )
+        if(NOT codesign_result EQUAL 0)
+            message(FATAL_ERROR "Failed to refresh the macOS package signature")
+        endif()
+    ]])
+endif()
+
 set(CPACK_PACKAGE_NAME "mqtt-plus")
 set(CPACK_PACKAGE_VENDOR "mqtt-plus")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Qt/QML desktop MQTT client")
+set(
+    MQTT_PLUS_PACKAGE_ARCHITECTURE
+    "${CMAKE_SYSTEM_PROCESSOR}"
+    CACHE STRING
+    "Architecture label used in package file names"
+)
 
 if(WIN32)
     set(CPACK_GENERATOR "ZIP")
     set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-windows-x64")
 elseif(APPLE)
     set(CPACK_GENERATOR "DragNDrop")
-    set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-macos-${CMAKE_SYSTEM_PROCESSOR}")
+    set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-macos-${MQTT_PLUS_PACKAGE_ARCHITECTURE}")
 elseif(UNIX)
     set(CPACK_GENERATOR "TGZ")
-    set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-linux-${CMAKE_SYSTEM_PROCESSOR}")
+    set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-linux-${MQTT_PLUS_PACKAGE_ARCHITECTURE}")
 endif()
 
 if(BUILD_TESTING)
