@@ -89,7 +89,10 @@ try {
 
     cmake --build $buildDir --config Release --parallel $ParallelJobs @buildToolArguments
     Assert-NativeSuccess "Release build"
-    cmake --build $buildDir --config Release --target all_qmllint --parallel $ParallelJobs @buildToolArguments
+    # Qt's aggregate all_qmllint target passes multiple projects to a nested
+    # MSBuild invocation, which Visual Studio interprets as invalid switches.
+    # Lint the application module here; the Linux test job covers the aggregate.
+    cmake --build $buildDir --config Release --target mqtt_plus_app_qmllint --parallel $ParallelJobs @buildToolArguments
     Assert-NativeSuccess "QML lint"
 
     New-Item -ItemType Directory -Force -Path $distDir | Out-Null
