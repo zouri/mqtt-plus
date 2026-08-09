@@ -118,9 +118,11 @@ if(MSVC)
     get_target_property(MQTT_PLUS_KSYNTAX_SOURCES KF6SyntaxHighlighting SOURCES)
     list(REMOVE_ITEM MQTT_PLUS_KSYNTAX_SOURCES "$<TARGET_OBJECTS:SyntaxHighlightingData>")
     set_property(TARGET KF6SyntaxHighlighting PROPERTY SOURCES ${MQTT_PLUS_KSYNTAX_SOURCES})
+    add_dependencies(KF6SyntaxHighlighting SyntaxHighlightingData)
     target_link_libraries(
         KF6SyntaxHighlighting
-        PRIVATE "$<BUILD_INTERFACE:SyntaxHighlightingData>"
+        PRIVATE
+            "$<BUILD_INTERFACE:${ksyntaxhighlighting_BINARY_DIR}/data/SyntaxHighlightingData.dir/$<CONFIG>/SyntaxHighlightingData.lib>"
     )
 endif()
 set(BUILD_TESTING "${MQTT_PLUS_BUILD_TESTING}")
