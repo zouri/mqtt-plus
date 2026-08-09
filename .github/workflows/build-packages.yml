@@ -131,6 +131,7 @@ jobs:
         shell: bash
         run: >-
           gh release create "$GITHUB_REF_NAME" dist/*
+          --repo "$GITHUB_REPOSITORY"
           --verify-tag
           --title "MQTT Plus ${GITHUB_REF_NAME#v}"
           --generate-notes
