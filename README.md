@@ -157,6 +157,13 @@ cd /path/to/mqtts
 ./scripts/package-macos.sh /path/to/Qt/6.11.x/macos
 ```
 
+第二个参数用于指定目标架构：Apple Silicon 使用 `arm64`，Intel 使用 `x86_64`：
+
+```bash
+./scripts/package-macos.sh /path/to/Qt/6.11.x/macos arm64
+./scripts/package-macos.sh /path/to/Qt/6.11.x/macos x86_64
+```
+
 也可以通过环境变量指定 Qt 路径：
 
 ```bash
@@ -197,9 +204,12 @@ cd C:\path\to\mqtts
 
 - Windows x64 ZIP
 - Linux x64 tar.gz
-- macOS x64 DMG
+- macOS Intel x64 DMG
+- macOS Apple Silicon arm64 DMG
 
-工作流使用 Qt 6.11.1，并安装额外的 `qtmqtt` 模块。Linux 测试任务会先执行 Debug 构建、QML lint 和全部 Qt Test；验证通过后，Windows、Linux 和 macOS 才会并行生成并上传构建产物。产物在对应的 GitHub Actions run 中保留 14 天。
+工作流使用 Qt 6.11.1；Qt MQTT 已包含在该版本的桌面安装包中，不再作为独立模块请求。Linux 测试任务会先执行 Debug 构建、QML lint 和全部 Qt Test；验证通过后，Windows、Linux 和两个 macOS 架构才会并行生成并上传构建产物。产物在对应的 GitHub Actions run 中保留 14 天。
+
+推送 `v0.1.0` 这类版本标签时，工作流会在全部构建通过后自动创建同名 GitHub Release，并附加四个平台包。
 
 ## Lua 接收脚本
 
