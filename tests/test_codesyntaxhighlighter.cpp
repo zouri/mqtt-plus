@@ -32,6 +32,19 @@ QColor colorAt(const QTextDocument &document, int position)
     return formatAt(document, position).foreground().color();
 }
 
+class CountingCodeSyntaxHighlighter : public CodeSyntaxHighlighter
+{
+public:
+    int highlightedBlockCount = 0;
+
+protected:
+    void highlightBlock(const QString &text) override
+    {
+        ++highlightedBlockCount;
+        CodeSyntaxHighlighter::highlightBlock(text);
+    }
+};
+
 } // namespace
 
 class CodeSyntaxHighlighterTest : public QObject
@@ -41,11 +54,14 @@ class CodeSyntaxHighlighterTest : public QObject
 private slots:
     void highlightsLanguageSyntax_data();
     void highlightsLanguageSyntax();
+    void highlightsExtendedSyntax_data();
+    void highlightsExtendedSyntax();
     void carriesMultilineCommentsAcrossBlocks_data();
     void carriesMultilineCommentsAcrossBlocks();
     void updatesColorsForDarkTheme();
-    void parsesLargeDocumentWithinBudget_data();
-    void parsesLargeDocumentWithinBudget();
+    void startsLargeDocumentHighlightingWithinBudget_data();
+    void startsLargeDocumentHighlightingWithinBudget();
+    void rehighlightsOnlyChangedViewportBlocks();
     void focusesLargeHighlightedEditorPromptly();
 };
 
@@ -89,6 +105,11 @@ void CodeSyntaxHighlighterTest::highlightsLanguageSyntax()
     highlighter.setLanguage(language);
     highlighter.rehighlight();
 
+    QTRY_VERIFY_WITH_TIMEOUT(
+        colorAt(document, source.indexOf(keyword))
+            != colorAt(document, source.indexOf(stringToken)),
+        2000);
+
     const QColor keywordColor = colorAt(document, source.indexOf(keyword));
     const QColor stringColor = colorAt(document, source.indexOf(stringToken));
     const QColor numberColor = colorAt(document, source.indexOf(numberToken));
@@ -103,7 +124,48 @@ void CodeSyntaxHighlighterTest::highlightsLanguageSyntax()
     QVERIFY(keywordColor != stringColor);
     QVERIFY(stringColor != numberColor);
     QVERIFY(commentColor != functionColor);
-    QVERIFY(formatAt(document, source.indexOf(commentToken)).fontItalic());
+}
+
+void CodeSyntaxHighlighterTest::highlightsExtendedSyntax_data()
+{
+    QTest::addColumn<QString>("language");
+    QTest::addColumn<QString>("source");
+    QTest::addColumn<QString>("syntaxToken");
+    QTest::addColumn<QString>("keyword");
+
+    QTest::newRow("javascript-regexp")
+        << QStringLiteral("javascript")
+        << QStringLiteral("const pattern = /ab+c/gi;")
+        << QStringLiteral("/ab+c/gi")
+        << QStringLiteral("const");
+    QTest::newRow("lua-long-string")
+        << QStringLiteral("lua")
+        << QStringLiteral("local value = [=[first\nsecond]=]")
+        << QStringLiteral("second")
+        << QStringLiteral("local");
+}
+
+void CodeSyntaxHighlighterTest::highlightsExtendedSyntax()
+{
+    QFETCH(QString, language);
+    QFETCH(QString, source);
+    QFETCH(QString, syntaxToken);
+    QFETCH(QString, keyword);
+
+    QTextDocument document(source);
+    CodeSyntaxHighlighter highlighter;
+    highlighter.setDocument(&document);
+    highlighter.setLanguage(language);
+    highlighter.rehighlight();
+
+    QTRY_VERIFY_WITH_TIMEOUT(
+        colorAt(document, source.indexOf(syntaxToken))
+            != colorAt(document, source.indexOf(keyword)),
+        2000);
+    const QColor syntaxColor = colorAt(document, source.indexOf(syntaxToken));
+    const QColor keywordColor = colorAt(document, source.indexOf(keyword));
+    QVERIFY(keywordColor.isValid());
+    QVERIFY(syntaxColor != keywordColor);
 }
 
 void CodeSyntaxHighlighterTest::carriesMultilineCommentsAcrossBlocks_data()
@@ -138,10 +200,14 @@ void CodeSyntaxHighlighterTest::carriesMultilineCommentsAcrossBlocks()
     highlighter.setLanguage(language);
     highlighter.rehighlight();
 
+    QTRY_VERIFY_WITH_TIMEOUT(
+        colorAt(document, source.indexOf(commentToken))
+            != colorAt(document, source.indexOf(keyword)),
+        2000);
+
     const QTextCharFormat commentFormat = formatAt(document, source.indexOf(commentToken));
     const QTextCharFormat keywordFormat = formatAt(document, source.indexOf(keyword));
-    QVERIFY(commentFormat.fontItalic());
-    QVERIFY(keywordFormat.fontWeight() >= QFont::DemiBold);
+    QVERIFY(keywordFormat.foreground().color().isValid());
     QVERIFY(commentFormat.foreground().color() != keywordFormat.foreground().color());
 }
 
@@ -153,10 +219,15 @@ void CodeSyntaxHighlighterTest::updatesColorsForDarkTheme()
     highlighter.setDocument(&document);
     highlighter.setLanguage(QStringLiteral("javascript"));
     highlighter.rehighlight();
+    QTRY_VERIFY_WITH_TIMEOUT(
+        colorAt(document, 0)
+            != colorAt(document, source.indexOf(QStringLiteral("\"text\""))),
+        2000);
     const QColor lightKeyword = colorAt(document, 0);
 
     highlighter.setDarkTheme(true);
     highlighter.rehighlight();
+    QTRY_VERIFY_WITH_TIMEOUT(colorAt(document, 0) != lightKeyword, 2000);
     const QColor darkKeyword = colorAt(document, 0);
 
     QVERIFY(lightKeyword.isValid());
@@ -164,7 +235,7 @@ void CodeSyntaxHighlighterTest::updatesColorsForDarkTheme()
     QVERIFY(lightKeyword != darkKeyword);
 }
 
-void CodeSyntaxHighlighterTest::parsesLargeDocumentWithinBudget_data()
+void CodeSyntaxHighlighterTest::startsLargeDocumentHighlightingWithinBudget_data()
 {
     QTest::addColumn<QString>("language");
     QTest::addColumn<QString>("line");
@@ -177,7 +248,7 @@ void CodeSyntaxHighlighterTest::parsesLargeDocumentWithinBudget_data()
         << QStringLiteral("local value = parse(context.payload, 42) -- message field\n");
 }
 
-void CodeSyntaxHighlighterTest::parsesLargeDocumentWithinBudget()
+void CodeSyntaxHighlighterTest::startsLargeDocumentHighlightingWithinBudget()
 {
     QFETCH(QString, language);
     QFETCH(QString, line);
@@ -191,16 +262,67 @@ void CodeSyntaxHighlighterTest::parsesLargeDocumentWithinBudget()
     QTextDocument document(source);
     CodeSyntaxHighlighter highlighter;
     highlighter.setDocument(&document);
-    highlighter.setLanguage(language);
+    highlighter.setFirstVisibleBlock(0);
+    highlighter.setLastVisibleBlock(40);
 
     QElapsedTimer timer;
     timer.start();
+    highlighter.setLanguage(language);
     highlighter.rehighlight();
     const qint64 elapsedMilliseconds = timer.elapsed();
 
     QVERIFY2(elapsedMilliseconds < 100,
              qPrintable(QStringLiteral("Highlighting blocked for %1 ms")
                             .arg(elapsedMilliseconds)));
+    QTRY_VERIFY_WITH_TIMEOUT(
+        colorAt(document, 0)
+            != colorAt(document, source.indexOf(QStringLiteral("42"))),
+        5000);
+}
+
+void CodeSyntaxHighlighterTest::rehighlightsOnlyChangedViewportBlocks()
+{
+    const QString line = QStringLiteral(
+        "local value = parse(context.payload, 42) -- message field\n");
+    QString source;
+    source.reserve(line.size() * 1000);
+    for (int index = 0; index < 1000; ++index) {
+        source += line;
+    }
+
+    QTextDocument document(source);
+    CountingCodeSyntaxHighlighter highlighter;
+    highlighter.setDocument(&document);
+    highlighter.setLanguage(QStringLiteral("lua"));
+    highlighter.setFirstVisibleBlock(400);
+    highlighter.setLastVisibleBlock(420);
+
+    const QTextBlock oldFirstBufferedBlock = document.findBlockByNumber(336);
+    const QTextBlock oldLastBufferedBlock = document.findBlockByNumber(484);
+    QTRY_VERIFY_WITH_TIMEOUT(
+        colorAt(document, oldFirstBufferedBlock.position())
+            != colorAt(document, oldFirstBufferedBlock.position() + line.indexOf(QStringLiteral("42"))),
+        5000);
+    QTRY_VERIFY_WITH_TIMEOUT(
+        colorAt(document, oldLastBufferedBlock.position())
+            != colorAt(document, oldLastBufferedBlock.position() + line.indexOf(QStringLiteral("42"))),
+        5000);
+    QTest::qWait(50);
+
+    const QColor oldKeywordColor = colorAt(document, oldFirstBufferedBlock.position());
+    highlighter.highlightedBlockCount = 0;
+
+    highlighter.setFirstVisibleBlock(401);
+    highlighter.setLastVisibleBlock(421);
+    const QTextBlock newLastBufferedBlock = document.findBlockByNumber(485);
+    QTRY_VERIFY_WITH_TIMEOUT(
+        colorAt(document, newLastBufferedBlock.position())
+            != colorAt(document, newLastBufferedBlock.position() + line.indexOf(QStringLiteral("42"))),
+        2000);
+    QTest::qWait(50);
+
+    QCOMPARE(colorAt(document, oldFirstBufferedBlock.position()), oldKeywordColor);
+    QCOMPARE(highlighter.highlightedBlockCount, 1);
 }
 
 void CodeSyntaxHighlighterTest::focusesLargeHighlightedEditorPromptly()
@@ -225,7 +347,27 @@ void CodeSyntaxHighlighterTest::focusesLargeHighlightedEditorPromptly()
             height: 600
             property string source: ""
             property string syntaxLanguage: ""
+            property int userEditCount: 0
             readonly property int lineCount: Math.max(1, editor.lineCount)
+            readonly property real lineHeight: Math.max(1,
+                                                         editor.contentHeight
+                                                         / lineCount)
+            readonly property int firstVisibleBlock: Math.max(0,
+                                                               Math.floor(scroll.contentItem.contentY
+                                                                          / lineHeight))
+            readonly property int lastVisibleBlock: Math.min(lineCount - 1,
+                                                              Math.ceil((scroll.contentItem.contentY
+                                                                         + scroll.contentItem.height)
+                                                                        / lineHeight))
+
+            function jumpToLine(line) {
+                const maximumY = Math.max(0,
+                                           scroll.contentItem.contentHeight
+                                           - scroll.contentItem.height)
+                scroll.contentItem.contentY = Math.min(maximumY,
+                                                       Math.max(0,
+                                                                line * root.lineHeight))
+            }
 
             Item {
                 anchors.fill: parent
@@ -245,7 +387,8 @@ void CodeSyntaxHighlighterTest::focusesLargeHighlightedEditorPromptly()
                         font.family: "Menlo"
                         font.pixelSize: 13
                         selectByMouse: true
-                        onTextChanged: {
+                        onTextEdited: {
+                            ++root.userEditCount
                             if (text !== root.source)
                                 root.source = text
                         }
@@ -275,6 +418,8 @@ void CodeSyntaxHighlighterTest::focusesLargeHighlightedEditorPromptly()
                 objectName: "highlighter"
                 textDocument: editor.textDocument
                 language: root.syntaxLanguage
+                firstVisibleBlock: root.firstVisibleBlock
+                lastVisibleBlock: root.lastVisibleBlock
             }
         }
     )", QUrl(QStringLiteral("qrc:/CodeEditorPerformance.qml")));
@@ -296,6 +441,11 @@ void CodeSyntaxHighlighterTest::focusesLargeHighlightedEditorPromptly()
         source += line;
     }
     root->setProperty("source", source);
+
+    window->show();
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    editor->setFocus(false);
+
     QElapsedTimer highlightTimer;
     highlightTimer.start();
     root->setProperty("syntaxLanguage", QStringLiteral("lua"));
@@ -304,27 +454,66 @@ void CodeSyntaxHighlighterTest::focusesLargeHighlightedEditorPromptly()
              qPrintable(QStringLiteral("Starting highlighting blocked for %1 ms")
                             .arg(highlightMilliseconds)));
 
-    window->show();
-    QVERIFY(QTest::qWaitForWindowExposed(window));
-    QCoreApplication::processEvents();
-    editor->setFocus(false);
-
     QElapsedTimer timer;
     timer.start();
+    const int initialCursorPosition = editor->property("cursorPosition").toInt();
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, QPoint(300, 200));
-    const qint64 elapsedMilliseconds = timer.elapsed();
 
-    QVERIFY(editor->hasActiveFocus());
+    QTRY_VERIFY(editor->hasActiveFocus());
+    QTRY_VERIFY_WITH_TIMEOUT(
+        editor->property("cursorPosition").toInt() != initialCursorPosition,
+        1000);
+    const qint64 elapsedMilliseconds = timer.elapsed();
     QVERIFY2(elapsedMilliseconds < 100,
-             qPrintable(QStringLiteral("Click-to-focus blocked for %1 ms")
+             qPrintable(QStringLiteral("Click-to-cursor blocked for %1 ms")
                             .arg(elapsedMilliseconds)));
 
     auto *highlighter = window->findChild<CodeSyntaxHighlighter *>(
         QStringLiteral("highlighter"));
     QVERIFY(highlighter);
-    const int lastKeywordPosition = source.lastIndexOf(QStringLiteral("local"));
+    const int firstKeywordPosition = source.indexOf(QStringLiteral("local"));
+    const int numberOffset = line.indexOf(QStringLiteral("42"));
     QTRY_VERIFY_WITH_TIMEOUT(
-        colorAt(*highlighter->document(), lastKeywordPosition).isValid(), 5000);
+        colorAt(*highlighter->document(), firstKeywordPosition)
+            != colorAt(*highlighter->document(), numberOffset),
+        5000);
+    const QColor highlightedKeywordColor = colorAt(
+        *highlighter->document(), firstKeywordPosition);
+    QCOMPARE(root->property("userEditCount").toInt(), 0);
+
+    for (const int targetLine : {3200, 400, 3600, 1200}) {
+        QElapsedTimer distantClickTimer;
+        distantClickTimer.start();
+        const int previousCursorPosition = editor->property("cursorPosition").toInt();
+        QVERIFY(QMetaObject::invokeMethod(root.get(), "jumpToLine",
+                                         Q_ARG(QVariant, targetLine)));
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
+                          QPoint(300, 200));
+        QTRY_VERIFY_WITH_TIMEOUT(
+            editor->property("cursorPosition").toInt() != previousCursorPosition,
+            1000);
+        const qint64 distantClickMilliseconds = distantClickTimer.elapsed();
+        QVERIFY2(distantClickMilliseconds < 100,
+                 qPrintable(QStringLiteral("Jumping to line %1 and clicking blocked for %2 ms")
+                                .arg(targetLine)
+                                .arg(distantClickMilliseconds)));
+        const int targetPosition = highlighter->document()
+                                       ->findBlockByNumber(targetLine)
+                                       .position();
+        QTRY_VERIFY_WITH_TIMEOUT(
+            colorAt(*highlighter->document(), targetPosition)
+                != colorAt(*highlighter->document(), targetPosition + numberOffset),
+            1000);
+    }
+    QCOMPARE(colorAt(*highlighter->document(), firstKeywordPosition),
+             highlightedKeywordColor);
+
+    window->requestActivate();
+    editor->forceActiveFocus();
+    QTRY_VERIFY(editor->hasActiveFocus());
+    QTest::keyClick(window, Qt::Key_A);
+    QTRY_COMPARE(root->property("userEditCount").toInt(), 1);
+    QCOMPARE(root->property("source").toString(), editor->property("text").toString());
 }
 
 QTEST_MAIN(CodeSyntaxHighlighterTest)

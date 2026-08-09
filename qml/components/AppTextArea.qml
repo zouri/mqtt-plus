@@ -39,8 +39,16 @@ Control {
                                                             textArea.contentHeight
                                                             / control.lineCount)
                                                  : lineNumberFontMetrics.lineSpacing
+    readonly property int firstVisibleBlock: Math.max(0,
+                                                       Math.floor(control.contentY
+                                                                  / control.lineNumberLineHeight))
+    readonly property int lastVisibleBlock: Math.min(control.lineCount - 1,
+                                                      Math.ceil((control.contentY
+                                                                 + control.viewportHeight)
+                                                                / control.lineNumberLineHeight))
 
     signal submitRequested
+    signal textEdited
     clip: true
     hoverEnabled: true
     font.pixelSize: 13
@@ -79,6 +87,8 @@ Control {
         textDocument: textArea.textDocument
         language: control.syntaxLanguage
         darkTheme: control.ui.isDarkTheme
+        firstVisibleBlock: control.firstVisibleBlock
+        lastVisibleBlock: control.lastVisibleBlock
     }
 
     background: Rectangle {
@@ -137,10 +147,12 @@ Control {
                 bottomPadding: 10
                 font.family: control.font.family
                 font.pixelSize: control.font.pixelSize
+                textFormat: TextEdit.PlainText
                 color: control.ui.textStrong
                 placeholderTextColor: control.ui.themePalette.fieldPlaceholder
                 selectByMouse: true
                 background: null
+                onTextEdited: control.textEdited()
 
                 ContextMenu.menu: AppNativeTextMenu {
                     editor: textArea

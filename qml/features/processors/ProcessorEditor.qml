@@ -123,7 +123,7 @@ ColumnLayout {
             syntaxLanguage: root.editor.languageId
             wrapMode: TextEdit.NoWrap
             placeholderText: root.editor.languageId === "javascript" ? qsTr("function process(context)") : qsTr("function process(context)")
-            onTextChanged: {
+            onTextEdited: {
                 if (text !== root.editor.source) {
                     root.editor.source = text;
                 }

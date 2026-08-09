@@ -1,157 +1,23 @@
 #include "presentation/codesyntaxhighlighter.h"
 
-#include <QColor>
+#include <KSyntaxHighlighting/Definition>
+#include <KSyntaxHighlighting/Format>
+#include <KSyntaxHighlighting/Repository>
+#include <KSyntaxHighlighting/Theme>
+
 #include <QElapsedTimer>
 #include <QFont>
 #include <QQuickTextDocument>
-#include <QSet>
 #include <QTextDocument>
+
+#include <utility>
 
 namespace {
 
-constexpr int kJavaScriptBlockCommentState = 1;
-constexpr int kJavaScriptTemplateStringState = 2;
-constexpr int kLuaBlockCommentState = 3;
-
-const QSet<QString> &javaScriptKeywords()
+KSyntaxHighlighting::Repository &syntaxRepository()
 {
-    static const QSet<QString> keywords {
-        QStringLiteral("async"), QStringLiteral("await"), QStringLiteral("break"),
-        QStringLiteral("case"), QStringLiteral("catch"), QStringLiteral("class"),
-        QStringLiteral("const"), QStringLiteral("continue"), QStringLiteral("debugger"),
-        QStringLiteral("default"), QStringLiteral("delete"), QStringLiteral("do"),
-        QStringLiteral("else"), QStringLiteral("export"), QStringLiteral("extends"),
-        QStringLiteral("false"), QStringLiteral("finally"), QStringLiteral("for"),
-        QStringLiteral("function"), QStringLiteral("if"), QStringLiteral("import"),
-        QStringLiteral("in"), QStringLiteral("instanceof"), QStringLiteral("let"),
-        QStringLiteral("new"), QStringLiteral("null"), QStringLiteral("return"),
-        QStringLiteral("static"), QStringLiteral("super"), QStringLiteral("switch"),
-        QStringLiteral("this"), QStringLiteral("throw"), QStringLiteral("true"),
-        QStringLiteral("try"), QStringLiteral("typeof"), QStringLiteral("undefined"),
-        QStringLiteral("var"), QStringLiteral("void"), QStringLiteral("while"),
-        QStringLiteral("with"), QStringLiteral("yield"),
-    };
-    return keywords;
-}
-
-const QSet<QString> &javaScriptBuiltins()
-{
-    static const QSet<QString> builtins {
-        QStringLiteral("Array"), QStringLiteral("BigInt"), QStringLiteral("Boolean"),
-        QStringLiteral("Date"), QStringLiteral("Error"), QStringLiteral("JSON"),
-        QStringLiteral("Map"), QStringLiteral("Math"), QStringLiteral("Number"),
-        QStringLiteral("Object"), QStringLiteral("Promise"), QStringLiteral("RegExp"),
-        QStringLiteral("Set"), QStringLiteral("String"), QStringLiteral("console"),
-    };
-    return builtins;
-}
-
-const QSet<QString> &luaKeywords()
-{
-    static const QSet<QString> keywords {
-        QStringLiteral("and"), QStringLiteral("break"), QStringLiteral("do"),
-        QStringLiteral("else"), QStringLiteral("elseif"), QStringLiteral("end"),
-        QStringLiteral("false"), QStringLiteral("for"), QStringLiteral("function"),
-        QStringLiteral("goto"), QStringLiteral("if"), QStringLiteral("in"),
-        QStringLiteral("local"), QStringLiteral("nil"), QStringLiteral("not"),
-        QStringLiteral("or"), QStringLiteral("repeat"), QStringLiteral("return"),
-        QStringLiteral("then"), QStringLiteral("true"), QStringLiteral("until"),
-        QStringLiteral("while"),
-    };
-    return keywords;
-}
-
-const QSet<QString> &luaBuiltins()
-{
-    static const QSet<QString> builtins {
-        QStringLiteral("assert"), QStringLiteral("error"), QStringLiteral("ipairs"),
-        QStringLiteral("math"), QStringLiteral("next"), QStringLiteral("pairs"),
-        QStringLiteral("pcall"), QStringLiteral("select"), QStringLiteral("string"),
-        QStringLiteral("table"), QStringLiteral("tonumber"), QStringLiteral("tostring"),
-        QStringLiteral("type"), QStringLiteral("utf8"), QStringLiteral("xpcall"),
-    };
-    return builtins;
-}
-
-bool isIdentifierStart(QChar character, bool javascript)
-{
-    return character == QLatin1Char('_')
-        || (javascript && character == QLatin1Char('$'))
-        || character.isLetter();
-}
-
-bool isIdentifierPart(QChar character, bool javascript)
-{
-    return isIdentifierStart(character, javascript) || character.isNumber();
-}
-
-int quotedStringEnd(const QString &text, int start, QChar quote)
-{
-    bool escaped = false;
-    for (int index = start + 1; index < text.size(); ++index) {
-        const QChar character = text.at(index);
-        if (!escaped && character == quote) {
-            return index + 1;
-        }
-        if (!escaped && character == QLatin1Char('\\')) {
-            escaped = true;
-        } else {
-            escaped = false;
-        }
-    }
-    return text.size();
-}
-
-int numberEnd(const QString &text, int start)
-{
-    int index = start;
-    if (text.mid(start, 2).compare(QStringLiteral("0x"), Qt::CaseInsensitive) == 0) {
-        index += 2;
-        while (index < text.size()
-               && (text.at(index).isDigit()
-                   || (text.at(index).toLower() >= QLatin1Char('a')
-                       && text.at(index).toLower() <= QLatin1Char('f')))) {
-            ++index;
-        }
-        return index;
-    }
-
-    bool hasDecimalPoint = false;
-    bool hasExponent = false;
-    while (index < text.size()) {
-        const QChar character = text.at(index);
-        if (character.isDigit()) {
-            ++index;
-            continue;
-        }
-        if (!hasDecimalPoint && !hasExponent && character == QLatin1Char('.')) {
-            hasDecimalPoint = true;
-            ++index;
-            continue;
-        }
-        if (!hasExponent
-            && (character == QLatin1Char('e') || character == QLatin1Char('E'))) {
-            hasExponent = true;
-            ++index;
-            if (index < text.size()
-                && (text.at(index) == QLatin1Char('+')
-                    || text.at(index) == QLatin1Char('-'))) {
-                ++index;
-            }
-            continue;
-        }
-        break;
-    }
-    return index;
-}
-
-QTextCharFormat syntaxFormat(const QColor &color, bool bold = false, bool italic = false)
-{
-    QTextCharFormat result;
-    result.setForeground(color);
-    result.setFontWeight(bold ? QFont::DemiBold : QFont::Normal);
-    result.setFontItalic(italic);
-    return result;
+    static KSyntaxHighlighting::Repository repository;
+    return repository;
 }
 
 } // namespace
@@ -159,10 +25,25 @@ QTextCharFormat syntaxFormat(const QColor &color, bool bold = false, bool italic
 CodeSyntaxHighlighter::CodeSyntaxHighlighter(QObject *parent)
     : QSyntaxHighlighter(parent)
 {
-    rebuildFormats();
+    updateTheme();
     m_rehighlightTimer.setSingleShot(true);
     connect(&m_rehighlightTimer, &QTimer::timeout,
             this, &CodeSyntaxHighlighter::rehighlightNextChunk);
+    m_visibleRangeTimer.setSingleShot(true);
+    connect(&m_visibleRangeTimer, &QTimer::timeout,
+            this, &CodeSyntaxHighlighter::scheduleRehighlight);
+    m_stateCacheTimer.setSingleShot(true);
+    connect(&m_stateCacheTimer, &QTimer::timeout,
+            this, &CodeSyntaxHighlighter::rebuildBlockStateCacheChunk);
+}
+
+CodeSyntaxHighlighter::~CodeSyntaxHighlighter()
+{
+    m_rehighlightTimer.stop();
+    m_visibleRangeTimer.stop();
+    m_stateCacheTimer.stop();
+    disconnect(m_contentsChangeConnection);
+    setDocument(nullptr);
 }
 
 QQuickTextDocument *CodeSyntaxHighlighter::textDocument() const
@@ -180,16 +61,48 @@ bool CodeSyntaxHighlighter::darkTheme() const
     return m_darkTheme;
 }
 
+int CodeSyntaxHighlighter::firstVisibleBlock() const
+{
+    return m_firstVisibleBlock;
+}
+
+int CodeSyntaxHighlighter::lastVisibleBlock() const
+{
+    return m_lastVisibleBlock;
+}
+
 void CodeSyntaxHighlighter::setTextDocument(QQuickTextDocument *document)
 {
     if (document == m_textDocument) {
         return;
     }
+    disconnect(m_contentsChangeConnection);
     m_rehighlightTimer.stop();
-    m_nextBlock = {};
+    m_visibleRangeTimer.stop();
+    m_stateCacheTimer.stop();
+    m_pendingBlocks.clear();
+    m_pendingBlockIndex = 0;
+    m_activeFirstBlock = -1;
+    m_activeLastBlock = -1;
+    m_stateCacheDirty = true;
+    m_stateCacheBuilding = false;
+    m_blockStartStates.clear();
+    m_formattedBlockGenerations.clear();
     m_highlightingEnabled = false;
     m_textDocument = document;
     setDocument(document ? document->textDocument() : nullptr);
+    if (this->document()) {
+        m_contentsChangeConnection = connect(
+            this->document(), &QTextDocument::contentsChange,
+            this, [this](int, int removed, int added) {
+                if (m_processingHighlight || (removed == 0 && added == 0)) {
+                    return;
+                }
+                invalidateFormattedBlocks();
+                m_stateCacheDirty = true;
+                scheduleRehighlight();
+            });
+    }
     QTimer::singleShot(0, this, [this]() {
         m_highlightingEnabled = true;
         scheduleRehighlight();
@@ -211,6 +124,9 @@ void CodeSyntaxHighlighter::setLanguage(const QString &language)
         return;
     }
     m_language = normalized;
+    updateDefinition();
+    invalidateFormattedBlocks();
+    m_stateCacheDirty = true;
     scheduleRehighlight();
     emit languageChanged();
 }
@@ -221,21 +137,108 @@ void CodeSyntaxHighlighter::setDarkTheme(bool darkTheme)
         return;
     }
     m_darkTheme = darkTheme;
-    rebuildFormats();
+    updateTheme();
+    invalidateFormattedBlocks();
     scheduleRehighlight();
     emit darkThemeChanged();
 }
 
-void CodeSyntaxHighlighter::highlightBlock(const QString &text)
+void CodeSyntaxHighlighter::setFirstVisibleBlock(int blockNumber)
 {
-    setCurrentBlockState(-1);
-    if (!m_highlightingEnabled) {
+    if (blockNumber == m_firstVisibleBlock) {
         return;
     }
-    if (m_language == QStringLiteral("javascript")) {
-        highlightJavaScript(text);
-    } else if (m_language == QStringLiteral("lua")) {
-        highlightLua(text);
+    m_firstVisibleBlock = blockNumber;
+    m_visibleRangeTimer.start(0);
+    emit visibleBlockRangeChanged();
+}
+
+void CodeSyntaxHighlighter::setLastVisibleBlock(int blockNumber)
+{
+    if (blockNumber == m_lastVisibleBlock) {
+        return;
+    }
+    m_lastVisibleBlock = blockNumber;
+    m_visibleRangeTimer.start(0);
+    emit visibleBlockRangeChanged();
+}
+
+void CodeSyntaxHighlighter::highlightBlock(const QString &text)
+{
+    if (!m_highlightingEnabled || !document()) {
+        return;
+    }
+
+    if (m_stateCacheDirty || m_stateCacheLanguage != m_language) {
+        startBlockStateCacheRebuild();
+        return;
+    }
+    if (m_stateCacheBuilding
+        || m_blockStartStates.size() != document()->blockCount()) {
+        return;
+    }
+
+    const int blockNumber = currentBlock().blockNumber();
+    if (m_activeFirstBlock >= 0
+        && (blockNumber < m_activeFirstBlock || blockNumber > m_activeLastBlock)) {
+        return;
+    }
+
+    const KSyntaxHighlighting::State state =
+        blockNumber >= 0 && blockNumber < m_blockStartStates.size()
+        ? m_blockStartStates.at(blockNumber)
+        : KSyntaxHighlighting::State();
+    m_collectFormats = true;
+    highlightLine(text, state);
+    m_collectFormats = false;
+}
+
+void CodeSyntaxHighlighter::applyFormat(
+    int offset,
+    int length,
+    const KSyntaxHighlighting::Format &format)
+{
+    if (!m_collectFormats || length <= 0 || !format.isValid()) {
+        return;
+    }
+
+    const KSyntaxHighlighting::Theme currentTheme = theme();
+    if (!currentTheme.isValid() || format.isDefaultTextStyle(currentTheme)) {
+        return;
+    }
+
+    const int formatId = format.id();
+    auto iterator = m_textFormats.constFind(formatId);
+    if (iterator == m_textFormats.cend()) {
+        QTextCharFormat textFormat;
+        textFormat.setForeground(format.textColor(currentTheme));
+        if (format.hasBackgroundColor(currentTheme)) {
+            textFormat.setBackground(format.backgroundColor(currentTheme));
+        }
+        if (format.isBold(currentTheme)) {
+            textFormat.setFontWeight(QFont::Bold);
+        }
+        if (format.isItalic(currentTheme)) {
+            textFormat.setFontItalic(true);
+        }
+        if (format.isUnderline(currentTheme)) {
+            textFormat.setFontUnderline(true);
+        }
+        if (format.isStrikeThrough(currentTheme)) {
+            textFormat.setFontStrikeOut(true);
+        }
+        m_textFormats.insert(formatId, std::move(textFormat));
+        iterator = m_textFormats.constFind(formatId);
+    }
+    setFormat(offset, length, iterator.value());
+}
+
+void CodeSyntaxHighlighter::invalidateFormattedBlocks()
+{
+    ++m_formatGeneration;
+    if (m_formatGeneration == 0) {
+        m_formattedBlockGenerations.clear();
+        m_formatGeneration = 1;
     }
 }
 
@@ -244,199 +247,162 @@ void CodeSyntaxHighlighter::scheduleRehighlight()
     if (!m_highlightingEnabled || !document()) {
         return;
     }
-    m_nextBlock = document()->firstBlock();
+    if (m_processingHighlight) {
+        QTimer::singleShot(0, this, &CodeSyntaxHighlighter::scheduleRehighlight);
+        return;
+    }
+    m_rehighlightTimer.stop();
+    if (m_stateCacheDirty || m_stateCacheLanguage != m_language) {
+        startBlockStateCacheRebuild();
+        return;
+    }
+    if (m_stateCacheBuilding) {
+        return;
+    }
+    if (m_blockStartStates.size() != document()->blockCount()) {
+        startBlockStateCacheRebuild();
+        return;
+    }
+
+    const int blockCount = document()->blockCount();
+    if (m_firstVisibleBlock >= 0 && m_lastVisibleBlock >= m_firstVisibleBlock) {
+        // Format near the viewport, but retain blocks already visited. Clearing a
+        // block above the viewport invalidates downstream text layout and makes
+        // the next QQuickTextEdit cursor hit-test pay for that layout again.
+        constexpr int kViewportBufferBlocks = 64;
+        m_activeFirstBlock = qMax(0, m_firstVisibleBlock - kViewportBufferBlocks);
+        m_activeLastBlock = qMin(blockCount - 1,
+                                 m_lastVisibleBlock + kViewportBufferBlocks);
+    } else {
+        m_activeFirstBlock = -1;
+        m_activeLastBlock = -1;
+    }
+
+    m_pendingBlocks.clear();
+    m_pendingBlockIndex = 0;
+    const int newFirstBlock = m_activeFirstBlock >= 0 ? m_activeFirstBlock : 0;
+    const int newLastBlock = m_activeFirstBlock >= 0
+        ? m_activeLastBlock
+        : blockCount - 1;
+    m_pendingBlocks.reserve(newLastBlock - newFirstBlock + 1);
+    for (int blockNumber = newFirstBlock; blockNumber <= newLastBlock; ++blockNumber) {
+        if (m_formattedBlockGenerations.value(blockNumber, 0)
+            != m_formatGeneration) {
+            m_pendingBlocks.append(blockNumber);
+        }
+    }
     m_rehighlightTimer.start(0);
+}
+
+void CodeSyntaxHighlighter::startBlockStateCacheRebuild()
+{
+    m_stateCacheTimer.stop();
+    m_blockStartStates.clear();
+    if (!document()) {
+        m_stateCacheDirty = true;
+        m_stateCacheBuilding = false;
+        m_stateCacheLanguage.clear();
+        return;
+    }
+
+    m_blockStartStates.reserve(document()->blockCount());
+    m_stateCacheDirty = false;
+    m_stateCacheBuilding = true;
+    m_stateCacheLanguage = m_language;
+    m_stateCacheNextBlock = document()->firstBlock();
+    m_stateCacheNextState = KSyntaxHighlighting::State();
+    m_stateCacheTimer.start(0);
+}
+
+void CodeSyntaxHighlighter::rebuildBlockStateCacheChunk()
+{
+    if (!m_stateCacheBuilding || !document()) {
+        return;
+    }
+
+    // KSyntaxHighlighting state is cheap to retain and preserves multiline syntax
+    // while only the blocks near the viewport receive QTextCharFormat ranges.
+    m_collectFormats = false;
+    QElapsedTimer timer;
+    timer.start();
+    do {
+        m_blockStartStates.append(m_stateCacheNextState);
+        const QString text = m_stateCacheNextBlock.text();
+        m_stateCacheNextState = highlightLine(text, m_stateCacheNextState);
+        m_stateCacheNextBlock = m_stateCacheNextBlock.next();
+    } while (m_stateCacheNextBlock.isValid() && timer.elapsed() < 4);
+
+    if (m_stateCacheNextBlock.isValid()) {
+        m_stateCacheTimer.start(0);
+        return;
+    }
+
+    m_stateCacheBuilding = false;
+    scheduleRehighlight();
 }
 
 void CodeSyntaxHighlighter::rehighlightNextChunk()
 {
     if (!m_highlightingEnabled || !document()
-        || !m_nextBlock.isValid() || m_nextBlock.document() != document()) {
-        m_nextBlock = {};
+        || m_pendingBlockIndex >= m_pendingBlocks.size()) {
+        m_pendingBlocks.clear();
+        m_pendingBlockIndex = 0;
         return;
     }
 
     QElapsedTimer timer;
     timer.start();
     do {
-        const QTextBlock block = m_nextBlock;
-        m_nextBlock = block.next();
-        rehighlightBlock(block);
-    } while (m_nextBlock.isValid() && timer.elapsed() < 4);
+        const int requestedBlockNumber = m_pendingBlocks.at(m_pendingBlockIndex);
+        const QTextBlock block = document()->findBlockByNumber(requestedBlockNumber);
+        ++m_pendingBlockIndex;
+        if (block.isValid()) {
+            const int blockNumber = block.blockNumber();
+            if (m_activeFirstBlock >= 0
+                && (blockNumber < m_activeFirstBlock
+                    || blockNumber > m_activeLastBlock)) {
+                continue;
+            }
+            m_processingHighlight = true;
+            rehighlightBlock(block);
+            m_processingHighlight = false;
+            if (m_language.isEmpty()) {
+                m_formattedBlockGenerations.remove(blockNumber);
+            } else {
+                m_formattedBlockGenerations.insert(blockNumber,
+                                                   m_formatGeneration);
+            }
+        } else {
+            m_formattedBlockGenerations.remove(requestedBlockNumber);
+        }
+    } while (m_pendingBlockIndex < m_pendingBlocks.size() && timer.elapsed() < 4);
 
-    if (m_nextBlock.isValid()) {
+    if (m_pendingBlockIndex < m_pendingBlocks.size()) {
         m_rehighlightTimer.start(0);
+    } else {
+        m_pendingBlocks.clear();
+        m_pendingBlockIndex = 0;
     }
 }
 
-void CodeSyntaxHighlighter::rebuildFormats()
+void CodeSyntaxHighlighter::updateDefinition()
 {
-    m_keywordFormat = syntaxFormat(m_darkTheme ? QColor(QStringLiteral("#c4a7e7"))
-                                               : QColor(QStringLiteral("#6d28d9")), true);
-    m_stringFormat = syntaxFormat(m_darkTheme ? QColor(QStringLiteral("#9ccfd8"))
-                                              : QColor(QStringLiteral("#0f766e")));
-    m_numberFormat = syntaxFormat(m_darkTheme ? QColor(QStringLiteral("#f6c177"))
-                                              : QColor(QStringLiteral("#a84f00")));
-    m_commentFormat = syntaxFormat(m_darkTheme ? QColor(QStringLiteral("#82909b"))
-                                               : QColor(QStringLiteral("#6f757e")), false, true);
-    m_functionFormat = syntaxFormat(m_darkTheme ? QColor(QStringLiteral("#7aa2f7"))
-                                                : QColor(QStringLiteral("#245bdb")));
-    m_builtinFormat = syntaxFormat(m_darkTheme ? QColor(QStringLiteral("#eb6f92"))
-                                               : QColor(QStringLiteral("#b42362")));
+    KSyntaxHighlighting::Definition definition;
+    if (m_language == QStringLiteral("javascript")) {
+        definition = syntaxRepository().definitionForName(QStringLiteral("JavaScript"));
+    } else if (m_language == QStringLiteral("lua")) {
+        definition = syntaxRepository().definitionForName(QStringLiteral("Lua"));
+    }
+    KSyntaxHighlighting::AbstractHighlighter::setDefinition(definition);
+    m_textFormats.clear();
 }
 
-void CodeSyntaxHighlighter::formatIdentifier(
-    const QString &text,
-    int start,
-    int length,
-    bool javascript)
+void CodeSyntaxHighlighter::updateTheme()
 {
-    const QString token = text.mid(start, length);
-    const QSet<QString> &keywords = javascript ? javaScriptKeywords() : luaKeywords();
-    const QSet<QString> &builtins = javascript ? javaScriptBuiltins() : luaBuiltins();
-    if (keywords.contains(token)) {
-        setFormat(start, length, m_keywordFormat);
-        return;
-    }
-    if (builtins.contains(token)) {
-        setFormat(start, length, m_builtinFormat);
-        return;
-    }
-
-    int next = start + length;
-    while (next < text.size() && text.at(next).isSpace()) {
-        ++next;
-    }
-    if (next < text.size() && text.at(next) == QLatin1Char('(')) {
-        setFormat(start, length, m_functionFormat);
-    }
-}
-
-void CodeSyntaxHighlighter::highlightJavaScript(const QString &text)
-{
-    int index = 0;
-    if (previousBlockState() == kJavaScriptBlockCommentState) {
-        const int end = text.indexOf(QStringLiteral("*/"));
-        if (end < 0) {
-            setFormat(0, text.size(), m_commentFormat);
-            setCurrentBlockState(kJavaScriptBlockCommentState);
-            return;
-        }
-        setFormat(0, end + 2, m_commentFormat);
-        index = end + 2;
-    } else if (previousBlockState() == kJavaScriptTemplateStringState) {
-        const int end = quotedStringEnd(text, -1, QLatin1Char('`'));
-        setFormat(0, end, m_stringFormat);
-        if (end == text.size()
-            && (text.isEmpty() || text.back() != QLatin1Char('`'))) {
-            setCurrentBlockState(kJavaScriptTemplateStringState);
-            return;
-        }
-        index = end;
-    }
-
-    while (index < text.size()) {
-        if (text.mid(index, 2) == QStringLiteral("//")) {
-            setFormat(index, text.size() - index, m_commentFormat);
-            return;
-        }
-        if (text.mid(index, 2) == QStringLiteral("/*")) {
-            const int end = text.indexOf(QStringLiteral("*/"), index + 2);
-            if (end < 0) {
-                setFormat(index, text.size() - index, m_commentFormat);
-                setCurrentBlockState(kJavaScriptBlockCommentState);
-                return;
-            }
-            setFormat(index, end + 2 - index, m_commentFormat);
-            index = end + 2;
-            continue;
-        }
-
-        const QChar character = text.at(index);
-        if (character == QLatin1Char('\'') || character == QLatin1Char('"')
-            || character == QLatin1Char('`')) {
-            const int end = quotedStringEnd(text, index, character);
-            setFormat(index, end - index, m_stringFormat);
-            if (character == QLatin1Char('`') && end == text.size()
-                && text.back() != QLatin1Char('`')) {
-                setCurrentBlockState(kJavaScriptTemplateStringState);
-                return;
-            }
-            index = end;
-            continue;
-        }
-        if (character.isDigit()) {
-            const int end = numberEnd(text, index);
-            setFormat(index, end - index, m_numberFormat);
-            index = end;
-            continue;
-        }
-        if (isIdentifierStart(character, true)) {
-            int end = index + 1;
-            while (end < text.size() && isIdentifierPart(text.at(end), true)) {
-                ++end;
-            }
-            formatIdentifier(text, index, end - index, true);
-            index = end;
-            continue;
-        }
-        ++index;
-    }
-}
-
-void CodeSyntaxHighlighter::highlightLua(const QString &text)
-{
-    int index = 0;
-    if (previousBlockState() == kLuaBlockCommentState) {
-        const int end = text.indexOf(QStringLiteral("]]"));
-        if (end < 0) {
-            setFormat(0, text.size(), m_commentFormat);
-            setCurrentBlockState(kLuaBlockCommentState);
-            return;
-        }
-        setFormat(0, end + 2, m_commentFormat);
-        index = end + 2;
-    }
-
-    while (index < text.size()) {
-        if (text.mid(index, 4) == QStringLiteral("--[[")) {
-            const int end = text.indexOf(QStringLiteral("]]"), index + 4);
-            if (end < 0) {
-                setFormat(index, text.size() - index, m_commentFormat);
-                setCurrentBlockState(kLuaBlockCommentState);
-                return;
-            }
-            setFormat(index, end + 2 - index, m_commentFormat);
-            index = end + 2;
-            continue;
-        }
-        if (text.mid(index, 2) == QStringLiteral("--")) {
-            setFormat(index, text.size() - index, m_commentFormat);
-            return;
-        }
-
-        const QChar character = text.at(index);
-        if (character == QLatin1Char('\'') || character == QLatin1Char('"')) {
-            const int end = quotedStringEnd(text, index, character);
-            setFormat(index, end - index, m_stringFormat);
-            index = end;
-            continue;
-        }
-        if (character.isDigit()) {
-            const int end = numberEnd(text, index);
-            setFormat(index, end - index, m_numberFormat);
-            index = end;
-            continue;
-        }
-        if (isIdentifierStart(character, false)) {
-            int end = index + 1;
-            while (end < text.size() && isIdentifierPart(text.at(end), false)) {
-                ++end;
-            }
-            formatIdentifier(text, index, end - index, false);
-            index = end;
-            continue;
-        }
-        ++index;
-    }
+    const auto defaultTheme = m_darkTheme
+        ? KSyntaxHighlighting::Repository::DarkTheme
+        : KSyntaxHighlighting::Repository::LightTheme;
+    KSyntaxHighlighting::AbstractHighlighter::setTheme(
+        syntaxRepository().defaultTheme(defaultTheme));
+    m_textFormats.clear();
 }
