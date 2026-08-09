@@ -769,10 +769,12 @@ void EventHistoryService::updateRenderedParseResult(
     };
 
     QVariantMap updatedRow;
-    for (QVariant &item : session.runtime.messageRows) {
-        QVariantMap row = item.toMap();
+    for (auto item = session.runtime.messageRows.rbegin();
+         item != session.runtime.messageRows.rend();
+         ++item) {
+        QVariantMap row = item->toMap();
         if (applyResult(row)) {
-            item = row;
+            *item = row;
             updatedRow = row;
             break;
         }
@@ -781,17 +783,23 @@ void EventHistoryService::updateRenderedParseResult(
         return;
     }
 
+    bool pendingRowUpdated = false;
     if (m_pendingVisibleMessageSessionId == session.id) {
-        for (QVariant &item : m_pendingVisibleMessageRows) {
-            QVariantMap row = item.toMap();
+        for (auto item = m_pendingVisibleMessageRows.rbegin();
+             item != m_pendingVisibleMessageRows.rend();
+             ++item) {
+            QVariantMap row = item->toMap();
             if (applyResult(row)) {
-                item = row;
+                *item = row;
+                pendingRowUpdated = true;
                 break;
             }
         }
     }
 
-    if (&session == m_sessionService.currentSession() && !m_messageStreamFrozen) {
+    if (&session == m_sessionService.currentSession()
+        && !m_messageStreamFrozen
+        && !pendingRowUpdated) {
         m_messages.updateRowByHistoryId(result.messageId, updatedRow);
     }
 }

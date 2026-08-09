@@ -14,11 +14,11 @@ Rectangle {
 
     signal draftRequested(string draftId)
 
-    Layout.preferredWidth: 300
-    Layout.minimumWidth: 300
-    Layout.maximumWidth: 300
+    Layout.preferredWidth: 270
+    Layout.minimumWidth: 230
+    Layout.maximumWidth: 270
     Layout.fillHeight: true
-    color: root.ui.themePalette.windowBg
+    color: root.ui.themePalette.sidebarBg
 
     ColumnLayout {
         anchors.fill: parent
@@ -26,11 +26,31 @@ Rectangle {
         spacing: 10
 
         AppTextField {
+            id: searchField
+
             ui: root.ui
             Layout.fillWidth: true
+            leftPadding: 34
             placeholderText: qsTr("Search drafts")
             text: root.viewModel.filteredDrafts.filterText
             onTextEdited: root.viewModel.setFilterText(text)
+
+            AppIconButton {
+                ui: root.ui
+                anchors.left: parent.left
+                anchors.leftMargin: 3
+                anchors.verticalCenter: parent.verticalCenter
+                implicitWidth: 28
+                implicitHeight: 28
+                iconSize: 16
+                iconSource: root.ui.materialIcon("search")
+                restBg: "transparent"
+                hoverBg: "transparent"
+                pressedBg: "transparent"
+                outlineColor: "transparent"
+                onClicked: searchField.forceActiveFocus()
+                Accessible.ignored: true
+            }
         }
 
         Item {
@@ -90,31 +110,27 @@ Rectangle {
                     required property int qos
                     required property bool retain
                     required property string updatedAt
+                    readonly property bool selected: draftDelegate.id === root.currentDraftId
 
                     width: ListView.view.width
-                    implicitHeight: 82
+                    implicitHeight: 68
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Button
                     Accessible.name: qsTr("Draft %1").arg(draftDelegate.name)
 
-                    Rectangle {
+                    AppSelectableCard {
                         anchors.fill: parent
-                        radius: root.ui.radiusMd
-                        color: draftHover.hovered
-                               ? root.ui.themePalette.rowHover
-                               : root.ui.themePalette.itemBg
-                        border.color: draftDelegate.id === root.currentDraftId
-                                      ? root.ui.themePalette.selectedBorder
-                                      : root.ui.themePalette.itemBorder
-                        border.width: 1
+                        ui: root.ui
+                        selected: draftDelegate.selected
+                        hovered: draftHover.hovered
 
                         ColumnLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 11
-                            anchors.rightMargin: 11
-                            anchors.topMargin: 9
-                            anchors.bottomMargin: 9
-                            spacing: 4
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            anchors.topMargin: 8
+                            anchors.bottomMargin: 8
+                            spacing: 6
 
                             RowLayout {
                                 Layout.fillWidth: true
@@ -124,38 +140,53 @@ Rectangle {
                                     Layout.fillWidth: true
                                     text: draftDelegate.name
                                     color: root.ui.textStrong
-                                    font.pixelSize: root.ui.textMd
+                                    font.pixelSize: 12
                                     font.bold: true
                                     elide: Label.ElideRight
                                 }
 
-                                Label {
+                                Rectangle {
                                     visible: draftDelegate.retain
-                                    text: qsTr("RETAIN")
-                                    color: root.ui.themePalette.warningText
-                                    font.pixelSize: root.ui.textXs
-                                    font.bold: true
+                                    Layout.preferredWidth: retainLabel.implicitWidth + 12
+                                    Layout.preferredHeight: 20
+                                    radius: 5
+                                    color: root.ui.themePalette.innerPanelBg
+
+                                    Label {
+                                        id: retainLabel
+
+                                        anchors.centerIn: parent
+                                        text: qsTr("RETAIN")
+                                        color: root.ui.themePalette.warningText
+                                        font.pixelSize: 9
+                                        font.bold: true
+                                    }
                                 }
                             }
 
-                            Label {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: draftDelegate.description.length > 0
-                                      ? draftDelegate.description
-                                      : (draftDelegate.defaultTopic.length > 0
-                                         ? draftDelegate.defaultTopic
-                                         : qsTr("Topic requested when sending"))
-                                color: root.ui.textMuted
-                                font.pixelSize: root.ui.textXs
-                                elide: Label.ElideRight
-                            }
+                                spacing: 6
 
-                            Label {
-                                Layout.fillWidth: true
-                                text: qsTr("%1 · QoS %2").arg(draftDelegate.formatName).arg(draftDelegate.qos)
-                                color: root.ui.themePalette.textSubtle
-                                font.pixelSize: root.ui.textXs
-                                elide: Label.ElideRight
+                                Label {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: qsTr("%1 · QoS %2").arg(draftDelegate.formatName).arg(draftDelegate.qos)
+                                    color: root.ui.textMuted
+                                    font.pixelSize: 10
+                                    elide: Label.ElideRight
+                                }
+
+                                Label {
+                                    Layout.preferredWidth: Math.min(120, implicitWidth)
+                                    Layout.minimumWidth: 0
+                                    Layout.maximumWidth: 120
+                                    text: draftDelegate.updatedAt
+                                    color: root.ui.themePalette.textSubtle
+                                    font.pixelSize: 10
+                                    horizontalAlignment: Text.AlignRight
+                                    elide: Label.ElideRight
+                                }
                             }
                         }
                     }

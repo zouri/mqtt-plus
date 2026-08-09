@@ -120,9 +120,10 @@ ColumnLayout {
             text: root.editor.source
             clip: true
             showLineNumbers: true
+            syntaxLanguage: root.editor.languageId
             wrapMode: TextEdit.NoWrap
             placeholderText: root.editor.languageId === "javascript" ? qsTr("function process(context)") : qsTr("function process(context)")
-            onTextChanged: {
+            onTextEdited: {
                 if (text !== root.editor.source) {
                     root.editor.source = text;
                 }
