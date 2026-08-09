@@ -14,7 +14,7 @@ option(
     OFF
 )
 if(NOT MQTT_PLUS_FORCE_BUNDLED_QTMQTT)
-    find_package(Qt6 6.11 QUIET COMPONENTS Mqtt)
+    find_package(Qt6Mqtt 6.11 QUIET CONFIG)
 endif()
 
 include(GNUInstallDirs)
