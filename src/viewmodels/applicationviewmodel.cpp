@@ -34,6 +34,8 @@ ApplicationViewModel::ApplicationViewModel(
           preferences,
           eventHistoryService,
           historyStore,
+          processorLibrary,
+          draftService,
           sessionService.sessions(),
           settings,
           this)

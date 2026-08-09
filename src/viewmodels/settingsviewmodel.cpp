@@ -1,16 +1,21 @@
 #include "viewmodels/settingsviewmodel.h"
 
 #include "usecases/eventhistoryservice.h"
+#include "usecases/draftlibraryservice.h"
 #include "usecases/preferencescontroller.h"
 #include "services/apputils.h"
+#include "services/processors/processorlibrary.h"
 #include "services/storage/historystore.h"
 
 #include <QCoreApplication>
+#include <QDesktopServices>
+#include <QDir>
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QLocale>
 #include <QStyleHints>
 #include <QStringList>
+#include <QUrl>
 #include <QVariantList>
 
 #include <algorithm>
@@ -186,6 +191,8 @@ SettingsViewModel::SettingsViewModel(
     PreferencesController &preferencesController,
     EventHistoryService &eventController,
     HistoryStore &historyStore,
+    ProcessorLibrary &processorLibrary,
+    DraftLibraryService &draftLibraryService,
     QVector<SessionState> &sessions,
     QSettings &settings,
     QObject *parent)
@@ -195,6 +202,9 @@ SettingsViewModel::SettingsViewModel(
     , m_eventController(eventController)
     , m_historyStore(historyStore)
     , m_sessions(sessions)
+    , m_scriptStorageDirectory(processorLibrary.storageDirectory())
+    , m_draftStorageDirectory(draftLibraryService.storageDirectory())
+    , m_databaseStorageDirectory(historyStore.dataPath())
 {
     m_themeMode = sanitizeThemeMode(
         m_settings.value(QStringLiteral("appearance/themeMode"), QStringLiteral("system")).toString());
@@ -276,6 +286,32 @@ int SettingsViewModel::historyPageSizeIndex() const { return optionIndex(Setting
 int SettingsViewModel::maxIncomingPayloadBytesIndex() const { return optionIndex(SettingsOption::MaxIncomingPayloadBytes, maxIncomingPayloadBytes()); }
 int SettingsViewModel::clearMessagesOnExitIndex() const { return optionIndex(SettingsOption::CleanupMode, clearMessagesOnExit()); }
 int SettingsViewModel::clearLogsOnExitIndex() const { return optionIndex(SettingsOption::CleanupMode, clearLogsOnExit()); }
+QString SettingsViewModel::scriptStorageDirectory() const { return m_scriptStorageDirectory; }
+QString SettingsViewModel::draftStorageDirectory() const { return m_draftStorageDirectory; }
+QString SettingsViewModel::databaseStorageDirectory() const { return m_databaseStorageDirectory; }
+
+bool SettingsViewModel::openScriptStorageDirectory() const
+{
+    return openDirectory(m_scriptStorageDirectory);
+}
+
+bool SettingsViewModel::openDraftStorageDirectory() const
+{
+    return openDirectory(m_draftStorageDirectory);
+}
+
+bool SettingsViewModel::openDatabaseStorageDirectory() const
+{
+    return openDirectory(m_databaseStorageDirectory);
+}
+
+bool SettingsViewModel::openDirectory(const QString &path) const
+{
+    if (path.trimmed().isEmpty() || !QDir().mkpath(path)) {
+        return false;
+    }
+    return QDesktopServices::openUrl(QUrl::fromLocalFile(QDir(path).absolutePath()));
+}
 
 void SettingsViewModel::setThemeMode(const QString &mode)
 {
