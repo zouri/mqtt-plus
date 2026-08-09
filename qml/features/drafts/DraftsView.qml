@@ -97,9 +97,9 @@ Item {
                     badgeRadius: 11
                     horizontalPadding: 8
                     verticalPadding: 4
-                    badgeBg: root.ui.themePalette.selectedBg
+                    badgeBg: root.ui.themePalette.innerPanelBg
                     badgeBorder: "transparent"
-                    badgeText: root.ui.themePalette.infoText
+                    badgeText: root.ui.textMuted
                 }
 
                 Item {
@@ -108,9 +108,13 @@ Item {
 
                 AppButton {
                     ui: root.ui
+                    Layout.preferredHeight: 34
+                    minimumWidth: 116
+                    outlined: true
                     text: qsTr("New Draft")
-                    primary: true
-                    minimumWidth: 100
+                    icon.source: root.ui.materialIcon("plus")
+                    icon.width: 16
+                    icon.height: 16
                     enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                     onClicked: root.requestEditorAction("new", "")
                 }
@@ -146,11 +150,11 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.leftMargin: 24
-                Layout.rightMargin: 24
-                Layout.topMargin: 16
-                Layout.bottomMargin: 16
-                spacing: 12
+                Layout.leftMargin: 12
+                Layout.rightMargin: 12
+                Layout.topMargin: 8
+                Layout.bottomMargin: 8
+                spacing: 8
 
                 RowLayout {
                     visible: root.viewModel.storageError.length > 0
@@ -176,16 +180,18 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 12
+                    spacing: 10
 
                     ColumnLayout {
-                        Layout.preferredWidth: 340
-                        spacing: 6
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 240
+                        Layout.horizontalStretchFactor: 3
+                        spacing: 5
 
                         Label {
                             text: qsTr("Draft name")
                             color: root.ui.textMuted
-                            font.pixelSize: root.ui.textSm
+                            font.pixelSize: 11
                         }
 
                         AppTextField {
@@ -193,6 +199,7 @@ Item {
 
                             ui: root.ui
                             Layout.fillWidth: true
+                            Layout.preferredHeight: root.ui.compactControlHeight
                             enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                             maximumLength: 80
                             text: root.editor.name
@@ -203,17 +210,20 @@ Item {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 6
+                        Layout.minimumWidth: 320
+                        Layout.horizontalStretchFactor: 5
+                        spacing: 5
 
                         Label {
                             text: qsTr("Description")
                             color: root.ui.textMuted
-                            font.pixelSize: root.ui.textSm
+                            font.pixelSize: 11
                         }
 
                         AppTextField {
                             ui: root.ui
                             Layout.fillWidth: true
+                            Layout.preferredHeight: root.ui.compactControlHeight
                             enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                             maximumLength: 500
                             text: root.editor.description
@@ -225,21 +235,23 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 8
+                    spacing: 10
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 6
+                        Layout.minimumWidth: 280
+                        spacing: 5
 
                         Label {
                             text: qsTr("Default Topic")
                             color: root.ui.textMuted
-                            font.pixelSize: root.ui.textSm
+                            font.pixelSize: 11
                         }
 
                         AppTextField {
                             ui: root.ui
                             Layout.fillWidth: true
+                            Layout.preferredHeight: root.ui.compactControlHeight
                             enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                             text: root.editor.defaultTopic
                             placeholderText: qsTr("Optional; requested when sending if empty")
@@ -248,18 +260,19 @@ Item {
                     }
 
                     ColumnLayout {
-                        Layout.preferredWidth: 92
-                        spacing: 6
+                        Layout.preferredWidth: 100
+                        spacing: 5
 
                         Label {
                             text: qsTr("QoS")
                             color: root.ui.textMuted
-                            font.pixelSize: root.ui.textSm
+                            font.pixelSize: 11
                         }
 
                         AppComboBox {
                             ui: root.ui
                             Layout.fillWidth: true
+                            Layout.preferredHeight: root.ui.compactControlHeight
                             enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                             model: [qsTr("QoS 0"), qsTr("QoS 1"), qsTr("QoS 2")]
                             currentIndex: root.editor.qos
@@ -268,18 +281,19 @@ Item {
                     }
 
                     ColumnLayout {
-                        Layout.preferredWidth: 116
-                        spacing: 6
+                        Layout.preferredWidth: 132
+                        spacing: 5
 
                         Label {
                             text: qsTr("Format")
                             color: root.ui.textMuted
-                            font.pixelSize: root.ui.textSm
+                            font.pixelSize: 11
                         }
 
                         AppComboBox {
                             ui: root.ui
                             Layout.fillWidth: true
+                            Layout.preferredHeight: root.ui.compactControlHeight
                             enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                             model: root.viewModel.payloadFormats
                             currentIndex: root.editor.format
@@ -288,18 +302,19 @@ Item {
                     }
 
                     ColumnLayout {
-                        Layout.preferredWidth: 82
-                        spacing: 6
+                        Layout.preferredWidth: 84
+                        spacing: 5
 
                         Label {
                             text: qsTr("Delivery")
                             color: root.ui.textMuted
-                            font.pixelSize: root.ui.textSm
+                            font.pixelSize: 11
                         }
 
                         AppCheckBox {
                             ui: root.ui
                             Layout.fillWidth: true
+                            Layout.preferredHeight: root.ui.compactControlHeight
                             enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                             text: qsTr("Retain")
                             checked: root.editor.retain
@@ -319,12 +334,12 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: 6
+                    spacing: 5
 
                     Label {
                         text: qsTr("Payload")
                         color: root.ui.textMuted
-                        font.pixelSize: root.ui.textSm
+                        font.pixelSize: 11
                     }
 
                     AppTextArea {
@@ -334,6 +349,7 @@ Item {
                         Layout.minimumHeight: 260
                         enabled: root.viewModel.ready && !root.viewModel.busy && !root.viewModel.readOnly
                         text: root.editor.payload
+                        showLineNumbers: true
                         wrapMode: TextEdit.Wrap
                         placeholderText: qsTr("Empty payload is valid")
                         onTextChanged: {
@@ -348,22 +364,22 @@ Item {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 62
+            Layout.preferredHeight: 56
             color: root.ui.themePalette.headerBg
 
             Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.leftMargin: 300
+                anchors.leftMargin: 270
                 height: 1
                 color: root.ui.themePalette.separator
             }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 324
-                anchors.rightMargin: 24
+                anchors.leftMargin: 288
+                anchors.rightMargin: 12
                 spacing: 8
 
                 Label {
@@ -376,14 +392,19 @@ Item {
                     color: root.editor.validationError.length > 0
                            ? root.ui.themePalette.errorText
                            : root.ui.textMuted
-                    font.pixelSize: root.ui.textSm
+                    font.pixelSize: 11
                     elide: Label.ElideRight
                 }
 
                 AppButton {
                     ui: root.ui
+                    Layout.preferredHeight: 34
+                    minimumWidth: 86
+                    outlined: true
                     text: qsTr("Duplicate")
-                    minimumWidth: 82
+                    icon.source: root.ui.materialIcon("content-copy")
+                    icon.width: 16
+                    icon.height: 16
                     enabled: root.editor.currentDraftId.length > 0
                              && !root.viewModel.busy
                              && !root.viewModel.readOnly
@@ -392,9 +413,11 @@ Item {
 
                 AppButton {
                     ui: root.ui
-                    text: qsTr("Delete")
+                    Layout.preferredHeight: 34
+                    minimumWidth: 68
+                    outlined: true
                     danger: true
-                    minimumWidth: 72
+                    text: qsTr("Delete")
                     enabled: root.editor.currentDraftId.length > 0
                              && !root.viewModel.busy
                              && !root.viewModel.readOnly

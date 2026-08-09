@@ -31,6 +31,7 @@ public:
     bool readOnly() const;
     bool canRecover() const;
     QString errorMessage() const;
+    QString storageDirectory() const;
 
     void load();
     bool validateDraft(const PublishDraft &draft, QString &errorMessage, const QString &excludeId = QString()) const;

@@ -15,6 +15,7 @@ Control {
     property alias placeholderTextColor: textArea.placeholderTextColor
     property alias selectByMouse: textArea.selectByMouse
     property alias wrapMode: textArea.wrapMode
+    property string syntaxLanguage: ""
     property bool showLineNumbers: false
     property bool submitOnCtrlEnter: false
     property int backgroundRadius: 8
@@ -32,8 +33,22 @@ Control {
     readonly property int lineNumberGutterWidth: control.showLineNumbers
                                                ? Math.max(42, 24 + String(control.lineCount).length * 8)
                                                : 0
+    readonly property real lineNumberLineHeight: control.showLineNumbers
+                                                 && control.lineCount > 0
+                                                 ? Math.max(1,
+                                                            textArea.contentHeight
+                                                            / control.lineCount)
+                                                 : lineNumberFontMetrics.lineSpacing
+    readonly property int firstVisibleBlock: Math.max(0,
+                                                       Math.floor(control.contentY
+                                                                  / control.lineNumberLineHeight))
+    readonly property int lastVisibleBlock: Math.min(control.lineCount - 1,
+                                                      Math.ceil((control.contentY
+                                                                 + control.viewportHeight)
+                                                                / control.lineNumberLineHeight))
 
     signal submitRequested
+    signal textEdited
     clip: true
     hoverEnabled: true
     font.pixelSize: 13
@@ -66,6 +81,14 @@ Control {
 
         font.family: control.font.family
         font.pixelSize: control.font.pixelSize
+    }
+
+    CodeSyntaxHighlighter {
+        textDocument: textArea.textDocument
+        language: control.syntaxLanguage
+        darkTheme: control.ui.isDarkTheme
+        firstVisibleBlock: control.firstVisibleBlock
+        lastVisibleBlock: control.lastVisibleBlock
     }
 
     background: Rectangle {
@@ -124,10 +147,12 @@ Control {
                 bottomPadding: 10
                 font.family: control.font.family
                 font.pixelSize: control.font.pixelSize
+                textFormat: TextEdit.PlainText
                 color: control.ui.textStrong
                 placeholderTextColor: control.ui.themePalette.fieldPlaceholder
                 selectByMouse: true
                 background: null
+                onTextEdited: control.textEdited()
 
                 ContextMenu.menu: AppNativeTextMenu {
                     editor: textArea
@@ -191,7 +216,7 @@ Control {
                             required property int index
 
                             width: ListView.view.width
-                            height: lineNumberFontMetrics.lineSpacing
+                            height: control.lineNumberLineHeight
                             horizontalAlignment: Text.AlignRight
                             verticalAlignment: Text.AlignTop
                             text: lineNumberDelegate.index + 1

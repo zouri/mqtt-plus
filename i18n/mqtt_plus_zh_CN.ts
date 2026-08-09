@@ -2786,6 +2786,41 @@
     </message>
     <message>
         <location filename="../qml/features/settings/SettingsView.qml" line="546"/>
+        <source>Storage locations</source>
+        <translation>存储位置</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="553"/>
+        <source>Scripts</source>
+        <translation>脚本</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="559"/>
+        <source>Open script storage folder</source>
+        <translation>打开脚本存储目录</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="567"/>
+        <source>Drafts</source>
+        <translation>草稿</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="573"/>
+        <source>Open draft storage folder</source>
+        <translation>打开草稿存储目录</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="581"/>
+        <source>Database</source>
+        <translation>数据库</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="588"/>
+        <source>Open database storage folder</source>
+        <translation>打开数据库存储目录</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="546"/>
         <source>Data transfer</source>
         <translation>数据传输</translation>
     </message>
