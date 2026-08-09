@@ -50,21 +50,6 @@ try {
             if ($generatorName) {
                 $generatorArguments = @("-G", $generatorName, "-A", "x64")
                 $buildToolArguments = @("--", "/nodeReuse:false")
-
-                $devShellPath = Join-Path `
-                    $vsInstance.installationPath `
-                    "Common7/Tools/Launch-VsDevShell.ps1"
-                if (Test-Path $devShellPath) {
-                    & $devShellPath `
-                        -VsInstallationPath $vsInstance.installationPath `
-                        -Arch amd64 `
-                        -HostArch amd64 `
-                        -NoLogo `
-                        -SkipAutomaticLocation
-                    if (-not $env:VCINSTALLDIR) {
-                        throw "Visual Studio developer environment did not set VCINSTALLDIR."
-                    }
-                }
             }
         }
     }
