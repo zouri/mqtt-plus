@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core CorePrivate Gui Network Qml Quick QuickControls2 Sql Svg Test LinguistTools)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core Gui Network Qml Quick QuickControls2 Sql Svg Test LinguistTools)
 
 option(
     MQTT_PLUS_FORCE_BUNDLED_QTMQTT
@@ -153,6 +153,7 @@ endif()
 qt_standard_project_setup(REQUIRES 6.11)
 
 if(NOT TARGET Qt6::Mqtt)
+    find_package(Qt6 6.11 REQUIRED COMPONENTS CorePrivate)
     mqtt_plus_reuse_cached_dependency(qtmqtt "src/mqtt/qmqttclient.cpp")
     FetchContent_Declare(
         qtmqtt
