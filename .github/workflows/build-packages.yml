@@ -28,6 +28,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
+          modules: qttasktree
           cache: true
 
       - name: Configure
@@ -82,6 +83,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
+          modules: qttasktree
           cache: true
 
       - name: Build and package on Windows
