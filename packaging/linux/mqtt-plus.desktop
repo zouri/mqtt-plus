@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=MQTT Plus
+Comment=Desktop MQTT client
+Exec=mqtt-plus
+Icon=mqtt-plus
+Terminal=false
+Categories=Development;Network;
+StartupNotify=true
+

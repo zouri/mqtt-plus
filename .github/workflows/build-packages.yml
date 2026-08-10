@@ -60,10 +60,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Windows x64
+          - name: Windows x64 installer
             os: windows-2022
             artifact: windows-x64
-          - name: Linux x64
+          - name: Linux x64 DEB and AppImage
             os: ubuntu-22.04
             artifact: linux-x64
           - name: macOS x64
@@ -102,7 +102,7 @@ jobs:
         shell: bash
         run: ./scripts/package-macos.sh "$QT_ROOT_DIR" "${{ matrix.macos_arch }}"
 
-      - name: Upload package
+      - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
           name: mqtt-plus-${{ matrix.artifact }}
