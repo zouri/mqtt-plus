@@ -366,6 +366,7 @@ ApplicationWindow {
                             preferences: root.preferences
                             eventHistory: root.app.eventHistory
                             configurationTransfer: root.app.configurationTransfer
+                            updates: root.app.updates
                         }
                     }
                 }
