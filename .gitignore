@@ -5,14 +5,8 @@
 .workbuddy/
 .od-skills/
 .superpowers/
-docs/
-!docs/
-docs/*
-!docs/adr/
-!docs/adr/*.md
 
 CMakeUserPresets.json
-aqtinstall.log
 compile_commands.json
 
 

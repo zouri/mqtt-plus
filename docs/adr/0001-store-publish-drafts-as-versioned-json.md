@@ -1,3 +1,22 @@
+---
+status: accepted
+implementation: implemented
+---
+
 # Store publish drafts as versioned JSON
 
-The global Draft Library is persisted as an independently versioned, unencrypted `drafts.json` file in the application configuration directory and written atomically with `QSaveFile`. Plaintext storage matches the application's existing local configuration security boundary and must not be presented as suitable for secrets; file permissions should restrict access to the current user where the platform supports it. We keep drafts out of `QSettings` because their structured records and potentially large payloads need an explicit evolvable schema, and out of `history.db` because saved drafts have a separate lifecycle from disposable message history. Initial loading and JSON parsing run in the background, while writes run as one serialized background transaction; the visible library changes only after the durable commit succeeds, conflicting mutations remain disabled while it runs, and application shutdown waits for an active write. Each successful replacement retains the prior valid file as `drafts.json.bak`. Before the first release, only the current schema version is supported; older development files may be edited or removed manually instead of migrated, while an unknown newer version is never overwritten and leaves the library read-only with an upgrade error. If the primary file cannot be parsed, the application must preserve it, block further writes, and offer recovery from the backup instead of treating the library as empty. Recovery first renames the damaged primary file to a timestamped `drafts.json.corrupt-*`, restores the backup, and reloads the library in the current process; failure leaves the library read-only and preserves every recovery artifact. Any failed save leaves both the durable file and in-memory library unchanged while surfacing the storage error.
+## Context
+
+Publish drafts are structured records with potentially large payloads and a lifecycle separate from disposable message history. `QSettings` does not provide an explicit, evolvable document schema, while `history.db` should not own user-managed drafts.
+
+## Decision
+
+Store the global Draft Library in an independently versioned, unencrypted `drafts.json` file under the application's configuration directory. Write the file atomically with `QSaveFile` and restrict its permissions to the current user where the platform supports it.
+
+Load and parse drafts in the background. Serialize mutations through one background save operation, update the visible library only after the durable write succeeds, and wait for active I/O during shutdown. Before replacing a valid primary file, retain it as `drafts.json.bak`.
+
+Only the current pre-release schema is supported. An unknown newer schema or an unreadable primary file makes the library read-only instead of being overwritten or treated as empty. Recovery preserves the damaged primary as `drafts.json.corrupt-*`, restores a valid backup, and reloads the library in the current process.
+
+## Consequences
+
+Draft payloads are plaintext and must not be presented as secret storage. Older development schemas require manual removal or conversion. Failed saves and recovery attempts preserve the last durable data and surface an error without changing the in-memory library.

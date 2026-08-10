@@ -99,7 +99,8 @@ QML -> ViewModel -> Workspace/Core Port -> Controllers/Services/Domain
   "configurePresets": [
     {
       "name": "qt6.11-local",
-      "inherits": "qt6.11-windows-release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/qt6.11-local",
       "cacheVariables": {
         "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/msvc2022_64"
       }
@@ -293,8 +294,7 @@ end
 
 - 已选择并添加项目开源许可证。
 - 已补充第三方依赖和资源许可说明，参见 `THIRD_PARTY_NOTICES.md`。
-- 已阅读开源前检查清单，参见 `docs/OPEN_SOURCE_CHECKLIST.md`。
-- 已确认安全说明中的凭据、Lua 脚本和本地数据策略，参见 `docs/SECURITY_NOTES.md`。
+- 已确认本地凭据、草稿 payload、处理器源码和历史数据库不会被误提交或打包为公开资料。
 
 ## 验证建议
 
