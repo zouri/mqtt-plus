@@ -13,6 +13,7 @@ class PreferencesController : public QObject
     Q_PROPERTY(bool deleteHistoryWithSession READ deleteHistoryWithSession WRITE setDeleteHistoryWithSession NOTIFY deleteHistoryWithSessionChanged)
     Q_PROPERTY(bool saveMessagesWhenOutputPaused READ saveMessagesWhenOutputPaused WRITE setSaveMessagesWhenOutputPaused NOTIFY saveMessagesWhenOutputPausedChanged)
     Q_PROPERTY(bool autoCollapseConnectionListOnConnect READ autoCollapseConnectionListOnConnect WRITE setAutoCollapseConnectionListOnConnect NOTIFY autoCollapseConnectionListOnConnectChanged)
+    Q_PROPERTY(int autoFollowFps READ autoFollowFps WRITE setAutoFollowFps NOTIFY autoFollowFpsChanged)
     Q_PROPERTY(int subscriptionPaneWidth READ subscriptionPaneWidth NOTIFY workbenchLayoutChanged)
     Q_PROPERTY(int publishComposerHeight READ publishComposerHeight NOTIFY workbenchLayoutChanged)
     Q_PROPERTY(bool connectionPaneCollapsed READ connectionPaneCollapsed NOTIFY workbenchLayoutChanged)
@@ -27,6 +28,7 @@ public:
     bool deleteHistoryWithSession() const;
     bool saveMessagesWhenOutputPaused() const;
     bool autoCollapseConnectionListOnConnect() const;
+    int autoFollowFps() const;
     QString clearMessagesOnExit() const;
     QString clearLogsOnExit() const;
     QSize windowSize() const;
@@ -46,6 +48,7 @@ public slots:
     void setDeleteHistoryWithSession(bool enabled);
     void setSaveMessagesWhenOutputPaused(bool enabled);
     void setAutoCollapseConnectionListOnConnect(bool enabled);
+    void setAutoFollowFps(int fps);
     void setClearMessagesOnExit(const QString &mode);
     void setClearLogsOnExit(const QString &mode);
     void setWorkbenchLayout(
@@ -61,6 +64,7 @@ signals:
     void deleteHistoryWithSessionChanged();
     void saveMessagesWhenOutputPausedChanged();
     void autoCollapseConnectionListOnConnectChanged();
+    void autoFollowFpsChanged();
     void clearMessagesOnExitChanged();
     void clearLogsOnExitChanged();
     void workbenchLayoutChanged();
@@ -76,6 +80,7 @@ private:
     bool m_deleteHistoryWithSession = true;
     bool m_saveMessagesWhenOutputPaused = true;
     bool m_autoCollapseConnectionListOnConnect = true;
+    int m_autoFollowFps = 30;
     QString m_clearMessagesOnExit = QStringLiteral("never");
     QString m_clearLogsOnExit = QStringLiteral("never");
     QSize m_windowSize;

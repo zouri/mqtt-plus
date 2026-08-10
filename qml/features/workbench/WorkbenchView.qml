@@ -515,6 +515,7 @@ Item {
             publisher: root.viewModel.publisher
             fontFamily: root.fontFamily
             messagePayloadDisplayMode: root.settingsViewModel.messagePayloadDisplayModeIndex
+            autoFollowFps: root.preferences.autoFollowFps
             composerHeight: root.preferences.publishComposerHeight
             onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
             onDraftsManageRequested: root.draftsManageRequested()

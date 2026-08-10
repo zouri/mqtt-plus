@@ -26,6 +26,7 @@ Rectangle {
     ]
     readonly property var languageLabels: [qsTr("System"), qsTr("English"), qsTr("Simplified Chinese")]
     readonly property var messagePayloadDisplayLabels: [qsTr("Compact"), qsTr("Expand on hover"), qsTr("Always expanded")]
+    readonly property var autoFollowFpsLabels: [qsTr("15 FPS"), qsTr("30 FPS"), qsTr("60 FPS")]
     readonly property var messageRetentionLabels: [qsTr("1,000 messages"), qsTr("5,000 messages"), qsTr("10,000 messages"), qsTr("Unlimited")]
     readonly property var logRetentionLabels: [qsTr("500 logs"), qsTr("2,000 logs"), qsTr("5,000 logs"), qsTr("Unlimited")]
     readonly property var pageSizeLabels: [qsTr("200 rows"), qsTr("500 rows"), qsTr("1,000 rows")]
@@ -432,7 +433,6 @@ Rectangle {
                         ui: root.ui
                         title: qsTr("Message content")
                         detail: qsTr("Choose how much payload text is shown in the message list.")
-                        showDivider: false
 
                         AppComboBox {
                             ui: root.ui
@@ -440,6 +440,23 @@ Rectangle {
                             model: root.messagePayloadDisplayLabels
                             currentIndex: root.viewModel.messagePayloadDisplayModeIndex
                             onActivated: (index) => root.viewModel.setMessagePayloadDisplayModeIndex(index)
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Auto-follow refresh rate")
+                        detail: qsTr("Limit how often the message list follows new rows.")
+                        showDivider: false
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.preferredWidth: 130
+                            model: root.autoFollowFpsLabels
+                            currentIndex: root.preferences.autoFollowFps === 15
+                                          ? 0
+                                          : (root.preferences.autoFollowFps === 60 ? 2 : 1)
+                            onActivated: (index) => root.preferences.autoFollowFps = [15, 30, 60][index]
                         }
                     }
                 }

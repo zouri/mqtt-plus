@@ -126,7 +126,7 @@ void MessageStreamProfileDriver::injectBatch()
     const int batchCount = (std::min)(m_options.batchSize, remaining);
     for (int index = 0; index < batchCount; ++index) {
         const QString &topic = m_topics.at(m_sentMessages % m_topics.size());
-        eventHistory->appendIncomingMessage(session->id, topic, m_payload);
+        eventHistory->queueIncomingMessage(session->id, topic, m_payload);
         ++m_sentMessages;
     }
     samplePressure();

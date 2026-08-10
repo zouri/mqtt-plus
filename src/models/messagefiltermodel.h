@@ -3,6 +3,7 @@
 #include <QSortFilterProxyModel>
 #include <QList>
 #include <QStringList>
+#include <QTimer>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -51,6 +52,7 @@ private:
     void invalidateRows(bool wasActive);
     void connectCountSignals();
     void connectSourceSignals();
+    void scheduleMessageCountsChanged();
     bool rowMatches(
         const QString &kind,
         const QString &direction,
@@ -65,4 +67,5 @@ private:
     QStringList m_selectedTopics;
     QString m_direction = QStringLiteral("all");
     QList<QMetaObject::Connection> m_sourceConnections;
+    QTimer m_messageCountsChangedTimer;
 };

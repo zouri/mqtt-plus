@@ -18,6 +18,7 @@ AppPanel {
     required property var publishStatus
     required property string fontFamily
     required property int messagePayloadDisplayMode
+    required property int autoFollowFps
     property string selectedMessageHistoryId: ""
     property string inspectorSessionId: ""
     property bool inspectorOpened: false
@@ -115,6 +116,7 @@ AppPanel {
             status: root.status
             fontFamily: root.fontFamily
             payloadDisplayMode: root.messagePayloadDisplayMode
+            autoFollowFps: root.autoFollowFps
             title: qsTr("Messages")
             showOutputControls: true
             bottomVisualOverflow: 6
