@@ -14,6 +14,7 @@ Rectangle {
     required property var preferences
     required property var eventHistory
     required property var configurationTransfer
+    required property var updates
 
     readonly property var themeLabels: [qsTr("System"), qsTr("Light"), qsTr("Dark")]
     readonly property var themeColorOptions: [
@@ -439,6 +440,51 @@ Rectangle {
                             model: root.messagePayloadDisplayLabels
                             currentIndex: root.viewModel.messagePayloadDisplayModeIndex
                             onActivated: (index) => root.viewModel.setMessagePayloadDisplayModeIndex(index)
+                        }
+                    }
+                }
+
+                SettingsSection {
+                    ui: root.ui
+                    title: qsTr("Software update")
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    Layout.maximumWidth: 760
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Version %1").arg(root.updates.currentVersion)
+                        detail: root.updates.statusMessage
+
+                        AppButton {
+                            ui: root.ui
+                            text: root.updates.busy ? qsTr("Checking...") : qsTr("Check now")
+                            minimumWidth: 100
+                            enabled: !root.updates.busy
+                            onClicked: root.updates.checkForUpdates()
+                        }
+
+                        AppButton {
+                            ui: root.ui
+                            visible: root.updates.updateAvailable
+                            text: root.updates.directDownloadAvailable
+                                  ? qsTr("Download DMG")
+                                  : qsTr("View release")
+                            minimumWidth: 116
+                            onClicked: root.updates.openDownloadPage()
+                        }
+                    }
+
+                    SettingRow {
+                        ui: root.ui
+                        title: qsTr("Automatic checks")
+                        detail: qsTr("Check GitHub Releases at most once every 24 hours.")
+                        showDivider: false
+
+                        SettingSwitch {
+                            ui: root.ui
+                            checked: root.updates.automaticChecksEnabled
+                            onToggled: root.updates.automaticChecksEnabled = checked
                         }
                     }
                 }

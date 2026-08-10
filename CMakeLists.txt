@@ -279,8 +279,10 @@ qt_add_executable(mqtt_plus_app
 )
 
 qt_add_translations(mqtt_plus_app
+    SOURCE_TARGETS
+        mqtt_plus_app
     TS_FILES
-        i18n/mqtt_plus_zh_CN.ts
+        "${CMAKE_CURRENT_SOURCE_DIR}/i18n/mqtt_plus_zh_CN.ts"
     LUPDATE_OPTIONS
         -no-obsolete
     RESOURCE_PREFIX
@@ -324,6 +326,7 @@ target_include_directories(mqtt_plus_app
 target_compile_definitions(mqtt_plus_app
     PRIVATE
         $<$<CONFIG:Debug>:QT_QML_DEBUG>
+        MQTT_PLUS_VERSION="${PROJECT_VERSION}"
 )
 
 target_link_libraries(mqtt_plus_app
@@ -355,6 +358,8 @@ endif()
 set_target_properties(mqtt_plus_app PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_ICON_FILE app-icon.icns
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     WIN32_EXECUTABLE TRUE
 )
 
@@ -510,6 +515,17 @@ if(BUILD_TESTING)
     add_mqtt_plus_qt_test(test_notificationcentermodel
         tests/test_notificationcentermodel.cpp
         src/models/notificationcentermodel.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_githubreleaseparser
+        tests/test_githubreleaseparser.cpp
+        src/services/update/githubreleaseparser.cpp
+    )
+
+    add_mqtt_plus_qt_test(test_updatecontroller
+        tests/test_updatecontroller.cpp
+        src/services/update/updateservice.h
+        src/usecases/updatecontroller.cpp
     )
 
     add_executable(test_recenttrafficwindow

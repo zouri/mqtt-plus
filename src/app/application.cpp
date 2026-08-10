@@ -40,6 +40,14 @@ Application::Application()
     , m_processorsModel(&m_owner)
     , m_draftsModel(&m_owner)
     , m_notifications(&m_owner)
+    , m_updateService(
+          QCoreApplication::applicationVersion(),
+          &m_owner)
+    , m_updateController(
+          m_settings,
+          m_updateService,
+          QCoreApplication::applicationVersion(),
+          &m_owner)
     , m_subscriptionFpsTimer(&m_owner)
     , m_eventHistoryService(
           m_sessionService,
@@ -80,9 +88,16 @@ Application::Application()
           m_processorsModel,
           m_draftsModel,
           m_notifications,
+          m_updateController,
           m_settings,
           &m_owner)
 {
+    QObject::connect(
+        m_viewModel.settings(),
+        &SettingsViewModel::languageChanged,
+        m_viewModel.updates(),
+        &UpdateViewModel::retranslate);
+
     QObject::connect(
         m_viewModel.configurationTransfer(),
         &ConfigurationTransferService::operationFinished,
@@ -268,11 +283,54 @@ Application::Application()
     QObject::connect(
         &m_notifications,
         &NotificationCenterModel::actionRequested,
-        &m_draftService,
+        &m_owner,
         [this](const QString &actionId) {
             if (actionId == QStringLiteral("recoverDraftBackup")) {
                 m_draftService.recoverBackup();
+            } else if (actionId == QStringLiteral("downloadUpdate")) {
+                m_updateController.openDownloadPage();
             }
+        });
+    QObject::connect(
+        &m_updateController,
+        &UpdateController::checkCompleted,
+        &m_notifications,
+        [this](bool updateAvailable, bool userInitiated) {
+            if (updateAvailable) {
+                m_notifications.postOrUpdate(
+                    QStringLiteral("software-update"),
+                    appText(QT_TRANSLATE_NOOP("Application", "Software update available")),
+                    appText(QT_TRANSLATE_NOOP("Application", "Version %1 is ready to download."))
+                        .arg(m_updateController.latestVersion()),
+                    QStringLiteral("info"),
+                    0,
+                    m_updateController.directDownloadAvailable()
+                        ? appText(QT_TRANSLATE_NOOP("Application", "Download"))
+                        : appText(QT_TRANSLATE_NOOP("Application", "View release")),
+                    QStringLiteral("downloadUpdate"));
+            } else if (userInitiated) {
+                m_notifications.postOrUpdate(
+                    QStringLiteral("software-update"),
+                    appText(QT_TRANSLATE_NOOP("Application", "MQTT Plus is up to date")),
+                    appText(QT_TRANSLATE_NOOP("Application", "You are using the latest version.")),
+                    QStringLiteral("success"),
+                    4000);
+            }
+        });
+    QObject::connect(
+        &m_updateController,
+        &UpdateController::checkFailed,
+        &m_notifications,
+        [this](UpdateService::Error, bool userInitiated) {
+            if (!userInitiated) {
+                return;
+            }
+            m_notifications.postOrUpdate(
+                QStringLiteral("software-update"),
+                appText(QT_TRANSLATE_NOOP("Application", "Update check failed")),
+                m_viewModel.updates()->statusMessage(),
+                QStringLiteral("error"),
+                0);
         });
     QObject::connect(
         &m_mqttService,
@@ -362,6 +420,7 @@ Application::Application()
     m_sessionService.loadSessions();
     applyMessageRetentionLimit();
     m_sessionService.setCurrentSessionIndex(0);
+    m_updateController.scheduleAutomaticCheck();
 }
 
 Application::~Application()

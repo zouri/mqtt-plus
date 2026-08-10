@@ -7,6 +7,7 @@
 #include "viewmodels/draftsviewmodel.h"
 #include "viewmodels/processorsviewmodel.h"
 #include "viewmodels/settingsviewmodel.h"
+#include "viewmodels/updateviewmodel.h"
 #include "viewmodels/workbenchviewmodel.h"
 #include "usecases/configurationtransferservice.h"
 
@@ -34,6 +35,7 @@ class ApplicationViewModel : public QObject
     Q_PROPERTY(SessionService* sessionService READ sessionService CONSTANT)
     Q_PROPERTY(SubscriptionService* subscriptionService READ subscriptionService CONSTANT)
     Q_PROPERTY(NotificationCenterModel* notifications READ notifications CONSTANT)
+    Q_PROPERTY(UpdateViewModel* updates READ updates CONSTANT)
 
 public:
     explicit ApplicationViewModel(
@@ -54,6 +56,7 @@ public:
         ProcessorLibraryModel &processors,
         DraftLibraryModel &drafts,
         NotificationCenterModel &notifications,
+        UpdateController &updateController,
         QSettings &settings,
         QObject *parent = nullptr);
 
@@ -68,9 +71,11 @@ public:
     SessionService *sessionService();
     SubscriptionService *subscriptionService();
     NotificationCenterModel *notifications();
+    UpdateViewModel *updates();
 
 private:
     SettingsViewModel m_settings;
+    UpdateViewModel m_updates;
     ProcessorsViewModel m_processors;
     WorkbenchViewModel m_workbench;
     DraftsViewModel m_drafts;

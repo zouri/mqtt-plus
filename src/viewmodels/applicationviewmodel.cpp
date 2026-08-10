@@ -6,6 +6,7 @@
 #include "usecases/preferencescontroller.h"
 #include "usecases/sessionservice.h"
 #include "usecases/subscriptionservice.h"
+#include "usecases/updatecontroller.h"
 
 #include <algorithm>
 
@@ -27,6 +28,7 @@ ApplicationViewModel::ApplicationViewModel(
     ProcessorLibraryModel &processors,
     DraftLibraryModel &drafts,
     NotificationCenterModel &notifications,
+    UpdateController &updateController,
     QSettings &settings,
     QObject *parent)
     : QObject(parent)
@@ -39,6 +41,7 @@ ApplicationViewModel::ApplicationViewModel(
           sessionService.sessions(),
           settings,
           this)
+    , m_updates(updateController, this)
     , m_processors(
           processorLibrary,
           processors,
@@ -147,4 +150,9 @@ SubscriptionService *ApplicationViewModel::subscriptionService()
 NotificationCenterModel *ApplicationViewModel::notifications()
 {
     return m_notifications;
+}
+
+UpdateViewModel *ApplicationViewModel::updates()
+{
+    return &m_updates;
 }

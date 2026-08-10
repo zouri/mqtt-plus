@@ -12,12 +12,14 @@
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
 #include "services/processors/processorlibrary.h"
+#include "services/update/githubupdateservice.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/draftlibraryservice.h"
 #include "usecases/mqttsessionservice.h"
 #include "usecases/preferencescontroller.h"
 #include "usecases/sessionservice.h"
 #include "usecases/subscriptionservice.h"
+#include "usecases/updatecontroller.h"
 #include "viewmodels/applicationviewmodel.h"
 
 #include <QObject>
@@ -62,6 +64,8 @@ private:
     ProcessorLibraryModel m_processorsModel;
     DraftLibraryModel m_draftsModel;
     NotificationCenterModel m_notifications;
+    GitHubUpdateService m_updateService;
+    UpdateController m_updateController;
     QTimer m_subscriptionFpsTimer;
     EventHistoryService m_eventHistoryService;
     SubscriptionService m_subscriptionService;

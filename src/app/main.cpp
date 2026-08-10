@@ -110,6 +110,7 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
     QGuiApplication guiApplication(argc, argv);
+    QCoreApplication::setApplicationVersion(QStringLiteral(MQTT_PLUS_VERSION));
     const QFont baseApplicationFont = guiApplication.font();
     guiApplication.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app-icon.png")));
 
