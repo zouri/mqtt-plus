@@ -51,6 +51,11 @@ SubscriptionService::SubscriptionService(
     , m_sessionService(sessionService)
     , m_eventHistoryService(eventHistoryService)
 {
+    connect(
+        this,
+        &SubscriptionService::subscriptionsChanged,
+        &m_eventHistoryService,
+        &EventHistoryService::invalidateMessageContexts);
 }
 
 bool SubscriptionService::upsertCurrentSubscription(

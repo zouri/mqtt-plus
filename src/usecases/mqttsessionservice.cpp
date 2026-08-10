@@ -313,7 +313,7 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
         &QMqttClient::messageReceived,
         this,
         [this, sessionId = session->id](const QByteArray &message, const QMqttTopicName &topic) {
-            m_eventHistoryService.appendIncomingMessage(sessionId, topic.name(), message);
+            m_eventHistoryService.queueIncomingMessage(sessionId, topic.name(), message);
         });
 
     connect(client, &QMqttClient::messageSent, this, [this, sessionId = session->id](qint32 messageId) {

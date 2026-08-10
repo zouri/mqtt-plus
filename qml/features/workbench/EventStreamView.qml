@@ -20,6 +20,7 @@ Item {
     required property string fontFamily
     required property string title
     required property int payloadDisplayMode
+    required property int autoFollowFps
 
     property bool showOutputControls: false
     property bool loadingOlderEvents: false
@@ -84,6 +85,7 @@ Item {
     Layout.fillHeight: true
 
     function resetStreamPosition() {
+        followScrollTimer.stop()
         root.streamRevision += 1
         root.loadingOlderEvents = false
         root.reachedHistoryStart = false
@@ -176,17 +178,8 @@ Item {
             return
         }
 
-        const revision = root.streamRevision
         eventList.followScrollQueued = true
-        Qt.callLater(function() {
-            if (revision !== root.streamRevision) {
-                return
-            }
-            eventList.followScrollQueued = false
-            if (eventList.bottomAnchorActive) {
-                eventList.scrollToBottom()
-            }
-        })
+        followScrollTimer.start()
     }
 
     function focusSearch() {
@@ -341,6 +334,19 @@ Item {
         interval: 200
         repeat: false
         onTriggered: root.viewModel.setMessageSearchText(root.pendingMessageSearchText)
+    }
+
+    Timer {
+        id: followScrollTimer
+
+        interval: Math.round(1000 / Math.max(1, root.autoFollowFps))
+        repeat: false
+        onTriggered: {
+            eventList.followScrollQueued = false
+            if (eventList.bottomAnchorActive) {
+                eventList.scrollToBottom()
+            }
+        }
     }
 
     ColumnLayout {
@@ -608,10 +614,10 @@ Item {
                     shouldFollowOutput = true
                     unreadCount = 0
                     root.followMode = "smart"
-                    if (count > 0) {
-                        positionViewAtEnd()
-                    } else {
+                    if (count <= 0) {
                         contentY = originY
+                    } else if (!atYEnd) {
+                        positionViewAtEnd()
                     }
                     Qt.callLater(function() {
                         eventList.programmaticScroll = false
@@ -827,11 +833,18 @@ Item {
                             id: rowHover
                         }
 
-                        AppToolTip {
-                            ui: root.ui
-                            text: eventDelegate.topic
-                            position: AppToolTip.Position.Right
+                        Loader {
+                            anchors.fill: parent
                             active: rowHover.hovered && messageTopicLabel.truncated
+
+                            sourceComponent: Component {
+                                AppToolTip {
+                                    ui: root.ui
+                                    text: eventDelegate.topic
+                                    position: AppToolTip.Position.Right
+                                    active: true
+                                }
+                            }
                         }
 
                         TapHandler {

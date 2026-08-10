@@ -6,6 +6,7 @@
 #include "models/eventstreammodel.h"
 #include "presentation/eventrenderer.h"
 #include "services/payload/payloadcodec.h"
+#include "services/messaging/messageadmissionworker.h"
 #include "services/parsing/messageparseworker.h"
 #include "services/processors/processorlibrary.h"
 #include "services/storage/historystore.h"
@@ -21,9 +22,17 @@
 
 using namespace AppUtils;
 
+struct SubscriptionRenderContext
+{
+    QHash<QString, int> formats;
+    QHash<QString, QString> colors;
+    QHash<QString, QString> aliases;
+};
+
 namespace {
 constexpr int kVisibleMessageRowsFlushIntervalMs = 16;
 constexpr int kMessagePressureNotificationIntervalMs = 100;
+constexpr int kMessageActivityNotificationIntervalMs = 50;
 constexpr qint64 kPayloadPreviewBytes = 64 * 1024;
 constexpr qint64 kPressurePayloadPreviewBytes = 4 * 1024;
 constexpr qsizetype kVisibleParsedCharacters = 64 * 1024;
@@ -144,28 +153,6 @@ PayloadStoragePlan makePayloadStoragePlan(
     }
 
     return plan;
-}
-
-QHash<QString, QString> subscriptionColors(const SessionState &session)
-{
-    QHash<QString, QString> colors;
-    for (const auto &subscription : session.subscriptions) {
-        if (!subscription.color.isEmpty()) {
-            colors.insert(subscription.topic, subscription.color);
-        }
-    }
-    return colors;
-}
-
-QHash<QString, QString> subscriptionAliases(const SessionState &session)
-{
-    QHash<QString, QString> aliases;
-    for (const auto &subscription : session.subscriptions) {
-        if (!subscription.alias.isEmpty()) {
-            aliases.insert(subscription.topic, subscription.alias);
-        }
-    }
-    return aliases;
 }
 
 QVariantMap messageRecordRow(const MessageRecord &record)
@@ -308,6 +295,8 @@ EventHistoryService::EventHistoryService(
     m_visibleMessageRowsFlushTimer.setSingleShot(true);
     m_messagePressureNotificationTimer.setInterval(kMessagePressureNotificationIntervalMs);
     m_messagePressureNotificationTimer.setSingleShot(true);
+    m_messageActivityNotificationTimer.setInterval(kMessageActivityNotificationIntervalMs);
+    m_messageActivityNotificationTimer.setSingleShot(true);
     connect(
         &m_historyWriter,
         &HistoryWriterWorker::queueStateChanged,
@@ -339,6 +328,12 @@ EventHistoryService::EventHistoryService(
         &EventHistoryService::messageWriterStateChanged,
         Qt::UniqueConnection);
     connect(
+        &m_messageActivityNotificationTimer,
+        &QTimer::timeout,
+        this,
+        &EventHistoryService::flushPendingMessageActivityNotifications,
+        Qt::UniqueConnection);
+    connect(
         &m_messageParser,
         &MessageParseWorker::parseCompleted,
         this,
@@ -360,6 +355,55 @@ EventHistoryService::EventHistoryService(
         this,
         &EventHistoryService::scheduleMessagePressureNotification,
         Qt::QueuedConnection);
+
+    m_messageAdmissionWorker = new MessageAdmissionWorker;
+    m_messageAdmissionWorker->moveToThread(&m_messageAdmissionThread);
+    connect(
+        &m_messageAdmissionThread,
+        &QThread::finished,
+        m_messageAdmissionWorker,
+        &QObject::deleteLater);
+    connect(
+        m_messageAdmissionWorker,
+        &MessageAdmissionWorker::preparedAvailable,
+        this,
+        &EventHistoryService::applyPreparedIncomingMessages,
+        Qt::QueuedConnection);
+    connect(
+        &m_sessionService,
+        &SessionService::sessionsChanged,
+        this,
+        &EventHistoryService::invalidateMessageContexts);
+    connect(
+        &m_sessionService,
+        &SessionService::currentSessionChanged,
+        this,
+        &EventHistoryService::invalidateMessageContexts);
+    connect(
+        &m_sessionService,
+        &SessionService::messageCapturePolicyChanged,
+        this,
+        &EventHistoryService::invalidateMessageContexts);
+    connect(
+        &m_preferencesController,
+        &PreferencesController::maxIncomingPayloadBytesChanged,
+        this,
+        &EventHistoryService::invalidateMessageContexts);
+    connect(
+        &m_preferencesController,
+        &PreferencesController::saveMessagesWhenOutputPausedChanged,
+        this,
+        &EventHistoryService::invalidateMessageContexts);
+    m_messageAdmissionThread.start();
+    QMetaObject::invokeMethod(
+        m_messageAdmissionWorker,
+        &MessageAdmissionWorker::start,
+        Qt::BlockingQueuedConnection);
+}
+
+EventHistoryService::~EventHistoryService()
+{
+    shutdownIncomingMessageAdmission();
 }
 
 bool EventHistoryService::clearStream(Stream kind, bool allSessions)
@@ -516,13 +560,16 @@ int EventHistoryService::loadOlderCurrentSession(Stream kind)
     }
 
     const int pageSize = m_preferencesController.historyPageSize();
+    const auto renderContext = isMessage
+        ? subscriptionRenderContext(*session)
+        : QSharedPointer<const SubscriptionRenderContext> {};
     QVariantList rows = EventRenderer::loadHistoryRows(
         isMessage
             ? m_historyStore.loadMessagesBefore(session->id, oldestId, pageSize)
             : m_historyStore.loadLogsBefore(session->id, oldestId, pageSize),
-        session->runtime.subscriptionFormats,
-        isMessage ? subscriptionColors(*session) : QHash<QString, QString> {},
-        isMessage ? subscriptionAliases(*session) : QHash<QString, QString> {},
+        isMessage ? renderContext->formats : QHash<QString, int> {},
+        isMessage ? renderContext->colors : QHash<QString, QString> {},
+        isMessage ? renderContext->aliases : QHash<QString, QString> {},
         m_launchTimestamp,
         false);
     if (rows.isEmpty()) {
@@ -602,11 +649,21 @@ void EventHistoryService::setMessageStreamFrozen(bool frozen)
 
 void EventHistoryService::appendRenderedMessageRow(SessionState &session, const QVariantMap &row)
 {
+    appendRenderedMessageRows(session, QVariantList {row});
+}
+
+void EventHistoryService::appendRenderedMessageRows(
+    SessionState &session,
+    const QVariantList &rows)
+{
+    if (rows.isEmpty()) {
+        return;
+    }
     if (&session != m_sessionService.currentSession()) {
         return;
     }
 
-    session.runtime.messageRows.append(row);
+    session.runtime.messageRows.append(rows);
     trimVisibleRows(session, Stream::Message);
 
     if (!m_pendingVisibleMessageSessionId.isEmpty()
@@ -614,7 +671,7 @@ void EventHistoryService::appendRenderedMessageRow(SessionState &session, const 
         flushPendingVisibleMessageRows();
     }
     m_pendingVisibleMessageSessionId = session.id;
-    m_pendingVisibleMessageRows.append(row);
+    m_pendingVisibleMessageRows.append(rows);
     scheduleVisibleMessageRowsFlush();
 }
 
@@ -804,6 +861,191 @@ void EventHistoryService::updateRenderedParseResult(
     }
 }
 
+QSharedPointer<const MessageAdmissionContext> EventHistoryService::messageAdmissionContext(
+    const SessionState &session)
+{
+    const auto cached = m_messageAdmissionContexts.constFind(session.id);
+    if (cached != m_messageAdmissionContexts.cend()) {
+        return cached.value();
+    }
+
+    auto context = QSharedPointer<MessageAdmissionContext>::create();
+    context->capturePolicy = m_sessionService.messageCapturePolicy(session.id);
+    context->subscriptionFormats = subscriptionRenderContext(session)->formats;
+    context->maxPayloadBytes = m_preferencesController.maxIncomingPayloadBytes();
+    context->outputPaused = session.outputPaused;
+    context->saveMessagesWhenOutputPaused =
+        m_preferencesController.saveMessagesWhenOutputPaused();
+    context->subscriptions.reserve(session.subscriptions.size());
+
+    for (const SubscriptionEntry &subscription : session.subscriptions) {
+        MessageAdmissionSubscription snapshot;
+        snapshot.topic = subscription.topic;
+        snapshot.alias = subscription.alias;
+        snapshot.color = subscription.color;
+        snapshot.format = subscription.format;
+        snapshot.paused = subscription.paused;
+        snapshot.processor = subscription.processor;
+        if (!snapshot.processor.processorId.isEmpty()) {
+            const auto resolved = m_processorLibrary.resolve(
+                snapshot.processor,
+                &snapshot.processorResolutionError);
+            if (resolved) {
+                snapshot.processorRevision = resolved->revision;
+                snapshot.processorName = resolved->processor.name;
+            } else if (const auto processor = m_processorLibrary.processorById(
+                           snapshot.processor.processorId)) {
+                snapshot.processorName = processor->name;
+            }
+        }
+        context->subscriptions.append(std::move(snapshot));
+    }
+
+    const QSharedPointer<const MessageAdmissionContext> immutableContext = context;
+    m_messageAdmissionContexts.insert(session.id, immutableContext);
+    return immutableContext;
+}
+
+QSharedPointer<const SubscriptionRenderContext> EventHistoryService::subscriptionRenderContext(
+    const SessionState &session) const
+{
+    const auto cached = m_subscriptionRenderContexts.constFind(session.id);
+    if (cached != m_subscriptionRenderContexts.cend()) {
+        return cached.value();
+    }
+
+    auto context = QSharedPointer<SubscriptionRenderContext>::create();
+    context->formats = session.runtime.subscriptionFormats;
+    for (const SubscriptionEntry &subscription : session.subscriptions) {
+        if (!subscription.color.isEmpty()) {
+            context->colors.insert(subscription.topic, subscription.color);
+        }
+        if (!subscription.alias.isEmpty()) {
+            context->aliases.insert(subscription.topic, subscription.alias);
+        }
+    }
+
+    const QSharedPointer<const SubscriptionRenderContext> immutableContext = context;
+    m_subscriptionRenderContexts.insert(session.id, immutableContext);
+    return immutableContext;
+}
+
+void EventHistoryService::invalidateMessageContexts()
+{
+    m_messageAdmissionContexts.clear();
+    m_subscriptionRenderContexts.clear();
+}
+
+void EventHistoryService::queueIncomingMessage(
+    const QString &sessionId,
+    const QString &topic,
+    const QByteArray &payloadBytes)
+{
+    auto *session = m_sessionService.sessionById(sessionId);
+    if (!session || !m_messageAdmissionWorker) {
+        return;
+    }
+
+    IncomingMessageAdmissionTask task;
+    task.sessionId = sessionId;
+    task.topic = topic;
+    task.payloadBytes = payloadBytes;
+    task.receivedAtMs = QDateTime::currentMSecsSinceEpoch();
+    task.pressureSkipsParsing = shouldSkipParsingForPressure();
+    task.context = messageAdmissionContext(*session);
+    if (!m_messageAdmissionWorker->enqueue(std::move(task))) {
+        scheduleMessagePressureNotification();
+    }
+}
+
+void EventHistoryService::applyPreparedIncomingMessages()
+{
+    if (!m_messageAdmissionWorker) {
+        return;
+    }
+
+    QVector<PreparedIncomingMessage> prepared = m_messageAdmissionWorker->takePrepared();
+    QVariantList currentVisibleRows;
+    const SessionState *currentSession = m_sessionService.currentSession();
+    const QString currentSessionId = currentSession ? currentSession->id : QString();
+    bool totalCountChanged = false;
+    bool currentSubscriptionActivityChanged = false;
+    for (PreparedIncomingMessage &message : prepared) {
+        auto *session = m_sessionService.sessionById(message.sessionId);
+        if (!session) {
+            continue;
+        }
+
+        appendRecentTrafficSample(
+            session->runtime.recentReceivedTraffic,
+            message.receivedAtMs,
+            message.payloadBytes);
+        if (!message.captured) {
+            recordCaptureFiltered();
+            continue;
+        }
+
+        for (SubscriptionEntry &subscription : session->subscriptions) {
+            if (message.activeSubscriptionTopics.contains(subscription.topic)) {
+                appendRecentMessage(subscription.recentMessages, message.receivedAtMs);
+                currentSubscriptionActivityChanged = currentSubscriptionActivityChanged
+                    || session == m_sessionService.currentSession();
+            }
+        }
+
+        if (!message.reportMessage.isEmpty()
+            && !m_reportedPayloadStorageStates.contains(message.reportKey)) {
+            m_reportedPayloadStorageStates.insert(message.reportKey);
+            appendEvent(
+                *session,
+                QStringLiteral("Payload"),
+                message.reportMessage);
+        }
+
+        const qint64 sequence = m_nextMessageSequence.value(message.sessionId) + 1;
+        const qint64 historyId = m_historyWriter.enqueueMessage(message.record);
+        if (historyId <= 0) {
+            continue;
+        }
+
+        message.record.id = historyId;
+        m_nextMessageSequence.insert(message.sessionId, sequence);
+        if (message.parsingSkippedForPressure) {
+            recordPressureSkippedParse();
+        }
+        ++session->runtime.totalMessageCount;
+        if (session == m_sessionService.currentSession()) {
+            session->runtime.viewedMessageCount = session->runtime.totalMessageCount;
+        }
+        totalCountChanged = true;
+        m_lastMessageStorageError.clear();
+
+        if (session->id == currentSessionId && !session->outputPaused) {
+            message.renderedRow.insert(QStringLiteral("historyId"), historyId);
+            currentVisibleRows.append(message.renderedRow);
+        }
+
+        if (message.parsingRequired) {
+            enqueueMessageParsing(
+                message.record,
+                sequence,
+                message.processorRevision,
+                message.processorParameters);
+        }
+    }
+
+    if (!currentVisibleRows.isEmpty()) {
+        if (auto *session = m_sessionService.sessionById(currentSessionId)) {
+            appendRenderedMessageRows(*session, currentVisibleRows);
+        }
+    }
+
+    scheduleMessageActivityNotification(
+        totalCountChanged,
+        currentSubscriptionActivityChanged);
+    scheduleMessagePressureNotification();
+}
+
 void EventHistoryService::appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes)
 {
     auto *session = m_sessionService.sessionById(sessionId);
@@ -957,6 +1199,7 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
     }
 
     if (session == m_sessionService.currentSession() && !session->outputPaused) {
+        const auto renderContext = subscriptionRenderContext(*session);
         QVariantMap historyRow = messageRecordRow(record);
         if (!subscriptionMatch.topicColor.isEmpty()) {
             historyRow.insert(QStringLiteral("topic_color"), subscriptionMatch.topicColor);
@@ -965,9 +1208,9 @@ void EventHistoryService::appendIncomingMessage(const QString &sessionId, const 
             *session,
             EventRenderer::renderHistoryRow(
                 historyRow,
-                session->runtime.subscriptionFormats,
-                subscriptionColors(*session),
-                subscriptionAliases(*session)));
+                renderContext->formats,
+                renderContext->colors,
+                renderContext->aliases));
     }
 
     if (parsingRequired) {
@@ -1059,16 +1302,14 @@ void EventHistoryService::appendPublishedMessage(
 
     if (session == m_sessionService.currentSession()) {
         const QVariantMap historyRow = messageRecordRow(record);
-
-        QHash<QString, int> renderFormats = session->runtime.subscriptionFormats;
-        renderFormats.insert(topic, format);
+        const auto renderContext = subscriptionRenderContext(*session);
         appendRenderedMessageRow(
             *session,
             EventRenderer::renderHistoryRow(
                 historyRow,
-                renderFormats,
-                subscriptionColors(*session),
-                subscriptionAliases(*session)));
+                renderContext->formats,
+                renderContext->colors,
+                renderContext->aliases));
     }
 
     if (parsingRequired) {
@@ -1136,16 +1377,16 @@ QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
         return {};
     }
 
-    QHash<QString, int> formats;
-    QHash<QString, QString> colors;
-    QHash<QString, QString> aliases;
+    QSharedPointer<const SubscriptionRenderContext> renderContext;
     if (const auto *session = m_sessionService.currentSession()) {
-        formats = session->runtime.subscriptionFormats;
-        colors = subscriptionColors(*session);
-        aliases = subscriptionAliases(*session);
+        renderContext = subscriptionRenderContext(*session);
     }
 
-    QVariantMap details = EventRenderer::renderHistoryRow(stored, formats, colors, aliases);
+    QVariantMap details = EventRenderer::renderHistoryRow(
+        stored,
+        renderContext ? renderContext->formats : QHash<QString, int> {},
+        renderContext ? renderContext->colors : QHash<QString, QString> {},
+        renderContext ? renderContext->aliases : QHash<QString, QString> {});
     details.insert(
         QStringLiteral("payloadFormat"),
         PayloadCodec::formatName(PayloadCodec::formatFromInt(
@@ -1244,11 +1485,12 @@ void EventHistoryService::reloadCurrentSessionHistory()
     for (const QVariantMap &row : std::as_const(messageRowsById)) {
         messageRows.append(row);
     }
+    const auto renderContext = subscriptionRenderContext(*session);
     session->runtime.messageRows = EventRenderer::loadHistoryRows(
         messageRows,
-        session->runtime.subscriptionFormats,
-        subscriptionColors(*session),
-        subscriptionAliases(*session),
+        renderContext->formats,
+        renderContext->colors,
+        renderContext->aliases,
         m_launchTimestamp,
         true);
     const qint64 persistedTotal = m_historyStore.totalMessageCount(session->id);
@@ -1280,6 +1522,8 @@ void EventHistoryService::reloadCurrentSessionHistory()
 
 bool EventHistoryService::flushPendingMessageHistory(int timeoutMs)
 {
+    const bool admissionDrained = flushPendingIncomingMessages(timeoutMs);
+    flushPendingMessageActivityNotifications();
     const bool parserDrained = m_messageParser.drain(timeoutMs);
     bool writerDrained = true;
 
@@ -1301,8 +1545,48 @@ bool EventHistoryService::flushPendingMessageHistory(int timeoutMs)
         return false;
     }
 
+    if (!admissionDrained) {
+        m_lastMessageStorageError = QStringLiteral("Timed out while preparing incoming messages.");
+        return false;
+    }
+
     m_lastMessageStorageError.clear();
     return true;
+}
+
+bool EventHistoryService::flushPendingIncomingMessages(int timeoutMs)
+{
+    if (!m_messageAdmissionWorker) {
+        return true;
+    }
+    const bool drained = m_messageAdmissionWorker->drain(timeoutMs);
+    applyPreparedIncomingMessages();
+    return drained;
+}
+
+void EventHistoryService::stopAcceptingIncomingMessages()
+{
+    if (m_messageAdmissionWorker) {
+        m_messageAdmissionWorker->stopAccepting();
+    }
+}
+
+void EventHistoryService::shutdownIncomingMessageAdmission()
+{
+    if (!m_messageAdmissionWorker) {
+        return;
+    }
+
+    stopAcceptingIncomingMessages();
+    flushPendingIncomingMessages();
+    flushPendingMessageActivityNotifications();
+    QMetaObject::invokeMethod(
+        m_messageAdmissionWorker,
+        &MessageAdmissionWorker::shutdown,
+        Qt::BlockingQueuedConnection);
+    m_messageAdmissionThread.quit();
+    m_messageAdmissionThread.wait();
+    m_messageAdmissionWorker = nullptr;
 }
 
 void EventHistoryService::stopAcceptingMessageParsing()
@@ -1312,17 +1596,26 @@ void EventHistoryService::stopAcceptingMessageParsing()
 
 int EventHistoryService::messageWriterBacklog() const
 {
-    return m_historyWriter.pendingMessageCount();
+    return m_historyWriter.pendingMessageCount()
+        + (m_messageAdmissionWorker
+               ? m_messageAdmissionWorker->pendingMessageCount()
+               : 0);
 }
 
 qint64 EventHistoryService::messageWriterBacklogBytes() const
 {
-    return m_historyWriter.pendingBytes();
+    return m_historyWriter.pendingBytes()
+        + (m_messageAdmissionWorker
+               ? m_messageAdmissionWorker->pendingBytes()
+               : 0);
 }
 
 qint64 EventHistoryService::droppedMessageCount() const
 {
-    return m_historyWriter.droppedMessageCount();
+    return m_historyWriter.droppedMessageCount()
+        + (m_messageAdmissionWorker
+               ? m_messageAdmissionWorker->droppedMessageCount()
+               : 0);
 }
 
 qint64 EventHistoryService::droppedParseResultCount() const
@@ -1378,7 +1671,11 @@ QString EventHistoryService::messagePressureState() const
 {
     const auto writerState = m_historyWriter.pressureState();
     const auto parserState = m_messageParser.pressureState();
-    if (writerState == HistoryWriterWorker::PressureState::Dropping) {
+    const auto admissionState = m_messageAdmissionWorker
+        ? m_messageAdmissionWorker->pressureState()
+        : MessageAdmissionWorker::PressureState::Normal;
+    if (writerState == HistoryWriterWorker::PressureState::Dropping
+        || admissionState == MessageAdmissionWorker::PressureState::Dropping) {
         return QStringLiteral("dropping");
     }
     if (writerState == HistoryWriterWorker::PressureState::Degraded
@@ -1386,7 +1683,8 @@ QString EventHistoryService::messagePressureState() const
         return QStringLiteral("degraded");
     }
     if (writerState == HistoryWriterWorker::PressureState::Elevated
-        || parserState == MessageParseWorker::PressureState::Elevated) {
+        || parserState == MessageParseWorker::PressureState::Elevated
+        || admissionState == MessageAdmissionWorker::PressureState::Elevated) {
         return QStringLiteral("elevated");
     }
     return QStringLiteral("normal");
@@ -1406,6 +1704,16 @@ QString EventHistoryService::messageCaptureMode() const
 
 QString EventHistoryService::messageWriterPressureState() const
 {
+    if (m_messageAdmissionWorker) {
+        switch (m_messageAdmissionWorker->pressureState()) {
+        case MessageAdmissionWorker::PressureState::Dropping:
+            return QStringLiteral("dropping");
+        case MessageAdmissionWorker::PressureState::Elevated:
+            return QStringLiteral("elevated");
+        case MessageAdmissionWorker::PressureState::Normal:
+            break;
+        }
+    }
     switch (m_historyWriter.pressureState()) {
     case HistoryWriterWorker::PressureState::Elevated:
         return QStringLiteral("elevated");
@@ -1468,6 +1776,36 @@ void EventHistoryService::scheduleMessagePressureNotification()
     }
 }
 
+void EventHistoryService::scheduleMessageActivityNotification(
+    bool totalCountChanged,
+    bool subscriptionActivityDirty)
+{
+    m_totalMessageCountNotificationPending =
+        m_totalMessageCountNotificationPending || totalCountChanged;
+    m_subscriptionActivityNotificationPending =
+        m_subscriptionActivityNotificationPending || subscriptionActivityDirty;
+    if ((m_totalMessageCountNotificationPending
+            || m_subscriptionActivityNotificationPending)
+        && !m_messageActivityNotificationTimer.isActive()) {
+        m_messageActivityNotificationTimer.start();
+    }
+}
+
+void EventHistoryService::flushPendingMessageActivityNotifications()
+{
+    m_messageActivityNotificationTimer.stop();
+    const bool totalCountChanged = m_totalMessageCountNotificationPending;
+    const bool subscriptionActivityDirty = m_subscriptionActivityNotificationPending;
+    m_totalMessageCountNotificationPending = false;
+    m_subscriptionActivityNotificationPending = false;
+    if (subscriptionActivityDirty) {
+        emit subscriptionActivityChanged();
+    }
+    if (totalCountChanged) {
+        emit totalMessageCountChanged();
+    }
+}
+
 bool EventHistoryService::shouldCaptureMessage(
     const SessionState &session,
     MessageDirection direction,
@@ -1479,7 +1817,10 @@ bool EventHistoryService::shouldCaptureMessage(
 bool EventHistoryService::shouldSkipParsingForPressure() const
 {
     return m_historyWriter.pressureState() != HistoryWriterWorker::PressureState::Normal
-        || m_messageParser.pressureState() != MessageParseWorker::PressureState::Normal;
+        || m_messageParser.pressureState() != MessageParseWorker::PressureState::Normal
+        || (m_messageAdmissionWorker
+            && m_messageAdmissionWorker->pressureState()
+                != MessageAdmissionWorker::PressureState::Normal);
 }
 
 void EventHistoryService::recordCaptureFiltered()

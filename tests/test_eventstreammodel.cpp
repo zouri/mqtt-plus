@@ -15,6 +15,7 @@ private slots:
     void updatesSingleHistoryRowWithoutReset();
     void detectsMatchingLastRow();
     void exposesCanonicalMessageMetadata();
+    void maintainsMessageCountIncrementally();
 };
 
 void EventStreamModelTest::setRowsIgnoresUnchangedRows()
@@ -216,6 +217,39 @@ void EventStreamModelTest::detectsMatchingLastRow()
         {QStringLiteral("id"), 2},
         {QStringLiteral("title"), QStringLiteral("two")},
     }));
+}
+
+void EventStreamModelTest::maintainsMessageCountIncrementally()
+{
+    EventStreamModel model;
+    model.setRows(QVariantList {
+        QVariantMap {{QStringLiteral("kind"), QStringLiteral("divider")}},
+        QVariantMap {{QStringLiteral("kind"), QStringLiteral("message")}, {QStringLiteral("historyId"), 1}},
+        QVariantMap {{QStringLiteral("kind"), QStringLiteral("message")}, {QStringLiteral("historyId"), 2}},
+    });
+    QCOMPARE(model.messageCount(), 2);
+    QSignalSpy messageCountSpy(&model, &EventStreamModel::messageCountChanged);
+
+    model.appendRow(QVariantMap {{QStringLiteral("kind"), QStringLiteral("message")}});
+    QCOMPARE(model.messageCount(), 3);
+    QCOMPARE(messageCountSpy.count(), 1);
+
+    model.trimToLimit(2);
+    QCOMPARE(model.messageCount(), 2);
+    QCOMPARE(messageCountSpy.count(), 2);
+
+    QVERIFY(model.updateRowByHistoryId(
+        2,
+        QVariantMap {
+            {QStringLiteral("kind"), QStringLiteral("divider")},
+            {QStringLiteral("historyId"), 2},
+        }));
+    QCOMPARE(model.messageCount(), 1);
+    QCOMPARE(messageCountSpy.count(), 3);
+
+    model.clear();
+    QCOMPARE(model.messageCount(), 0);
+    QCOMPARE(messageCountSpy.count(), 4);
 }
 
 void EventStreamModelTest::exposesCanonicalMessageMetadata()

@@ -29,6 +29,7 @@ class EventHistoryServiceTest : public QObject
 
 private slots:
     void liveRowsDecodeConfiguredPayloadFormatWithoutScript();
+    void queuedIncomingMessagesArePreparedAndAppliedAsBatch();
     void structuredParseResultPersistsAfterRawCapture();
     void resolvedProcessorIdentityIsCapturedBeforeExecution();
     void parserOverloadKeepsRawCapture();
@@ -156,6 +157,38 @@ void EventHistoryServiceTest::liveRowsDecodeConfiguredPayloadFormatWithoutScript
         parseSpy.first().at(0).toLongLong(),
         fixture.messages.rowAt(0).value(QStringLiteral("historyId")).toLongLong());
     QCOMPARE(fixture.messages.rowAt(0).value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("JSON"));
+}
+
+void EventHistoryServiceTest::queuedIncomingMessagesArePreparedAndAppliedAsBatch()
+{
+    Fixture fixture;
+    fixture.addSubscription(QStringLiteral("devices/#"), static_cast<int>(PayloadFormat::Plaintext));
+    QSignalSpy totalSpy(
+        &fixture.service,
+        &EventHistoryService::totalMessageCountChanged);
+    QSignalSpy activitySpy(
+        &fixture.service,
+        &EventHistoryService::subscriptionActivityChanged);
+
+    fixture.service.queueIncomingMessage(
+        fixture.session.id,
+        QStringLiteral("devices/one"),
+        QByteArrayLiteral("one"));
+    fixture.service.queueIncomingMessage(
+        fixture.session.id,
+        QStringLiteral("devices/two"),
+        QByteArrayLiteral("two"));
+    fixture.service.queueIncomingMessage(
+        fixture.session.id,
+        QStringLiteral("devices/three"),
+        QByteArrayLiteral("three"));
+
+    QVERIFY(fixture.service.flushPendingMessageHistory());
+    QCOMPARE(fixture.session.runtime.totalMessageCount, 3);
+    QCOMPARE(fixture.session.runtime.messageRows.size(), 3);
+    QCOMPARE(fixture.historyStore.totalMessageCount(fixture.session.id), 3);
+    QCOMPARE(totalSpy.count(), 1);
+    QCOMPARE(activitySpy.count(), 1);
 }
 
 void EventHistoryServiceTest::structuredParseResultPersistsAfterRawCapture()
