@@ -1,10 +1,10 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`src/` contains the C++20 application logic. `src/app/main.cpp` boots Qt/QML, `src/app/applicationcore.*` coordinates the non-QML application core, and `src/viewmodels/` exposes QML-facing ViewModels. `src/controllers/` coordinates sessions, MQTT, subscriptions, events, scripts, theme, and language, while `src/services/` contains storage, payload, and scripting services. `qml/` contains the UI entry point in `Main.qml`, feature views and components in `qml/features/`, and reusable controls in `qml/components/`. `build/qt6.11-debug/` is generated output from CMake and should not be edited by hand.
+`src/` contains the C++20 application. Keep domain types in `src/domain/`, orchestration in `src/usecases/`, infrastructure in `src/services/`, Qt models in `src/models/`, QML-facing state in `src/viewmodels/`, and startup/composition in `src/app/`. The Qt Quick UI lives in `qml/`: shared controls belong in `qml/components/`, while page-specific views belong in `qml/features/`. Tests are in `tests/`; translations, icons, and bundled resources are in `i18n/`, `assets/`, and `resources/`. Record significant design choices in `docs/adr/`. Treat `build/` and `dist/` as generated output.
 
 ## Build, Test, and Development Commands
-Use the checked-in CMake preset for local work:
+Use Qt 6.11, CMake, and Ninja with the checked-in macOS preset:
 
 ```bash
 cmake --preset qt6.11-debug
@@ -13,26 +13,16 @@ cmake --build --preset qt6.11-debug --target all_qmllint
 ctest --test-dir build/qt6.11-debug --output-on-failure
 ```
 
-The first command configures the project against Qt 6.11. The second builds `mqtt_plus_app` and test targets. The `all_qmllint` target catches QML issues early, and `ctest` runs the registered Qt Test unit tests. Run the macOS app bundle directly for manual testing:
-
-```bash
-./build/qt6.11-debug/mqtt_plus_app.app/Contents/MacOS/mqtt_plus_app
-```
+The commands configure, build, lint application QML, and run all registered Qt Test executables. After building, launch the macOS app with `./build/qt6.11-debug/mqtt_plus_app.app/Contents/MacOS/mqtt_plus_app`. Platform release scripts live in `scripts/package-{macos,linux}.*` and `scripts/package-windows.ps1`.
 
 ## Coding Style & Naming Conventions
-Follow the existing Qt style: 4-space indentation, opening braces on the next line in C++, and no tabs. Use `PascalCase` for C++ classes, `camelCase` for methods and QML properties, and keep private member fields prefixed with `m_`. Source filenames are lowercase, matching the current pattern such as `applicationcore.cpp` and `historystore.h`. Keep QML `id` values short and descriptive, such as `sessionList` or `statusLabel`.
+Match nearby Qt code: use 4 spaces, no tabs, and C++ opening braces on the next line. Classes and QML components use `PascalCase`; functions, properties, signals, and QML `id` values use `camelCase`; private C++ members use the `m_` prefix. Keep C++ filenames lowercase (`historystore.cpp`) and QML component filenames descriptive (`MessageInspector.qml`). Prefer Qt value types, signals/slots, and `QStringLiteral` where existing code does. No repository-wide C++ formatter is configured, so preserve local formatting and run `all_qmllint` for QML changes.
 
 ## Testing Guidelines
-Automated tests live under `tests/` and are registered in CMake so they run through `ctest`. Contributors should:
-- run a debug build successfully,
-- run `all_qmllint`,
-- run `ctest --test-dir build/qt6.11-debug --output-on-failure`,
-- manually verify connect, subscribe, publish, and history persistence flows.
-
-When adding tests, keep them under `tests/` and register them in CMake.
+Tests use Qt Test and follow `tests/test_<subject>.cpp`. Add new executables and `add_test` registrations in `CMakeLists.txt`; name test classes `<Subject>Test` and test slots after behavior, such as `rejectsInvalidSessionIndexes()`. Run the full suite before submitting. For UI or MQTT workflow changes, also manually verify the affected connect, subscribe, publish, persistence, or editor path.
 
 ## Commit & Pull Request Guidelines
-This workspace does not include `.git` history, so no house style can be inferred from prior commits. Use short imperative commit subjects such as `Add session duplication action` or `Fix TLS reconnect handling`. Keep pull requests focused, describe user-visible behavior changes, list validation steps, and include screenshots for `qml/` UI changes.
+Recent commits favor short, imperative subjects such as `Fix release packaging workflow` and `Add QoS 2 support`. Keep each commit focused. Pull requests should explain the behavior and motivation, link relevant issues, list validation commands, and call out platform-specific effects. Include before/after screenshots for visible `qml/` changes and update translations or ADRs when user-facing text or architecture changes.
 
-## Security & Configuration Tips
-Use `CMAKE_PREFIX_PATH`, `CMakeUserPresets.json`, or the platform packaging scripts to point CMake at the local Qt install. Runtime settings and `history.db` are stored through Qt system paths, so avoid committing machine-local data or generated build artifacts.
+## Configuration & Security
+Keep local Qt paths in uncommitted `CMakeUserPresets.json` or pass `CMAKE_PREFIX_PATH`. Do not commit broker credentials, generated packages, local settings, or SQLite history databases.

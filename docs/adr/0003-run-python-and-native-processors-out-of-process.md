@@ -1,11 +1,20 @@
 ---
 status: accepted
+implementation: planned
 ---
 
 # Run Python and native processors out of process
 
-Future Python and native C++ Message Processor runtimes will execute in versioned helper processes behind the same `MessageProcessorEngine` seam used by in-process Lua and JavaScript adapters. Framed CBOR messages and a stable C ABI isolate the GUI process from the CPython GIL, dependency environments, native crashes, and compiler or Qt ABI changes; arbitrary user-built dynamic libraries will not be loaded into the main application process.
+## Context
+
+Python brings interpreter and dependency-environment concerns, while user-built native processors can crash the application or depend on incompatible compiler and Qt ABIs. Loading either runtime directly into the GUI process would expand the failure and compatibility boundary.
+
+## Decision
+
+Future Python and native C++ processor runtimes will execute in versioned helper processes behind the same `MessageProcessorEngine` interface used by the in-process Lua and JavaScript adapters. Communication will use framed CBOR messages, with a stable C ABI at the native helper boundary. The application will not load arbitrary user-built dynamic libraries into the GUI process.
 
 ## Consequences
 
-Python and C++ preparation requires content-addressed runtime artifacts, helper lifecycle management, and explicit local readiness. Their storage, subscription bindings, history identity, and normalized result contract remain identical to Lua and JavaScript.
+Python and C++ preparation will require content-addressed runtime artifacts, helper lifecycle management, crash recovery, and explicit local readiness. Their storage, subscription bindings, history identity, and normalized result contract remain the same as Lua and JavaScript.
+
+This decision is accepted but not implemented. The current application registers only the in-process Lua and JavaScript runtime adapters.
