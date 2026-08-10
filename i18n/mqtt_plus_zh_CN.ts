@@ -269,72 +269,107 @@
 <context>
     <name>Application</name>
     <message>
-        <location filename="../src/app/application.cpp" line="227"/>
+        <location filename="../src/app/application.cpp" line="242"/>
         <source>Draft library error</source>
         <translation>草稿库错误</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="232"/>
+        <location filename="../src/app/application.cpp" line="247"/>
         <source>Restore backup</source>
         <translation>恢复备份</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="247"/>
+        <location filename="../src/app/application.cpp" line="262"/>
         <source>Draft saved</source>
         <translation>草稿已保存</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="252"/>
+        <location filename="../src/app/application.cpp" line="267"/>
         <source>Draft deleted</source>
         <translation>草稿已删除</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="253"/>
+        <location filename="../src/app/application.cpp" line="268"/>
         <source>The draft was removed from the library.</source>
         <translation>该草稿已从草稿库中移除。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="256"/>
+        <location filename="../src/app/application.cpp" line="271"/>
         <source>Draft library restored</source>
         <translation>草稿库已恢复</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="257"/>
+        <location filename="../src/app/application.cpp" line="272"/>
         <source>The backup was restored successfully.</source>
         <translation>备份已成功恢复。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="294"/>
+        <location filename="../src/app/application.cpp" line="302"/>
+        <source>Software update available</source>
+        <translation>有可用的软件更新</translation>
+    </message>
+    <message>
+        <location filename="../src/app/application.cpp" line="303"/>
+        <source>Version %1 is ready to download.</source>
+        <translation>版本 %1 已可下载。</translation>
+    </message>
+    <message>
+        <location filename="../src/app/application.cpp" line="308"/>
+        <source>Download</source>
+        <translation>下载</translation>
+    </message>
+    <message>
+        <location filename="../src/app/application.cpp" line="309"/>
+        <source>View release</source>
+        <translation>查看发布页面</translation>
+    </message>
+    <message>
+        <location filename="../src/app/application.cpp" line="314"/>
+        <source>MQTT Plus is up to date</source>
+        <translation>MQTT Plus 已是最新版本</translation>
+    </message>
+    <message>
+        <location filename="../src/app/application.cpp" line="315"/>
+        <source>You are using the latest version.</source>
+        <translation>你正在使用最新版本。</translation>
+    </message>
+    <message>
+        <location filename="../src/app/application.cpp" line="330"/>
+        <source>Update check failed</source>
+        <translation>检查更新失败</translation>
+    </message>
+    <message>
+        <location filename="../src/app/application.cpp" line="352"/>
         <source>Publish failed</source>
         <translation>发送失败</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="296"/>
+        <location filename="../src/app/application.cpp" line="354"/>
         <source>View logs</source>
         <translation>查看日志</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="301"/>
+        <location filename="../src/app/application.cpp" line="359"/>
         <source>Message sent</source>
         <translation>消息已发送</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="306"/>
+        <location filename="../src/app/application.cpp" line="364"/>
         <source>Waiting for broker confirmation</source>
         <translation>正在等待代理确认</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="307"/>
+        <location filename="../src/app/application.cpp" line="365"/>
         <source>Publish queued</source>
         <translation>发送已排队</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="313"/>
+        <location filename="../src/app/application.cpp" line="371"/>
         <source>QoS %1</source>
         <translation>QoS %1</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="315"/>
+        <location filename="../src/app/application.cpp" line="373"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
@@ -576,68 +611,68 @@
 <context>
     <name>DraftLibraryService</name>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="82"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="86"/>
         <source>Draft name is required.</source>
         <translation>草稿名称不能为空。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="86"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="90"/>
         <source>Draft name must be 80 characters or fewer.</source>
         <translation>草稿名称不能超过 80 个字符。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="90"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="94"/>
         <source>Draft description must be 500 characters or fewer.</source>
         <translation>草稿描述不能超过 500 个字符。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="94"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="98"/>
         <source>A draft with this name already exists.</source>
         <translation>已存在同名草稿。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="99"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="103"/>
         <source>Default topic is not a valid MQTT topic name.</source>
         <translation>默认主题不是有效的 MQTT 主题名称。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="105"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="109"/>
         <source>Unsupported payload format.</source>
         <translation>不支持的 Payload 格式。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="109"/>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="119"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="113"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="123"/>
         <source>Encoded payload exceeds the 16 MiB draft limit.</source>
         <translation>编码后的 Payload 超过 16 MiB 草稿限制。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="123"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="127"/>
         <source>QoS must be 0, 1, or 2.</source>
         <translation>QoS 必须为 0、1 或 2。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="131"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="135"/>
         <source>Draft</source>
         <translation>草稿</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="146"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="150"/>
         <source>%1 Copy</source>
         <translation>%1 副本</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="149"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="153"/>
         <source>%1 Copy %2</source>
         <translation>%1 副本 %2</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="254"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="258"/>
         <source>Cannot import drafts with duplicate IDs or names.</source>
         <translation>无法导入 ID 或名称重复的草稿。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/draftlibraryservice.cpp" line="343"/>
+        <location filename="../src/usecases/draftlibraryservice.cpp" line="347"/>
         <source>Draft library contains duplicate IDs.</source>
         <translation>草稿库包含重复 ID。</translation>
     </message>
@@ -645,42 +680,37 @@
 <context>
     <name>DraftListPane</name>
     <message>
-        <location filename="../qml/features/drafts/DraftListPane.qml" line="31"/>
+        <location filename="../qml/features/drafts/DraftListPane.qml" line="34"/>
         <source>Search drafts</source>
         <translation>搜索草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftListPane.qml" line="47"/>
+        <location filename="../qml/features/drafts/DraftListPane.qml" line="67"/>
         <source>Loading draft library…</source>
         <translation>正在加载草稿库…</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftListPane.qml" line="60"/>
+        <location filename="../qml/features/drafts/DraftListPane.qml" line="80"/>
         <source>No matching drafts</source>
         <translation>没有匹配的草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftListPane.qml" line="61"/>
+        <location filename="../qml/features/drafts/DraftListPane.qml" line="81"/>
         <source>No saved drafts yet</source>
         <translation>尚无已保存的草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftListPane.qml" line="98"/>
+        <location filename="../qml/features/drafts/DraftListPane.qml" line="119"/>
         <source>Draft %1</source>
         <translation>草稿 %1</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftListPane.qml" line="134"/>
+        <location filename="../qml/features/drafts/DraftListPane.qml" line="159"/>
         <source>RETAIN</source>
         <translation>保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftListPane.qml" line="147"/>
-        <source>Topic requested when sending</source>
-        <translation>发送时填写主题</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/drafts/DraftListPane.qml" line="155"/>
+        <location filename="../qml/features/drafts/DraftListPane.qml" line="174"/>
         <source>%1 · QoS %2</source>
         <translation>%1 · QoS %2</translation>
     </message>
@@ -693,159 +723,159 @@
         <translation>草稿库</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="111"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="114"/>
         <source>New Draft</source>
         <translation>新建草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="170"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="174"/>
         <source>Restore backup</source>
         <translation>恢复备份</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="186"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="192"/>
         <source>Draft name</source>
         <translation>草稿名称</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="199"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="206"/>
         <source>Required, unique across the library</source>
         <translation>必填，且在草稿库中唯一</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="209"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="218"/>
         <source>Description</source>
         <translation>说明</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="220"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="230"/>
         <source>Optional searchable note</source>
         <translation>可选的搜索备注</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="235"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="246"/>
         <source>Default Topic</source>
         <translation>默认主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="245"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="257"/>
         <source>Optional; requested when sending if empty</source>
         <translation>可选；留空时将在发送时填写</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="255"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="267"/>
         <source>QoS</source>
         <translation>QoS</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="264"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="277"/>
         <source>QoS 0</source>
         <translation>QoS 0</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="264"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="277"/>
         <source>QoS 1</source>
         <translation>QoS 1</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="264"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="277"/>
         <source>QoS 2</source>
         <translation>QoS 2</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="275"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="288"/>
         <source>Format</source>
         <translation>格式</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="295"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="309"/>
         <source>Delivery</source>
         <translation>投递</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="304"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="319"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="316"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="331"/>
         <source>Retain is enabled. The broker may replace its retained message for this Topic.</source>
         <translation>已启用保留。代理可能会替换此主题的保留消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="325"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="340"/>
         <source>Payload</source>
         <translation>Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="338"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="354"/>
         <source>Empty payload is valid</source>
         <translation>允许空 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="374"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="390"/>
         <source>Saving…</source>
         <translation>正在保存…</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="375"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="391"/>
         <source>Unsaved changes</source>
         <translation>有未保存的更改</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="375"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="391"/>
         <source>Saved</source>
         <translation>已保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="385"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="404"/>
         <source>Duplicate</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="395"/>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="546"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="420"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="569"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="406"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="429"/>
         <source>Save Draft</source>
         <translation>保存草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="439"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="462"/>
         <source>Save changes to this draft?</source>
         <translation>保存对此草稿的更改？</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="447"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="470"/>
         <source>You have unsaved changes. Save them before continuing, or discard them.</source>
         <translation>存在未保存的更改。继续前请保存，或放弃这些更改。</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="461"/>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="539"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="484"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="562"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="472"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="495"/>
         <source>Discard</source>
         <translation>放弃</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="483"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="506"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="517"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="540"/>
         <source>Delete draft?</source>
         <translation>删除草稿？</translation>
     </message>
     <message>
-        <location filename="../qml/features/drafts/DraftsView.qml" line="525"/>
+        <location filename="../qml/features/drafts/DraftsView.qml" line="548"/>
         <source>“%1” will be permanently removed from the Draft Library.</source>
         <translation>“%1”将从草稿库中永久移除。</translation>
     </message>
@@ -868,7 +898,7 @@
         <translation>无法清除历史记录：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="1285"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="1293"/>
         <source>Timed out while saving queued messages.</source>
         <translation>保存排队消息时超时。</translation>
     </message>
@@ -1158,27 +1188,27 @@
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="445"/>
+        <location filename="../qml/Main.qml" line="446"/>
         <source>Save draft changes before leaving?</source>
         <translation>离开前保存草稿更改？</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="453"/>
+        <location filename="../qml/Main.qml" line="454"/>
         <source>The Draft Library has unsaved editor changes.</source>
         <translation>草稿库编辑器中有未保存的更改。</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="467"/>
+        <location filename="../qml/Main.qml" line="468"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="477"/>
+        <location filename="../qml/Main.qml" line="478"/>
         <source>Discard</source>
         <translation>放弃</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="489"/>
+        <location filename="../qml/Main.qml" line="490"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
@@ -1506,39 +1536,39 @@
 <context>
     <name>ProcessorEditor</name>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="27"/>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="38"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="28"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="40"/>
         <source>Processor name</source>
         <translation>处理器名称</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="49"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="52"/>
         <source>Description</source>
         <translation>说明</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="58"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="62"/>
         <source>Device protocol or payload structure</source>
         <translation>设备协议或 Payload 结构</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="69"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="74"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="96"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="102"/>
         <source>Runtime information</source>
         <translation>运行时信息</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="97"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="103"/>
         <source>Runtime: %1</source>
         <translation>运行时：%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="119"/>
-        <location filename="../qml/features/processors/ProcessorEditor.qml" line="120"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="125"/>
+        <location filename="../qml/features/processors/ProcessorEditor.qml" line="125"/>
         <source>function process(context)</source>
         <translation>function process(context)</translation>
     </message>
@@ -1607,7 +1637,7 @@
 <context>
     <name>ProcessorListPane</name>
     <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="86"/>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="89"/>
         <source>Message Processor %1</source>
         <translation>消息处理器 %1</translation>
     </message>
@@ -1617,12 +1647,12 @@
         <translation>搜索名称或源代码</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="158"/>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="143"/>
         <source>Ready</source>
         <translation>就绪</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorListPane.qml" line="159"/>
+        <location filename="../qml/features/processors/ProcessorListPane.qml" line="144"/>
         <source>Unavailable</source>
         <translation>不可用</translation>
     </message>
@@ -1640,63 +1670,63 @@
         <translation>新建处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="157"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="160"/>
         <source>Lua Processor</source>
         <translation>Lua 处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="197"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="202"/>
         <source>JavaScript Processor</source>
         <translation>JavaScript 处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="203"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="209"/>
         <source>Qt runtime</source>
         <translation>Qt 运行时</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="286"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="292"/>
         <source>Unsaved changes</source>
         <translation>有未保存的更改</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="288"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="294"/>
         <source>Validated · current content is available</source>
         <translation>已验证 · 当前内容可用</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="345"/>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="444"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="351"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="450"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="376"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="382"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="406"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="412"/>
         <source>Delete processor?</source>
         <translation>删除处理器？</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="414"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="420"/>
         <source>“%1” will be permanently removed from the Processor Library. This cannot be undone.</source>
         <translation>“%1”将从处理器库中永久删除。此操作无法撤销。</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="423"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="429"/>
         <source>Unsaved changes will also be discarded.</source>
         <translation>未保存的更改也将被丢弃。</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="437"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="443"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/processors/ProcessorsView.qml" line="308"/>
+        <location filename="../qml/features/processors/ProcessorsView.qml" line="314"/>
         <source>Validate</source>
         <translation>验证</translation>
     </message>
@@ -2478,513 +2508,553 @@
 <context>
     <name>SettingsView</name>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="18"/>
-        <location filename="../qml/features/settings/SettingsView.qml" line="26"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="19"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="27"/>
         <source>System</source>
         <translation>跟随系统</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="18"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="19"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="18"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="19"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="26"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="27"/>
         <source>English</source>
         <translation>English</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="26"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="27"/>
         <source>Simplified Chinese</source>
         <translation>简体中文</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="28"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="29"/>
         <source>1,000 messages</source>
         <translation>1,000 条消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="28"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="29"/>
         <source>5,000 messages</source>
         <translation>5,000 条消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="28"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="29"/>
         <source>10,000 messages</source>
         <translation>10,000 条消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="28"/>
         <location filename="../qml/features/settings/SettingsView.qml" line="29"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="30"/>
         <source>Unlimited</source>
         <translation>不限制</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="29"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="30"/>
         <source>500 logs</source>
         <translation>500 条日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="29"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="30"/>
         <source>2,000 logs</source>
         <translation>2,000 条日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="29"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="30"/>
         <source>5,000 logs</source>
         <translation>5,000 条日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="30"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="31"/>
         <source>200 rows</source>
         <translation>200 行</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="30"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="31"/>
         <source>500 rows</source>
         <translation>500 行</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="30"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="31"/>
         <source>1,000 rows</source>
         <translation>1,000 行</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="31"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="32"/>
         <source>256 KiB</source>
         <translation>256 KiB</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="31"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="32"/>
         <source>1 MiB</source>
         <translation>1 MiB</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="31"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="32"/>
         <source>5 MiB</source>
         <translation>5 MiB</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="31"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="32"/>
         <source>16 MiB</source>
         <translation>16 MiB</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="32"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="33"/>
         <source>Do not clear</source>
         <translation>不清空</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="32"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="33"/>
         <source>Current session</source>
         <translation>当前连接</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="32"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="33"/>
         <source>All sessions</source>
         <translation>全部连接</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="280"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="281"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="326"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="327"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="333"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="334"/>
         <source>Theme</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="334"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="335"/>
         <source>Choose how the interface follows system appearance.</source>
         <translation>选择界面如何跟随系统外观。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="20"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="21"/>
         <source>Mint</source>
         <translation>薄荷绿</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="21"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="22"/>
         <source>Blue</source>
         <translation>蓝色</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="22"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="23"/>
         <source>Violet</source>
         <translation>紫罗兰</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="23"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="24"/>
         <source>Amber</source>
         <translation>琥珀色</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="24"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="25"/>
         <source>Rose</source>
         <translation>玫瑰红</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="27"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="28"/>
         <source>Compact</source>
         <translation>紧凑</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="27"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="28"/>
         <source>Expand on hover</source>
         <translation>悬浮展开</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="27"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="28"/>
         <source>Always expanded</source>
         <translation>始终展开</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="347"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="348"/>
         <source>Theme color</source>
         <translation>主题色</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="348"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="349"/>
         <source>Choose the accent used for actions and selections.</source>
         <translation>选择用于操作和选中状态的强调色。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="370"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="371"/>
         <source>Animations</source>
         <translation>动画效果</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="371"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="372"/>
         <source>Enable motion effects throughout the interface.</source>
         <translation>启用整个界面的动画效果。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="383"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="384"/>
         <source>Font</source>
         <translation>字体</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="384"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="385"/>
         <source>Choose an installed monospace font. Missing characters use the system fallback.</source>
         <translation>选择系统中已安装的等宽字体；缺少的字符将使用系统回退字体。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="397"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="398"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="398"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="399"/>
         <source>Switch the interface language.</source>
         <translation>切换界面语言。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="413"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="414"/>
         <source>Workbench</source>
         <translation>工作台</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="420"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="421"/>
         <source>Auto-collapse connections</source>
         <translation>自动收起连接列表</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="421"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="422"/>
         <source>Collapse the connection list after a connection succeeds.</source>
         <translation>连接成功后收起连接列表。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="432"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="433"/>
         <source>Message content</source>
         <translation>消息内容</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="433"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="434"/>
         <source>Choose how much payload text is shown in the message list.</source>
         <translation>选择消息列表中显示的 Payload 内容量。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="448"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="449"/>
+        <source>Software update</source>
+        <translation>软件更新</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="456"/>
+        <source>Version %1</source>
+        <translation>版本 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="461"/>
+        <source>Checking...</source>
+        <translation>正在检查...</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="461"/>
+        <source>Check now</source>
+        <translation>立即检查</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="471"/>
+        <source>Download DMG</source>
+        <translation>下载 DMG</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="472"/>
+        <source>View release</source>
+        <translation>查看发布页面</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="480"/>
+        <source>Automatic checks</source>
+        <translation>自动检查</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="481"/>
+        <source>Check GitHub Releases at most once every 24 hours.</source>
+        <translation>每 24 小时最多检查一次 GitHub Releases。</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/settings/SettingsView.qml" line="494"/>
         <source>History</source>
         <translation>历史</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="455"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="501"/>
         <source>Saved messages</source>
         <translation>保存的消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="456"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="502"/>
         <source>Maximum MQTT messages kept per connection. Cleanup runs when the app starts or exits.</source>
         <translation>每个连接最多保留的 MQTT 消息数；应用将在启动或退出时执行清理。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="469"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="515"/>
         <source>Saved logs</source>
         <translation>保存的日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="470"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="516"/>
         <source>Maximum event log entries retained per connection.</source>
         <translation>每个连接最多保留的事件日志条数。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="483"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="529"/>
         <source>History page size</source>
         <translation>历史分页大小</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="484"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="530"/>
         <source>Rows loaded when opening a connection or scrolling back.</source>
         <translation>打开连接或向上滚动时加载的行数。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="497"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="543"/>
         <source>Max payload size</source>
         <translation>最大 Payload 大小</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="498"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="544"/>
         <source>Largest incoming MQTT payload decoded, scripted, and fully stored.</source>
         <translation>会被解码、脚本处理并完整保存的最大传入 MQTT Payload。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="511"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="557"/>
         <source>Delete connection history</source>
         <translation>删除连接历史</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="512"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="558"/>
         <source>Remove stored messages and logs when a connection is deleted.</source>
         <translation>删除连接时移除保存的消息和日志。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="525"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="571"/>
         <source>Output</source>
         <translation>输出</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="532"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="578"/>
         <source>Save while paused</source>
         <translation>暂停时保存</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="533"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="579"/>
         <source>Keep storing incoming messages when output is paused.</source>
         <translation>输出暂停时继续保存收到的消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="546"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="592"/>
         <source>Storage locations</source>
         <translation>存储位置</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="553"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="599"/>
         <source>Scripts</source>
         <translation>脚本</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="559"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="605"/>
         <source>Open script storage folder</source>
         <translation>打开脚本存储目录</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="567"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="613"/>
         <source>Drafts</source>
         <translation>草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="573"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="619"/>
         <source>Open draft storage folder</source>
         <translation>打开草稿存储目录</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="581"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="627"/>
         <source>Database</source>
         <translation>数据库</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="588"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="634"/>
         <source>Open database storage folder</source>
         <translation>打开数据库存储目录</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="546"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="643"/>
         <source>Data transfer</source>
         <translation>数据传输</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="553"/>
-        <location filename="../qml/features/settings/SettingsView.qml" line="660"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="650"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="757"/>
         <source>Import configuration</source>
         <translation>导入配置</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="554"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="651"/>
         <source>Import MQTT Plus backups or MQTTX connection exports. Existing data is kept and imported items are added as copies.</source>
         <translation>导入 MQTT Plus 备份或 MQTTX 连接导出。现有数据会保留，导入项将作为副本添加。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="558"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="655"/>
         <source>Choose file</source>
         <translation>选择文件</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="567"/>
-        <location filename="../qml/features/settings/SettingsView.qml" line="682"/>
-        <location filename="../qml/features/settings/SettingsView.qml" line="711"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="664"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="779"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="808"/>
         <source>Export configuration</source>
         <translation>导出配置</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="568"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="665"/>
         <source>Export connections, subscriptions, drafts, and portable settings. Scripts, message history, and logs are excluded.</source>
         <translation>导出连接、订阅、草稿和可移植设置。不包含脚本、消息历史和日志。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="573"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="670"/>
         <source>Export</source>
         <translation>导出</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="586"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="683"/>
         <source>Cleanup</source>
         <translation>清理</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="593"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="690"/>
         <source>Messages on exit</source>
         <translation>退出时处理消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="594"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="691"/>
         <source>Choose whether MQTT messages are cleared when the app closes.</source>
         <translation>选择应用关闭时是否清空 MQTT 消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="607"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="704"/>
         <source>Logs on exit</source>
         <translation>退出时处理日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="608"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="705"/>
         <source>Choose whether event logs are cleared when the app closes.</source>
         <translation>选择应用关闭时是否清空事件日志。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="621"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="718"/>
         <source>Manual cleanup</source>
         <translation>手动清理</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="622"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="719"/>
         <source>Clear stored data immediately.</source>
         <translation>立即清空保存的数据。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="627"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="724"/>
         <source>Messages</source>
         <translation>消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="634"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="731"/>
         <source>Logs</source>
         <translation>日志</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="641"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="738"/>
         <source>All</source>
         <translation>全部</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="663"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="760"/>
         <source>Configuration files (*.json)</source>
         <translation>配置文件 (*.json)</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="664"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="761"/>
         <source>All files (*)</source>
         <translation>所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="685"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="782"/>
         <source>MQTT Plus configuration (*.mqttplus.json)</source>
         <translation>MQTT Plus 配置 (*.mqttplus.json)</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="719"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="816"/>
         <source>The export can contain draft payloads. Store it as private data even when credentials are excluded.</source>
         <translation>导出文件可能包含草稿 Payload。即使不包含凭据，也应将其作为私密数据妥善保存。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="729"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="826"/>
         <source>Include passwords, authentication data, and private keys</source>
         <translation>包含密码、认证数据和私钥</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="743"/>
-        <location filename="../qml/features/settings/SettingsView.qml" line="893"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="840"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="990"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="750"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="847"/>
         <source>Continue</source>
         <translation>继续</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="790"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="887"/>
         <source>Import preview</source>
         <translation>导入预览</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="799"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="896"/>
         <source>MQTTX connection export</source>
         <translation>MQTTX 连接导出</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="800"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="897"/>
         <source>MQTT Plus configuration</source>
         <translation>MQTT Plus 配置</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="808"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="905"/>
         <source>%1 connections · %2 subscriptions · %3 drafts</source>
         <translation>%1 个连接 · %2 个订阅 · %3 个草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="840"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="937"/>
         <source>Compatibility notes</source>
         <translation>兼容性说明</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="873"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="970"/>
         <source>Import passwords, authentication data, and private keys</source>
         <translation>导入密码、认证数据和私钥</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="879"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="976"/>
         <source>Imported connections remain disconnected. Existing connections and drafts are not replaced. Scripts are not imported.</source>
         <translation>导入的连接将保持断开。不会替换现有连接和草稿。不导入脚本。</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="902"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="999"/>
         <source>Importing…</source>
         <translation>正在导入…</translation>
     </message>
     <message>
-        <location filename="../qml/features/settings/SettingsView.qml" line="902"/>
+        <location filename="../qml/features/settings/SettingsView.qml" line="999"/>
         <source>Import</source>
         <translation>导入</translation>
     </message>
@@ -3151,6 +3221,44 @@
         <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="750"/>
         <source>Delete</source>
         <translation>删除</translation>
+    </message>
+</context>
+<context>
+    <name>UpdateViewModel</name>
+    <message>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="98"/>
+        <source>Updates are provided through GitHub Releases.</source>
+        <translation>软件更新通过 GitHub Releases 提供。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="103"/>
+        <source>Checking GitHub Releases...</source>
+        <translation>正在检查 GitHub Releases...</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="108"/>
+        <source>Version %1 is available.</source>
+        <translation>版本 %1 已可用。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="114"/>
+        <source>You are using the latest version.</source>
+        <translation>你正在使用最新版本。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="119"/>
+        <source>No published releases were found.</source>
+        <translation>未找到已发布的版本。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="124"/>
+        <source>Could not check for updates. Check your network connection and try again.</source>
+        <translation>无法检查更新。请检查网络连接后重试。</translation>
+    </message>
+    <message>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="129"/>
+        <source>GitHub returned release information that this version cannot read.</source>
+        <translation>GitHub 返回了当前版本无法读取的发布信息。</translation>
     </message>
 </context>
 <context>
