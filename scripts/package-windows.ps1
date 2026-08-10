@@ -98,12 +98,12 @@ try {
     New-Item -ItemType Directory -Force -Path $distDir | Out-Null
     cpack --config (Join-Path $buildDir "CPackConfig.cmake") `
         -C Release `
-        -G ZIP `
+        -G NSIS `
         -B $distDir
-    Assert-NativeSuccess "CPack ZIP generation"
+    Assert-NativeSuccess "CPack NSIS generation"
 }
 finally {
     Pop-Location
 }
 
-Write-Host "Windows package written under $distDir"
+Write-Host "Windows installer written under $distDir"
