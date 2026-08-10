@@ -138,6 +138,10 @@ void ArchitectureBoundariesTest::messageAdmissionChecksMetadataBeforePayloadWork
     const int callbackIndex = mqttSessionSource.indexOf(QStringLiteral("&QMqttClient::messageReceived"));
     QVERIFY(callbackIndex >= 0);
     const QString callbackSource = mqttSessionSource.mid(callbackIndex, 500);
+    QVERIFY2(callbackSource.contains(QStringLiteral("queueIncomingMessage")),
+        "The MQTT receive callback must hand payload admission to the bounded worker queue");
+    QVERIFY2(!callbackSource.contains(QStringLiteral("appendIncomingMessage")),
+        "The MQTT receive callback must not perform payload planning on the GUI thread");
     QVERIFY2(!callbackSource.contains(QStringLiteral("BlockingQueuedConnection")),
         "The MQTT receive callback must not wait for storage or parsing workers");
 }

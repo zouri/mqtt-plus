@@ -122,7 +122,7 @@ void MessageFilterModelTest::sourceChangesNotifyOnceAndDisconnectOldSource()
 
     proxy.setSourceModel(&firstSource);
     QCOMPARE(countSpy.count(), 1);
-    QCOMPARE(messageCountsSpy.count(), 1);
+    QTRY_COMPARE(messageCountsSpy.count(), 1);
 
     countSpy.clear();
     messageCountsSpy.clear();
@@ -132,7 +132,7 @@ void MessageFilterModelTest::sourceChangesNotifyOnceAndDisconnectOldSource()
 
     proxy.setSourceModel(&secondSource);
     QCOMPARE(countSpy.count(), 1);
-    QCOMPARE(messageCountsSpy.count(), 1);
+    QTRY_COMPARE(messageCountsSpy.count(), 1);
 
     countSpy.clear();
     messageCountsSpy.clear();
@@ -144,11 +144,11 @@ void MessageFilterModelTest::sourceChangesNotifyOnceAndDisconnectOldSource()
     secondSource.appendRow(messageRow(
         QStringLiteral("second/new"), {}, {}, QStringLiteral("incoming")));
     QCOMPARE(countSpy.count(), 1);
-    QCOMPARE(messageCountsSpy.count(), 1);
+    QTRY_COMPARE(messageCountsSpy.count(), 1);
 
     messageCountsSpy.clear();
     proxy.setDirection(QStringLiteral("outgoing"));
-    QCOMPARE(messageCountsSpy.count(), 1);
+    QTRY_COMPARE(messageCountsSpy.count(), 1);
 }
 
 void MessageFilterModelTest::rowAtUsesPublicRoles()

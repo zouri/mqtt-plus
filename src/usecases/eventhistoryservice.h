@@ -8,6 +8,8 @@
 #include <QHash>
 #include <QObject>
 #include <QSet>
+#include <QSharedPointer>
+#include <QThread>
 #include <QTimer>
 #include <QVariantList>
 #include <QVariantMap>
@@ -17,11 +19,14 @@
 class EventStreamModel;
 class HistoryStore;
 class HistoryWriterWorker;
+class MessageAdmissionWorker;
 class MessageParseWorker;
 class PreferencesController;
 class ProcessorLibrary;
 class SessionService;
 struct MessageRecord;
+struct MessageAdmissionContext;
+struct SubscriptionRenderContext;
 
 class EventHistoryService : public QObject
 {
@@ -39,6 +44,7 @@ public:
         QString launchTimestamp,
         PreferencesController &preferencesController,
         QObject *parent = nullptr);
+    ~EventHistoryService() override;
 
     Q_INVOKABLE bool clearCurrentMessages();
     Q_INVOKABLE bool clearCurrentLogs();
@@ -57,6 +63,7 @@ public:
         int qos = -1,
         bool retain = false);
     void appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
+    void queueIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
     QString messagePayloadForReuse(
         qint64 messageId,
         const QString &fallbackPayload,
@@ -65,7 +72,11 @@ public:
     QString messagePayloadForDisplay(qint64 messageId, const QString &fallbackPayload, int format) const;
     QVariantMap messageDetails(qint64 messageId) const;
     void reloadCurrentSessionHistory();
+    void invalidateMessageContexts();
+    void stopAcceptingIncomingMessages();
+    void shutdownIncomingMessageAdmission();
     void stopAcceptingMessageParsing();
+    bool flushPendingIncomingMessages(int timeoutMs = 5000);
     bool flushPendingMessageHistory(int timeoutMs = 5000);
     int messageWriterBacklog() const;
     qint64 messageWriterBacklogBytes() const;
@@ -103,6 +114,7 @@ private:
     static bool &loadedAllHistory(SessionState &session, Stream kind);
 
     void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
+    void appendRenderedMessageRows(SessionState &session, const QVariantList &rows);
     void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
     void enqueueMessageParsing(
         const MessageRecord &record,
@@ -117,9 +129,18 @@ private:
     std::optional<QString> decodedStoredPayload(qint64 messageId, int format, QString &parseErrorOut) const;
     void trimVisibleRows(SessionState &session, Stream kind);
     void flushPendingVisibleMessageRows();
+    void applyPreparedIncomingMessages();
+    QSharedPointer<const MessageAdmissionContext> messageAdmissionContext(
+        const SessionState &session);
+    QSharedPointer<const SubscriptionRenderContext> subscriptionRenderContext(
+        const SessionState &session) const;
     void reportMessageStorageError(SessionState &session, const QString &message);
     void scheduleVisibleMessageRowsFlush();
     void scheduleMessagePressureNotification();
+    void scheduleMessageActivityNotification(
+        bool totalCountChanged,
+        bool subscriptionActivityDirty);
+    void flushPendingMessageActivityNotifications();
     bool shouldCaptureMessage(
         const SessionState &session,
         MessageDirection direction,
@@ -137,8 +158,14 @@ private:
     ProcessorLibrary &m_processorLibrary;
     const QString m_launchTimestamp;
     PreferencesController &m_preferencesController;
+    QThread m_messageAdmissionThread;
+    MessageAdmissionWorker *m_messageAdmissionWorker = nullptr;
+    QHash<QString, QSharedPointer<const MessageAdmissionContext>> m_messageAdmissionContexts;
+    mutable QHash<QString, QSharedPointer<const SubscriptionRenderContext>>
+        m_subscriptionRenderContexts;
     QTimer m_visibleMessageRowsFlushTimer;
     QTimer m_messagePressureNotificationTimer;
+    QTimer m_messageActivityNotificationTimer;
     QVariantList m_pendingVisibleMessageRows;
     QString m_pendingVisibleMessageSessionId;
     qint64 m_frozenOldestLoadedMessageId = 0;
@@ -148,4 +175,6 @@ private:
     qint64 m_captureFilteredMessages = 0;
     qint64 m_pressureSkippedParses = 0;
     bool m_messageStreamFrozen = false;
+    bool m_totalMessageCountNotificationPending = false;
+    bool m_subscriptionActivityNotificationPending = false;
 };

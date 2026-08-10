@@ -7,6 +7,13 @@ MessageFilterModel::MessageFilterModel(QObject *parent)
     : QSortFilterProxyModel(parent)
 {
     setDynamicSortFilter(true);
+    m_messageCountsChangedTimer.setSingleShot(true);
+    m_messageCountsChangedTimer.setInterval(0);
+    connect(
+        &m_messageCountsChangedTimer,
+        &QTimer::timeout,
+        this,
+        &MessageFilterModel::messageCountsChanged);
     connectCountSignals();
     connect(this,
             &QAbstractProxyModel::sourceModelChanged,
@@ -15,7 +22,7 @@ MessageFilterModel::MessageFilterModel(QObject *parent)
     connect(this,
             &QAbstractProxyModel::sourceModelChanged,
             this,
-            &MessageFilterModel::messageCountsChanged);
+            &MessageFilterModel::scheduleMessageCountsChanged);
 }
 
 QString MessageFilterModel::filterText() const
@@ -45,11 +52,17 @@ int MessageFilterModel::count() const
 
 int MessageFilterModel::filteredMessageCount() const
 {
+    if (const auto *events = qobject_cast<const EventStreamModel *>(sourceModel())) {
+        return filterActive() ? rowCount() : events->messageCount();
+    }
     return messageCount(this);
 }
 
 int MessageFilterModel::totalMessageCount() const
 {
+    if (const auto *events = qobject_cast<const EventStreamModel *>(sourceModel())) {
+        return events->messageCount();
+    }
     return messageCount(sourceModel());
 }
 
@@ -205,7 +218,7 @@ void MessageFilterModel::invalidateRows(bool wasActive)
 {
     beginFilterChange();
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
-    emit messageCountsChanged();
+    scheduleMessageCountsChanged();
     if (wasActive != filterActive()) {
         emit filterActiveChanged();
     }
@@ -217,6 +230,9 @@ void MessageFilterModel::connectCountSignals()
     connect(this, &QAbstractItemModel::rowsRemoved, this, &MessageFilterModel::countChanged, Qt::UniqueConnection);
     connect(this, &QAbstractItemModel::modelReset, this, &MessageFilterModel::countChanged, Qt::UniqueConnection);
     connect(this, &QAbstractItemModel::layoutChanged, this, &MessageFilterModel::countChanged, Qt::UniqueConnection);
+    connect(this, &QAbstractItemModel::rowsInserted, this, &MessageFilterModel::scheduleMessageCountsChanged, Qt::UniqueConnection);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &MessageFilterModel::scheduleMessageCountsChanged, Qt::UniqueConnection);
+    connect(this, &QAbstractItemModel::modelReset, this, &MessageFilterModel::scheduleMessageCountsChanged, Qt::UniqueConnection);
 }
 
 void MessageFilterModel::connectSourceSignals()
@@ -231,28 +247,42 @@ void MessageFilterModel::connectSourceSignals()
         return;
     }
 
+    if (auto *events = qobject_cast<EventStreamModel *>(source)) {
+        m_sourceConnections = {
+            connect(
+                events,
+                &EventStreamModel::messageCountChanged,
+                this,
+                &MessageFilterModel::scheduleMessageCountsChanged),
+        };
+        return;
+    }
+
     m_sourceConnections = {
         connect(source,
                 &QAbstractItemModel::rowsInserted,
                 this,
-                &MessageFilterModel::messageCountsChanged),
+                &MessageFilterModel::scheduleMessageCountsChanged),
         connect(source,
                 &QAbstractItemModel::rowsRemoved,
                 this,
-                &MessageFilterModel::messageCountsChanged),
+                &MessageFilterModel::scheduleMessageCountsChanged),
         connect(source,
                 &QAbstractItemModel::modelReset,
                 this,
-                &MessageFilterModel::messageCountsChanged),
+                &MessageFilterModel::scheduleMessageCountsChanged),
         connect(source,
                 &QAbstractItemModel::layoutChanged,
                 this,
-                &MessageFilterModel::messageCountsChanged),
-        connect(source,
-                &QAbstractItemModel::dataChanged,
-                this,
-                &MessageFilterModel::messageCountsChanged),
+                &MessageFilterModel::scheduleMessageCountsChanged),
     };
+}
+
+void MessageFilterModel::scheduleMessageCountsChanged()
+{
+    if (!m_messageCountsChangedTimer.isActive()) {
+        m_messageCountsChangedTimer.start();
+    }
 }
 
 int MessageFilterModel::messageCount(const QAbstractItemModel *model)

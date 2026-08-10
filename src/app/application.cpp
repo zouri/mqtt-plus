@@ -226,6 +226,11 @@ Application::Application()
         &ProcessorsViewModel::processorLibraryChanged,
         &m_subscriptionsModel,
         [this]() { refreshSubscriptionsModel(); });
+    QObject::connect(
+        m_viewModel.processors(),
+        &ProcessorsViewModel::processorLibraryChanged,
+        &m_eventHistoryService,
+        &EventHistoryService::invalidateMessageContexts);
 
     QObject::connect(
         &m_draftService,
@@ -425,6 +430,9 @@ Application::Application()
 
 Application::~Application()
 {
+    m_eventHistoryService.stopAcceptingIncomingMessages();
+    m_eventHistoryService.flushPendingIncomingMessages();
+    m_eventHistoryService.shutdownIncomingMessageAdmission();
     m_eventHistoryService.stopAcceptingMessageParsing();
     applyExitCleanup();
     QMetaObject::invokeMethod(

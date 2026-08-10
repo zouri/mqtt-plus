@@ -55,6 +55,13 @@ int sanitizePublishComposerHeight(const QVariant &value, int fallback)
     return ok ? (std::clamp)(height, 150, 300) : fallback;
 }
 
+int sanitizeAutoFollowFps(const QVariant &value, int fallback)
+{
+    bool ok = false;
+    const int fps = value.toInt(&ok);
+    return ok && (fps == 15 || fps == 30 || fps == 60) ? fps : fallback;
+}
+
 QString sanitizeCleanupMode(const QString &value)
 {
     const QString mode = value.trimmed();
@@ -91,6 +98,9 @@ PreferencesController::PreferencesController(QSettings *settings, QObject *paren
         m_settings->value(QStringLiteral("history/saveMessagesWhenOutputPaused"), m_saveMessagesWhenOutputPaused).toBool();
     m_autoCollapseConnectionListOnConnect =
         m_settings->value(QStringLiteral("ui/autoCollapseConnectionListOnConnect"), m_autoCollapseConnectionListOnConnect).toBool();
+    m_autoFollowFps = sanitizeAutoFollowFps(
+        m_settings->value(QStringLiteral("ui/autoFollowFps"), m_autoFollowFps),
+        m_autoFollowFps);
     m_clearMessagesOnExit = sanitizeCleanupMode(
         m_settings->value(QStringLiteral("cleanup/clearMessagesOnExit"), m_clearMessagesOnExit).toString());
     m_clearLogsOnExit = sanitizeCleanupMode(
@@ -144,6 +154,11 @@ bool PreferencesController::autoCollapseConnectionListOnConnect() const
     return m_autoCollapseConnectionListOnConnect;
 }
 
+int PreferencesController::autoFollowFps() const
+{
+    return m_autoFollowFps;
+}
+
 QString PreferencesController::clearMessagesOnExit() const
 {
     return m_clearMessagesOnExit;
@@ -189,6 +204,7 @@ QVariantMap PreferencesController::portableSettings() const
         {QStringLiteral("history/deleteHistoryWithSession"), m_deleteHistoryWithSession},
         {QStringLiteral("history/saveMessagesWhenOutputPaused"), m_saveMessagesWhenOutputPaused},
         {QStringLiteral("ui/autoCollapseConnectionListOnConnect"), m_autoCollapseConnectionListOnConnect},
+        {QStringLiteral("ui/autoFollowFps"), m_autoFollowFps},
         {QStringLiteral("cleanup/clearMessagesOnExit"), m_clearMessagesOnExit},
         {QStringLiteral("cleanup/clearLogsOnExit"), m_clearLogsOnExit},
     };
@@ -219,6 +235,9 @@ bool PreferencesController::applyPortableSettings(
     }
     if (settings.contains(QStringLiteral("ui/autoCollapseConnectionListOnConnect"))) {
         setAutoCollapseConnectionListOnConnect(settings.value(QStringLiteral("ui/autoCollapseConnectionListOnConnect")).toBool());
+    }
+    if (settings.contains(QStringLiteral("ui/autoFollowFps"))) {
+        setAutoFollowFps(settings.value(QStringLiteral("ui/autoFollowFps")).toInt());
     }
     if (settings.contains(QStringLiteral("cleanup/clearMessagesOnExit"))) {
         setClearMessagesOnExit(settings.value(QStringLiteral("cleanup/clearMessagesOnExit")).toString());
@@ -318,6 +337,18 @@ void PreferencesController::setAutoCollapseConnectionListOnConnect(bool enabled)
     m_autoCollapseConnectionListOnConnect = enabled;
     syncValue(QStringLiteral("ui/autoCollapseConnectionListOnConnect"), m_autoCollapseConnectionListOnConnect);
     emit autoCollapseConnectionListOnConnectChanged();
+}
+
+void PreferencesController::setAutoFollowFps(int fps)
+{
+    const int sanitized = sanitizeAutoFollowFps(fps, 30);
+    if (sanitized == m_autoFollowFps) {
+        return;
+    }
+
+    m_autoFollowFps = sanitized;
+    syncValue(QStringLiteral("ui/autoFollowFps"), m_autoFollowFps);
+    emit autoFollowFpsChanged();
 }
 
 void PreferencesController::setClearMessagesOnExit(const QString &mode)

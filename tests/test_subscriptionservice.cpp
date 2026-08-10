@@ -27,6 +27,7 @@ private slots:
     void preservesUnresolvedProcessorReferences();
     void setsAllCurrentSubscriptionsPausedWithSingleSignal();
     void detectsActiveCurrentSubscriptionFps();
+    void subscriptionEditInvalidatesRenderContext();
 };
 
 namespace {
@@ -202,6 +203,45 @@ void SubscriptionServiceTest::detectsActiveCurrentSubscriptionFps()
     currentSession.subscriptions[0].paused = false;
     QVERIFY(!fixture.service.currentSessionHasActiveSubscriptionFps(
         nowMs + AppUtils::kSubscriptionFpsWindowMs + 1));
+}
+
+void SubscriptionServiceTest::subscriptionEditInvalidatesRenderContext()
+{
+    Fixture fixture;
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    SubscriptionEntry entry;
+    entry.topic = QStringLiteral("devices/temp");
+    entry.alias = QStringLiteral("Temperature");
+    session.subscriptions.append(entry);
+    session.runtime.subscriptionFormats.insert(entry.topic, entry.format);
+    SessionState &currentSession = fixture.setCurrentSession(std::move(session));
+
+    fixture.eventHistory.appendIncomingMessage(
+        currentSession.id,
+        entry.topic,
+        QByteArrayLiteral("23"));
+    QCOMPARE(
+        currentSession.runtime.messageRows.constLast().toMap().value(QStringLiteral("alias")).toString(),
+        QStringLiteral("Temperature"));
+
+    QVERIFY(fixture.service.updateCurrentSubscription(
+        entry.topic,
+        entry.topic,
+        QStringLiteral("Room temperature"),
+        0,
+        entry.format,
+        {},
+        QString()));
+    fixture.eventHistory.appendIncomingMessage(
+        currentSession.id,
+        entry.topic,
+        QByteArrayLiteral("24"));
+
+    QCOMPARE(
+        currentSession.runtime.messageRows.constLast().toMap().value(QStringLiteral("alias")).toString(),
+        QStringLiteral("Room temperature"));
 }
 
 QTEST_MAIN(SubscriptionServiceTest)

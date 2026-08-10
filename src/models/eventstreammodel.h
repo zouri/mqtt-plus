@@ -9,6 +9,7 @@ class EventStreamModel : public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(int count READ count NOTIFY countChanged)
+    Q_PROPERTY(int messageCount READ messageCount NOTIFY messageCountChanged)
 
 public:
     enum Role : int {
@@ -41,6 +42,7 @@ public:
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int count() const;
+    int messageCount() const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
 
@@ -57,6 +59,7 @@ public:
 
 signals:
     void countChanged();
+    void messageCountChanged();
 
 private:
     struct EventStreamRow {
@@ -89,7 +92,12 @@ private:
 
     static EventStreamRow rowFromMap(const QVariantMap &row);
     static QVector<EventStreamRow> rowsFromVariants(const QVariantList &rows);
+    static int messageCountInRange(
+        const QVector<EventStreamRow> &rows,
+        int first,
+        int count);
     QVariant roleValue(const EventStreamRow &row, int role) const;
 
     QVector<EventStreamRow> m_rows;
+    int m_messageCount = 0;
 };

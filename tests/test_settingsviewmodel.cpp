@@ -117,6 +117,7 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(settings.historyPageSizeIndex(), 1);
     QCOMPARE(settings.maxIncomingPayloadBytesIndex(), 1);
     QCOMPARE(deps.preferencesController.autoCollapseConnectionListOnConnect(), true);
+    QCOMPARE(deps.preferencesController.autoFollowFps(), 30);
     QCOMPARE(settings.clearMessagesOnExitIndex(), 0);
     QCOMPARE(settings.clearLogsOnExitIndex(), 0);
     QCOMPARE(settings.scriptStorageDirectory(), deps.processorLibrary.storageDirectory());
@@ -300,6 +301,7 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     deps.preferencesController.setDeleteHistoryWithSession(false);
     deps.preferencesController.setSaveMessagesWhenOutputPaused(false);
     deps.preferencesController.setAutoCollapseConnectionListOnConnect(false);
+    deps.preferencesController.setAutoFollowFps(60);
     deps.preferencesController.setWindowState(QSize(1600, 900), true);
     deps.preferencesController.setWorkbenchLayout(410, 230, true);
     deps.eventHistoryService.clearAllMessages();
@@ -321,6 +323,8 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     QCOMPARE(deps.preferencesController.deleteHistoryWithSession(), false);
     QCOMPARE(deps.preferencesController.saveMessagesWhenOutputPaused(), false);
     QCOMPARE(deps.preferencesController.autoCollapseConnectionListOnConnect(), false);
+    QCOMPARE(deps.preferencesController.autoFollowFps(), 60);
+    QCOMPARE(deps.settings.value(QStringLiteral("ui/autoFollowFps")).toInt(), 60);
     QCOMPARE(deps.preferencesController.windowSize(), QSize(1600, 900));
     QCOMPARE(deps.preferencesController.windowMaximized(), true);
     QCOMPARE(deps.preferencesController.subscriptionPaneWidth(), 410);
