@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.29)
 
-project(mqtt-plus VERSION 0.2.0 LANGUAGES C CXX)
+project(mqtt-plus VERSION 0.3.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,6 +19,11 @@ endif()
 
 include(GNUInstallDirs)
 include(CTest)
+
+set(MQTT_PLUS_RUNTIME_DESTINATION "${CMAKE_INSTALL_BINDIR}")
+if(UNIX AND NOT APPLE)
+    set(MQTT_PLUS_RUNTIME_DESTINATION "${CMAKE_INSTALL_LIBDIR}/mqtt-plus")
+endif()
 
 set(MQTT_PLUS_QT_DEPLOY_OPTIONS)
 if(MSVC)
@@ -353,6 +358,17 @@ if(APPLE)
         PROPERTIES
             MACOSX_PACKAGE_LOCATION Resources
     )
+elseif(WIN32)
+    set(MQTT_PLUS_WINDOWS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/icons/app-icon.ico")
+    configure_file(
+        packaging/windows/app-icon.rc.in
+        "${CMAKE_CURRENT_BINARY_DIR}/mqtt-plus-app-icon.rc"
+        @ONLY
+    )
+    target_sources(
+        mqtt_plus_app
+        PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/mqtt-plus-app-icon.rc"
+    )
 endif()
 
 set_target_properties(mqtt_plus_app PROPERTIES
@@ -365,9 +381,25 @@ set_target_properties(mqtt_plus_app PROPERTIES
 
 install(TARGETS mqtt_plus_app
     BUNDLE DESTINATION .
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RUNTIME DESTINATION ${MQTT_PLUS_RUNTIME_DESTINATION}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+
+if(UNIX AND NOT APPLE)
+    install(
+        PROGRAMS packaging/linux/mqtt-plus
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+    install(
+        FILES packaging/linux/mqtt-plus.desktop
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
+    )
+    install(
+        FILES assets/icons/app-icon.png
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/1024x1024/apps
+        RENAME mqtt-plus.png
+    )
+endif()
 
 qt_generate_deploy_qml_app_script(
     TARGET mqtt_plus_app
@@ -376,7 +408,23 @@ qt_generate_deploy_qml_app_script(
     ${MQTT_PLUS_QT_DEPLOY_OPTIONS}
     OUTPUT_SCRIPT mqtt_plus_qt_deploy_script
 )
-install(SCRIPT ${mqtt_plus_qt_deploy_script})
+if(UNIX AND NOT APPLE)
+    set(
+        mqtt_plus_linux_deploy_script
+        "${CMAKE_CURRENT_BINARY_DIR}/mqtt-plus-linux-deploy.cmake"
+    )
+    file(GENERATE OUTPUT "${mqtt_plus_linux_deploy_script}" CONTENT
+"set(QT_DEPLOY_BIN_DIR \"${CMAKE_INSTALL_LIBDIR}/mqtt-plus\")
+set(QT_DEPLOY_LIB_DIR \"${CMAKE_INSTALL_LIBDIR}/mqtt-plus\")
+set(QT_DEPLOY_PLUGINS_DIR \"${CMAKE_INSTALL_LIBDIR}/mqtt-plus/plugins\")
+set(QT_DEPLOY_QML_DIR \"${CMAKE_INSTALL_LIBDIR}/mqtt-plus/qml\")
+set(QT_DEPLOY_TRANSLATIONS_DIR \"${CMAKE_INSTALL_LIBDIR}/mqtt-plus/translations\")
+include(\"${mqtt_plus_qt_deploy_script}\")
+")
+    install(SCRIPT "${mqtt_plus_linux_deploy_script}")
+else()
+    install(SCRIPT ${mqtt_plus_qt_deploy_script})
+endif()
 
 if(APPLE)
     install(CODE [[
@@ -398,6 +446,8 @@ set(CPACK_PACKAGE_NAME "mqtt-plus")
 set(CPACK_PACKAGE_VENDOR "mqtt-plus")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Qt/QML desktop MQTT client")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/zouri/mqtt-plus")
+set(CPACK_VERBATIM_VARIABLES ON)
 set(
     MQTT_PLUS_PACKAGE_ARCHITECTURE
     "${CMAKE_SYSTEM_PROCESSOR}"
@@ -406,14 +456,30 @@ set(
 )
 
 if(WIN32)
-    set(CPACK_GENERATOR "ZIP")
-    set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-windows-x64")
+    set(CPACK_GENERATOR "NSIS")
+    set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-windows-x64-setup")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "MQTT Plus")
+    set(CPACK_NSIS_DISPLAY_NAME "MQTT Plus")
+    set(CPACK_NSIS_PACKAGE_NAME "MQTT Plus")
+    set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+    set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\mqtt_plus_app.exe")
+    set(CPACK_NSIS_MUI_ICON "${MQTT_PLUS_WINDOWS_ICON}")
+    set(CPACK_NSIS_MUI_UNIICON "${MQTT_PLUS_WINDOWS_ICON}")
+    set(CPACK_NSIS_MUI_FINISHPAGE_RUN "bin\\\\mqtt_plus_app.exe")
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_NSIS_MENU_LINKS "bin/mqtt_plus_app.exe" "MQTT Plus")
+    set(CPACK_NSIS_URL_INFO_ABOUT "${CPACK_PACKAGE_HOMEPAGE_URL}")
 elseif(APPLE)
     set(CPACK_GENERATOR "DragNDrop")
     set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-macos-${MQTT_PLUS_PACKAGE_ARCHITECTURE}")
 elseif(UNIX)
-    set(CPACK_GENERATOR "TGZ")
+    set(CPACK_GENERATOR "DEB")
     set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-linux-${MQTT_PLUS_PACKAGE_ARCHITECTURE}")
+    set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "zouri <zourima@outlook.com>")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6, libstdc++6, libgcc-s1")
+    set(CPACK_DEBIAN_PACKAGE_SECTION "net")
+    set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${CPACK_PACKAGE_HOMEPAGE_URL}")
 endif()
 
 if(BUILD_TESTING)

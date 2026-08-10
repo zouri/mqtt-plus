@@ -148,7 +148,7 @@ macOS 调试构建完成后，可以直接运行 app bundle 内的可执行文�
 
 ## 打包
 
-打包需要在目标平台本机执行。打包脚本会完成 Release 配置、构建、QML lint 和 CPack 打包。
+打包需要在目标平台本机执行。打包脚本会完成 Release 配置、构建、QML lint 和平台打包。
 项目通过 Qt 官方 CMake Deployment API 生成部署脚本：CMake 先安装应用目标，再由 `qt_generate_deploy_qml_app_script()` 收集 Qt 运行库、QML 模块和需要的插件，最后交给 CPack 生成平台包。
 
 ### macOS
@@ -180,7 +180,7 @@ cd /path/to/mqtts
 ./scripts/package-linux.sh /opt/Qt/6.11.x/gcc_64
 ```
 
-生成的 tarball 会写入 `dist/`。
+脚本使用 CPack 生成 DEB，并从固定版本和校验和的 `linuxdeploy` 生成 AppImage。两个文件都会写入 `dist/`。
 
 ### Windows
 
@@ -197,20 +197,21 @@ cd C:\path\to\mqtts
 .\scripts\package-windows.ps1 -QtPrefix C:/Qt/6.11.x/msvc2022_64
 ```
 
-生成的 ZIP 会写入 `dist/`。
+生成 Windows EXE 安装器需要 NSIS 3.03 或更高版本。安装器会写入 `dist/`。
 
 ### GitHub Actions
 
 `.github/workflows/build-packages.yml` 会在每次 push、pull request 和手动触发时，并行构建以下产物：
 
-- Windows x64 ZIP
-- Linux x64 tar.gz
+- Windows x64 EXE 安装器
+- Linux x64 DEB
+- Linux x64 AppImage
 - macOS Intel x64 DMG
 - macOS Apple Silicon arm64 DMG
 
 工作流使用 Qt 6.11.1；Qt MQTT 已包含在该版本的桌面安装包中，不再作为独立模块请求。Linux 测试任务会先执行 Debug 构建、QML lint 和全部 Qt Test；验证通过后，Windows、Linux 和两个 macOS 架构才会并行生成并上传构建产物。产物在对应的 GitHub Actions run 中保留 14 天。
 
-推送 `v0.1.0` 这类版本标签时，工作流会在全部构建通过后自动创建同名 GitHub Release，并附加四个平台包。
+推送 `v0.1.0` 这类版本标签时，工作流会在全部构建通过后自动创建同名 GitHub Release，并附加五个安装包。
 
 ## Lua 接收脚本
 

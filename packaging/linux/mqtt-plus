@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+
+launcher_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+app_dir=$(CDPATH= cd -- "$launcher_dir/../lib/mqtt-plus" && pwd)
+
+exec "$app_dir/mqtt_plus_app" "$@"
