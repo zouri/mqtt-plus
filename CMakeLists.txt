@@ -395,8 +395,9 @@ if(UNIX AND NOT APPLE)
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications
     )
     install(
-        FILES assets/icons/app-icon.png
-        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/1024x1024/apps
+        FILES assets/icons/app-icon-512.png
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512/apps
+        RENAME mqtt-plus.png
         RENAME mqtt-plus.png
     )
 endif()

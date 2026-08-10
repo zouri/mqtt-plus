@@ -73,7 +73,7 @@ find "$app_dir/usr/lib/mqtt-plus/plugins/sqldrivers" \
         --appdir "$app_dir" \
         --executable "$app_dir/usr/lib/mqtt-plus/mqtt_plus_app" \
         --desktop-file "$repo_root/packaging/linux/mqtt-plus.desktop" \
-        --icon-file "$repo_root/assets/icons/app-icon.png" \
+        --icon-file "$repo_root/assets/icons/app-icon-512.png" \
         --output appimage
 )
 
