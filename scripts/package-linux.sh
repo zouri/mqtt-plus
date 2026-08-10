@@ -61,6 +61,12 @@ DESTDIR="$app_dir" cmake --install "$build_dir" \
     --config Release \
     --prefix /usr
 
+# Qt deploys every SQL driver plugin, including drivers whose proprietary
+# client libraries are unavailable on the AppImage build host. MQTT Plus only
+# uses SQLite for local persistence.
+find "$app_dir/usr/lib/mqtt-plus/plugins/sqldrivers" \
+    -type f ! -name 'libqsqlite.so' -delete
+
 (
     cd "$appimage_output_dir"
     APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 "$linuxdeploy" \
