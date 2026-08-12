@@ -2,6 +2,8 @@
 
 [![Build and package](https://github.com/zouri/mqtt-plus/actions/workflows/build-packages.yml/badge.svg)](https://github.com/zouri/mqtt-plus/actions/workflows/build-packages.yml)
 
+[English](README.en.md) | 简体中文
+
 MQTT Plus 是一个使用 Qt Quick 构建的跨平台桌面 MQTT 客户端。
 
 [下载最新版本](https://github.com/zouri/mqtt-plus/releases/latest) · [提交问题](https://github.com/zouri/mqtt-plus/issues)
