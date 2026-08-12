@@ -144,6 +144,11 @@ docs/adr/         Architecture decision records
 
 Session passwords are stored in the local `QSettings` store rather than the system credential vault. Configuration exports exclude passwords and certificates by default. Exports that include sensitive data should be treated as private files.
 
+## Roadmap
+
+- [ ] MQTT topic tree: build an expandable hierarchy from observed topics, with search, quick subscriptions, and the latest message and activity state for each node.
+- [ ] Broker status monitoring dashboard: summarize connection status, uptime, client and subscription counts, message throughput, and resource usage; automatically collect and visualize metrics from `$SYS` topics when the broker provides them.
+
 ## Contributing
 
 Before submitting a pull request, run the build, `all_qmllint`, and the complete test suite. For UI or MQTT workflow changes, describe the manual verification steps in the pull request and include screenshots for visible UI changes.
