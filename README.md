@@ -6,6 +6,20 @@ MQTT Plus 是一个使用 Qt Quick 构建的跨平台桌面 MQTT 客户端。
 
 [下载最新版本](https://github.com/zouri/mqtt-plus/releases/latest) · [提交问题](https://github.com/zouri/mqtt-plus/issues)
 
+## 界面预览
+
+### MQTT 工作台
+
+![MQTT Plus 工作台：连接、订阅、消息流与发布编辑器](docs/images/mqtt-plus-workbench.png)
+
+### 消息处理器
+
+![MQTT Plus 消息处理器：Lua 脚本编辑与验证](docs/images/mqtt-plus-processors.png)
+
+### 个性化设置
+
+![MQTT Plus 设置：主题、字体、语言与工作台选项](docs/images/mqtt-plus-settings.png)
+
 ## 功能
 
 - MQTT 5.0 和 MQTT 3.1.1，支持 TCP、TLS、用户名密码、服务端证书校验和客户端证书。
