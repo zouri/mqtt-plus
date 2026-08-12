@@ -1,19 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="mqtt-plus icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="MQTT Plus app icon">
   <defs>
-    <linearGradient id="base" x1="128" y1="112" x2="896" y2="912" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#8b2ad8"/>
-      <stop offset=".55" stop-color="#6711a8"/>
-      <stop offset="1" stop-color="#34115a"/>
+    <linearGradient id="base" x1="146" y1="118" x2="880" y2="918" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#730081"/>
+      <stop offset="0.56" stop-color="#510064"/>
+      <stop offset="1" stop-color="#251632"/>
     </linearGradient>
+    <linearGradient id="accent" x1="34.3" y1="11.8" x2="254.3" y2="231.8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#55E6C1"/>
+      <stop offset="1" stop-color="#25B997"/>
+    </linearGradient>
+    <clipPath id="tile">
+      <rect x="80" y="80" width="864" height="864" rx="202"/>
+    </clipPath>
   </defs>
 
-  <rect x="96" y="96" width="832" height="832" rx="156" fill="url(#base)"/>
-  <path d="M188 366c260 0 470 210 470 470" fill="none" stroke="#fff" stroke-width="88"/>
-  <path d="M188 530c170 0 306 136 306 306" fill="none" stroke="#fff" stroke-width="88"/>
-  <path d="M188 694c78 0 142 64 142 142" fill="none" stroke="#fff" stroke-width="88"/>
+  <rect x="80" y="80" width="864" height="864" rx="202" fill="url(#base)"/>
+  <rect x="81" y="81" width="862" height="862" rx="201" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="2"/>
 
-  <g fill="#fff">
-    <rect x="690" y="210" width="188" height="62" rx="31"/>
-    <rect x="753" y="147" width="62" height="188" rx="31"/>
+  <g clip-path="url(#tile)">
+    <g transform="translate(-57.2 16.8) scale(4)">
+      <!-- The official three-channel mark reworked into five evenly spaced channels. -->
+      <path fill="#FFFFFF" d="M34.3 176.8A55 55 0 0 1 89.3 231.8H44.5c-5.6 0-10.2-4.6-10.2-10.2z"/>
+      <path d="M34.3 131.8A100 100 0 0 1 134.3 231.8" fill="none" stroke="#FFFFFF" stroke-width="30"/>
+      <path d="M34.3 71.8A160 160 0 0 1 194.3 231.8" fill="none" stroke="#FFFFFF" stroke-width="30"/>
+      <path d="M34.3 11.8A220 220 0 0 1 254.3 231.8" fill="none" stroke="url(#accent)"  stroke-width="30"/>
+      <path d="M34.3 -48.2A280 280 0 0 1 314.3 231.8" fill="none" stroke="url(#accent)"  stroke-width="30"/>
+    </g>
   </g>
 </svg>
