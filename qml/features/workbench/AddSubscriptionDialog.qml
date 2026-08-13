@@ -60,13 +60,10 @@ AppDialog {
             font.bold: true
         }
 
-        AppTextField {
-            ui: root.ui
-            id: topicField
+        Loader {
             Layout.fillWidth: true
-            text: root.editor.topic
-            placeholderText: qsTr("sensor/+/temperature")
-            onTextEdited: root.editor.topic = text
+            Layout.preferredHeight: root.editor.editMode ? 38 : 82
+            sourceComponent: root.editor.editMode ? topicFieldComponent : topicsFieldComponent
         }
 
         AppTextField {
@@ -246,6 +243,31 @@ AppDialog {
                 accessibleName: root.editor.editMode ? qsTr("Save subscription") : qsTr("Add subscription")
                 onClicked: root.submit()
             }
+        }
+    }
+
+    Component {
+        id: topicFieldComponent
+
+        AppTextField {
+            ui: root.ui
+            text: root.editor.topic
+            placeholderText: qsTr("sensor/+/temperature")
+            Accessible.name: qsTr("Topic filter")
+            onTextEdited: root.editor.topic = text
+        }
+    }
+
+    Component {
+        id: topicsFieldComponent
+
+        AppTextArea {
+            ui: root.ui
+            text: root.editor.topic
+            placeholderText: qsTr("sensor/one, sensor/two")
+            wrapMode: TextEdit.Wrap
+            Accessible.name: qsTr("Topic filters")
+            onTextEdited: root.editor.topic = text
         }
     }
 

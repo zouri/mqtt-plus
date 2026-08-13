@@ -26,6 +26,7 @@ private slots:
     void opensForEditWithExistingProcessorBinding();
     void preservesUnavailableBindingWhenOptionsRefresh();
     void validatesAndCollectsCurrentSubmission();
+    void parsesAndDeduplicatesBatchTopics();
 };
 
 void SubscriptionEditorViewModelTest::opensForCreateWithDefaults()
@@ -97,6 +98,27 @@ void SubscriptionEditorViewModelTest::validatesAndCollectsCurrentSubmission()
 
     editor.setQos(3);
     QCOMPARE(editor.qos(), 2);
+}
+
+void SubscriptionEditorViewModelTest::parsesAndDeduplicatesBatchTopics()
+{
+    SubscriptionEditorViewModel editor;
+    editor.openForCreate();
+    editor.setTopic(QStringLiteral(
+        " sensors/one, sensors/two\n"
+        "sensors/one\r\n  sensors/three "));
+
+    QVERIFY(editor.canSubmit());
+    QCOMPARE(
+        editor.submission().value(QStringLiteral("topics")).toStringList(),
+        QStringList({
+            QStringLiteral("sensors/one"),
+            QStringLiteral("sensors/two"),
+            QStringLiteral("sensors/three"),
+        }));
+
+    editor.setTopic(QStringLiteral(" , \n "));
+    QVERIFY(!editor.canSubmit());
 }
 
 QTEST_MAIN(SubscriptionEditorViewModelTest)

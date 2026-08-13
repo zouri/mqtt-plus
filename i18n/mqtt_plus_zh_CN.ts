@@ -4,17 +4,17 @@
 <context>
     <name>AddSubscriptionDialog</name>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="137"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="134"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="159"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="156"/>
         <source>No topic color</source>
         <translation>不使用主题颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="160"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="157"/>
         <source>Topic color %1</source>
         <translation>主题颜色 %1</translation>
     </message>
@@ -29,62 +29,77 @@
         <translation>添加订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="68"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="255"/>
         <source>sensor/+/temperature</source>
         <translation>sensor/+/temperature</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="77"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="74"/>
         <source>Alias (optional)</source>
         <translation>别名（可选）</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="89"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="86"/>
         <source>QoS 0</source>
         <translation>QoS 0</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="89"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="86"/>
         <source>QoS 1</source>
         <translation>QoS 1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="89"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="86"/>
         <source>QoS 2</source>
         <translation>QoS 2</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="109"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="106"/>
         <source>Message Processor</source>
         <translation>消息处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="185"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="182"/>
         <source>Choose custom topic color</source>
         <translation>选择自定义主题颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="210"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="207"/>
         <source>Choose custom color</source>
         <translation>选择自定义颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="234"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="231"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="246"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="243"/>
         <source>Save subscription</source>
         <translation>保存订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="246"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="243"/>
         <source>Add subscription</source>
         <translation>添加订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="255"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="256"/>
+        <source>Topic filter</source>
+        <translation>主题过滤器</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="267"/>
+        <source>sensor/one, sensor/two</source>
+        <translation>sensor/one, sensor/two</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="269"/>
+        <source>Topic filters</source>
+        <translation>主题过滤器列表</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="277"/>
         <source>Choose topic color</source>
         <translation>选择主题颜色</translation>
     </message>
@@ -3097,23 +3112,23 @@
 <context>
     <name>SubscriptionEditorViewModel</name>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="21"/>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="205"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="40"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="234"/>
         <source>None</source>
         <translation>无</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="226"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="255"/>
         <source>Unavailable: %1</source>
         <translation>不可用：%1</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="263"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="292"/>
         <source>The selected Message Processor is unavailable.</source>
         <translation>所选消息处理器不可用。</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="256"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="285"/>
         <source>The selected Message Processor is unavailable. The binding will be preserved.</source>
         <translation>所选消息处理器不可用，将保留此绑定。</translation>
     </message>
@@ -3121,12 +3136,12 @@
 <context>
     <name>SubscriptionService</name>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="402"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="429"/>
         <source>Invalid topic filter.</source>
         <translation>主题过滤器无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="415"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="442"/>
         <source>Qt MQTT returned no subscription object.</source>
         <translation>Qt MQTT 未返回订阅对象。</translation>
     </message>

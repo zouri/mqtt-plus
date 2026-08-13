@@ -5,6 +5,7 @@
 
 #include <QObject>
 #include <QMqttSubscription>
+#include <QStringList>
 
 class EventHistoryService;
 class SessionService;
@@ -21,6 +22,13 @@ public:
 
     bool upsertCurrentSubscription(
         const QString &topic,
+        int qos,
+        int format,
+        const ProcessorReference &processor,
+        const QString &color,
+        const QString &alias);
+    bool upsertCurrentSubscriptions(
+        const QStringList &topics,
         int qos,
         int format,
         const ProcessorReference &processor,

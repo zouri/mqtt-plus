@@ -616,8 +616,8 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
             submission.value(QStringLiteral("color")).toString());
     }
 
-    return m_subscriptionService.upsertCurrentSubscription(
-        submission.value(QStringLiteral("topic")).toString(),
+    return m_subscriptionService.upsertCurrentSubscriptions(
+        submission.value(QStringLiteral("topics")).toStringList(),
         submission.value(QStringLiteral("qos")).toInt(),
         submission.value(QStringLiteral("format")).toInt(),
         processor,

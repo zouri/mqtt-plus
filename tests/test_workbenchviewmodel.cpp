@@ -146,6 +146,7 @@ private slots:
     void exposesSessionEditor();
     void exposesSubscriptionEditor();
     void preparesSubscriptionEditorForCreate();
+    void addsBatchSubscriptions();
     void rejectsInvalidSubscriptionEditorIndex();
     void ignoresInvalidSessionIndexes();
     void updatesPublishDraft();
@@ -436,6 +437,32 @@ void WorkbenchViewModelTest::preparesSubscriptionEditorForCreate()
     QVERIFY(!viewModel.subscriptionEditor()->editMode());
     QVERIFY(viewModel.subscriptionEditor()->topic().isEmpty());
     QVERIFY(viewModel.subscriptionEditor()->alias().isEmpty());
+}
+
+void WorkbenchViewModelTest::addsBatchSubscriptions()
+{
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    fixture.sessionService.sessions().append(session);
+    fixture.sessionService.setCurrentSessionIndex(0);
+
+    viewModel.openSubscriptionEditorForCreate();
+    viewModel.subscriptionEditor()->setTopic(QStringLiteral(
+        "devices/one, devices/two\ndevices/one"));
+    viewModel.subscriptionEditor()->setQos(1);
+    viewModel.subscriptionEditor()->setFormat(2);
+
+    QVERIFY(viewModel.submitSubscriptionEditor());
+    const SessionState *currentSession = fixture.sessionService.currentSession();
+    QVERIFY(currentSession);
+    QCOMPARE(currentSession->subscriptions.size(), 2);
+    QCOMPARE(currentSession->subscriptions.at(0).topic, QStringLiteral("devices/one"));
+    QCOMPARE(currentSession->subscriptions.at(1).topic, QStringLiteral("devices/two"));
+    QCOMPARE(currentSession->subscriptions.at(0).requestedQos, 1);
+    QCOMPARE(currentSession->subscriptions.at(1).format, 2);
 }
 
 void WorkbenchViewModelTest::rejectsInvalidSubscriptionEditorIndex()
