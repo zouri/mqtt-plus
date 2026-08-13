@@ -714,6 +714,7 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_historywriterworker
         tests/test_historywriterworker.cpp
+        src/services/payload/payloadcodec.cpp
         src/services/storage/historystore.cpp
         src/services/storage/historywriterworker.cpp
     )

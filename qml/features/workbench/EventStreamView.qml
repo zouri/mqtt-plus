@@ -739,11 +739,30 @@ Item {
                     required property bool retain
                     required property bool retainKnown
                     required property string parsedPayload
+                    required property string parseState
                     required property string payloadState
                     required property string payloadHash
+                    required property string expandedPayload
+                    required property string expandedPayloadState
+                    required property bool expandedPayloadNeeded
                     readonly property bool isDivider: eventDelegate.kind === "divider"
                     readonly property bool isMessage: eventDelegate.kind === "message"
                     readonly property bool isEvent: eventDelegate.kind === "event"
+                    readonly property bool shouldRequestExpandedPayload:
+                        root.payloadDisplayMode === 2
+                        && eventDelegate.expandedPayloadNeeded
+                        && eventDelegate.expandedPayloadState === "idle"
+                    readonly property string displayedPayload:
+                        root.payloadDisplayMode !== 2
+                        ? eventDelegate.payload
+                        : eventDelegate.expandedPayloadState === "ready"
+                          ? eventDelegate.expandedPayload
+                          : eventDelegate.expandedPayloadState === "too_large"
+                            ? qsTr("Payload too large for inline display (%1 B)")
+                                  .arg(eventDelegate.payloadSize)
+                            : eventDelegate.expandedPayloadState === "unavailable"
+                              ? qsTr("Complete payload is unavailable")
+                              : eventDelegate.payload
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
                     readonly property color topicSwatchColor: eventDelegate.topicColor.length > 0
                                                              ? eventDelegate.topicColor
@@ -754,6 +773,13 @@ Item {
                     implicitHeight: eventDelegate.isDivider
                                     ? dividerRow.implicitHeight + 14
                                     : messageRow.implicitHeight + 2
+
+                    Timer {
+                        interval: 0
+                        running: eventDelegate.shouldRequestExpandedPayload
+                        repeat: false
+                        onTriggered: root.viewModel.requestExpandedMessage(eventDelegate.historyId)
+                    }
 
                     function selectMessage() {
                         if (!eventDelegate.isMessage) {
@@ -947,20 +973,19 @@ Item {
 
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
-                                    text: eventDelegate.payload
+                                    text: eventDelegate.displayedPayload
                                     color: eventDelegate.isEvent ? root.ui.textMuted : root.ui.textStrong
                                     font.family: root.fontFamily
                                     font.pixelSize: 12
                                     textFormat: Text.PlainText
                                     wrapMode: Text.WrapAnywhere
-                                    maximumLineCount: root.payloadDisplayMode === 2
-                                                      ? 64
+                                    maximumLineCount: root.payloadDisplayMode === 2 ? 4096
                                                       : (root.payloadDisplayMode === 1
                                                          && (eventDelegate.historyId === root.selectedHistoryId
                                                              || rowHover.hovered)
                                                          ? 12
                                                          : 3)
-                                    elide: Label.ElideRight
+                                    elide: root.payloadDisplayMode === 2 ? Text.ElideNone : Text.ElideRight
                                 }
                             }
 

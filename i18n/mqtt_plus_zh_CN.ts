@@ -269,107 +269,107 @@
 <context>
     <name>Application</name>
     <message>
-        <location filename="../src/app/application.cpp" line="252"/>
+        <location filename="../src/app/application.cpp" line="247"/>
         <source>Draft library error</source>
         <translation>草稿库错误</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="257"/>
+        <location filename="../src/app/application.cpp" line="252"/>
         <source>Restore backup</source>
         <translation>恢复备份</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="272"/>
+        <location filename="../src/app/application.cpp" line="267"/>
         <source>Draft saved</source>
         <translation>草稿已保存</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="277"/>
+        <location filename="../src/app/application.cpp" line="272"/>
         <source>Draft deleted</source>
         <translation>草稿已删除</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="278"/>
+        <location filename="../src/app/application.cpp" line="273"/>
         <source>The draft was removed from the library.</source>
         <translation>该草稿已从草稿库中移除。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="281"/>
+        <location filename="../src/app/application.cpp" line="276"/>
         <source>Draft library restored</source>
         <translation>草稿库已恢复</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="282"/>
+        <location filename="../src/app/application.cpp" line="277"/>
         <source>The backup was restored successfully.</source>
         <translation>备份已成功恢复。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="312"/>
+        <location filename="../src/app/application.cpp" line="307"/>
         <source>Software update available</source>
         <translation>有可用的软件更新</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="313"/>
+        <location filename="../src/app/application.cpp" line="308"/>
         <source>Version %1 is ready to download.</source>
         <translation>版本 %1 已可下载。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="318"/>
+        <location filename="../src/app/application.cpp" line="313"/>
         <source>Download</source>
         <translation>下载</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="319"/>
+        <location filename="../src/app/application.cpp" line="314"/>
         <source>View release</source>
         <translation>查看发布页面</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="324"/>
+        <location filename="../src/app/application.cpp" line="319"/>
         <source>MQTT Plus is up to date</source>
         <translation>MQTT Plus 已是最新版本</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="325"/>
+        <location filename="../src/app/application.cpp" line="320"/>
         <source>You are using the latest version.</source>
         <translation>你正在使用最新版本。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="340"/>
+        <location filename="../src/app/application.cpp" line="335"/>
         <source>Update check failed</source>
         <translation>检查更新失败</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="362"/>
+        <location filename="../src/app/application.cpp" line="357"/>
         <source>Publish failed</source>
         <translation>发送失败</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="364"/>
+        <location filename="../src/app/application.cpp" line="359"/>
         <source>View logs</source>
         <translation>查看日志</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="369"/>
+        <location filename="../src/app/application.cpp" line="364"/>
         <source>Message sent</source>
         <translation>消息已发送</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="374"/>
+        <location filename="../src/app/application.cpp" line="369"/>
         <source>Waiting for broker confirmation</source>
         <translation>正在等待代理确认</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="375"/>
+        <location filename="../src/app/application.cpp" line="370"/>
         <source>Publish queued</source>
         <translation>发送已排队</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="381"/>
+        <location filename="../src/app/application.cpp" line="376"/>
         <source>QoS %1</source>
         <translation>QoS %1</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="383"/>
+        <location filename="../src/app/application.cpp" line="378"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
@@ -883,22 +883,22 @@
 <context>
     <name>EventHistoryService</name>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="442"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="439"/>
         <source>Cannot clear message history: %1</source>
         <translation>无法清除消息历史：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="443"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="440"/>
         <source>Cannot clear log history: %1</source>
         <translation>无法清除日志历史：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="527"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="524"/>
         <source>Cannot clear history: %1</source>
         <translation>无法清除历史记录：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="1498"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="1566"/>
         <source>Timed out while saving queued messages.</source>
         <translation>保存排队消息时超时。</translation>
     </message>
@@ -947,13 +947,13 @@
     </message>
     <message>
         <location filename="../qml/features/workbench/EventStreamView.qml" line="133"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="811"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="837"/>
         <source>Received</source>
         <translation>接收</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/EventStreamView.qml" line="135"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="811"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="837"/>
         <source>Sent</source>
         <translation>发送</translation>
     </message>
@@ -1050,33 +1050,43 @@
         <translation>清空消息历史</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="810"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="761"/>
+        <source>Payload too large for inline display (%1 B)</source>
+        <translation>消息内容过大，无法在列表中完整显示（%1 B）</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="764"/>
+        <source>Complete payload is unavailable</source>
+        <translation>无法读取完整消息内容</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="836"/>
         <source>%1 message, %2, %3</source>
         <translation>%1 消息，%2，%3</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1050"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1051"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1075"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1076"/>
         <source>Use as publish draft</source>
         <translation>用作发布草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1264"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1289"/>
         <source>Clear message history?</source>
         <translation>清空消息历史？</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1273"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1298"/>
         <source>This permanently removes all saved messages for the current connection.</source>
         <translation>这将永久删除当前连接保存的全部消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1289"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1314"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1296"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1321"/>
         <source>Clear</source>
         <translation>清空</translation>
     </message>
@@ -1096,30 +1106,30 @@
         <translation>输出已暂停：收到的 MQTT 消息仍会存入历史。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="747"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="766"/>
         <source>%1 B</source>
         <translation>%1 B</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1036"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1037"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1061"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1062"/>
         <source>Copy topic</source>
         <translation>复制主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1018"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1019"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1043"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1044"/>
         <source>Copy payload</source>
         <translation>复制 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1110"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1135"/>
         <source>Scroll to latest, %1 unread</source>
         <translation>滚动到最新，%1 条未读</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1111"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1211"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1136"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1236"/>
         <source>Scroll to latest</source>
         <translation>滚动到最新</translation>
     </message>
@@ -3111,12 +3121,12 @@
 <context>
     <name>SubscriptionService</name>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="397"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="402"/>
         <source>Invalid topic filter.</source>
         <translation>主题过滤器无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="410"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="415"/>
         <source>Qt MQTT returned no subscription object.</source>
         <translation>Qt MQTT 未返回订阅对象。</translation>
     </message>

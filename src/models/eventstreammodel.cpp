@@ -56,6 +56,9 @@ QHash<int, QByteArray> EventStreamModel::roleNames() const
         {ParseStateRole, "parseState"},
         {PayloadStateRole, "payloadState"},
         {PayloadHashRole, "payloadHash"},
+        {ExpandedPayloadRole, "expandedPayload"},
+        {ExpandedPayloadStateRole, "expandedPayloadState"},
+        {ExpandedPayloadNeededRole, "expandedPayloadNeeded"},
     };
     return roles;
 }
@@ -108,7 +111,10 @@ void EventStreamModel::setRows(const QVariantList &rows)
                               ParsedPayloadRole,
                               ParseStateRole,
                               PayloadStateRole,
-                              PayloadHashRole});
+                              PayloadHashRole,
+                              ExpandedPayloadRole,
+                              ExpandedPayloadStateRole,
+                              ExpandedPayloadNeededRole});
         }
         if (messageCountWillChange) {
             emit messageCountChanged();
@@ -294,10 +300,64 @@ bool EventStreamModel::updateRowByHistoryId(qint64 historyId, const QVariantMap 
              ParsedPayloadRole,
              ParseStateRole,
              PayloadStateRole,
-             PayloadHashRole});
+             PayloadHashRole,
+             ExpandedPayloadRole,
+             ExpandedPayloadStateRole,
+             ExpandedPayloadNeededRole});
         if (wasMessage != isMessage) {
             emit messageCountChanged();
         }
+        return true;
+    }
+    return false;
+}
+
+bool EventStreamModel::beginExpandedPayloadLoad(qint64 historyId)
+{
+    if (historyId <= 0) {
+        return false;
+    }
+    for (int row = m_rows.size() - 1; row >= 0; --row) {
+        EventStreamRow &streamRow = m_rows[row];
+        if (streamRow.historyId != historyId
+            || !streamRow.expandedPayloadNeeded
+            || streamRow.expandedPayloadState != QStringLiteral("idle")) {
+            continue;
+        }
+        streamRow.expandedPayloadState = QStringLiteral("loading");
+        streamRow.source.insert(
+            QStringLiteral("expandedPayloadState"),
+            streamRow.expandedPayloadState);
+        emit dataChanged(
+            index(row, 0),
+            index(row, 0),
+            {ExpandedPayloadStateRole});
+        return true;
+    }
+    return false;
+}
+
+bool EventStreamModel::finishExpandedPayloadLoad(
+    qint64 historyId,
+    const QString &payload,
+    const QString &state)
+{
+    if (historyId <= 0) {
+        return false;
+    }
+    for (int row = m_rows.size() - 1; row >= 0; --row) {
+        EventStreamRow &streamRow = m_rows[row];
+        if (streamRow.historyId != historyId) {
+            continue;
+        }
+        streamRow.expandedPayload = payload;
+        streamRow.expandedPayloadState = state;
+        streamRow.source.insert(QStringLiteral("expandedPayload"), payload);
+        streamRow.source.insert(QStringLiteral("expandedPayloadState"), state);
+        emit dataChanged(
+            index(row, 0),
+            index(row, 0),
+            {ExpandedPayloadRole, ExpandedPayloadStateRole});
         return true;
     }
     return false;
@@ -369,6 +429,13 @@ EventStreamModel::EventStreamRow EventStreamModel::rowFromMap(const QVariantMap 
     streamRow.parseState = row.value(QStringLiteral("parseState")).toString();
     streamRow.payloadState = row.value(QStringLiteral("payloadState")).toString();
     streamRow.payloadHash = row.value(QStringLiteral("payloadHash")).toString();
+    streamRow.expandedPayload = row.value(QStringLiteral("expandedPayload")).toString();
+    streamRow.expandedPayloadState = row.value(
+        QStringLiteral("expandedPayloadState"),
+        QStringLiteral("idle")).toString();
+    streamRow.expandedPayloadNeeded = row.value(
+        QStringLiteral("expandedPayloadNeeded"),
+        false).toBool();
     return streamRow;
 }
 
@@ -444,6 +511,12 @@ QVariant EventStreamModel::roleValue(const EventStreamRow &row, int role) const
         return row.payloadState;
     case PayloadHashRole:
         return row.payloadHash;
+    case ExpandedPayloadRole:
+        return row.expandedPayload;
+    case ExpandedPayloadStateRole:
+        return row.expandedPayloadState;
+    case ExpandedPayloadNeededRole:
+        return row.expandedPayloadNeeded;
     default:
         return {};
     }

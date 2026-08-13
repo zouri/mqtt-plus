@@ -40,6 +40,8 @@ private slots:
     void elevatedWriterSkipsParsingAndRecovers();
     void writerHardLimitReportsDroppingAndRecovers();
     void rawOnlyRowsKeepPayloadBodyFreeOfStatusText();
+    void expandedParsedPayloadLoadsBeyondListPreview();
+    void oversizedRawPayloadStaysOutOfInlineText();
     void publishedRowsAppearInMessageStream();
     void publishedRowsKeepFormatAfterHistoryReload();
     void largePublishedRowsUsePreviewUntilInspectedAfterHistoryReload();
@@ -644,8 +646,7 @@ void EventHistoryServiceTest::rawOnlyRowsKeepPayloadBodyFreeOfStatusText()
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
     fixture.addSubscription(QStringLiteral("devices/binary"), static_cast<int>(PayloadFormat::Hex));
     const QByteArray payload(80, '\0');
-    const QString expectedPayload = QStringLiteral("%1 ...")
-        .arg(QString::fromLatin1(payload.left(64).toHex(' ').toUpper()));
+    const QString expectedPayload = QString::fromLatin1(payload.left(64).toHex(' ').toUpper());
 
     fixture.service.appendIncomingMessage(
         fixture.session.id,
@@ -657,6 +658,85 @@ void EventHistoryServiceTest::rawOnlyRowsKeepPayloadBodyFreeOfStatusText()
     QCOMPARE(row.value(QStringLiteral("payload")).toString(), expectedPayload);
     QCOMPARE(row.value(QStringLiteral("testPayload")).toString(), expectedPayload);
     QCOMPARE(row.value(QStringLiteral("payloadFormat")).toString(), QStringLiteral("Hex · raw"));
+    const qint64 historyId = row.value(QStringLiteral("historyId")).toLongLong();
+    QVERIFY(historyId > 0);
+    QCOMPARE(
+        fixture.service.messagePayloadForDisplay(
+            historyId,
+            expectedPayload,
+            static_cast<int>(PayloadFormat::Hex)),
+        QString::fromLatin1(payload.toHex(' ').toUpper()));
+
+    QVERIFY(row.value(QStringLiteral("expandedPayloadNeeded")).toBool());
+    QVERIFY(fixture.service.requestExpandedMessage(historyId));
+    QTRY_COMPARE(
+        fixture.messages.rowAt(0).value(QStringLiteral("expandedPayloadState")).toString(),
+        QStringLiteral("ready"));
+    QCOMPARE(
+        fixture.messages.rowAt(0).value(QStringLiteral("expandedPayload")).toString(),
+        QString::fromLatin1(payload.toHex(' ').toUpper()));
+}
+
+void EventHistoryServiceTest::expandedParsedPayloadLoadsBeyondListPreview()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.addSubscription(QStringLiteral("devices/large-json"), static_cast<int>(PayloadFormat::Json));
+    const QByteArray payload = QByteArrayLiteral("{\"value\":\"")
+        + QByteArray(80 * 1024, 'x')
+        + QByteArrayLiteral("\"}");
+    QString decodeError;
+    const QString expected = PayloadCodec::decodeForDisplay(PayloadFormat::Json, payload, decodeError);
+    QVERIFY2(decodeError.isEmpty(), qPrintable(decodeError));
+
+    fixture.service.appendIncomingMessage(
+        fixture.session.id,
+        QStringLiteral("devices/large-json"),
+        payload);
+
+    QTRY_COMPARE(fixture.messages.count(), 1);
+    QTRY_COMPARE(
+        fixture.messages.rowAt(0).value(QStringLiteral("parseState")).toString(),
+        QStringLiteral("succeeded"));
+    const QVariantMap previewRow = fixture.messages.rowAt(0);
+    QCOMPARE(previewRow.value(QStringLiteral("payload")).toString().size(), 64 * 1024);
+    QVERIFY(previewRow.value(QStringLiteral("expandedPayloadNeeded")).toBool());
+    const qint64 historyId = previewRow.value(QStringLiteral("historyId")).toLongLong();
+    QVERIFY(fixture.service.flushPendingMessageHistory());
+
+    QVERIFY(fixture.service.requestExpandedMessage(historyId));
+    QTRY_COMPARE(
+        fixture.messages.rowAt(0).value(QStringLiteral("expandedPayloadState")).toString(),
+        QStringLiteral("ready"));
+    QCOMPARE(
+        fixture.messages.rowAt(0).value(QStringLiteral("expandedPayload")).toString(),
+        expected);
+}
+
+void EventHistoryServiceTest::oversizedRawPayloadStaysOutOfInlineText()
+{
+    Fixture fixture;
+    QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
+    fixture.addSubscription(QStringLiteral("devices/large-binary"), static_cast<int>(PayloadFormat::Hex));
+    const QByteArray payload(100 * 1024, '\0');
+
+    fixture.service.appendIncomingMessage(
+        fixture.session.id,
+        QStringLiteral("devices/large-binary"),
+        payload);
+
+    QTRY_COMPARE(fixture.messages.count(), 1);
+    const qint64 historyId = fixture.messages.rowAt(0)
+                                 .value(QStringLiteral("historyId"))
+                                 .toLongLong();
+    QVERIFY(fixture.service.requestExpandedMessage(historyId));
+    QTRY_COMPARE(
+        fixture.messages.rowAt(0).value(QStringLiteral("expandedPayloadState")).toString(),
+        QStringLiteral("too_large"));
+    QVERIFY(fixture.messages.rowAt(0)
+                .value(QStringLiteral("expandedPayload"))
+                .toString()
+                .isEmpty());
 }
 
 void EventHistoryServiceTest::publishedRowsAppearInMessageStream()

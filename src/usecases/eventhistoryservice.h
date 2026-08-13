@@ -70,6 +70,7 @@ public:
         const QString &fallbackTestPayload,
         int format) const;
     QString messagePayloadForDisplay(qint64 messageId, const QString &fallbackPayload, int format) const;
+    bool requestExpandedMessage(qint64 messageId);
     QVariantMap messageDetails(qint64 messageId) const;
     void reloadCurrentSessionHistory();
     void invalidateMessageContexts();
