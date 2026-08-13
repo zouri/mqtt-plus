@@ -5,6 +5,7 @@
 #include "services/apputils.h"
 #include "domain/sessionconfig.h"
 #include <QRegularExpression>
+#include <QSet>
 
 #include <algorithm>
 
@@ -66,53 +67,79 @@ bool SubscriptionService::upsertCurrentSubscription(
     const QString &color,
     const QString &alias)
 {
+    return upsertCurrentSubscriptions({topic}, qos, format, processor, color, alias);
+}
+
+bool SubscriptionService::upsertCurrentSubscriptions(
+    const QStringList &topics,
+    int qos,
+    int format,
+    const ProcessorReference &processor,
+    const QString &color,
+    const QString &alias)
+{
     auto *session = m_sessionService.currentSession();
     if (!session) {
         return false;
     }
 
-    const QString filter = topic.trimmed();
-    if (filter.isEmpty()) {
+    QStringList filters;
+    QSet<QString> seen;
+    for (const QString &topic : topics) {
+        const QString filter = topic.trimmed();
+        if (!filter.isEmpty() && !seen.contains(filter)) {
+            filters.append(filter);
+            seen.insert(filter);
+        }
+    }
+    if (filters.isEmpty()) {
         return false;
     }
 
-    const QMqttTopicFilter topicFilter(filter);
-    if (!topicFilter.isValid()) {
-        m_eventHistoryService.appendEvent(*session, QStringLiteral("Subscription"), QStringLiteral("Invalid topic filter: %1").arg(filter));
-        return false;
+    for (const QString &filter : filters) {
+        const QMqttTopicFilter topicFilter(filter);
+        if (!topicFilter.isValid()) {
+            m_eventHistoryService.appendEvent(
+                *session,
+                QStringLiteral("Subscription"),
+                QStringLiteral("Invalid topic filter: %1").arg(filter));
+            return false;
+        }
     }
 
-    SubscriptionEntry *entry = subscriptionByTopic(session, filter);
     const ProcessorReference normalizedProcessor = normalizedProcessorReference(processor);
     const QString sanitizedColor = sanitizeTopicColor(color);
     const QString displayAlias = alias.trimmed();
     bool shouldReloadMessages = false;
-    if (!entry) {
-        SubscriptionEntry subscription;
-        subscription.topic = filter;
-        subscription.alias = displayAlias;
-        subscription.requestedQos = SessionConfig::sanitizeQos(qos);
-        subscription.format = format;
-        subscription.processor = normalizedProcessor;
-        subscription.color = sanitizedColor;
-        session->subscriptions.append(subscription);
-        entry = &session->subscriptions.last();
-        shouldReloadMessages = !sanitizedColor.isEmpty();
-    } else {
-        shouldReloadMessages = entry->color != sanitizedColor;
-        entry->alias = displayAlias;
-        entry->requestedQos = SessionConfig::sanitizeQos(qos);
-        entry->format = format;
-        entry->processor = normalizedProcessor;
-        entry->color = sanitizedColor;
-        entry->paused = false;
-        entry->lastError.clear();
-    }
+    for (const QString &filter : filters) {
+        SubscriptionEntry *entry = subscriptionByTopic(session, filter);
+        if (!entry) {
+            SubscriptionEntry subscription;
+            subscription.topic = filter;
+            subscription.alias = displayAlias;
+            subscription.requestedQos = SessionConfig::sanitizeQos(qos);
+            subscription.format = format;
+            subscription.processor = normalizedProcessor;
+            subscription.color = sanitizedColor;
+            session->subscriptions.append(subscription);
+            entry = &session->subscriptions.last();
+            shouldReloadMessages = shouldReloadMessages || !sanitizedColor.isEmpty();
+        } else {
+            shouldReloadMessages = shouldReloadMessages || entry->color != sanitizedColor;
+            entry->alias = displayAlias;
+            entry->requestedQos = SessionConfig::sanitizeQos(qos);
+            entry->format = format;
+            entry->processor = normalizedProcessor;
+            entry->color = sanitizedColor;
+            entry->paused = false;
+            entry->lastError.clear();
+        }
 
-    session->runtime.subscriptionFormats.insert(filter, format);
-    auto *client = session->runtime.client;
-    if (client && client->state() == QMqttClient::Connected) {
-        ensureSubscriptionActive(*session, *entry, true);
+        session->runtime.subscriptionFormats.insert(filter, format);
+        auto *client = session->runtime.client;
+        if (client && client->state() == QMqttClient::Connected) {
+            ensureSubscriptionActive(*session, *entry, true);
+        }
     }
 
     const bool saved = m_sessionService.saveSessions();

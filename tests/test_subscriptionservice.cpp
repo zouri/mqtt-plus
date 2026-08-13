@@ -25,6 +25,7 @@ class SubscriptionServiceTest : public QObject
 private slots:
     void updateCurrentSubscriptionEditsQosAndFormat();
     void preservesUnresolvedProcessorReferences();
+    void upsertsValidatedBatchWithSingleNotification();
     void setsAllCurrentSubscriptionsPausedWithSingleSignal();
     void detectsActiveCurrentSubscriptionFps();
     void subscriptionEditInvalidatesRenderContext();
@@ -144,6 +145,42 @@ void SubscriptionServiceTest::preservesUnresolvedProcessorReferences()
         entry.processor,
         QString()));
     QCOMPARE(entry.processor.parameters.value(QStringLiteral("gain")).toInteger(), qint64(4));
+}
+
+void SubscriptionServiceTest::upsertsValidatedBatchWithSingleNotification()
+{
+    Fixture fixture;
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    SessionState &currentSession = fixture.setCurrentSession(std::move(session));
+    QSignalSpy changedSpy(&fixture.service, &SubscriptionService::subscriptionsChanged);
+
+    QVERIFY(fixture.service.upsertCurrentSubscriptions(
+        {
+            QStringLiteral("devices/one"),
+            QStringLiteral(" devices/two "),
+            QStringLiteral("devices/one"),
+        },
+        1,
+        2,
+        {},
+        QStringLiteral("#34C759"),
+        QStringLiteral("Device")));
+    QCOMPARE(currentSession.subscriptions.size(), 2);
+    QCOMPARE(currentSession.subscriptions.at(0).topic, QStringLiteral("devices/one"));
+    QCOMPARE(currentSession.subscriptions.at(1).topic, QStringLiteral("devices/two"));
+    QCOMPARE(changedSpy.count(), 1);
+
+    QVERIFY(!fixture.service.upsertCurrentSubscriptions(
+        {QStringLiteral("devices/three"), QStringLiteral("devices/#/invalid")},
+        0,
+        0,
+        {},
+        {},
+        {}));
+    QCOMPARE(currentSession.subscriptions.size(), 2);
+    QCOMPARE(changedSpy.count(), 1);
 }
 
 void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleSignal()

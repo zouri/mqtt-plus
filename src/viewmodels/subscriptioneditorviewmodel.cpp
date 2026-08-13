@@ -3,6 +3,8 @@
 #include "domain/sessionconfig.h"
 
 #include <QCoreApplication>
+#include <QRegularExpression>
+#include <QSet>
 
 #include <algorithm>
 
@@ -11,6 +13,23 @@ namespace {
 QString editorText(const char *source)
 {
     return QCoreApplication::translate("SubscriptionEditorViewModel", source);
+}
+
+QStringList topicFiltersFromEditorText(const QString &text)
+{
+    QStringList filters;
+    QSet<QString> seen;
+    const QStringList candidates = text.split(
+        QRegularExpression(QStringLiteral("[,\\r\\n]+")),
+        Qt::SkipEmptyParts);
+    for (const QString &candidate : candidates) {
+        const QString filter = candidate.trimmed();
+        if (!filter.isEmpty() && !seen.contains(filter)) {
+            filters.append(filter);
+            seen.insert(filter);
+        }
+    }
+    return filters;
 }
 
 } // namespace
@@ -53,7 +72,9 @@ QStringList SubscriptionEditorViewModel::colorOptions() const
 
 bool SubscriptionEditorViewModel::canSubmit() const
 {
-    return !m_topic.trimmed().isEmpty();
+    return m_editMode
+        ? !m_topic.trimmed().isEmpty()
+        : !topicFiltersFromEditorText(m_topic).isEmpty();
 }
 
 void SubscriptionEditorViewModel::setTopic(const QString &topic)
@@ -167,10 +188,14 @@ void SubscriptionEditorViewModel::setProcessorOptions(const QVariantList &proces
 
 QVariantMap SubscriptionEditorViewModel::submission() const
 {
+    const QString normalizedTopic = m_topic.trimmed();
     return {
         {QStringLiteral("editMode"), m_editMode},
         {QStringLiteral("editTopic"), m_editTopic},
-        {QStringLiteral("topic"), m_topic.trimmed()},
+        {QStringLiteral("topic"), normalizedTopic},
+        {QStringLiteral("topics"), m_editMode
+             ? QStringList {normalizedTopic}
+             : topicFiltersFromEditorText(m_topic)},
         {QStringLiteral("alias"), m_alias},
         {QStringLiteral("qos"), m_qos},
         {QStringLiteral("format"), m_format},
@@ -185,8 +210,12 @@ void SubscriptionEditorViewModel::setEditMode(bool editMode)
     if (m_editMode == editMode) {
         return;
     }
+    const bool wasSubmittable = canSubmit();
     m_editMode = editMode;
     emit editModeChanged();
+    if (wasSubmittable != canSubmit()) {
+        emit canSubmitChanged();
+    }
 }
 
 void SubscriptionEditorViewModel::setEditTopic(const QString &topic)
