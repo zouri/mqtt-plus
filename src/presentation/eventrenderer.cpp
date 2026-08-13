@@ -7,6 +7,7 @@ using namespace AppUtils;
 
 namespace {
 constexpr qsizetype kListTextCharacterLimit = 64 * 1024;
+constexpr qsizetype kInlineExpandedLineLimit = 4096;
 
 QString startupDividerLabel()
 {
@@ -41,6 +42,11 @@ QString resolveTopicValue(const QHash<QString, QString> &values, const QString &
 QString boundedListText(const QString &text)
 {
     return text.left(kListTextCharacterLimit);
+}
+
+bool exceedsInlineLineLimit(const QString &text)
+{
+    return text.count(QLatin1Char('\n')) >= kInlineExpandedLineLimit;
 }
 }
 
@@ -207,8 +213,8 @@ QVariantMap renderHistoryRow(
         : PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
     const QString parserError = row.value(QStringLiteral("display_error")).toString();
     const QString parsedFormat = row.value(QStringLiteral("display_format")).toString();
-    const QString parsedPayload = boundedListText(
-        row.value(QStringLiteral("display_payload")).toString());
+    const QString fullParsedPayload = row.value(QStringLiteral("display_payload")).toString();
+    const QString parsedPayload = boundedListText(fullParsedPayload);
     QString parseState = row.value(QStringLiteral("display_state")).toString();
     if (parseState.isEmpty()) {
         parseState = !parserError.isEmpty()
@@ -269,6 +275,16 @@ QVariantMap renderHistoryRow(
     rendered.insert(QStringLiteral("parseState"), parseState);
     rendered.insert(QStringLiteral("payloadState"), payloadState);
     rendered.insert(QStringLiteral("payloadHash"), row.value(QStringLiteral("payload_hash")).toString());
+    const bool expandedPayloadNeeded = parseState == QStringLiteral("succeeded")
+        ? fullParsedPayload.size() > parsedPayload.size()
+            || exceedsInlineLineLimit(fullParsedPayload)
+        : parseState == QStringLiteral("not_required")
+            && ((payloadState == QStringLiteral("raw_only") && payloadSize > 64)
+                || payloadState == QStringLiteral("truncated")
+                || exceedsInlineLineLimit(renderedPayload));
+    rendered.insert(QStringLiteral("expandedPayload"), QString());
+    rendered.insert(QStringLiteral("expandedPayloadState"), QStringLiteral("idle"));
+    rendered.insert(QStringLiteral("expandedPayloadNeeded"), expandedPayloadNeeded);
     const QString explicitTopicColor = row.value(QStringLiteral("topic_color")).toString();
     rendered.insert(
         QStringLiteral("topicColor"),

@@ -100,11 +100,7 @@ QString payloadTextPreview(const QByteArray &bytes, qint64 previewLimit)
 QString payloadHexPreview(const QByteArray &bytes)
 {
     const QByteArray previewBytes = bytes.left((std::min)(bytes.size(), qsizetype(64)));
-    QString preview = QString::fromLatin1(previewBytes.toHex(' ').toUpper());
-    if (bytes.size() > previewBytes.size()) {
-        preview.append(QStringLiteral(" ..."));
-    }
-    return preview;
+    return QString::fromLatin1(previewBytes.toHex(' ').toUpper());
 }
 
 PayloadStoragePlan makePayloadStoragePlan(
@@ -314,6 +310,13 @@ EventHistoryService::EventHistoryService(
                 m_lastMessageStorageError = QStringLiteral("Cannot save queued messages: %1").arg(error);
             }
             scheduleMessagePressureNotification();
+        });
+    connect(
+        &m_historyWriter,
+        &HistoryWriterWorker::expandedMessageLoaded,
+        this,
+        [this](qint64 messageId, const QString &payload, const QString &state) {
+            m_messages.finishExpandedPayloadLoad(messageId, payload, state);
         });
     connect(
         &m_visibleMessageRowsFlushTimer,
@@ -796,6 +799,13 @@ void EventHistoryService::updateRenderedParseResult(
         const QString visibleParsedPayload = result.displayPayload.left(kVisibleParsedCharacters);
         row.insert(QStringLiteral("parseState"), messageParseStateName(result.state));
         row.insert(QStringLiteral("parsedPayload"), visibleParsedPayload);
+        row.insert(QStringLiteral("expandedPayload"), QString());
+        row.insert(QStringLiteral("expandedPayloadState"), QStringLiteral("idle"));
+        row.insert(
+            QStringLiteral("expandedPayloadNeeded"),
+            result.state == MessageParseState::Succeeded
+                && (result.displayPayload.size() > visibleParsedPayload.size()
+                    || result.displayPayload.count(QLatin1Char('\n')) >= 4096));
         if (result.state == MessageParseState::Succeeded) {
             row.insert(QStringLiteral("payload"), visibleParsedPayload);
             row.insert(QStringLiteral("payloadFormat"), result.displayFormat);
@@ -1356,6 +1366,25 @@ QString EventHistoryService::messagePayloadForDisplay(
     QString parseError;
     const auto decoded = decodedStoredPayload(messageId, format, parseError);
     return decoded ? *decoded : fallbackPayload;
+}
+
+bool EventHistoryService::requestExpandedMessage(qint64 messageId)
+{
+    if (!m_messages.beginExpandedPayloadLoad(messageId)) {
+        return false;
+    }
+    const bool invoked = QMetaObject::invokeMethod(
+        &m_historyWriter,
+        "loadExpandedMessage",
+        Qt::QueuedConnection,
+        Q_ARG(qint64, messageId));
+    if (!invoked) {
+        m_messages.finishExpandedPayloadLoad(
+            messageId,
+            QString(),
+            QStringLiteral("unavailable"));
+    }
+    return invoked;
 }
 
 QVariantMap EventHistoryService::messageDetails(qint64 messageId) const

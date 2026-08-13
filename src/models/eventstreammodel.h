@@ -35,6 +35,9 @@ public:
         ParseStateRole,
         PayloadStateRole,
         PayloadHashRole,
+        ExpandedPayloadRole,
+        ExpandedPayloadStateRole,
+        ExpandedPayloadNeededRole,
     };
     Q_ENUM(Role)
 
@@ -53,6 +56,11 @@ public:
     int appendRowsAndTrimFront(const QVariantList &rows, int limit);
     int prependRowsAndTrimBack(const QVariantList &rows, int limit);
     bool updateRowByHistoryId(qint64 historyId, const QVariantMap &row);
+    bool beginExpandedPayloadLoad(qint64 historyId);
+    bool finishExpandedPayloadLoad(
+        qint64 historyId,
+        const QString &payload,
+        const QString &state);
     void clear();
     void trimToLimit(int limit);
     bool lastRowEquals(const QVariantMap &row) const;
@@ -86,6 +94,9 @@ private:
         QString parseState;
         QString payloadState;
         QString payloadHash;
+        QString expandedPayload;
+        QString expandedPayloadState;
+        bool expandedPayloadNeeded = false;
 
         bool operator==(const EventStreamRow &other) const = default;
     };

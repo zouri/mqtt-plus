@@ -1,5 +1,6 @@
 #include "historywriterworker.h"
 
+#include "services/payload/payloadcodec.h"
 #include "services/storage/historystore.h"
 
 #include <QDeadlineTimer>
@@ -13,9 +14,18 @@
 #include <utility>
 
 namespace {
+constexpr qsizetype kMaxInlineExpandedCharacters = 256 * 1024;
+constexpr qsizetype kMaxInlineExpandedLines = 4096;
+
 qint64 stringBytes(const QString &value)
 {
     return qint64(value.size()) * qint64(sizeof(QChar));
+}
+
+bool fitsInlineText(const QString &text)
+{
+    return text.size() <= kMaxInlineExpandedCharacters
+        && text.count(QLatin1Char('\n')) < kMaxInlineExpandedLines;
 }
 } // namespace
 
@@ -334,6 +344,65 @@ void HistoryWriterWorker::shutdown()
 
     QMutexLocker locker(&m_mutex);
     m_drainedCondition.wakeAll();
+}
+
+void HistoryWriterWorker::loadExpandedMessage(qint64 messageId)
+{
+    if (messageId <= 0) {
+        emit expandedMessageLoaded(messageId, QString(), QStringLiteral("unavailable"));
+        return;
+    }
+
+    QByteArray payloadBytes;
+    QString parsedPayload;
+    QString parseState;
+    int payloadFormat = -1;
+
+    if (const auto pending = pendingMessage(messageId)) {
+        payloadBytes = pending->payloadBytes;
+        parsedPayload = pending->displayPayload;
+        parseState = pending->displayState;
+        payloadFormat = pending->payloadFormat;
+    } else {
+        if (!ensureStore()) {
+            emit expandedMessageLoaded(messageId, QString(), QStringLiteral("unavailable"));
+            return;
+        }
+        const QVariantMap stored = m_store->loadMessage(messageId);
+        if (stored.isEmpty()) {
+            emit expandedMessageLoaded(messageId, QString(), QStringLiteral("unavailable"));
+            return;
+        }
+        payloadBytes = stored.value(QStringLiteral("payload_bytes")).toByteArray();
+        parsedPayload = stored.value(QStringLiteral("display_payload")).toString();
+        parseState = stored.value(QStringLiteral("display_state")).toString();
+        payloadFormat = stored.value(QStringLiteral("payload_format"), -1).toInt();
+        if (const auto pendingResult = pendingParseResult(messageId)) {
+            parsedPayload = pendingResult->displayPayload;
+            parseState = messageParseStateName(pendingResult->state);
+        }
+    }
+
+    QString expandedPayload;
+    if (parseState == QStringLiteral("succeeded")) {
+        expandedPayload = parsedPayload;
+    } else if (!payloadBytes.isEmpty()) {
+        QString decodeError;
+        expandedPayload = PayloadCodec::decodeForDisplay(
+            PayloadCodec::formatFromInt(payloadFormat),
+            payloadBytes,
+            decodeError);
+        if (!decodeError.isEmpty()) {
+            emit expandedMessageLoaded(messageId, QString(), QStringLiteral("unavailable"));
+            return;
+        }
+    }
+
+    if (!fitsInlineText(expandedPayload)) {
+        emit expandedMessageLoaded(messageId, QString(), QStringLiteral("too_large"));
+        return;
+    }
+    emit expandedMessageLoaded(messageId, expandedPayload, QStringLiteral("ready"));
 }
 
 void HistoryWriterWorker::wake()

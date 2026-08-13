@@ -676,6 +676,13 @@ QString WorkbenchViewModel::messagePayloadForDisplay(
         format);
 }
 
+bool WorkbenchViewModel::requestExpandedMessage(const QString &historyId)
+{
+    bool ok = false;
+    const qint64 parsedHistoryId = historyId.toLongLong(&ok);
+    return ok && m_eventHistoryService.requestExpandedMessage(parsedHistoryId);
+}
+
 void WorkbenchViewModel::copyMessagePayload(
     const QString &historyId,
     const QString &payload,

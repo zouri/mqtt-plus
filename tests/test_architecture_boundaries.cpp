@@ -17,6 +17,7 @@ private slots:
     void processorCallersUseEngineSeamOnly();
     void messagePipelineUsesResolvedProcessorSnapshots();
     void messageQmlUsesTypedObjectProperties();
+    void alwaysExpandedMessagesDoNotTruncatePayloadText();
     void qmlUsesApplicationViewModelRootOnly();
     void messageProfilerUsesIsolatedApplicationData();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
@@ -267,6 +268,23 @@ void ArchitectureBoundariesTest::messageQmlUsesTypedObjectProperties()
         "EventStreamView should not narrow qint64 history ids to a 32-bit QML int");
     QVERIFY2(source.contains(QStringLiteral("required property string historyId")),
         "EventStreamView should carry history ids across the QML boundary without 32-bit narrowing");
+}
+
+void ArchitectureBoundariesTest::alwaysExpandedMessagesDoNotTruncatePayloadText()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+    QVERIFY2(!source.contains(QStringLiteral("2147483647")),
+        "Always-expanded messages must keep inline text layout bounded");
+    QVERIFY2(source.contains(
+                 QStringLiteral("root.payloadDisplayMode === 2 ? Text.ElideNone")),
+        "Always-expanded messages must not elide payload text");
+    QVERIFY2(source.contains(QStringLiteral("root.viewModel.requestExpandedMessage(")),
+        "Always-expanded rows must request complete content asynchronously");
+    QVERIFY2(!source.contains(QStringLiteral("root.viewModel.messagePayloadForDisplay(")),
+        "Message delegates must not synchronously query stored payloads");
+    QVERIFY2(source.contains(QStringLiteral("eventDelegate.expandedPayload")),
+        "Always-expanded rows must consume cached expanded model content");
 }
 
 void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()

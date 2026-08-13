@@ -108,6 +108,7 @@ public:
         const QString &historyId,
         const QString &fallbackPayload,
         int format) const;
+    Q_INVOKABLE bool requestExpandedMessage(const QString &historyId);
     Q_INVOKABLE void copyMessagePayload(
         const QString &historyId,
         const QString &payload,
