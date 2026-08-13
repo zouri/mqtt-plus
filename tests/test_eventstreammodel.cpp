@@ -16,6 +16,7 @@ private slots:
     void detectsMatchingLastRow();
     void exposesCanonicalMessageMetadata();
     void maintainsMessageCountIncrementally();
+    void cachesExpandedPayloadByHistoryId();
 };
 
 void EventStreamModelTest::setRowsIgnoresUnchangedRows()
@@ -125,6 +126,36 @@ void EventStreamModelTest::updatesSingleHistoryRowWithoutReset()
     QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 0);
     QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 0);
     QCOMPARE(resetSpy.count(), 0);
+}
+
+void EventStreamModelTest::cachesExpandedPayloadByHistoryId()
+{
+    EventStreamModel model;
+    model.setRows(QVariantList {
+        QVariantMap {
+            {QStringLiteral("historyId"), 41},
+            {QStringLiteral("kind"), QStringLiteral("message")},
+            {QStringLiteral("payload"), QStringLiteral("preview")},
+            {QStringLiteral("expandedPayloadNeeded"), true},
+        },
+    });
+    QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
+
+    QVERIFY(model.beginExpandedPayloadLoad(41));
+    QCOMPARE(
+        model.rowAt(0).value(QStringLiteral("expandedPayloadState")).toString(),
+        QStringLiteral("loading"));
+    QVERIFY(!model.beginExpandedPayloadLoad(41));
+
+    QVERIFY(model.finishExpandedPayloadLoad(
+        41,
+        QStringLiteral("complete payload"),
+        QStringLiteral("ready")));
+    const QVariantMap row = model.rowAt(0);
+    QCOMPARE(row.value(QStringLiteral("payload")).toString(), QStringLiteral("preview"));
+    QCOMPARE(row.value(QStringLiteral("expandedPayload")).toString(), QStringLiteral("complete payload"));
+    QCOMPARE(row.value(QStringLiteral("expandedPayloadState")).toString(), QStringLiteral("ready"));
+    QCOMPARE(dataSpy.count(), 2);
 }
 
 void EventStreamModelTest::appendRowsAndTrimFrontKeepsIncrementalWindow()

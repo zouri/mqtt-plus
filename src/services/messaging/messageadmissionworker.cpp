@@ -88,9 +88,6 @@ PayloadStoragePlan makePayloadStoragePlan(
     if (binary) {
         const QByteArray hexBytes = payloadBytes.left((std::min)(payloadBytes.size(), qsizetype(64)));
         plan.preview = QString::fromLatin1(hexBytes.toHex(' ').toUpper());
-        if (payloadBytes.size() > hexBytes.size()) {
-            plan.preview.append(QStringLiteral(" ..."));
-        }
     } else {
         plan.preview = QString::fromUtf8(previewBytes);
     }

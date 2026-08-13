@@ -72,10 +72,12 @@ signals:
     void messagesPersisted(const QStringList &sessionIds, int messageCount);
     void messagesDropped(qint64 totalDropped);
     void parseResultsDropped(qint64 totalDropped);
+    void expandedMessageLoaded(qint64 messageId, const QString &payload, const QString &state);
 
 public slots:
     void start();
     void shutdown();
+    void loadExpandedMessage(qint64 messageId);
 
 private slots:
     void wake();
