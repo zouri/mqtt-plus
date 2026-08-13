@@ -8,6 +8,7 @@
 #include <QVariant>
 
 #include "app/application.h"
+#include "app/appicon.h"
 #include "app/windowgeometrymanager.h"
 
 #ifdef QT_QML_DEBUG
@@ -126,6 +127,19 @@ int main(int argc, char *argv[])
 
     Application application;
     SettingsViewModel *settingsViewModel = application.viewModel()->settings();
+    const auto applyConfiguredIcon = [&guiApplication, settingsViewModel]() {
+        const QIcon icon = AppIcon::themed(settingsViewModel->themeColor());
+        guiApplication.setWindowIcon(icon);
+        for (QWindow *window : guiApplication.allWindows()) {
+            window->setIcon(icon);
+        }
+    };
+    applyConfiguredIcon();
+    QObject::connect(
+        settingsViewModel,
+        &SettingsViewModel::themeColorChanged,
+        &guiApplication,
+        applyConfiguredIcon);
     const auto applyConfiguredFont = [&guiApplication, &baseApplicationFont, settingsViewModel]() {
         guiApplication.setFont(
             applicationFont(baseApplicationFont, settingsViewModel->effectiveFontFamily()));
@@ -163,6 +177,7 @@ int main(int argc, char *argv[])
         qCritical() << "The root QML object is not a QQuickWindow";
         return -1;
     }
+    applyConfiguredIcon();
 
     auto *windowGeometryManager = new WindowGeometryManager(
         *window,

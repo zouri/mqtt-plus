@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="tile">
+      <rect x="80" y="80" width="864" height="864" rx="202"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#tile)">
+    <g transform="translate(-57.2 16.8) scale(4)">
+      <path d="M34.3 11.8A220 220 0 0 1 254.3 231.8" fill="none" stroke="#FFFFFF"  stroke-width="30"/>
+      <path d="M34.3 -48.2A280 280 0 0 1 314.3 231.8" fill="none" stroke="#FFFFFF"  stroke-width="30"/>
+    </g>
+  </g>
+</svg>

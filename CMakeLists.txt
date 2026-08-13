@@ -272,6 +272,8 @@ file(
 list(SORT MQTT_PLUS_APP_SOURCES)
 set(MQTT_PLUS_APP_LIBRARY_SOURCES ${MQTT_PLUS_APP_SOURCES})
 list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES
+    "src/app/appicon.cpp"
+    "src/app/appicon.h"
     "src/app/main.cpp"
     "src/app/messagestreamprofiledriver.cpp"
     "src/app/messagestreamprofiledriver.h"
@@ -320,6 +322,7 @@ qt_add_resources(mqtt_plus_app app_icons
     PREFIX "/"
     FILES
         assets/icons/app-icon.png
+        assets/icons/app-icon-theme-mask.png
 )
 
 target_include_directories(mqtt_plus_app
@@ -510,6 +513,28 @@ if(BUILD_TESTING)
         )
         add_test(NAME ${target} COMMAND ${target})
     endfunction()
+
+    add_executable(test_appicon
+        tests/test_appicon.cpp
+        src/app/appicon.cpp
+    )
+    target_include_directories(test_appicon
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_appicon
+        PRIVATE
+            Qt6::Core
+            Qt6::Gui
+            Qt6::Test
+    )
+    qt_add_resources(test_appicon test_appicon_resources
+        PREFIX "/"
+        FILES
+            assets/icons/app-icon.png
+            assets/icons/app-icon-theme-mask.png
+    )
+    add_test(NAME appicon COMMAND test_appicon)
 
     add_executable(test_sessionconfig
         tests/test_sessionconfig.cpp
