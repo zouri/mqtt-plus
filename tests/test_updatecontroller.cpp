@@ -46,6 +46,7 @@ private slots:
     void manualChecksIgnoreAutomaticThrottle();
     void exposesAvailableReleaseAndOpensIt();
     void doesNotOfferCurrentOrInvalidRelease();
+    void exposesQmlFacingStatusAndManualCheck();
 };
 
 void UpdateControllerTest::failedAutomaticChecksAreThrottled()
@@ -126,6 +127,34 @@ void UpdateControllerTest::doesNotOfferCurrentOrInvalidRelease()
         .releasePageUrl = QUrl(QStringLiteral("https://example.com/release")),
     });
     QVERIFY(!controller.updateAvailable());
+}
+
+void UpdateControllerTest::exposesQmlFacingStatusAndManualCheck()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QSettings settings(directory.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat);
+    FakeUpdateService service;
+    UpdateController controller(settings, service, QStringLiteral("0.1.0"));
+    QSignalSpy stateSpy(&controller, &UpdateController::stateChanged);
+
+    QCOMPARE(
+        controller.statusMessage(),
+        QStringLiteral("Updates are provided through GitHub Releases."));
+
+    controller.checkForUpdates();
+    QCOMPARE(service.fetchCount, 1);
+    QVERIFY(controller.busy());
+    QCOMPARE(controller.statusMessage(), QStringLiteral("Checking GitHub Releases..."));
+
+    service.succeed(UpdateRelease {
+        .version = QStringLiteral("0.2.0"),
+        .releasePageUrl = QUrl(QStringLiteral("https://example.com/release")),
+    });
+    QCOMPARE(controller.statusMessage(), QStringLiteral("Version 0.2.0 is available."));
+
+    controller.retranslate();
+    QCOMPARE(stateSpy.count(), 3);
 }
 
 QTEST_MAIN(UpdateControllerTest)

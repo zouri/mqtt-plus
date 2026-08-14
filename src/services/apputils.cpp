@@ -180,29 +180,4 @@ QString sessionStateName(const SessionState &session, const QMqttClient *client)
     return QStringLiteral("disconnected");
 }
 
-void appendRecentMessage(RecentTrafficWindow &window, qint64 nowMs)
-{
-    window.add(nowMs);
-}
-
-int recentMessageCount(const RecentTrafficWindow &window, qint64 nowMs)
-{
-    return window.eventCount(nowMs);
-}
-
-void appendRecentTrafficSample(RecentTrafficWindow &window, qint64 nowMs, qint64 byteCount)
-{
-    window.add(nowMs, byteCount);
-}
-
-int recentTrafficSampleCount(const RecentTrafficWindow &window, qint64 nowMs)
-{
-    return window.eventCount(nowMs);
-}
-
-qint64 recentTrafficByteCount(const RecentTrafficWindow &window, qint64 nowMs)
-{
-    return window.byteCount(nowMs);
-}
-
 } // namespace AppUtils

@@ -8,8 +8,6 @@
 #include "usecases/subscriptionservice.h"
 #include "usecases/updatecontroller.h"
 
-#include <algorithm>
-
 ApplicationViewModel::ApplicationViewModel(
     SessionService &sessionService,
     MqttSessionService &mqttService,
@@ -41,25 +39,11 @@ ApplicationViewModel::ApplicationViewModel(
           sessionService.sessions(),
           settings,
           this)
-    , m_updates(updateController, this)
+    , m_updates(&updateController)
     , m_processors(
           processorLibrary,
           processors,
-          [&sessionService](const QString &processorId) {
-              QStringList sessionNames;
-              for (const SessionState &session : sessionService.sessions()) {
-                  const bool used = std::any_of(
-                      session.subscriptions.cbegin(),
-                      session.subscriptions.cend(),
-                      [&processorId](const SubscriptionEntry &subscription) {
-                          return subscription.processor.processorId == processorId;
-                      });
-                  if (used) {
-                      sessionNames.append(session.name);
-                  }
-              }
-              return sessionNames;
-          },
+          sessionService.sessions(),
           this)
     , m_workbench(
           sessionService,
@@ -152,7 +136,7 @@ NotificationCenterModel *ApplicationViewModel::notifications()
     return m_notifications;
 }
 
-UpdateViewModel *ApplicationViewModel::updates()
+UpdateController *ApplicationViewModel::updates()
 {
-    return &m_updates;
+    return m_updates;
 }

@@ -33,10 +33,5 @@ QString clientErrorName(QMqttClient::ClientError error);
 QString messageStatusName(QMqtt::MessageStatus status);
 QString socketDiagnostic(QMqttClient *client);
 QString sessionStateName(const SessionState &session, const QMqttClient *client);
-void appendRecentMessage(RecentTrafficWindow &window, qint64 nowMs);
-int recentMessageCount(const RecentTrafficWindow &window, qint64 nowMs);
-void appendRecentTrafficSample(RecentTrafficWindow &window, qint64 nowMs, qint64 byteCount);
-int recentTrafficSampleCount(const RecentTrafficWindow &window, qint64 nowMs);
-qint64 recentTrafficByteCount(const RecentTrafficWindow &window, qint64 nowMs);
 
 } // namespace AppUtils

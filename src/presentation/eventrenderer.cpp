@@ -30,7 +30,8 @@ QString resolveTopicValue(const QHash<QString, QString> &values, const QString &
         }
 
         const int score = PayloadCodec::topicSpecificityScore(it.key());
-        if (score > bestScore || (score == bestScore && (bestFilter.isEmpty() || it.key() < bestFilter))) {
+        if (score > bestScore
+            || (score == bestScore && (bestFilter.isEmpty() || it.key() < bestFilter))) {
             bestScore = score;
             bestFilter = it.key();
             value = it.value();
@@ -48,178 +49,126 @@ bool exceedsInlineLineLimit(const QString &text)
 {
     return text.count(QLatin1Char('\n')) >= kInlineExpandedLineLimit;
 }
-}
+} // namespace
 
 namespace EventRenderer {
-qint64 firstHistoryId(const QVariantList &rows)
+qint64 firstHistoryId(const QVector<EventRow> &rows)
 {
-    for (const QVariant &item : rows) {
-        const qint64 id = item.toMap().value(QStringLiteral("historyId")).toLongLong();
-        if (id > 0) {
-            return id;
+    for (const EventRow &row : rows) {
+        if (row.historyId > 0) {
+            return row.historyId;
         }
     }
     return 0;
 }
 
-bool containsLaunchDivider(const QVariantList &rows)
+bool containsLaunchDivider(const QVector<EventRow> &rows)
 {
-    for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        if (row.value(QStringLiteral("kind")).toString() == QStringLiteral("divider")
-                && isStartupDividerTitle(row.value(QStringLiteral("title")).toString())) {
+    for (const EventRow &row : rows) {
+        if (row.kind == QStringLiteral("divider")
+            && isStartupDividerTitle(row.title)) {
             return true;
         }
     }
     return false;
 }
 
-bool containsRowsBeforeLaunch(const QVariantList &rows, const QString &launchTimestamp)
+bool containsRowsBeforeLaunch(
+    const QVector<EventRow> &rows,
+    const QString &launchTimestamp)
 {
-    for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        const QString rowTimestamp = row.value(
-            QStringLiteral("timestampRaw"),
-            row.value(QStringLiteral("timestamp"))).toString();
-        if (row.value(QStringLiteral("kind")).toString() != QStringLiteral("divider")
-                && rowTimestamp < launchTimestamp) {
+    for (const EventRow &row : rows) {
+        const QString timestamp = row.timestampRaw.isEmpty()
+            ? row.timestamp
+            : row.timestampRaw;
+        if (row.kind != QStringLiteral("divider") && timestamp < launchTimestamp) {
             return true;
         }
     }
     return false;
 }
 
-bool startsWithCurrentLaunchRows(const QVariantList &rows, const QString &launchTimestamp)
+bool startsWithCurrentLaunchRows(
+    const QVector<EventRow> &rows,
+    const QString &launchTimestamp)
 {
-    for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        if (row.value(QStringLiteral("kind")).toString() == QStringLiteral("divider")) {
+    for (const EventRow &row : rows) {
+        if (row.kind == QStringLiteral("divider")) {
             continue;
         }
-        return row.value(
-                   QStringLiteral("timestampRaw"),
-                   row.value(QStringLiteral("timestamp"))).toString() >= launchTimestamp;
+        const QString timestamp = row.timestampRaw.isEmpty()
+            ? row.timestamp
+            : row.timestampRaw;
+        return timestamp >= launchTimestamp;
     }
     return false;
 }
 
-QVariantMap launchDividerRow(const QString &launchTimestamp)
+EventRow launchDividerRow(const QString &launchTimestamp)
 {
-    QVariantMap dividerRow;
-    dividerRow.insert(QStringLiteral("timestamp"), displayTimestamp(launchTimestamp));
-    dividerRow.insert(QStringLiteral("timestampRaw"), launchTimestamp);
-    dividerRow.insert(QStringLiteral("historyId"), 0);
-    dividerRow.insert(QStringLiteral("kind"), QStringLiteral("divider"));
-    dividerRow.insert(QStringLiteral("title"), startupDividerLabel());
-    dividerRow.insert(QStringLiteral("topic"), QString());
-    dividerRow.insert(QStringLiteral("payload"), QString());
-    dividerRow.insert(QStringLiteral("payloadFormat"), QString());
-    dividerRow.insert(QStringLiteral("payloadSize"), 0);
-    dividerRow.insert(QStringLiteral("topicColor"), QString());
-    dividerRow.insert(QStringLiteral("direction"), QString());
-    dividerRow.insert(QStringLiteral("alias"), QString());
-    dividerRow.insert(QStringLiteral("qos"), -1);
-    dividerRow.insert(QStringLiteral("retain"), false);
-    dividerRow.insert(QStringLiteral("retainKnown"), false);
-    dividerRow.insert(QStringLiteral("parsedPayload"), QString());
-    dividerRow.insert(QStringLiteral("parseState"), QString());
-    dividerRow.insert(QStringLiteral("payloadState"), QString());
-    dividerRow.insert(QStringLiteral("payloadHash"), QString());
-    return dividerRow;
-}
-
-QVariantMap eventRow(qint64 historyId, const QString &timestamp, const QString &channel, const QString &message)
-{
-    QVariantMap row;
-    row.insert(QStringLiteral("historyId"), historyId);
-    row.insert(QStringLiteral("timestamp"), displayTimestamp(timestamp));
-    row.insert(QStringLiteral("timestampRaw"), timestamp);
-    row.insert(QStringLiteral("kind"), QStringLiteral("event"));
-    row.insert(QStringLiteral("title"), channel);
-    row.insert(QStringLiteral("topic"), channel);
-    row.insert(QStringLiteral("payload"), message);
-    row.insert(QStringLiteral("payloadFormat"), QStringLiteral("Event"));
-    row.insert(QStringLiteral("payloadSize"), 0);
-    row.insert(QStringLiteral("topicColor"), QString());
-    row.insert(QStringLiteral("direction"), QString());
-    row.insert(QStringLiteral("alias"), QString());
-    row.insert(QStringLiteral("qos"), -1);
-    row.insert(QStringLiteral("retain"), false);
-    row.insert(QStringLiteral("retainKnown"), false);
-    row.insert(QStringLiteral("parsedPayload"), QString());
-    row.insert(QStringLiteral("parseState"), QString());
-    row.insert(QStringLiteral("payloadState"), QString());
-    row.insert(QStringLiteral("payloadHash"), QString());
+    EventRow row;
+    row.timestamp = displayTimestamp(launchTimestamp);
+    row.timestampRaw = launchTimestamp;
+    row.kind = QStringLiteral("divider");
+    row.title = startupDividerLabel();
+    row.expandedPayloadState.clear();
     return row;
 }
 
-QVariantMap renderHistoryRow(
-    const QVariantMap &row,
+EventRow eventRow(
+    qint64 historyId,
+    const QString &timestamp,
+    const QString &channel,
+    const QString &message)
+{
+    EventRow row;
+    row.historyId = historyId;
+    row.timestamp = displayTimestamp(timestamp);
+    row.timestampRaw = timestamp;
+    row.kind = QStringLiteral("event");
+    row.title = channel;
+    row.topic = channel;
+    row.payload = message;
+    row.payloadFormat = QStringLiteral("Event");
+    row.expandedPayloadState.clear();
+    return row;
+}
+
+EventRow renderMessageRow(
+    const MessageRecord &row,
     const QHash<QString, int> &subscriptionFormats,
     const QHash<QString, QString> &subscriptionColors,
-    const QHash<QString, QString> &subscriptionAliases)
+    const QHash<QString, QString> &subscriptionAliases,
+    const QString &explicitTopicColor,
+    const QString &explicitAlias)
 {
-    const QString kind = row.value(QStringLiteral("entry_type"), QStringLiteral("message")).toString();
-    const QString timestamp = row.value(QStringLiteral("timestamp")).toString();
-    const QString topic = row.value(QStringLiteral("topic")).toString();
+    EventRow rendered;
+    rendered.historyId = row.id;
+    rendered.timestamp = displayTimestamp(row.timestamp);
+    rendered.timestampRaw = row.timestamp;
+    rendered.topic = row.topic;
+    rendered.kind = QStringLiteral("message");
+    rendered.title = row.topic;
 
-    QVariantMap rendered;
-    rendered.insert(QStringLiteral("historyId"), row.value(QStringLiteral("id")).toLongLong());
-    rendered.insert(QStringLiteral("timestamp"), displayTimestamp(timestamp));
-    rendered.insert(QStringLiteral("timestampRaw"), timestamp);
-    rendered.insert(QStringLiteral("topic"), topic);
-
-    if (kind == QStringLiteral("divider")) {
-        rendered.insert(QStringLiteral("kind"), QStringLiteral("divider"));
-        rendered.insert(QStringLiteral("title"), row.value(QStringLiteral("payload"), startupDividerLabel()).toString());
-        rendered.insert(QStringLiteral("payload"), QString());
-        rendered.insert(QStringLiteral("payloadFormat"), QString());
-        rendered.insert(QStringLiteral("payloadSize"), 0);
-        rendered.insert(QStringLiteral("topicColor"), QString());
-        rendered.insert(QStringLiteral("direction"), QString());
-        rendered.insert(QStringLiteral("alias"), QString());
-        return rendered;
-    }
-
-    if (kind == QStringLiteral("event")) {
-        rendered.insert(QStringLiteral("kind"), QStringLiteral("event"));
-        rendered.insert(QStringLiteral("title"), topic);
-        rendered.insert(QStringLiteral("payload"), row.value(QStringLiteral("payload")).toString());
-        rendered.insert(QStringLiteral("payloadFormat"), QStringLiteral("Event"));
-        rendered.insert(QStringLiteral("payloadSize"), 0);
-        rendered.insert(QStringLiteral("topicColor"), QString());
-        rendered.insert(QStringLiteral("direction"), QString());
-        rendered.insert(QStringLiteral("alias"), QString());
-        return rendered;
-    }
-
-    const QByteArray payloadBytes = row.value(QStringLiteral("payload_bytes")).toByteArray();
-
-    qint64 payloadSize = row.value(QStringLiteral("payload_size")).toLongLong();
+    qint64 payloadSize = row.payloadSize;
     if (payloadSize <= 0) {
-        payloadSize = payloadBytes.size();
+        payloadSize = row.payloadBytes.size();
     }
 
-    QString payloadState = row.value(QStringLiteral("payload_state"), QStringLiteral("full")).toString();
+    QString payloadState = row.payloadState;
     if (payloadState.isEmpty()) {
         payloadState = QStringLiteral("full");
     }
-    QString payloadPreview = row.value(QStringLiteral("payload_preview")).toString();
     const bool renderingFullPayload = payloadState == QStringLiteral("full");
-
-    const int storedPayloadFormat = row.value(QStringLiteral("payload_format"), -1).toInt();
-    const PayloadFormat format = storedPayloadFormat >= 0
-        ? PayloadCodec::formatFromInt(storedPayloadFormat)
-        : PayloadCodec::resolveTopicFormat(subscriptionFormats, topic);
-    const QString parserError = row.value(QStringLiteral("display_error")).toString();
-    const QString parsedFormat = row.value(QStringLiteral("display_format")).toString();
-    const QString fullParsedPayload = row.value(QStringLiteral("display_payload")).toString();
-    const QString parsedPayload = boundedListText(fullParsedPayload);
-    QString parseState = row.value(QStringLiteral("display_state")).toString();
+    const PayloadFormat format = row.payloadFormat >= 0
+        ? PayloadCodec::formatFromInt(row.payloadFormat)
+        : PayloadCodec::resolveTopicFormat(subscriptionFormats, row.topic);
+    const QString parsedPayload = boundedListText(row.displayPayload);
+    QString parseState = row.displayState;
     if (parseState.isEmpty()) {
-        parseState = !parserError.isEmpty()
+        parseState = !row.displayError.isEmpty()
             ? QStringLiteral("failed")
-            : (!parsedFormat.isEmpty() || !parsedPayload.isEmpty()
+            : (!row.displayFormat.isEmpty() || !parsedPayload.isEmpty()
                 ? QStringLiteral("succeeded")
                 : QStringLiteral("not_required"));
     }
@@ -230,139 +179,156 @@ QVariantMap renderHistoryRow(
     bool renderedPayloadIsPreviewOnly = false;
     const bool parseHandledInWorker = parseState != QStringLiteral("not_required");
     if (renderingFullPayload && !parseHandledInWorker) {
-        const QByteArray displayBytes = !payloadPreview.isEmpty() || payloadBytes.isEmpty()
-            ? payloadPreview.toUtf8()
-            : payloadBytes;
+        const QByteArray displayBytes = !row.payloadPreview.isEmpty() || row.payloadBytes.isEmpty()
+            ? row.payloadPreview.toUtf8()
+            : row.payloadBytes;
         renderedPayloadIsPreviewOnly = payloadSize > displayBytes.size();
         decodedPayload = PayloadCodec::decodeForDisplay(format, displayBytes, decodeError);
         renderedPayload = decodedPayload;
         if (!decodeError.isEmpty()) {
-            renderedPayload = QStringLiteral("%1\n%2").arg(renderedPayload, payloadPreview);
+            renderedPayload = QStringLiteral("%1\n%2").arg(renderedPayload, row.payloadPreview);
         }
     } else {
         renderedPayload = payloadState == QStringLiteral("skipped")
             ? QString()
-            : payloadPreview;
+            : row.payloadPreview;
         decodedPayload = renderedPayload;
-        renderedPayloadIsPreviewOnly = payloadSize > payloadPreview.toUtf8().size();
+        renderedPayloadIsPreviewOnly = payloadSize > row.payloadPreview.toUtf8().size();
     }
 
-    if (parseState == QStringLiteral("failed") && !parserError.isEmpty()) {
-        const QString errorLabel = row.value(QStringLiteral("processor_id")).toString().isEmpty()
+    if (parseState == QStringLiteral("failed") && !row.displayError.isEmpty()) {
+        const QString errorLabel = row.processorId.isEmpty()
             ? QStringLiteral("Parser Error")
             : QStringLiteral("Processor Error");
         renderedPayload = renderedPayload.isEmpty()
-            ? QStringLiteral("%1: %2").arg(errorLabel, parserError)
-            : QStringLiteral("%1\n%2: %3").arg(renderedPayload, errorLabel, parserError);
+            ? QStringLiteral("%1: %2").arg(errorLabel, row.displayError)
+            : QStringLiteral("%1\n%2: %3").arg(renderedPayload, errorLabel, row.displayError);
     } else if (parseState == QStringLiteral("succeeded")) {
         renderedPayload = parsedPayload;
     }
     renderedPayload = boundedListText(renderedPayload);
     decodedPayload = boundedListText(decodedPayload);
 
-    rendered.insert(QStringLiteral("kind"), QStringLiteral("message"));
-    rendered.insert(QStringLiteral("title"), topic);
-    rendered.insert(QStringLiteral("payload"), renderedPayload);
-    rendered.insert(QStringLiteral("direction"), row.value(QStringLiteral("direction"), QStringLiteral("incoming")).toString());
-    const QString explicitAlias = row.value(QStringLiteral("topic_alias")).toString();
-    rendered.insert(
-        QStringLiteral("alias"),
-        explicitAlias.isEmpty() ? resolveTopicValue(subscriptionAliases, topic) : explicitAlias);
-    rendered.insert(QStringLiteral("qos"), row.value(QStringLiteral("qos"), -1).toInt());
-    rendered.insert(QStringLiteral("retain"), row.value(QStringLiteral("retain")).toBool());
-    rendered.insert(QStringLiteral("retainKnown"), row.value(QStringLiteral("retain_known")).toBool());
-    rendered.insert(QStringLiteral("parsedPayload"), parsedPayload);
-    rendered.insert(QStringLiteral("parseState"), parseState);
-    rendered.insert(QStringLiteral("payloadState"), payloadState);
-    rendered.insert(QStringLiteral("payloadHash"), row.value(QStringLiteral("payload_hash")).toString());
-    const bool expandedPayloadNeeded = parseState == QStringLiteral("succeeded")
-        ? fullParsedPayload.size() > parsedPayload.size()
-            || exceedsInlineLineLimit(fullParsedPayload)
+    rendered.payload = renderedPayload;
+    rendered.direction = messageDirectionName(row.direction);
+    rendered.alias = explicitAlias.isEmpty()
+        ? resolveTopicValue(subscriptionAliases, row.topic)
+        : explicitAlias;
+    rendered.qos = row.qos;
+    rendered.retain = row.retain;
+    rendered.retainKnown = row.retainKnown;
+    rendered.parsedPayload = parsedPayload;
+    rendered.parseState = parseState;
+    rendered.payloadState = payloadState;
+    rendered.payloadHash = row.payloadHash;
+    rendered.expandedPayloadNeeded = parseState == QStringLiteral("succeeded")
+        ? row.displayPayload.size() > parsedPayload.size()
+            || exceedsInlineLineLimit(row.displayPayload)
         : parseState == QStringLiteral("not_required")
             && ((payloadState == QStringLiteral("raw_only") && payloadSize > 64)
                 || payloadState == QStringLiteral("truncated")
                 || exceedsInlineLineLimit(renderedPayload));
-    rendered.insert(QStringLiteral("expandedPayload"), QString());
-    rendered.insert(QStringLiteral("expandedPayloadState"), QStringLiteral("idle"));
-    rendered.insert(QStringLiteral("expandedPayloadNeeded"), expandedPayloadNeeded);
-    const QString explicitTopicColor = row.value(QStringLiteral("topic_color")).toString();
-    rendered.insert(
-        QStringLiteral("topicColor"),
-        explicitTopicColor.isEmpty() ? resolveTopicValue(subscriptionColors, topic) : explicitTopicColor);
-    QString payloadFormatLabel;
+    rendered.topicColor = explicitTopicColor.isEmpty()
+        ? resolveTopicValue(subscriptionColors, row.topic)
+        : explicitTopicColor;
+
     if (parseState == QStringLiteral("pending")) {
-        payloadFormatLabel = QStringLiteral("Parsing");
+        rendered.payloadFormat = QStringLiteral("Parsing");
     } else if (parseState == QStringLiteral("skipped_overload")) {
-        payloadFormatLabel = QStringLiteral("Parse skipped");
+        rendered.payloadFormat = QStringLiteral("Parse skipped");
     } else if (parseState == QStringLiteral("failed")) {
-        payloadFormatLabel = row.value(QStringLiteral("processor_id")).toString().isEmpty()
-            ? (parsedFormat.isEmpty()
+        rendered.payloadFormat = row.processorId.isEmpty()
+            ? (row.displayFormat.isEmpty()
                 ? QStringLiteral("Parser Error")
-                : QStringLiteral("%1 Error").arg(parsedFormat))
+                : QStringLiteral("%1 Error").arg(row.displayFormat))
             : QStringLiteral("Processor Error");
     } else if (parseState == QStringLiteral("succeeded")) {
-        payloadFormatLabel = parsedFormat;
+        rendered.payloadFormat = row.displayFormat;
     } else if (payloadState == QStringLiteral("skipped")) {
-        payloadFormatLabel = QStringLiteral("Skipped");
+        rendered.payloadFormat = QStringLiteral("Skipped");
     } else if (payloadState == QStringLiteral("truncated")) {
-        payloadFormatLabel = QStringLiteral("Truncated");
+        rendered.payloadFormat = QStringLiteral("Truncated");
     } else if (payloadState == QStringLiteral("raw_only")) {
-        payloadFormatLabel = QStringLiteral("%1 · raw").arg(PayloadCodec::formatName(format));
+        rendered.payloadFormat = QStringLiteral("%1 · raw").arg(PayloadCodec::formatName(format));
     } else if (renderedPayloadIsPreviewOnly) {
-        payloadFormatLabel = QStringLiteral("%1 preview").arg(PayloadCodec::formatName(format));
+        rendered.payloadFormat = QStringLiteral("%1 preview").arg(PayloadCodec::formatName(format));
     } else {
-        payloadFormatLabel = PayloadCodec::formatName(format);
+        rendered.payloadFormat = PayloadCodec::formatName(format);
     }
-    rendered.insert(QStringLiteral("payloadFormat"), payloadFormatLabel);
-    rendered.insert(QStringLiteral("payloadSize"), payloadSize);
-    rendered.insert(
-        QStringLiteral("testPayload"),
-        renderingFullPayload ? decodedPayload : boundedListText(payloadPreview));
-    rendered.insert(QStringLiteral("testFormat"), static_cast<int>(format));
-    rendered.insert(QStringLiteral("testFormatName"), PayloadCodec::formatName(format));
+    rendered.payloadSize = payloadSize;
+    rendered.testPayload = renderingFullPayload
+        ? decodedPayload
+        : boundedListText(row.payloadPreview);
+    rendered.testFormat = static_cast<int>(format);
+    rendered.testFormatName = PayloadCodec::formatName(format);
     return rendered;
 }
 
-QVariantList loadHistoryRows(
-    const QVariantList &rows,
+QVector<EventRow> loadHistoryRows(
+    const QVector<MessageRecord> &rows,
     const QHash<QString, int> &subscriptionFormats,
     const QHash<QString, QString> &subscriptionColors,
     const QHash<QString, QString> &subscriptionAliases,
     const QString &launchTimestamp,
     bool includeLaunchDivider)
 {
-    QVariantList previousRows;
-    QVariantList currentRows;
+    QVector<EventRow> previousRows;
+    QVector<EventRow> currentRows;
+    previousRows.reserve(rows.size());
+    currentRows.reserve(rows.size());
+
+    for (const MessageRecord &row : rows) {
+        EventRow rendered = renderMessageRow(
+            row,
+            subscriptionFormats,
+            subscriptionColors,
+            subscriptionAliases);
+        (row.timestamp < launchTimestamp ? previousRows : currentRows)
+            .append(std::move(rendered));
+    }
+
+    QVector<EventRow> rendered;
+    rendered.reserve(previousRows.size() + currentRows.size() + (previousRows.isEmpty() ? 0 : 1));
+    rendered.append(previousRows);
+    if (includeLaunchDivider && !previousRows.isEmpty()) {
+        rendered.append(launchDividerRow(launchTimestamp));
+    }
+    rendered.append(currentRows);
+    return rendered;
+}
+
+QVector<EventRow> loadLogRows(
+    const QVariantList &rows,
+    const QString &launchTimestamp,
+    bool includeLaunchDivider)
+{
+    QVector<EventRow> previousRows;
+    QVector<EventRow> currentRows;
     previousRows.reserve(rows.size());
     currentRows.reserve(rows.size());
 
     for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        if (row.value(QStringLiteral("entry_type")).toString() == QStringLiteral("divider")) {
+        const QVariantMap stored = item.toMap();
+        if (stored.value(QStringLiteral("entry_type")).toString() == QStringLiteral("divider")) {
             continue;
         }
-
-        const QVariantMap renderedRow = renderHistoryRow(row, subscriptionFormats, subscriptionColors, subscriptionAliases);
-        if (row.value(QStringLiteral("timestamp")).toString() < launchTimestamp) {
-            previousRows.append(renderedRow);
-        } else {
-            currentRows.append(renderedRow);
-        }
+        const QString timestamp = stored.value(QStringLiteral("timestamp")).toString();
+        EventRow rendered = eventRow(
+            stored.value(QStringLiteral("id")).toLongLong(),
+            timestamp,
+            stored.value(QStringLiteral("topic")).toString(),
+            stored.value(QStringLiteral("payload")).toString());
+        (timestamp < launchTimestamp ? previousRows : currentRows)
+            .append(std::move(rendered));
     }
 
-    QVariantList rendered;
+    QVector<EventRow> rendered;
     rendered.reserve(previousRows.size() + currentRows.size() + (previousRows.isEmpty() ? 0 : 1));
-    for (const QVariant &item : previousRows) {
-        rendered.append(item);
-    }
-
+    rendered.append(previousRows);
     if (includeLaunchDivider && !previousRows.isEmpty()) {
         rendered.append(launchDividerRow(launchTimestamp));
     }
-
-    for (const QVariant &item : currentRows) {
-        rendered.append(item);
-    }
+    rendered.append(currentRows);
     return rendered;
 }
-}
+} // namespace EventRenderer

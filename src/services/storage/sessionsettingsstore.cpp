@@ -19,22 +19,6 @@ QString optionalUInt32ToString(quint32 value)
     return value > 0 ? QString::number(value) : QString();
 }
 
-QVariantMap baseSessionConfig(
-    const QString &name,
-    const QVariant &host,
-    const QVariant &port,
-    const QString &transport,
-    int protocolVersion)
-{
-    QVariantMap config;
-    config.insert(QStringLiteral("name"), name);
-    config.insert(QStringLiteral("host"), host);
-    config.insert(QStringLiteral("port"), port);
-    config.insert(QStringLiteral("transport"), transport);
-    config.insert(QStringLiteral("protocolVersion"), protocolVersion);
-    return config;
-}
-
 QVariantList subscriptionsToVariantList(const QVector<SubscriptionEntry> &subscriptions)
 {
     QVariantList rows;
@@ -58,58 +42,49 @@ QVariantList subscriptionsToVariantList(const QVector<SubscriptionEntry> &subscr
     return rows;
 }
 
-void addSessionDetailsToConfig(
-    QVariantMap &config,
-    const SessionState &session,
-    const QMqttClient *client)
-{
-    config.insert(QStringLiteral("sslSecure"), session.sslSecure);
-    config.insert(QStringLiteral("alpn"), session.alpn);
-    config.insert(QStringLiteral("certificateType"), session.certificateType);
-    config.insert(QStringLiteral("caFile"), session.caFile);
-    config.insert(QStringLiteral("clientCertificateFile"), session.clientCertificateFile);
-    config.insert(QStringLiteral("clientKeyFile"), session.clientKeyFile);
-    config.insert(QStringLiteral("clientId"), client ? client->clientId() : QString());
-    config.insert(QStringLiteral("username"), client ? client->username() : QString());
-    config.insert(QStringLiteral("password"), client ? client->password() : QString());
-    config.insert(QStringLiteral("cleanSession"), client ? client->cleanSession() : true);
-    config.insert(
-        QStringLiteral("keepAliveSeconds"),
-        client ? client->keepAlive() : SessionConfig::kDefaultKeepAlive);
-    config.insert(QStringLiteral("connectTimeoutSeconds"), session.connectTimeoutSeconds);
-    config.insert(QStringLiteral("sessionExpiryInterval"), session.sessionExpiryInterval);
-    config.insert(QStringLiteral("receiveMaximum"), optionalUInt16ToString(session.receiveMaximum));
-    config.insert(QStringLiteral("maximumPacketSize"), optionalUInt32ToString(session.maximumPacketSize));
-    config.insert(QStringLiteral("topicAliasMaximum"), optionalUInt16ToString(session.topicAliasMaximum));
-    config.insert(QStringLiteral("requestResponseInformation"), session.requestResponseInformation);
-    config.insert(QStringLiteral("requestProblemInformation"), session.requestProblemInformation);
-    config.insert(QStringLiteral("authenticationMethod"), session.authenticationMethod);
-    config.insert(QStringLiteral("authenticationData"), session.authenticationData);
-}
 } // namespace
 
 namespace SessionSettingsStore {
 
-QVariantMap configFromState(const SessionState &session)
+SessionConnectionConfig configFromState(const SessionState &session)
 {
     const auto *client = session.runtime.client;
-    QVariantMap config = baseSessionConfig(
-        session.name,
-        client ? client->hostname() : QString(),
-        client ? client->port() : SessionConfig::kDefaultPort,
-        session.transport,
-        session.protocolVersion);
-    addSessionDetailsToConfig(config, session, client);
+    SessionConnectionConfig config;
+    config.name = session.name;
+    config.host = client ? client->hostname() : QString();
+    config.port = client ? client->port() : SessionConfig::kDefaultPort;
+    config.transport = session.transport;
+    config.protocolVersion = session.protocolVersion;
+    config.sslSecure = session.sslSecure;
+    config.alpn = session.alpn;
+    config.certificateType = session.certificateType;
+    config.caFile = session.caFile;
+    config.clientCertificateFile = session.clientCertificateFile;
+    config.clientKeyFile = session.clientKeyFile;
+    config.clientId = client ? client->clientId() : QString();
+    config.username = client ? client->username() : QString();
+    config.password = client ? client->password() : QString();
+    config.cleanSession = client ? client->cleanSession() : true;
+    config.keepAliveSeconds = client ? client->keepAlive() : SessionConfig::kDefaultKeepAlive;
+    config.connectTimeoutSeconds = session.connectTimeoutSeconds;
+    config.sessionExpiryInterval = session.sessionExpiryInterval;
+    config.receiveMaximum = session.receiveMaximum;
+    config.maximumPacketSize = session.maximumPacketSize;
+    config.topicAliasMaximum = session.topicAliasMaximum;
+    config.requestResponseInformation = session.requestResponseInformation;
+    config.requestProblemInformation = session.requestProblemInformation;
+    config.authenticationMethod = session.authenticationMethod;
+    config.authenticationData = session.authenticationData;
     return config;
 }
 
-QVariantMap duplicateConfigFromState(const SessionState &session)
+SessionConnectionConfig duplicateConfigFromState(const SessionState &session)
 {
-    QVariantMap config = configFromState(session);
-    config.insert(
-        QStringLiteral("name"),
-        QCoreApplication::translate("SessionSettingsStore", "%1 Copy").arg(session.name));
-    config.insert(QStringLiteral("clientId"), SessionConfig::generateClientId());
+    SessionConnectionConfig config = configFromState(session);
+    config.name = QCoreApplication::translate(
+        "SessionSettingsStore",
+        "%1 Copy").arg(session.name);
+    config.clientId = SessionConfig::generateClientId();
     return config;
 }
 
@@ -123,14 +98,21 @@ LoadedSession readSession(QSettings &settings, int index)
     session.name = settings.value(QStringLiteral("name")).toString();
 
     session.outputPaused = settings.value(QStringLiteral("outputPaused"), false).toBool();
-    session.captureIncoming = settings.value(QStringLiteral("captureIncoming"), true).toBool();
-    session.captureOutgoing = settings.value(QStringLiteral("captureOutgoing"), true).toBool();
-    session.captureIncludeTopicFilters = settings.value(
-                                                    QStringLiteral("captureIncludeTopicFilters"))
-                                                .toStringList();
-    session.captureExcludeTopicFilters = settings.value(
-                                                    QStringLiteral("captureExcludeTopicFilters"))
-                                                .toStringList();
+    session.capturePolicy.captureIncoming = settings.value(
+                                                        QStringLiteral("captureIncoming"),
+                                                        true)
+                                                .toBool();
+    session.capturePolicy.captureOutgoing = settings.value(
+                                                        QStringLiteral("captureOutgoing"),
+                                                        true)
+                                                .toBool();
+    session.capturePolicy.includeTopicFilters = settings.value(
+                                                           QStringLiteral("captureIncludeTopicFilters"))
+                                                       .toStringList();
+    session.capturePolicy.excludeTopicFilters = settings.value(
+                                                           QStringLiteral("captureExcludeTopicFilters"))
+                                                       .toStringList();
+    session.capturePolicy = session.capturePolicy.normalized();
     session.transport = SessionConfig::sanitizeTransport(settings.value(QStringLiteral("transport"), QStringLiteral("tcp")));
     session.protocolVersion = SessionConfig::sanitizeProtocolVersion(settings.value(QStringLiteral("protocolVersion"), 5));
 
@@ -162,32 +144,65 @@ LoadedSession readSession(QSettings &settings, int index)
         session.runtime.subscriptionFormats.insert(topic, entry.format);
     }
 
-    loaded.config = baseSessionConfig(
-        session.name,
-        settings.value(QStringLiteral("host"), QStringLiteral("broker.emqx.io")),
-        settings.value(QStringLiteral("port"), SessionConfig::sanitizePort(QVariant(), session.transport)),
-        session.transport,
-        session.protocolVersion);
-    loaded.config.insert(QStringLiteral("sslSecure"), settings.value(QStringLiteral("sslSecure"), true).toBool());
-    loaded.config.insert(QStringLiteral("alpn"), settings.value(QStringLiteral("alpn")).toString());
-    loaded.config.insert(QStringLiteral("certificateType"), settings.value(QStringLiteral("certificateType"), QStringLiteral("ca")).toString());
-    loaded.config.insert(QStringLiteral("caFile"), settings.value(QStringLiteral("caFile")).toString());
-    loaded.config.insert(QStringLiteral("clientCertificateFile"), settings.value(QStringLiteral("clientCertificateFile")).toString());
-    loaded.config.insert(QStringLiteral("clientKeyFile"), settings.value(QStringLiteral("clientKeyFile")).toString());
-    loaded.config.insert(QStringLiteral("clientId"), settings.value(QStringLiteral("clientId"), SessionConfig::generateClientId()));
-    loaded.config.insert(QStringLiteral("username"), settings.value(QStringLiteral("username")).toString());
-    loaded.config.insert(QStringLiteral("password"), settings.value(QStringLiteral("password")).toString());
-    loaded.config.insert(QStringLiteral("cleanSession"), settings.value(QStringLiteral("cleanSession"), true).toBool());
-    loaded.config.insert(QStringLiteral("keepAliveSeconds"), settings.value(QStringLiteral("keepAliveSeconds"), SessionConfig::kDefaultKeepAlive));
-    loaded.config.insert(QStringLiteral("connectTimeoutSeconds"), settings.value(QStringLiteral("connectTimeoutSeconds"), 10));
-    loaded.config.insert(QStringLiteral("sessionExpiryInterval"), settings.value(QStringLiteral("sessionExpiryInterval"), 0));
-    loaded.config.insert(QStringLiteral("receiveMaximum"), settings.value(QStringLiteral("receiveMaximum")).toString());
-    loaded.config.insert(QStringLiteral("maximumPacketSize"), settings.value(QStringLiteral("maximumPacketSize")).toString());
-    loaded.config.insert(QStringLiteral("topicAliasMaximum"), settings.value(QStringLiteral("topicAliasMaximum")).toString());
-    loaded.config.insert(QStringLiteral("requestResponseInformation"), settings.value(QStringLiteral("requestResponseInformation"), false).toBool());
-    loaded.config.insert(QStringLiteral("requestProblemInformation"), settings.value(QStringLiteral("requestProblemInformation"), false).toBool());
-    loaded.config.insert(QStringLiteral("authenticationMethod"), settings.value(QStringLiteral("authenticationMethod")).toString());
-    loaded.config.insert(QStringLiteral("authenticationData"), settings.value(QStringLiteral("authenticationData")).toString());
+    loaded.config.name = session.name;
+    loaded.config.host = settings.value(
+                                     QStringLiteral("host"),
+                                     QStringLiteral("broker.emqx.io"))
+                             .toString();
+    loaded.config.port = SessionConfig::sanitizePort(
+        settings.value(QStringLiteral("port")),
+        session.transport);
+    loaded.config.transport = session.transport;
+    loaded.config.protocolVersion = session.protocolVersion;
+    loaded.config.sslSecure = settings.value(QStringLiteral("sslSecure"), true).toBool();
+    loaded.config.alpn = settings.value(QStringLiteral("alpn")).toString();
+    loaded.config.certificateType = settings.value(
+                                                QStringLiteral("certificateType"),
+                                                QStringLiteral("ca"))
+                                        .toString();
+    loaded.config.caFile = settings.value(QStringLiteral("caFile")).toString();
+    loaded.config.clientCertificateFile = settings.value(
+                                                      QStringLiteral("clientCertificateFile"))
+                                              .toString();
+    loaded.config.clientKeyFile = settings.value(QStringLiteral("clientKeyFile")).toString();
+    loaded.config.clientId = settings.value(
+                                         QStringLiteral("clientId"),
+                                         SessionConfig::generateClientId())
+                                 .toString();
+    loaded.config.username = settings.value(QStringLiteral("username")).toString();
+    loaded.config.password = settings.value(QStringLiteral("password")).toString();
+    loaded.config.cleanSession = settings.value(QStringLiteral("cleanSession"), true).toBool();
+    loaded.config.keepAliveSeconds = SessionConfig::sanitizeKeepAlive(
+        settings.value(
+            QStringLiteral("keepAliveSeconds"),
+            SessionConfig::kDefaultKeepAlive));
+    loaded.config.connectTimeoutSeconds = SessionConfig::sanitizeBoundedInt(
+        settings.value(QStringLiteral("connectTimeoutSeconds"), 10),
+        10,
+        1,
+        300);
+    loaded.config.sessionExpiryInterval = SessionConfig::sanitizeOptionalUInt32(
+        settings.value(QStringLiteral("sessionExpiryInterval"), 0));
+    loaded.config.receiveMaximum = SessionConfig::sanitizeOptionalUInt16(
+        settings.value(QStringLiteral("receiveMaximum")));
+    loaded.config.maximumPacketSize = SessionConfig::sanitizeOptionalUInt32(
+        settings.value(QStringLiteral("maximumPacketSize")));
+    loaded.config.topicAliasMaximum = SessionConfig::sanitizeOptionalUInt16(
+        settings.value(QStringLiteral("topicAliasMaximum")));
+    loaded.config.requestResponseInformation = settings.value(
+                                                            QStringLiteral("requestResponseInformation"),
+                                                            false)
+                                                    .toBool();
+    loaded.config.requestProblemInformation = settings.value(
+                                                           QStringLiteral("requestProblemInformation"),
+                                                           false)
+                                                   .toBool();
+    loaded.config.authenticationMethod = settings.value(
+                                                       QStringLiteral("authenticationMethod"))
+                                               .toString();
+    loaded.config.authenticationData = settings.value(
+                                                     QStringLiteral("authenticationData"))
+                                             .toString();
     return loaded;
 }
 
@@ -227,14 +242,18 @@ bool writeSessions(QSettings &settings, const QVector<SessionState> &sessions, Q
         settings.setValue(QStringLiteral("authenticationMethod"), session.authenticationMethod);
         settings.setValue(QStringLiteral("authenticationData"), session.authenticationData);
         settings.setValue(QStringLiteral("outputPaused"), session.outputPaused);
-        settings.setValue(QStringLiteral("captureIncoming"), session.captureIncoming);
-        settings.setValue(QStringLiteral("captureOutgoing"), session.captureOutgoing);
+        settings.setValue(
+            QStringLiteral("captureIncoming"),
+            session.capturePolicy.captureIncoming);
+        settings.setValue(
+            QStringLiteral("captureOutgoing"),
+            session.capturePolicy.captureOutgoing);
         settings.setValue(
             QStringLiteral("captureIncludeTopicFilters"),
-            session.captureIncludeTopicFilters);
+            session.capturePolicy.includeTopicFilters);
         settings.setValue(
             QStringLiteral("captureExcludeTopicFilters"),
-            session.captureExcludeTopicFilters);
+            session.capturePolicy.excludeTopicFilters);
         settings.setValue(QStringLiteral("subscriptions"), subscriptionsToVariantList(session.subscriptions));
     }
     settings.endArray();

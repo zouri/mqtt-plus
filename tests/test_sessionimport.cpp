@@ -68,17 +68,25 @@ void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
 
     SessionImportRequest request;
     request.id = QStringLiteral("imported-session");
-    request.config = {
-        {QStringLiteral("name"), QStringLiteral("Session 1")},
-        {QStringLiteral("host"), QStringLiteral("broker.example.test")},
-        {QStringLiteral("port"), 8883},
-        {QStringLiteral("transport"), QStringLiteral("tls")},
-        {QStringLiteral("protocolVersion"), 5},
-        {QStringLiteral("clientId"), QStringLiteral("imported-client")},
-        {QStringLiteral("username"), QStringLiteral("user")},
-        {QStringLiteral("password"), QStringLiteral("secret")},
-        {QStringLiteral("cleanSession"), false},
-    };
+    request.config.name = QStringLiteral("Session 1");
+    request.config.host = QStringLiteral("broker.example.test");
+    request.config.port = 8883;
+    request.config.transport = QStringLiteral("tls");
+    request.config.protocolVersion = 5;
+    request.config.clientId = QStringLiteral("imported-client");
+    request.config.username = QStringLiteral("user");
+    request.config.password = QStringLiteral("secret");
+    request.config.cleanSession = false;
+    request.config.keepAliveSeconds = 45;
+    request.config.connectTimeoutSeconds = 25;
+    request.config.sessionExpiryInterval = 60;
+    request.config.receiveMaximum = 100;
+    request.config.maximumPacketSize = 1024;
+    request.config.topicAliasMaximum = 5;
+    request.config.requestResponseInformation = true;
+    request.config.requestProblemInformation = true;
+    request.config.authenticationMethod = QStringLiteral("token");
+    request.config.authenticationData = QStringLiteral("auth-data");
     SubscriptionEntry active;
     active.topic = QStringLiteral("devices/+/state");
     active.alias = QStringLiteral("Devices");
@@ -105,6 +113,17 @@ void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
     QCOMPARE(imported->transport, QStringLiteral("tls"));
     QCOMPARE(imported->runtime.client->hostname(), QStringLiteral("broker.example.test"));
     QCOMPARE(imported->runtime.client->port(), 8883);
+    QCOMPARE(imported->runtime.client->keepAlive(), 45);
+    QCOMPARE(imported->runtime.client->cleanSession(), false);
+    QCOMPARE(imported->connectTimeoutSeconds, 25);
+    QCOMPARE(imported->sessionExpiryInterval, quint32(60));
+    QCOMPARE(imported->receiveMaximum, quint16(100));
+    QCOMPARE(imported->maximumPacketSize, quint32(1024));
+    QCOMPARE(imported->topicAliasMaximum, quint16(5));
+    QCOMPARE(imported->requestResponseInformation, true);
+    QCOMPARE(imported->requestProblemInformation, true);
+    QCOMPARE(imported->authenticationMethod, QStringLiteral("token"));
+    QCOMPARE(imported->authenticationData, QStringLiteral("auth-data"));
     QCOMPARE(imported->runtime.client->state(), QMqttClient::Disconnected);
     QCOMPARE(imported->subscriptions.size(), 2);
     QCOMPARE(
@@ -123,6 +142,14 @@ void SessionImportTest::mergesPersistsAndRollsBackImportedSessions()
         QCOMPARE(reloaded.sessions().size(), 2);
         const SessionState *stored = reloaded.sessionById(QStringLiteral("imported-session"));
         QVERIFY(stored);
+        QCOMPARE(stored->runtime.client->keepAlive(), 45);
+        QCOMPARE(stored->connectTimeoutSeconds, 25);
+        QCOMPARE(stored->sessionExpiryInterval, quint32(60));
+        QCOMPARE(stored->receiveMaximum, quint16(100));
+        QCOMPARE(stored->maximumPacketSize, quint32(1024));
+        QCOMPARE(stored->topicAliasMaximum, quint16(5));
+        QCOMPARE(stored->authenticationMethod, QStringLiteral("token"));
+        QCOMPARE(stored->authenticationData, QStringLiteral("auth-data"));
         QCOMPARE(stored->subscriptions.size(), 2);
         QCOMPARE(
             stored->subscriptions.first().processor.processorId,
@@ -220,10 +247,8 @@ void SessionImportTest::restoresSettingsCacheWhenImportWriteFails()
 
     SessionImportRequest request;
     request.id = QStringLiteral("failed-import");
-    request.config = {
-        {QStringLiteral("name"), QStringLiteral("Failed import")},
-        {QStringLiteral("host"), QStringLiteral("broker.example.test")},
-    };
+    request.config.name = QStringLiteral("Failed import");
+    request.config.host = QStringLiteral("broker.example.test");
     QStringList importedIds;
     QString errorMessage;
     controlledSettingsWriteCount = 0;

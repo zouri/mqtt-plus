@@ -1,6 +1,6 @@
 #pragma once
 
-#include "domain/messageenvelope.h"
+#include "domain/messageparsing.h"
 
 #include <QMutex>
 #include <QObject>
@@ -47,7 +47,7 @@ public:
     void stopAccepting();
 
 signals:
-    void parseCompleted(const MessageParseResult &result);
+    void parseCompleted(const ParseOutcome &result);
     void queueStateChanged();
     void tasksDropped(qint64 totalDropped);
 
@@ -61,7 +61,7 @@ private slots:
 
 private:
     static qint64 approximateBytes(const MessageParseTask &task);
-    MessageParseResult parse(const MessageParseTask &task);
+    ParseOutcome parse(const MessageParseTask &task);
     PressureState pressureStateForQueueLocked() const;
     bool updatePressureStateLocked();
     void requestWakeLocked();

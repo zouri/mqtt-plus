@@ -1,16 +1,20 @@
 #include "processorlibrary.h"
+#include "processorlibrary_p.h"
 
 #include <algorithm>
+#include <memory>
 
 ProcessorLibrary::ProcessorLibrary(const QString &storageDirectory)
-    : m_store(storageDirectory)
+    : m_impl(std::make_unique<Impl>(storageDirectory))
 {
     reload();
 }
 
+ProcessorLibrary::~ProcessorLibrary() = default;
+
 bool ProcessorLibrary::isReady() const
 {
-    return m_store.isReady() && m_lastError.isEmpty();
+    return m_impl->isReady() && m_lastError.isEmpty();
 }
 
 QString ProcessorLibrary::lastError() const
@@ -20,28 +24,28 @@ QString ProcessorLibrary::lastError() const
 
 QString ProcessorLibrary::storageDirectory() const
 {
-    return m_store.storageDirectory();
+    return m_impl->storageDirectory();
 }
 
 bool ProcessorLibrary::reload()
 {
-    if (!m_store.isReady()) {
-        m_lastError = m_store.lastError();
+    if (!m_impl->isReady()) {
+        m_lastError = m_impl->lastError();
         return false;
     }
 
     QHash<QString, ProcessorDefinition> processors;
     QHash<QString, QSharedPointer<const ProcessorRevisionSnapshot>> revisions;
-    const QVector<ProcessorDefinition> definitions = m_store.processors();
-    if (!m_store.lastError().isEmpty()) {
-        m_lastError = m_store.lastError();
+    const QVector<ProcessorDefinition> definitions = m_impl->processors();
+    if (!m_impl->lastError().isEmpty()) {
+        m_lastError = m_impl->lastError();
         return false;
     }
     for (const ProcessorDefinition &processor : definitions) {
         processors.insert(processor.id, processor);
-        const auto processorRevisions = m_store.revisions(processor.id);
-        if (!m_store.lastError().isEmpty()) {
-            m_lastError = m_store.lastError();
+        const auto processorRevisions = m_impl->revisions(processor.id);
+        if (!m_impl->lastError().isEmpty()) {
+            m_lastError = m_impl->lastError();
             return false;
         }
         for (const auto &revision : processorRevisions) {
@@ -153,7 +157,7 @@ std::optional<ResolvedProcessor> ProcessorLibrary::resolve(
 SaveProcessorRevisionResult ProcessorLibrary::saveRevision(
     const SaveProcessorRevisionCommand &command)
 {
-    SaveProcessorRevisionResult result = m_store.saveRevision(command);
+    SaveProcessorRevisionResult result = m_impl->saveRevision(command);
     if (!result.ok) {
         m_lastError = result.error;
         return result;
@@ -180,8 +184,8 @@ SaveProcessorRevisionResult ProcessorLibrary::saveRevision(
 
 bool ProcessorLibrary::deleteProcessor(const QString &processorId)
 {
-    if (!m_store.deleteProcessor(processorId)) {
-        m_lastError = m_store.lastError();
+    if (!m_impl->deleteProcessor(processorId)) {
+        m_lastError = m_impl->lastError();
         return false;
     }
     return reload();

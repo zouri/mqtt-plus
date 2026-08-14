@@ -96,7 +96,7 @@ Application::Application()
         m_viewModel.settings(),
         &SettingsViewModel::languageChanged,
         m_viewModel.updates(),
-        &UpdateViewModel::retranslate);
+        &UpdateController::retranslate);
 
     QObject::connect(
         m_viewModel.configurationTransfer(),
@@ -209,9 +209,6 @@ Application::Application()
         &m_subscriptionsModel,
         [this]() {
             refreshSessionModels();
-            const auto *session = m_sessionService.currentSession();
-            m_messagesModel.setRows(session ? session->runtime.messageRows : QVariantList {});
-            m_logsModel.setRows(session ? session->runtime.logRows : QVariantList {});
 
             if (m_subscriptionService.currentSessionHasActiveSubscriptionFps(
                     QDateTime::currentMSecsSinceEpoch())) {

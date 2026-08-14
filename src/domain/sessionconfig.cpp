@@ -5,48 +5,6 @@
 #include <algorithm>
 #include <limits>
 
-namespace {
-QVariantMap baseConfig(
-    const QString &name,
-    const QVariant &host,
-    const QVariant &port,
-    const QString &transport,
-    int protocolVersion)
-{
-    QVariantMap config;
-    config.insert(QStringLiteral("name"), name);
-    config.insert(QStringLiteral("host"), host);
-    config.insert(QStringLiteral("port"), port);
-    config.insert(QStringLiteral("transport"), transport);
-    config.insert(QStringLiteral("protocolVersion"), protocolVersion);
-    return config;
-}
-
-void addDefaultDetails(QVariantMap &config)
-{
-    config.insert(QStringLiteral("sslSecure"), true);
-    config.insert(QStringLiteral("alpn"), QString());
-    config.insert(QStringLiteral("certificateType"), QStringLiteral("ca"));
-    config.insert(QStringLiteral("caFile"), QString());
-    config.insert(QStringLiteral("clientCertificateFile"), QString());
-    config.insert(QStringLiteral("clientKeyFile"), QString());
-    config.insert(QStringLiteral("clientId"), SessionConfig::generateClientId());
-    config.insert(QStringLiteral("username"), QString());
-    config.insert(QStringLiteral("password"), QString());
-    config.insert(QStringLiteral("cleanSession"), true);
-    config.insert(QStringLiteral("keepAliveSeconds"), SessionConfig::kDefaultKeepAlive);
-    config.insert(QStringLiteral("connectTimeoutSeconds"), 10);
-    config.insert(QStringLiteral("sessionExpiryInterval"), 0);
-    config.insert(QStringLiteral("receiveMaximum"), QString());
-    config.insert(QStringLiteral("maximumPacketSize"), QString());
-    config.insert(QStringLiteral("topicAliasMaximum"), QString());
-    config.insert(QStringLiteral("requestResponseInformation"), false);
-    config.insert(QStringLiteral("requestProblemInformation"), false);
-    config.insert(QStringLiteral("authenticationMethod"), QString());
-    config.insert(QStringLiteral("authenticationData"), QString());
-}
-}
-
 namespace SessionConfig {
 QString generateClientId()
 {
@@ -132,15 +90,11 @@ int sanitizeProtocolVersion(const QVariant &value)
     return (ok && parsed == 4) ? 4 : 5;
 }
 
-QVariantMap defaultConfig(int sessionNumber)
+SessionConnectionConfig defaultConfig(int sessionNumber)
 {
-    QVariantMap config = baseConfig(
-        QStringLiteral("Session %1").arg(sessionNumber),
-        QStringLiteral("broker.emqx.io"),
-        kDefaultPort,
-        QStringLiteral("tcp"),
-        5);
-    addDefaultDetails(config);
+    SessionConnectionConfig config;
+    config.name = QStringLiteral("Session %1").arg(sessionNumber);
+    config.clientId = generateClientId();
     return config;
 }
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "domain/configurationbundle.h"
+#include "domain/sessionconfig.h"
 
 #include <QFutureWatcher>
 #include <QObject>
@@ -72,7 +73,7 @@ private:
     bool materializeSessionAssets(
         ConfigurationTransfer::SessionData &session,
         const QString &sessionId,
-        QVariantMap &config,
+        SessionConnectionConfig &config,
         QString &errorMessage);
     void finishSuccessfulImport();
     void rollbackImport(const QString &message);

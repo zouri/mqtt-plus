@@ -1,4 +1,5 @@
-#include "services/messaging/messagecapturepolicy.h"
+#include "domain/messagecapturepolicy.h"
+#include "domain/messagerecord.h"
 
 #include <QtTest/QtTest>
 

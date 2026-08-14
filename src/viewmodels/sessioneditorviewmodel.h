@@ -1,8 +1,9 @@
 #pragma once
 
+#include "domain/sessionconfig.h"
+
 #include <QObject>
 #include <QString>
-#include <QVariantMap>
 
 class SessionEditorViewModel : public QObject
 {
@@ -40,7 +41,7 @@ class SessionEditorViewModel : public QObject
 public:
     explicit SessionEditorViewModel(QObject *parent = nullptr);
 
-    static QVariantMap defaultConfig(int sessionNumber);
+    static SessionConnectionConfig defaultConfig(int sessionNumber);
 
     bool editMode() const;
     int targetIndex() const;
@@ -98,10 +99,10 @@ public:
     void setAuthenticationMethod(const QString &authenticationMethod);
     void setAuthenticationData(const QString &authenticationData);
 
-    void openForCreate(const QVariantMap &config);
-    void openForEdit(int index, const QVariantMap &config);
-    void loadConfig(const QVariantMap &config);
-    QVariantMap collectedConfig() const;
+    void openForCreate(const SessionConnectionConfig &config);
+    void openForEdit(int index, const SessionConnectionConfig &config);
+    void loadConfig(const SessionConnectionConfig &config);
+    SessionConnectionConfig collectedConfig() const;
     bool validate();
 
 signals:
@@ -170,6 +171,5 @@ private:
     bool m_requestProblemInformation = false;
     QString m_authenticationMethod;
     QString m_authenticationData;
-    QVariantMap m_config;
     QString m_validationError;
 };

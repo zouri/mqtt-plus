@@ -1,7 +1,7 @@
 #pragma once
 
 #include "domain/messagerecord.h"
-#include "domain/messageenvelope.h"
+#include "domain/messageparsing.h"
 
 #include <QObject>
 #include <QMutex>
@@ -52,7 +52,7 @@ public:
     ~HistoryWriterWorker() override;
 
     qint64 enqueueMessage(const MessageRecord &message);
-    bool enqueueParseResult(const MessageParseResult &result);
+    bool enqueueParseResult(const ParseOutcome &result);
     int pendingMessageCount() const;
     qint64 pendingBytes() const;
     qint64 droppedMessageCount() const;
@@ -60,9 +60,9 @@ public:
     QString lastError() const;
     PressureState pressureState() const;
     std::optional<MessageRecord> pendingMessage(qint64 messageId) const;
-    std::optional<MessageParseResult> pendingParseResult(qint64 messageId) const;
+    std::optional<ParseOutcome> pendingParseResult(qint64 messageId) const;
     QVector<MessageRecord> pendingMessages(const QString &sessionId) const;
-    QVector<MessageParseResult> pendingParseResults(const QString &sessionId) const;
+    QVector<ParseOutcome> pendingParseResults(const QString &sessionId) const;
     bool drain(int timeoutMs = 5000);
     void stopAccepting();
 
@@ -90,15 +90,14 @@ private:
 
         Type type = Type::Capture;
         MessageRecord message;
-        MessageParseResult parseResult;
+        ParseOutcome parseResult;
     };
 
     static qint64 approximateBytes(const MessageRecord &message);
-    static qint64 approximateBytes(const MessageParseResult &result);
+    static qint64 approximateBytes(const ParseOutcome &result);
     static qint64 approximateBytes(const WriteOperation &operation);
     static qint64 operationMessageId(const WriteOperation &operation);
     static QString operationSessionId(const WriteOperation &operation);
-    static void applyParseResult(MessageRecord &message, const MessageParseResult &result);
     PressureState pressureStateForQueueLocked() const;
     bool updatePressureStateLocked();
     void requestWakeLocked();

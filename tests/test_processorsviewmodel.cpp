@@ -25,7 +25,8 @@ void ProcessorsViewModelTest::createsValidLuaAndJavaScriptRevisions()
     QVERIFY(directory.isValid());
     ProcessorLibrary library(directory.path());
     ProcessorLibraryModel model;
-    ProcessorsViewModel viewModel(library, model);
+    QVector<SessionState> sessions;
+    ProcessorsViewModel viewModel(library, model, sessions);
 
     viewModel.newProcessor(QStringLiteral("lua"));
     QCOMPARE(viewModel.editor()->languageId(), QStringLiteral("lua"));
@@ -51,7 +52,8 @@ void ProcessorsViewModelTest::savesChangesWithoutExposingRevisionHistory()
     QVERIFY(directory.isValid());
     ProcessorLibrary library(directory.path());
     ProcessorLibraryModel model;
-    ProcessorsViewModel viewModel(library, model);
+    QVector<SessionState> sessions;
+    ProcessorsViewModel viewModel(library, model, sessions);
 
     viewModel.newProcessor(QStringLiteral("lua"));
     QVERIFY(viewModel.saveEditor());
@@ -110,7 +112,8 @@ void ProcessorsViewModelTest::preservesUnexposedSourceFilesWhenSavingEntry()
     QVERIFY2(first.ok, qPrintable(first.error));
 
     ProcessorLibraryModel model;
-    ProcessorsViewModel viewModel(library, model);
+    QVector<SessionState> sessions;
+    ProcessorsViewModel viewModel(library, model, sessions);
     viewModel.ensureEditorSelection();
     QCOMPARE(viewModel.editor()->sourceFiles().size(), 2);
     viewModel.editor()->setSource(QStringLiteral(
@@ -136,7 +139,8 @@ void ProcessorsViewModelTest::filtersProcessors()
     QVERIFY(directory.isValid());
     ProcessorLibrary library(directory.path());
     ProcessorLibraryModel model;
-    ProcessorsViewModel viewModel(library, model);
+    QVector<SessionState> sessions;
+    ProcessorsViewModel viewModel(library, model, sessions);
 
     viewModel.newProcessor(QStringLiteral("javascript"));
     viewModel.editor()->setName(QStringLiteral("Telemetry Formatter"));
@@ -159,25 +163,26 @@ void ProcessorsViewModelTest::blocksDeletionWhileUsedAndDeletesAfterUnbinding()
     QVERIFY(directory.isValid());
     ProcessorLibrary library(directory.path());
     ProcessorLibraryModel model;
-    bool used = true;
-    ProcessorsViewModel viewModel(
-        library,
-        model,
-        [&used](const QString &) {
-            return used ? QStringList {QStringLiteral("Production")} : QStringList {};
-        });
+    QVector<SessionState> sessions;
+    SessionState production;
+    production.name = QStringLiteral("Production");
+    sessions.append(production);
+    ProcessorsViewModel viewModel(library, model, sessions);
 
     viewModel.newProcessor(QStringLiteral("lua"));
     viewModel.editor()->setName(QStringLiteral("Bound processor"));
     QVERIFY(viewModel.saveEditor());
     const QString processorId = viewModel.editor()->currentProcessorId();
     const QString revisionId = library.processorById(processorId)->currentRevisionId;
+    SubscriptionEntry binding;
+    binding.processor.processorId = processorId;
+    sessions[0].subscriptions.append(binding);
 
     QVERIFY(!viewModel.deleteCurrent());
     QVERIFY(library.processorById(processorId));
     QVERIFY(viewModel.editor()->diagnostics().contains(QStringLiteral("Production")));
 
-    used = false;
+    sessions[0].subscriptions.clear();
     QVERIFY(viewModel.deleteCurrent());
     QVERIFY(!library.processorById(processorId));
     QVERIFY(library.revisionById(revisionId).isNull());

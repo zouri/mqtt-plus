@@ -7,11 +7,10 @@
 #include "domain/publishstatus.h"
 #include "domain/sessionconfig.h"
 #include "services/apputils.h"
-#include "services/messaging/messagecapturepolicy.h"
+#include "domain/messagecapturepolicy.h"
 #include "services/payload/payloadcodec.h"
 
 #include <QClipboard>
-#include <QCborValue>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QGuiApplication>
@@ -30,23 +29,6 @@ QStringList topicFiltersFromText(const QString &text)
     return text.split(QRegularExpression(QStringLiteral("[,\\r\\n]+")), Qt::SkipEmptyParts);
 }
 
-ProcessorReference processorReferenceFromSubmission(const QVariantMap &submission)
-{
-    ProcessorReference reference;
-    reference.processorId = submission.value(QStringLiteral("processorId")).toString().trimmed();
-    const QByteArray parametersCbor = QByteArray::fromBase64(
-        submission.value(QStringLiteral("processorParametersCborBase64"))
-            .toString()
-            .toLatin1());
-    if (!parametersCbor.isEmpty()) {
-        QCborParserError error;
-        const QCborValue parameters = QCborValue::fromCbor(parametersCbor, &error);
-        if (error.error == QCborError::NoError && parameters.isMap()) {
-            reference.parameters = parameters.toMap();
-        }
-    }
-    return reference;
-}
 } // namespace
 
 WorkbenchViewModel::WorkbenchViewModel(
@@ -176,7 +158,7 @@ WorkbenchViewModel::WorkbenchViewModel(
     connect(&m_eventHistoryService,
             &EventHistoryService::messageRowsAppended,
             this,
-            [this](const QVariantList &rows) {
+            [this](const QVector<EventRow> &rows) {
                 const int visibleMessageCount = m_filteredMessagesModel.matchingMessageCount(rows);
                 if (visibleMessageCount > 0) {
                     emit messageStreamRowsAppended(visibleMessageCount);
@@ -393,7 +375,7 @@ QVariantMap WorkbenchViewModel::messageCapturePolicy() const
 {
     const SessionState *session = m_sessionService.currentSession();
     const MessageCapturePolicy policy = session
-        ? m_eventHistoryService.messageCapturePolicy(session->id)
+        ? session->capturePolicy
         : MessageCapturePolicy {};
     return {
         {QStringLiteral("captureIncoming"), policy.captureIncoming},
@@ -447,10 +429,10 @@ void WorkbenchViewModel::refreshTrafficRates()
     const SessionState *session = m_sessionService.currentSession();
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     const qint64 incomingRate = session
-        ? recentTrafficByteCount(session->runtime.recentReceivedTraffic, nowMs)
+        ? session->runtime.recentReceivedTraffic.byteCount(nowMs)
         : 0;
     const qint64 outgoingRate = session
-        ? recentTrafficByteCount(session->runtime.recentPublishedTraffic, nowMs)
+        ? session->runtime.recentPublishedTraffic.byteCount(nowMs)
         : 0;
     if (m_incomingByteRate == incomingRate && m_outgoingByteRate == outgoingRate) {
         return;
@@ -468,8 +450,7 @@ qreal WorkbenchViewModel::currentIncomingMessageRate() const
         return 0;
     }
 
-    return recentTrafficSampleCount(
-        session->runtime.recentReceivedTraffic,
+    return session->runtime.recentReceivedTraffic.eventCount(
         QDateTime::currentMSecsSinceEpoch());
 }
 
@@ -479,8 +460,7 @@ qreal WorkbenchViewModel::currentOutgoingMessageRate() const
     if (!session) {
         return 0;
     }
-    return recentTrafficSampleCount(
-        session->runtime.recentPublishedTraffic,
+    return session->runtime.recentPublishedTraffic.eventCount(
         QDateTime::currentMSecsSinceEpoch());
 }
 
@@ -491,8 +471,7 @@ qint64 WorkbenchViewModel::currentIncomingByteRate() const
         return 0;
     }
 
-    return recentTrafficByteCount(
-        session->runtime.recentReceivedTraffic,
+    return session->runtime.recentReceivedTraffic.byteCount(
         QDateTime::currentMSecsSinceEpoch());
 }
 
@@ -503,8 +482,7 @@ qint64 WorkbenchViewModel::currentOutgoingByteRate() const
         return 0;
     }
 
-    return recentTrafficByteCount(
-        session->runtime.recentPublishedTraffic,
+    return session->runtime.recentPublishedTraffic.byteCount(
         QDateTime::currentMSecsSinceEpoch());
 }
 
@@ -531,7 +509,7 @@ bool WorkbenchViewModel::submitSessionEditor()
     if (!m_sessionEditor.validate()) {
         return false;
     }
-    const QVariantMap config = m_sessionEditor.collectedConfig();
+    const SessionConnectionConfig config = m_sessionEditor.collectedConfig();
     if (!m_sessionEditor.editMode()) {
         return m_sessionService.addSessionWithConfig(config);
     }
@@ -591,9 +569,17 @@ bool WorkbenchViewModel::openSubscriptionEditorForEdit(int filteredIndex)
     if (filteredIndex < 0 || filteredIndex >= m_filteredSubscriptionsModel.rowCount()) {
         return false;
     }
+    const SessionState *session = m_sessionService.currentSession();
+    const QModelIndex sourceIndex = m_filteredSubscriptionsModel.mapToSource(
+        m_filteredSubscriptionsModel.index(filteredIndex, 0));
+    if (!session
+        || !sourceIndex.isValid()
+        || sourceIndex.row() >= session->subscriptions.size()) {
+        return false;
+    }
 
     refreshSubscriptionEditorProcessorOptions();
-    m_subscriptionEditor.openForEdit(m_filteredSubscriptionsModel.rowAt(filteredIndex));
+    m_subscriptionEditor.openForEdit(session->subscriptions.at(sourceIndex.row()));
     return true;
 }
 
@@ -603,26 +589,25 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
         return false;
     }
 
-    const QVariantMap submission = m_subscriptionEditor.submission();
-    const ProcessorReference processor = processorReferenceFromSubmission(submission);
-    if (submission.value(QStringLiteral("editMode")).toBool()) {
+    const SubscriptionEditorSubmission submission = m_subscriptionEditor.submission();
+    if (submission.editMode) {
         return m_subscriptionService.updateCurrentSubscription(
-            submission.value(QStringLiteral("editTopic")).toString(),
-            submission.value(QStringLiteral("topic")).toString(),
-            submission.value(QStringLiteral("alias")).toString(),
-            submission.value(QStringLiteral("qos")).toInt(),
-            submission.value(QStringLiteral("format")).toInt(),
-            processor,
-            submission.value(QStringLiteral("color")).toString());
+            submission.editTopic,
+            submission.topic,
+            submission.alias,
+            submission.qos,
+            submission.format,
+            submission.processor,
+            submission.color);
     }
 
     return m_subscriptionService.upsertCurrentSubscriptions(
-        submission.value(QStringLiteral("topics")).toStringList(),
-        submission.value(QStringLiteral("qos")).toInt(),
-        submission.value(QStringLiteral("format")).toInt(),
-        processor,
-        submission.value(QStringLiteral("color")).toString(),
-        submission.value(QStringLiteral("alias")).toString());
+        submission.topics,
+        submission.qos,
+        submission.format,
+        submission.processor,
+        submission.color,
+        submission.alias);
 }
 
 void WorkbenchViewModel::requestSubscriptionDelete(const QString &topic, const QString &displayName)
@@ -756,7 +741,7 @@ bool WorkbenchViewModel::setCurrentMessageCapturePolicy(
     policy.captureOutgoing = captureOutgoing;
     policy.includeTopicFilters = topicFiltersFromText(includeTopicFilters);
     policy.excludeTopicFilters = topicFiltersFromText(excludeTopicFilters);
-    return m_eventHistoryService.setMessageCapturePolicy(session->id, policy);
+    return m_sessionService.setMessageCapturePolicy(session->id, policy);
 }
 
 QVariantMap WorkbenchViewModel::messageDetails(const QString &historyId) const

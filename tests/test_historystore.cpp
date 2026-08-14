@@ -80,18 +80,17 @@ void HistoryStoreTest::writesRawPayloadWithProcessorSchema()
     QVERIFY(reservedId > 0);
     QVERIFY2(store.lastError().isEmpty(), qPrintable(store.lastError()));
 
-    const QVariantList rows = store.loadMessages(sessionId, 10);
+    const QVector<MessageRecord> rows = store.loadMessages(sessionId, 10);
     QCOMPARE(rows.size(), 1);
 
-    const QVariantMap row = rows.first().toMap();
-    QVERIFY(!row.contains(QStringLiteral("payload")));
-    QVERIFY(row.value(QStringLiteral("payload_bytes")).toByteArray().isEmpty());
-    QVERIFY(row.value(QStringLiteral("processor_result_cbor")).toByteArray().isEmpty());
-    QCOMPARE(row.value(QStringLiteral("payload_size")).toLongLong(), qint64(payload.size()));
+    const MessageRecord &row = rows.first();
+    QVERIFY(row.payloadBytes.isEmpty());
+    QVERIFY(row.processorResultCbor.isEmpty());
+    QCOMPARE(row.payloadSize, qint64(payload.size()));
     QCOMPARE(store.loadMessagePayloadBytes(reservedId), payload);
-    QCOMPARE(
-        store.loadMessage(reservedId).value(QStringLiteral("processor_result_cbor")).toByteArray(),
-        record.processorResultCbor);
+    const auto loaded = store.loadMessage(reservedId);
+    QVERIFY(loaded);
+    QCOMPARE(loaded->processorResultCbor, record.processorResultCbor);
 }
 
 void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()
@@ -202,12 +201,13 @@ void HistoryStoreTest::roundTripsProcessorIdentityAndResult()
     record.displayState = QStringLiteral("pending");
     QVERIFY(store.appendMessages({record}).ok);
 
-    const QVariantMap captured = store.loadMessage(record.id);
-    QCOMPARE(captured.value(QStringLiteral("processor_id")).toString(), record.processorId);
-    QCOMPARE(captured.value(QStringLiteral("processor_revision_id")).toString(), record.processorRevisionId);
-    QCOMPARE(captured.value(QStringLiteral("processor_execution_state")).toString(), QStringLiteral("pending"));
+    const auto captured = store.loadMessage(record.id);
+    QVERIFY(captured);
+    QCOMPARE(captured->processorId, record.processorId);
+    QCOMPARE(captured->processorRevisionId, record.processorRevisionId);
+    QCOMPARE(captured->processorExecutionState, QStringLiteral("pending"));
 
-    MessageParseResult parseResult;
+    ParseOutcome parseResult;
     parseResult.messageId = record.id;
     parseResult.sessionId = record.sessionId;
     parseResult.state = MessageParseState::Succeeded;
@@ -225,13 +225,14 @@ void HistoryStoreTest::roundTripsProcessorIdentityAndResult()
     parseResult.processorExecutionDurationUs = 375;
     QVERIFY(store.writeMessageBatch({}, {parseResult}).ok);
 
-    const QVariantMap completed = store.loadMessage(record.id);
-    QCOMPARE(completed.value(QStringLiteral("display_state")).toString(), QStringLiteral("succeeded"));
-    QCOMPARE(completed.value(QStringLiteral("display_payload")).toString(), parseResult.displayPayload);
-    QCOMPARE(completed.value(QStringLiteral("processor_result_cbor")).toByteArray(), parseResult.processorResultCbor);
-    QCOMPARE(completed.value(QStringLiteral("processor_result_preview")).toString(), parseResult.processorResultPreview);
-    QCOMPARE(completed.value(QStringLiteral("processor_execution_state")).toString(), QStringLiteral("succeeded"));
-    QCOMPARE(completed.value(QStringLiteral("processor_execution_duration_us")).toLongLong(), qint64(375));
+    const auto completed = store.loadMessage(record.id);
+    QVERIFY(completed);
+    QCOMPARE(completed->displayState, QStringLiteral("succeeded"));
+    QCOMPARE(completed->displayPayload, parseResult.displayPayload);
+    QCOMPARE(completed->processorResultCbor, parseResult.processorResultCbor);
+    QCOMPARE(completed->processorResultPreview, parseResult.processorResultPreview);
+    QCOMPARE(completed->processorExecutionState, QStringLiteral("succeeded"));
+    QCOMPARE(completed->processorExecutionDurationUs, qint64(375));
 }
 
 void HistoryStoreTest::loadMessagesExcludePayloadBytes()
@@ -258,14 +259,14 @@ void HistoryStoreTest::loadMessagesExcludePayloadBytes()
 
     QVERIFY(reservedId > 0);
 
-    const QVariantList rows = store.loadMessages(sessionId, 10);
+    const QVector<MessageRecord> rows = store.loadMessages(sessionId, 10);
     QCOMPARE(rows.size(), 1);
 
-    const QVariantMap row = rows.first().toMap();
-    QCOMPARE(row.value(QStringLiteral("payload_preview")).toString(), QStringLiteral("preview only"));
-    QCOMPARE(row.value(QStringLiteral("payload_state")).toString(), QStringLiteral("full"));
-    QCOMPARE(row.value(QStringLiteral("payload_size")).toLongLong(), qint64(payload.size()));
-    QVERIFY(row.value(QStringLiteral("payload_bytes")).toByteArray().isEmpty());
+    const MessageRecord &row = rows.first();
+    QCOMPARE(row.payloadPreview, QStringLiteral("preview only"));
+    QCOMPARE(row.payloadState, QStringLiteral("full"));
+    QCOMPARE(row.payloadSize, qint64(payload.size()));
+    QVERIFY(row.payloadBytes.isEmpty());
     QCOMPARE(store.loadMessagePayloadBytes(reservedId), payload);
 }
 
@@ -290,10 +291,11 @@ void HistoryStoreTest::loadsMessageByExplicitId()
     const qint64 id = appendMessage(store, record);
     QVERIFY(id > 0);
 
-    const QVariantMap loaded = store.loadMessage(id);
-    QCOMPARE(loaded.value(QStringLiteral("id")).toLongLong(), id);
-    QCOMPARE(loaded.value(QStringLiteral("topic")).toString(), record.topic);
-    QCOMPARE(loaded.value(QStringLiteral("payload_bytes")).toByteArray(), record.payloadBytes);
+    const auto loaded = store.loadMessage(id);
+    QVERIFY(loaded);
+    QCOMPARE(loaded->id, id);
+    QCOMPARE(loaded->topic, record.topic);
+    QCOMPARE(loaded->payloadBytes, record.payloadBytes);
     QCOMPARE(store.loadMessagePayloadBytes(id), record.payloadBytes);
 }
 
@@ -504,12 +506,13 @@ void HistoryStoreTest::roundTripsCanonicalOutgoingMessage()
     const qint64 id = appendMessage(store, record);
     QVERIFY(id > 0);
 
-    const QVariantMap loaded = store.loadMessage(id);
-    QCOMPARE(loaded.value(QStringLiteral("direction")).toString(), QStringLiteral("outgoing"));
-    QCOMPARE(loaded.value(QStringLiteral("qos")).toInt(), 1);
-    QCOMPARE(loaded.value(QStringLiteral("retain")).toBool(), true);
-    QCOMPARE(loaded.value(QStringLiteral("retain_known")).toBool(), true);
-    QCOMPARE(loaded.value(QStringLiteral("payload_bytes")).toByteArray(), record.payloadBytes);
+    const auto loaded = store.loadMessage(id);
+    QVERIFY(loaded);
+    QCOMPARE(loaded->direction, MessageDirection::Outgoing);
+    QCOMPARE(loaded->qos, 1);
+    QCOMPARE(loaded->retain, true);
+    QCOMPARE(loaded->retainKnown, true);
+    QCOMPARE(loaded->payloadBytes, record.payloadBytes);
 }
 
 QTEST_MAIN(HistoryStoreTest)

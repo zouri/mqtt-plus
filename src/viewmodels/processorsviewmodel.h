@@ -1,12 +1,12 @@
 #pragma once
 
+#include "domain/session.h"
 #include "models/processorfiltermodel.h"
 #include "viewmodels/processoreditorviewmodel.h"
 
 #include <QObject>
 #include <QStringList>
 
-#include <functional>
 #include <memory>
 
 class MessageProcessorEngine;
@@ -21,12 +21,10 @@ class ProcessorsViewModel : public QObject
     Q_PROPERTY(ProcessorEditorViewModel* editor READ editor CONSTANT)
 
 public:
-    using ProcessorUsageLookup = std::function<QStringList(const QString &)>;
-
     explicit ProcessorsViewModel(
         ProcessorLibrary &library,
         ProcessorLibraryModel &processors,
-        ProcessorUsageLookup usageLookup = {},
+        const QVector<SessionState> &sessions,
         QObject *parent = nullptr);
     ~ProcessorsViewModel() override;
 
@@ -51,7 +49,7 @@ private:
 
     ProcessorLibrary &m_library;
     ProcessorLibraryModel &m_processors;
-    ProcessorUsageLookup m_usageLookup;
+    const QVector<SessionState> &m_sessions;
     std::unique_ptr<MessageProcessorEngine> m_engine;
     ProcessorFilterModel m_filteredProcessors;
     ProcessorEditorViewModel m_editor;

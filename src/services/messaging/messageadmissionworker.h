@@ -1,9 +1,10 @@
 #pragma once
 
 #include "domain/messageprocessor.h"
-#include "domain/messageenvelope.h"
+#include "domain/messageparsing.h"
 #include "domain/messagerecord.h"
-#include "services/messaging/messagecapturepolicy.h"
+#include "presentation/eventrow.h"
+#include "domain/messagecapturepolicy.h"
 
 #include <QHash>
 #include <QMutex>
@@ -11,7 +12,6 @@
 #include <QQueue>
 #include <QSharedPointer>
 #include <QStringList>
-#include <QVariantMap>
 #include <QVector>
 #include <QWaitCondition>
 
@@ -54,6 +54,7 @@ struct PreparedIncomingMessage
     QString topic;
     qint64 receivedAtMs = 0;
     qint64 payloadBytes = 0;
+    qint64 sequence = 0;
     bool captured = false;
     bool parsingRequired = false;
     bool parsingSkippedForPressure = false;
@@ -61,7 +62,7 @@ struct PreparedIncomingMessage
     QString reportKey;
     QString reportMessage;
     MessageRecord record;
-    QVariantMap renderedRow;
+    EventRow renderedRow;
     QSharedPointer<const ProcessorRevisionSnapshot> processorRevision;
     QCborMap processorParameters;
 };

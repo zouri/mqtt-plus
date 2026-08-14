@@ -160,23 +160,22 @@ void SubscriptionEditorViewModel::openForCreate()
     setAlias({});
     setQos(0);
     setFormat(0);
-    m_processorParametersCborBase64.clear();
+    m_processorParameters.clear();
     setProcessorId({});
     setColor({});
 }
 
-void SubscriptionEditorViewModel::openForEdit(const QVariantMap &subscription)
+void SubscriptionEditorViewModel::openForEdit(const SubscriptionEntry &subscription)
 {
     setEditMode(true);
-    setEditTopic(subscription.value(QStringLiteral("topic")).toString());
+    setEditTopic(subscription.topic);
     setTopic(m_editTopic);
-    setAlias(subscription.value(QStringLiteral("alias")).toString());
-    setQos(subscription.value(QStringLiteral("requestedQos")).toInt());
-    setFormat(subscription.value(QStringLiteral("format")).toInt());
-    m_processorParametersCborBase64 = subscription.value(
-        QStringLiteral("processorParametersCborBase64")).toString();
-    setProcessorId(subscription.value(QStringLiteral("processorId")).toString());
-    setColor(subscription.value(QStringLiteral("color")).toString());
+    setAlias(subscription.alias);
+    setQos(subscription.requestedQos);
+    setFormat(subscription.format);
+    m_processorParameters = subscription.processor.parameters;
+    setProcessorId(subscription.processor.processorId);
+    setColor(subscription.color);
 }
 
 void SubscriptionEditorViewModel::setProcessorOptions(const QVariantList &processors)
@@ -186,22 +185,24 @@ void SubscriptionEditorViewModel::setProcessorOptions(const QVariantList &proces
     updateProcessorBindingDetail();
 }
 
-QVariantMap SubscriptionEditorViewModel::submission() const
+SubscriptionEditorSubmission SubscriptionEditorViewModel::submission() const
 {
     const QString normalizedTopic = m_topic.trimmed();
-    return {
-        {QStringLiteral("editMode"), m_editMode},
-        {QStringLiteral("editTopic"), m_editTopic},
-        {QStringLiteral("topic"), normalizedTopic},
-        {QStringLiteral("topics"), m_editMode
-             ? QStringList {normalizedTopic}
-             : topicFiltersFromEditorText(m_topic)},
-        {QStringLiteral("alias"), m_alias},
-        {QStringLiteral("qos"), m_qos},
-        {QStringLiteral("format"), m_format},
-        {QStringLiteral("processorId"), m_processorId},
-        {QStringLiteral("processorParametersCborBase64"), m_processorParametersCborBase64},
-        {QStringLiteral("color"), m_color},
+    return SubscriptionEditorSubmission {
+        .editMode = m_editMode,
+        .editTopic = m_editTopic,
+        .topic = normalizedTopic,
+        .topics = m_editMode
+            ? QStringList {normalizedTopic}
+            : topicFiltersFromEditorText(m_topic),
+        .alias = m_alias,
+        .qos = m_qos,
+        .format = m_format,
+        .processor = {
+            .processorId = m_processorId,
+            .parameters = m_processorParameters,
+        },
+        .color = m_color,
     };
 }
 

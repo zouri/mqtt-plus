@@ -136,22 +136,20 @@ int MessageFilterModel::indexOfHistoryId(const QString &historyId) const
     return -1;
 }
 
-int MessageFilterModel::matchingMessageCount(const QVariantList &rows) const
+int MessageFilterModel::matchingMessageCount(const QVector<EventRow> &rows) const
 {
     int count = 0;
-    for (const QVariant &item : rows) {
-        const QVariantMap row = item.toMap();
-        const QString kind = row.value(QStringLiteral("kind")).toString();
-        if (kind != QStringLiteral("message")) {
+    for (const EventRow &row : rows) {
+        if (row.kind != QStringLiteral("message")) {
             continue;
         }
         if (rowMatches(
-                kind,
-                row.value(QStringLiteral("direction")).toString(),
-                row.value(QStringLiteral("topic")).toString(),
-                row.value(QStringLiteral("alias")).toString(),
-                row.value(QStringLiteral("payload")).toString(),
-                row.value(QStringLiteral("payloadFormat")).toString())) {
+                row.kind,
+                row.direction,
+                row.topic,
+                row.alias,
+                row.payload,
+                row.payloadFormat)) {
             ++count;
         }
     }

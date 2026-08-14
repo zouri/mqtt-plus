@@ -1,10 +1,10 @@
 #pragma once
 
 #include "domain/session.h"
+#include "domain/sessionconfig.h"
 
 #include <QObject>
 #include <QStringList>
-#include <QVariantMap>
 #include <QVector>
 
 class HistoryStore;
@@ -12,17 +12,13 @@ class HistoryWriterWorker;
 class MessageParseWorker;
 class PreferencesController;
 class QSettings;
-struct MessageCapturePolicy;
 
 struct SessionImportRequest {
     QString id;
-    QVariantMap config;
+    SessionConnectionConfig config;
     QVector<SubscriptionEntry> subscriptions;
     bool outputPaused = false;
-    bool captureIncoming = true;
-    bool captureOutgoing = true;
-    QStringList captureIncludeTopicFilters;
-    QStringList captureExcludeTopicFilters;
+    MessageCapturePolicy capturePolicy;
 };
 
 class SessionService : public QObject
@@ -44,7 +40,6 @@ public:
     const SessionState *currentSession() const;
     SessionState *sessionById(const QString &sessionId);
     const SessionState *sessionById(const QString &sessionId) const;
-    MessageCapturePolicy messageCapturePolicy(const QString &sessionId) const;
     bool setMessageCapturePolicy(
         const QString &sessionId,
         const MessageCapturePolicy &policy);
@@ -52,10 +47,10 @@ public:
     bool loadSessions();
     bool saveSessions();
     Q_INVOKABLE void setCurrentSessionIndex(int index);
-    QVariantMap defaultSessionConfig() const;
-    QVariantMap sessionConfigAt(int index) const;
-    bool updateSessionConfigAt(int index, const QVariantMap &config);
-    bool addSessionWithConfig(const QVariantMap &config);
+    SessionConnectionConfig defaultSessionConfig() const;
+    SessionConnectionConfig sessionConfigAt(int index) const;
+    bool updateSessionConfigAt(int index, const SessionConnectionConfig &config);
+    bool addSessionWithConfig(const SessionConnectionConfig &config);
     bool importSessions(
         const QVector<SessionImportRequest> &requests,
         QStringList &importedSessionIds,
@@ -85,7 +80,7 @@ signals:
 
 private:
     bool isValidIndex(int index) const;
-    void applyConfig(SessionState &session, const QVariantMap &config, bool keepNameFallback) const;
+    void applyConfig(SessionState &session, const SessionConnectionConfig &config) const;
     void requestReconnect(SessionState &session);
     void initializeSessionRuntime(SessionState &session);
     void destroySessionRuntime(SessionState &session);

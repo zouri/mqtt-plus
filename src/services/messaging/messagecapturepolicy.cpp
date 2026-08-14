@@ -1,5 +1,6 @@
-#include "messagecapturepolicy.h"
+#include "domain/messagecapturepolicy.h"
 
+#include "domain/messagerecord.h"
 #include "services/payload/payloadcodec.h"
 
 #include <algorithm>

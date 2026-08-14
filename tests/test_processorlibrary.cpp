@@ -24,7 +24,7 @@ ProcessorRevisionContent javascriptContent(const QByteArray &source)
 }
 
 SaveProcessorRevisionResult save(
-    ProcessorLibraryStore &store,
+    ProcessorLibrary &library,
     const QString &processorId,
     const QByteArray &source)
 {
@@ -33,7 +33,7 @@ SaveProcessorRevisionResult save(
     command.name = QStringLiteral("Device processor");
     command.description = QStringLiteral("");
     command.content = javascriptContent(source);
-    return store.saveRevision(command);
+    return library.saveRevision(command);
 }
 
 } // namespace
@@ -53,9 +53,9 @@ void ProcessorLibraryTest::resolvesFromAnImmutableInMemorySnapshot()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    ProcessorLibraryStore store(directory.path());
+    ProcessorLibrary writer(directory.path());
     const SaveProcessorRevisionResult first = save(
-        store,
+        writer,
         {},
         QByteArrayLiteral("function process(context) { return 1 }\n"));
     QVERIFY2(first.ok, qPrintable(first.error));
@@ -70,7 +70,7 @@ void ProcessorLibraryTest::resolvesFromAnImmutableInMemorySnapshot()
     QCOMPARE(resolvedFirst->revision->id, first.revision->id);
 
     const SaveProcessorRevisionResult second = save(
-        store,
+        writer,
         first.processor.id,
         QByteArrayLiteral("function process(context) { return 2 }\n"));
     QVERIFY2(second.ok, qPrintable(second.error));

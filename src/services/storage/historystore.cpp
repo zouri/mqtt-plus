@@ -6,7 +6,6 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
-#include <QVariantMap>
 #include <QUuid>
 
 #include <algorithm>
@@ -55,39 +54,41 @@ QStringList requiredMessageColumns()
     };
 }
 
-QVariantMap messageRowFromQuery(const QSqlQuery &query)
+MessageRecord messageRecordFromQuery(const QSqlQuery &query, const QString &sessionId)
 {
-    QVariantMap row;
-    row.insert(QStringLiteral("id"), query.value(0).toLongLong());
-    row.insert(QStringLiteral("timestamp"), query.value(1).toString());
-    row.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
-    row.insert(QStringLiteral("direction"), query.value(2).toString());
-    row.insert(QStringLiteral("topic"), query.value(3).toString());
-    row.insert(QStringLiteral("qos"), query.value(4).toInt());
-    row.insert(QStringLiteral("retain"), query.value(5).toBool());
-    row.insert(QStringLiteral("retain_known"), query.value(6).toBool());
-    row.insert(QStringLiteral("display_payload"), query.value(7).toString());
-    row.insert(QStringLiteral("display_format"), query.value(8).toString());
-    row.insert(QStringLiteral("display_error"), query.value(9).toString());
-    row.insert(QStringLiteral("display_state"), query.value(10).toString());
-    row.insert(QStringLiteral("processor_id"), query.value(11).toString());
-    row.insert(QStringLiteral("processor_revision_id"), query.value(12).toString());
-    row.insert(QStringLiteral("processor_name"), query.value(13).toString());
-    row.insert(QStringLiteral("processor_language_id"), query.value(14).toString());
-    row.insert(QStringLiteral("processor_runtime_id"), query.value(15).toString());
-    row.insert(QStringLiteral("processor_content_hash"), query.value(16).toString());
-    row.insert(QStringLiteral("processor_result_cbor"), query.value(17).toByteArray());
-    row.insert(QStringLiteral("processor_result_preview"), query.value(18).toString());
-    row.insert(QStringLiteral("processor_execution_state"), query.value(19).toString());
-    row.insert(QStringLiteral("processor_execution_error_code"), query.value(20).toString());
-    row.insert(QStringLiteral("processor_execution_error"), query.value(21).toString());
-    row.insert(QStringLiteral("processor_execution_duration_us"), query.value(22).toLongLong());
-    row.insert(QStringLiteral("payload_bytes"), query.value(23).toByteArray());
-    row.insert(QStringLiteral("payload_size"), query.value(24).toLongLong());
-    row.insert(QStringLiteral("payload_state"), query.value(25).toString());
-    row.insert(QStringLiteral("payload_preview"), query.value(26).toString());
-    row.insert(QStringLiteral("payload_hash"), query.value(27).toString());
-    row.insert(QStringLiteral("payload_format"), query.value(28).toInt());
+    MessageRecord row;
+    row.id = query.value(0).toLongLong();
+    row.sessionId = sessionId;
+    row.timestamp = query.value(1).toString();
+    row.direction = query.value(2).toString() == QStringLiteral("outgoing")
+        ? MessageDirection::Outgoing
+        : MessageDirection::Incoming;
+    row.topic = query.value(3).toString();
+    row.qos = query.value(4).toInt();
+    row.retain = query.value(5).toBool();
+    row.retainKnown = query.value(6).toBool();
+    row.displayPayload = query.value(7).toString();
+    row.displayFormat = query.value(8).toString();
+    row.displayError = query.value(9).toString();
+    row.displayState = query.value(10).toString();
+    row.processorId = query.value(11).toString();
+    row.processorRevisionId = query.value(12).toString();
+    row.processorName = query.value(13).toString();
+    row.processorLanguageId = query.value(14).toString();
+    row.processorRuntimeId = query.value(15).toString();
+    row.processorContentHash = query.value(16).toString();
+    row.processorResultCbor = query.value(17).toByteArray();
+    row.processorResultPreview = query.value(18).toString();
+    row.processorExecutionState = query.value(19).toString();
+    row.processorExecutionErrorCode = query.value(20).toString();
+    row.processorExecutionError = query.value(21).toString();
+    row.processorExecutionDurationUs = query.value(22).toLongLong();
+    row.payloadBytes = query.value(23).toByteArray();
+    row.payloadSize = query.value(24).toLongLong();
+    row.payloadState = query.value(25).toString();
+    row.payloadPreview = query.value(26).toString();
+    row.payloadHash = query.value(27).toString();
+    row.payloadFormat = query.value(28).toInt();
     return row;
 }
 
@@ -277,7 +278,7 @@ HistoryWriteResult HistoryStore::appendMessages(const QVector<MessageRecord> &me
 
 HistoryWriteResult HistoryStore::writeMessageBatch(
     const QVector<MessageRecord> &messages,
-    const QVector<MessageParseResult> &parseResults)
+    const QVector<ParseOutcome> &parseResults)
 {
     HistoryWriteResult result;
     if (messages.isEmpty() && parseResults.isEmpty()) {
@@ -396,7 +397,7 @@ HistoryWriteResult HistoryStore::writeMessageBatch(
         }
     }
 
-    for (const MessageParseResult &parseResult : parseResults) {
+    for (const ParseOutcome &parseResult : parseResults) {
         if (parseResult.messageId <= 0) {
             m_lastError = QStringLiteral("Message parse update ID must be positive.");
             m_db.rollback();
@@ -510,9 +511,11 @@ qint64 HistoryStore::appendEvent(
     return query.lastInsertId().toLongLong();
 }
 
-QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) const
+QVector<MessageRecord> HistoryStore::loadMessages(
+    const QString &sessionId,
+    int limit) const
 {
-    QVariantList result;
+    QVector<MessageRecord> result;
     if (!isReady()) {
         return result;
     }
@@ -549,15 +552,18 @@ QVariantList HistoryStore::loadMessages(const QString &sessionId, int limit) con
     }
 
     while (query.next()) {
-        result.append(messageRowFromQuery(query));
+        result.append(messageRecordFromQuery(query, sessionId));
     }
 
     return result;
 }
 
-QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 beforeId, int limit) const
+QVector<MessageRecord> HistoryStore::loadMessagesBefore(
+    const QString &sessionId,
+    qint64 beforeId,
+    int limit) const
 {
-    QVariantList result;
+    QVector<MessageRecord> result;
     if (!isReady() || beforeId <= 0) {
         return result;
     }
@@ -595,13 +601,13 @@ QVariantList HistoryStore::loadMessagesBefore(const QString &sessionId, qint64 b
     }
 
     while (query.next()) {
-        result.append(messageRowFromQuery(query));
+        result.append(messageRecordFromQuery(query, sessionId));
     }
 
     return result;
 }
 
-QVariantMap HistoryStore::loadMessage(qint64 messageId) const
+std::optional<MessageRecord> HistoryStore::loadMessage(qint64 messageId) const
 {
     if (!isReady() || messageId <= 0) {
         return {};
@@ -615,13 +621,13 @@ QVariantMap HistoryStore::loadMessage(qint64 messageId) const
         "processor_runtime_id, processor_content_hash, processor_result_cbor, "
         "processor_result_preview, processor_execution_state, processor_execution_error_code, "
         "processor_execution_error, processor_execution_duration_us, payload_bytes, "
-        "payload_size, payload_state, payload_preview, payload_hash, payload_format "
+        "payload_size, payload_state, payload_preview, payload_hash, payload_format, session_id "
         "FROM mqtt_messages WHERE id = ?"));
     query.addBindValue(messageId);
     if (!query.exec() || !query.next()) {
         return {};
     }
-    return messageRowFromQuery(query);
+    return messageRecordFromQuery(query, query.value(29).toString());
 }
 
 QByteArray HistoryStore::loadMessagePayloadBytes(qint64 messageId) const

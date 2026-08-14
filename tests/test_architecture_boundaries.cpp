@@ -11,6 +11,7 @@ class ArchitectureBoundariesTest : public QObject
     Q_OBJECT
 
 private slots:
+    void domainDoesNotDependOnOuterProjectLayers();
     void usecasesDoNotDependOnApplicationLayer();
     void messageHistoryWritesUseDedicatedWorker();
     void messageAdmissionChecksMetadataBeforePayloadWork();
@@ -50,6 +51,41 @@ bool ArchitectureBoundariesTest::readSourceFile(const QString &relativePath, QSt
     }
     source = QString::fromUtf8(file.readAll());
     return true;
+}
+
+void ArchitectureBoundariesTest::domainDoesNotDependOnOuterProjectLayers()
+{
+    const QString domainRoot = QStringLiteral(MQTT_PLUS_SOURCE_DIR)
+        + QStringLiteral("/src/domain");
+    const QStringList outerLayers {
+        QStringLiteral("app/"),
+        QStringLiteral("models/"),
+        QStringLiteral("presentation/"),
+        QStringLiteral("services/"),
+        QStringLiteral("usecases/"),
+        QStringLiteral("viewmodels/"),
+    };
+    QDirIterator sourceFiles(
+        domainRoot,
+        {QStringLiteral("*.h"), QStringLiteral("*.cpp")},
+        QDir::Files,
+        QDirIterator::Subdirectories);
+
+    while (sourceFiles.hasNext()) {
+        const QString path = sourceFiles.next();
+        QFile file(path);
+        QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text),
+            qPrintable(QStringLiteral("Cannot read %1").arg(path)));
+        const QString source = QString::fromUtf8(file.readAll());
+        for (const QString &layer : outerLayers) {
+            const bool dependsOnOuterLayer = source.contains(
+                QStringLiteral("#include \"") + layer)
+                || source.contains(QStringLiteral("#include <") + layer);
+            QVERIFY2(!dependsOnOuterLayer,
+                qPrintable(QStringLiteral("%1 must not depend on %2")
+                    .arg(path, layer)));
+        }
+    }
 }
 
 void ArchitectureBoundariesTest::usecasesDoNotDependOnApplicationLayer()
@@ -114,10 +150,31 @@ void ArchitectureBoundariesTest::messageHistoryWritesUseDedicatedWorker()
 
 void ArchitectureBoundariesTest::messageAdmissionChecksMetadataBeforePayloadWork()
 {
+    QString admissionWorkerSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/services/messaging/messageadmissionworker.cpp"),
+        admissionWorkerSource));
+    const int prepareIndex = admissionWorkerSource.indexOf(
+        QStringLiteral("PreparedIncomingMessage MessageAdmissionWorker::prepare"));
+    const int approximateBytesIndex = admissionWorkerSource.indexOf(
+        QStringLiteral("qint64 MessageAdmissionWorker::approximateBytes"),
+        prepareIndex);
+    QVERIFY(prepareIndex >= 0);
+    QVERIFY(approximateBytesIndex > prepareIndex);
+    const QString prepareSource = admissionWorkerSource.mid(
+        prepareIndex,
+        approximateBytesIndex - prepareIndex);
+    const int capturePolicyIndex = prepareSource.indexOf(
+        QStringLiteral("capturePolicy.accepts"));
+    const int payloadPlanIndex = prepareSource.indexOf(
+        QStringLiteral("makePayloadStoragePlan"));
+    QVERIFY2(capturePolicyIndex >= 0 && capturePolicyIndex < payloadPlanIndex,
+        "Capture policy must reject by topic and direction before payload preview, hashing, or DTO work");
+
     QString eventHistorySource;
     QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.cpp"), eventHistorySource));
     const int incomingIndex = eventHistorySource.indexOf(
-        QStringLiteral("void EventHistoryService::appendIncomingMessage"));
+        QStringLiteral("void EventHistoryService::applyPreparedIncomingMessages"));
     const int outgoingIndex = eventHistorySource.indexOf(
         QStringLiteral("void EventHistoryService::appendPublishedMessage"), incomingIndex);
     QVERIFY(incomingIndex >= 0);
@@ -125,12 +182,8 @@ void ArchitectureBoundariesTest::messageAdmissionChecksMetadataBeforePayloadWork
     const QString incomingSource = eventHistorySource.mid(
         incomingIndex,
         outgoingIndex - incomingIndex);
-    const int capturePolicyIndex = incomingSource.indexOf(QStringLiteral("shouldCaptureMessage"));
-    const int payloadPlanIndex = incomingSource.indexOf(QStringLiteral("makePayloadStoragePlan"));
     const int captureEnqueueIndex = incomingSource.indexOf(QStringLiteral("m_historyWriter.enqueueMessage"));
     const int parseEnqueueIndex = incomingSource.indexOf(QStringLiteral("enqueueMessageParsing"));
-    QVERIFY2(capturePolicyIndex >= 0 && capturePolicyIndex < payloadPlanIndex,
-        "Capture policy must reject by topic/direction before payload preview, hashing, or DTO work");
     QVERIFY2(captureEnqueueIndex >= 0 && captureEnqueueIndex < parseEnqueueIndex,
         "Raw capture admission must happen before optional structured parsing");
 
@@ -214,13 +267,13 @@ void ArchitectureBoundariesTest::processorCallersUseEngineSeamOnly()
 
 void ArchitectureBoundariesTest::messagePipelineUsesResolvedProcessorSnapshots()
 {
-    QString envelopeHeader;
-    QVERIFY(readSourceFile(QStringLiteral("src/domain/messageenvelope.h"), envelopeHeader));
-    QVERIFY2(envelopeHeader.contains(
+    QString parsingHeader;
+    QVERIFY(readSourceFile(QStringLiteral("src/domain/messageparsing.h"), parsingHeader));
+    QVERIFY2(parsingHeader.contains(
             QStringLiteral("QSharedPointer<const ProcessorRevisionSnapshot> processorRevision")),
         "Parser tasks must hold the immutable revision resolved at capture admission");
-    QVERIFY2(!envelopeHeader.contains(QStringLiteral("scriptCode"))
-            && !envelopeHeader.contains(QStringLiteral("scriptId")),
+    QVERIFY2(!parsingHeader.contains(QStringLiteral("scriptCode"))
+            && !parsingHeader.contains(QStringLiteral("scriptId")),
         "Parser tasks and results must not copy legacy script source or identity");
 
     QString eventHistoryHeader;
@@ -770,7 +823,7 @@ void ArchitectureBoundariesTest::editorViewModelsDoNotExposeInternalWorkflowHelp
                 QStringLiteral("Q_INVOKABLE void openForCreate"),
                 QStringLiteral("Q_INVOKABLE void openForEdit"),
                 QStringLiteral("Q_INVOKABLE void loadConfig"),
-                QStringLiteral("Q_INVOKABLE QVariantMap collectedConfig"),
+                QStringLiteral("Q_INVOKABLE SessionConnectionConfig collectedConfig"),
                 QStringLiteral("Q_INVOKABLE bool validate"),
             },
         },

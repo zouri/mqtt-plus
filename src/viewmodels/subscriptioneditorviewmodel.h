@@ -1,9 +1,24 @@
 #pragma once
 
+#include "domain/subscription.h"
+
 #include <QObject>
 #include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
+
+struct SubscriptionEditorSubmission
+{
+    bool editMode = false;
+    QString editTopic;
+    QString topic;
+    QStringList topics;
+    QString alias;
+    int qos = 0;
+    int format = 0;
+    ProcessorReference processor;
+    QString color;
+};
 
 class SubscriptionEditorViewModel : public QObject
 {
@@ -50,9 +65,9 @@ public:
     void setColor(const QString &color);
 
     void openForCreate();
-    void openForEdit(const QVariantMap &subscription);
+    void openForEdit(const SubscriptionEntry &subscription);
     void setProcessorOptions(const QVariantList &processors);
-    QVariantMap submission() const;
+    SubscriptionEditorSubmission submission() const;
 
 signals:
     void editModeChanged();
@@ -87,7 +102,7 @@ private:
     QStringList m_processorOptionIds {QString()};
     QStringList m_processorOptionNames;
     QString m_processorBindingDetail;
-    QString m_processorParametersCborBase64;
+    QCborMap m_processorParameters;
     QVariantList m_processorRows;
     QString m_color;
 };

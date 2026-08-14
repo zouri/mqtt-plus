@@ -1,4 +1,5 @@
-#include "services/processors/processorlibrarystore.h"
+#include "services/processors/processorlibrary.h"
+#include "services/processors/processorpackagehash.h"
 
 #include <QtTest/QtTest>
 
@@ -40,7 +41,7 @@ ProcessorRevisionContent javascriptContent(const QByteArray &mainSource)
 }
 
 SaveProcessorRevisionResult saveProcessor(
-    ProcessorLibraryStore &store,
+    ProcessorLibrary &library,
     const QString &processorId,
     const QString &name,
     const QByteArray &mainSource)
@@ -50,7 +51,7 @@ SaveProcessorRevisionResult saveProcessor(
     command.name = name;
     command.description = QStringLiteral("Binary device protocol");
     command.content = javascriptContent(mainSource);
-    return store.saveRevision(command);
+    return library.saveRevision(command);
 }
 
 const ProcessorSourceFile *sourceFileByPath(
@@ -66,9 +67,14 @@ const ProcessorSourceFile *sourceFileByPath(
     return it == revision.files.cend() ? nullptr : &*it;
 }
 
+QString databasePathFor(const ProcessorLibrary &library)
+{
+    return QDir(library.storageDirectory()).filePath(QStringLiteral("library.db"));
+}
+
 } // namespace
 
-class ProcessorLibraryStoreTest : public QObject
+class ProcessorLibraryPersistenceTest : public QObject
 {
     Q_OBJECT
 
@@ -82,7 +88,7 @@ private slots:
     void rejectsNewerSchemaWithoutOverwritingIt();
 };
 
-void ProcessorLibraryStoreTest::savesImmutableMultiFileRevisionsAndResolvesBindings()
+void ProcessorLibraryPersistenceTest::savesImmutableMultiFileRevisionsAndResolvesBindings()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -90,11 +96,11 @@ void ProcessorLibraryStoreTest::savesImmutableMultiFileRevisionsAndResolvesBindi
     QString processorId;
     QString firstRevisionId;
     {
-        ProcessorLibraryStore store(directory.path());
-        QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+        ProcessorLibrary library(directory.path());
+        QVERIFY2(library.isReady(), qPrintable(library.lastError()));
 
         const SaveProcessorRevisionResult first = saveProcessor(
-            store,
+            library,
             {},
             QStringLiteral("Telemetry"),
             QByteArrayLiteral("function process(context) { return 1 }\n"));
@@ -110,12 +116,12 @@ void ProcessorLibraryStoreTest::savesImmutableMultiFileRevisionsAndResolvesBindi
         ProcessorReference currentReference;
         currentReference.processorId = processorId;
         QString resolveError;
-        const auto currentFirst = store.resolve(currentReference, &resolveError);
+        const auto currentFirst = library.resolve(currentReference, &resolveError);
         QVERIFY2(currentFirst, qPrintable(resolveError));
-        QCOMPARE(currentFirst->id, firstRevisionId);
+        QCOMPARE(currentFirst->revision->id, firstRevisionId);
 
         const SaveProcessorRevisionResult second = saveProcessor(
-            store,
+            library,
             processorId,
             QStringLiteral("Telemetry"),
             QByteArrayLiteral("function process(context) { return 2 }\n"));
@@ -125,7 +131,7 @@ void ProcessorLibraryStoreTest::savesImmutableMultiFileRevisionsAndResolvesBindi
         QCOMPARE(second.revision->revisionNumber, qint64(2));
         QVERIFY(second.revision->id != firstRevisionId);
 
-        const auto revisions = store.revisions(processorId);
+        const auto revisions = library.revisions(processorId);
         QCOMPARE(revisions.size(), 2);
         QCOMPARE(revisions.at(0)->id, firstRevisionId);
         const ProcessorSourceFile *firstMain = sourceFileByPath(
@@ -139,13 +145,13 @@ void ProcessorLibraryStoreTest::savesImmutableMultiFileRevisionsAndResolvesBindi
         QVERIFY(firstMain->content.contains("return 1"));
         QVERIFY(secondMain->content.contains("return 2"));
 
-        const auto currentSecond = store.resolve(currentReference, &resolveError);
+        const auto currentSecond = library.resolve(currentReference, &resolveError);
         QVERIFY2(currentSecond, qPrintable(resolveError));
-        QCOMPARE(currentSecond->id, second.revision->id);
+        QCOMPARE(currentSecond->revision->id, second.revision->id);
 
     }
 
-    ProcessorLibraryStore reopened(directory.path());
+    ProcessorLibrary reopened(directory.path());
     QVERIFY2(reopened.isReady(), qPrintable(reopened.lastError()));
     const auto revisions = reopened.revisions(processorId);
     QCOMPARE(revisions.size(), 2);
@@ -166,19 +172,19 @@ void ProcessorLibraryStoreTest::savesImmutableMultiFileRevisionsAndResolvesBindi
     QCOMPARE(reopenedPackage.contentHash, revisions.first()->contentHash);
 }
 
-void ProcessorLibraryStoreTest::reusesIdenticalContentAndCanonicalizesPackageOrder()
+void ProcessorLibraryPersistenceTest::reusesIdenticalContentAndCanonicalizesPackageOrder()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    ProcessorLibraryStore store(directory.path());
-    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    ProcessorLibrary library(directory.path());
+    QVERIFY2(library.isReady(), qPrintable(library.lastError()));
 
     SaveProcessorRevisionCommand firstCommand;
     firstCommand.name = QStringLiteral("Canonical");
     firstCommand.description = QStringLiteral("First metadata");
     firstCommand.content = javascriptContent(
         QByteArrayLiteral("function process(context) { return context.topic }\n"));
-    const SaveProcessorRevisionResult first = store.saveRevision(firstCommand);
+    const SaveProcessorRevisionResult first = library.saveRevision(firstCommand);
     QVERIFY2(first.ok, qPrintable(first.error));
 
     SaveProcessorRevisionCommand repeatedCommand = firstCommand;
@@ -202,50 +208,50 @@ void ProcessorLibraryStoreTest::reusesIdenticalContentAndCanonicalizesPackageOrd
     QCOMPARE(repeatedPackage.manifestJson, firstPackage.manifestJson);
     QCOMPARE(repeatedPackage.contentHash, firstPackage.contentHash);
 
-    const SaveProcessorRevisionResult repeated = store.saveRevision(repeatedCommand);
+    const SaveProcessorRevisionResult repeated = library.saveRevision(repeatedCommand);
     QVERIFY2(repeated.ok, qPrintable(repeated.error));
     QVERIFY(!repeated.createdProcessor);
     QVERIFY(!repeated.createdRevision);
     QCOMPARE(repeated.revision->id, first.revision->id);
     QCOMPARE(repeated.revision->contentHash, first.revision->contentHash);
-    QCOMPARE(store.revisions(first.processor.id).size(), 1);
+    QCOMPARE(library.revisions(first.processor.id).size(), 1);
     QCOMPARE(repeated.processor.name, QStringLiteral("Renamed Canonical"));
     QCOMPARE(repeated.processor.description, QStringLiteral("Updated metadata"));
 }
 
-void ProcessorLibraryStoreTest::rejectsInvalidPackagesWithoutChangingTheLibrary()
+void ProcessorLibraryPersistenceTest::rejectsInvalidPackagesWithoutChangingTheLibrary()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    ProcessorLibraryStore store(directory.path());
-    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    ProcessorLibrary library(directory.path());
+    QVERIFY2(library.isReady(), qPrintable(library.lastError()));
 
     SaveProcessorRevisionCommand traversal;
     traversal.name = QStringLiteral("Traversal");
     traversal.content = javascriptContent(QByteArrayLiteral("function process() {}\n"));
     traversal.content.files.first().path = QStringLiteral("../main.js");
-    const SaveProcessorRevisionResult traversalResult = store.saveRevision(traversal);
+    const SaveProcessorRevisionResult traversalResult = library.saveRevision(traversal);
     QVERIFY(!traversalResult.ok);
     QVERIFY(traversalResult.error.contains(QStringLiteral("invalid segment")));
-    QVERIFY(store.processors().isEmpty());
+    QVERIFY(library.processors().isEmpty());
 
     SaveProcessorRevisionCommand duplicate;
     duplicate.name = QStringLiteral("Duplicate");
     duplicate.content = javascriptContent(QByteArrayLiteral("function process() {}\n"));
     duplicate.content.files.last().path = QStringLiteral("SRC/MAIN.JS");
-    const SaveProcessorRevisionResult duplicateResult = store.saveRevision(duplicate);
+    const SaveProcessorRevisionResult duplicateResult = library.saveRevision(duplicate);
     QVERIFY(!duplicateResult.ok);
     QVERIFY(duplicateResult.error.contains(QStringLiteral("duplicate"), Qt::CaseInsensitive));
-    QVERIFY(store.processors().isEmpty());
+    QVERIFY(library.processors().isEmpty());
 
     SaveProcessorRevisionCommand missingEntry;
     missingEntry.name = QStringLiteral("Missing Entry");
     missingEntry.content = javascriptContent(QByteArrayLiteral("function process() {}\n"));
     missingEntry.content.entryFile = QStringLiteral("missing.js");
-    const SaveProcessorRevisionResult missingEntryResult = store.saveRevision(missingEntry);
+    const SaveProcessorRevisionResult missingEntryResult = library.saveRevision(missingEntry);
     QVERIFY(!missingEntryResult.ok);
     QVERIFY(missingEntryResult.error.contains(QStringLiteral("entry file"), Qt::CaseInsensitive));
-    QVERIFY(store.processors().isEmpty());
+    QVERIFY(library.processors().isEmpty());
 
     SaveProcessorRevisionCommand nonFiniteManifest;
     nonFiniteManifest.name = QStringLiteral("Non-finite manifest");
@@ -253,21 +259,21 @@ void ProcessorLibraryStoreTest::rejectsInvalidPackagesWithoutChangingTheLibrary(
     nonFiniteManifest.content.manifest.insert(
         QStringLiteral("invalidNumber"),
         std::numeric_limits<double>::infinity());
-    const SaveProcessorRevisionResult nonFiniteResult = store.saveRevision(nonFiniteManifest);
+    const SaveProcessorRevisionResult nonFiniteResult = library.saveRevision(nonFiniteManifest);
     QVERIFY(!nonFiniteResult.ok);
     QVERIFY(nonFiniteResult.error.contains(QStringLiteral("finite"), Qt::CaseInsensitive));
-    QVERIFY(store.processors().isEmpty());
+    QVERIFY(library.processors().isEmpty());
 }
 
-void ProcessorLibraryStoreTest::rollsBackARevisionWhenAFileInsertFails()
+void ProcessorLibraryPersistenceTest::rollsBackARevisionWhenAFileInsertFails()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    ProcessorLibraryStore store(directory.path());
-    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    ProcessorLibrary library(directory.path());
+    QVERIFY2(library.isReady(), qPrintable(library.lastError()));
 
     const SaveProcessorRevisionResult saved = saveProcessor(
-        store,
+        library,
         {},
         QStringLiteral("Stable metadata"),
         QByteArrayLiteral("function process() { return 1 }\n"));
@@ -277,7 +283,7 @@ void ProcessorLibraryStoreTest::rollsBackARevisionWhenAFileInsertFails()
                                               .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
     {
         QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), failureConnectionName);
-        db.setDatabaseName(store.databasePath());
+        db.setDatabaseName(databasePathFor(library));
         QVERIFY2(db.open(), qPrintable(db.lastError().text()));
         QSqlQuery query(db);
         QVERIFY2(query.exec(QStringLiteral(
@@ -295,63 +301,63 @@ void ProcessorLibraryStoreTest::rollsBackARevisionWhenAFileInsertFails()
     failingCommand.description = QStringLiteral("This update must not commit");
     failingCommand.content = javascriptContent(
         QByteArrayLiteral("function process() { return 2 }\n"));
-    const SaveProcessorRevisionResult failed = store.saveRevision(failingCommand);
+    const SaveProcessorRevisionResult failed = library.saveRevision(failingCommand);
     QVERIFY(!failed.ok);
     QVERIFY(failed.error.contains(QStringLiteral("injected file write failure")));
 
-    const auto processor = store.processorById(saved.processor.id);
+    const auto processor = library.processorById(saved.processor.id);
     QVERIFY(processor);
     QCOMPARE(processor->name, QStringLiteral("Stable metadata"));
     QCOMPARE(processor->currentRevisionId, saved.revision->id);
-    const auto revisions = store.revisions(saved.processor.id);
+    const auto revisions = library.revisions(saved.processor.id);
     QCOMPARE(revisions.size(), 1);
     QCOMPARE(revisions.first()->id, saved.revision->id);
 }
 
-void ProcessorLibraryStoreTest::deletesProcessorAndItsRevisions()
+void ProcessorLibraryPersistenceTest::deletesProcessorAndItsRevisions()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    ProcessorLibraryStore store(directory.path());
-    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    ProcessorLibrary library(directory.path());
+    QVERIFY2(library.isReady(), qPrintable(library.lastError()));
 
     const SaveProcessorRevisionResult first = saveProcessor(
-        store,
+        library,
         {},
         QStringLiteral("Disposable"),
         QByteArrayLiteral("function process(context) { return 1 }\n"));
     QVERIFY2(first.ok, qPrintable(first.error));
     const SaveProcessorRevisionResult second = saveProcessor(
-        store,
+        library,
         first.processor.id,
         QStringLiteral("Disposable"),
         QByteArrayLiteral("function process(context) { return 2 }\n"));
     QVERIFY2(second.ok, qPrintable(second.error));
-    QCOMPARE(store.revisions(first.processor.id).size(), 2);
+    QCOMPARE(library.revisions(first.processor.id).size(), 2);
 
-    QVERIFY(store.deleteProcessor(first.processor.id));
-    QVERIFY(!store.processorById(first.processor.id));
-    QVERIFY(store.revisions(first.processor.id).isEmpty());
-    QVERIFY(store.revisionById(first.revision->id).isNull());
-    QVERIFY(store.revisionById(second.revision->id).isNull());
-    QVERIFY(store.processors().isEmpty());
+    QVERIFY(library.deleteProcessor(first.processor.id));
+    QVERIFY(!library.processorById(first.processor.id));
+    QVERIFY(library.revisions(first.processor.id).isEmpty());
+    QVERIFY(library.revisionById(first.revision->id).isNull());
+    QVERIFY(library.revisionById(second.revision->id).isNull());
+    QVERIFY(library.processors().isEmpty());
 }
 
-void ProcessorLibraryStoreTest::clearsLegacyArchivedStateOnOpen()
+void ProcessorLibraryPersistenceTest::clearsLegacyArchivedStateOnOpen()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     QString databasePath;
     {
-        ProcessorLibraryStore store(directory.path());
-        QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+        ProcessorLibrary library(directory.path());
+        QVERIFY2(library.isReady(), qPrintable(library.lastError()));
         const SaveProcessorRevisionResult saved = saveProcessor(
-            store,
+            library,
             {},
             QStringLiteral("Editable processor"),
             QByteArrayLiteral("function process(context) { return true }\n"));
         QVERIFY2(saved.ok, qPrintable(saved.error));
-        databasePath = store.databasePath();
+        databasePath = databasePathFor(library);
     }
 
     const QString legacyConnectionName = QStringLiteral("legacy-archived-processor");
@@ -368,7 +374,7 @@ void ProcessorLibraryStoreTest::clearsLegacyArchivedStateOnOpen()
     QSqlDatabase::removeDatabase(legacyConnectionName);
 
     {
-        ProcessorLibraryStore reopened(directory.path());
+        ProcessorLibrary reopened(directory.path());
         QVERIFY2(reopened.isReady(), qPrintable(reopened.lastError()));
         QCOMPARE(reopened.processors().size(), 1);
     }
@@ -391,7 +397,7 @@ void ProcessorLibraryStoreTest::clearsLegacyArchivedStateOnOpen()
     QSqlDatabase::removeDatabase(verificationConnectionName);
 }
 
-void ProcessorLibraryStoreTest::rejectsNewerSchemaWithoutOverwritingIt()
+void ProcessorLibraryPersistenceTest::rejectsNewerSchemaWithoutOverwritingIt()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -413,9 +419,9 @@ void ProcessorLibraryStoreTest::rejectsNewerSchemaWithoutOverwritingIt()
     }
     QSqlDatabase::removeDatabase(connectionName);
 
-    ProcessorLibraryStore store(directory.path());
-    QVERIFY(!store.isReady());
-    QVERIFY(store.lastError().contains(QStringLiteral("newer")));
+    ProcessorLibrary library(directory.path());
+    QVERIFY(!library.isReady());
+    QVERIFY(library.lastError().contains(QStringLiteral("newer")));
 
     const QString verificationName = QStringLiteral("verify-future-processor-schema-%1")
                                          .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
@@ -433,6 +439,6 @@ void ProcessorLibraryStoreTest::rejectsNewerSchemaWithoutOverwritingIt()
     QSqlDatabase::removeDatabase(verificationName);
 }
 
-QTEST_GUILESS_MAIN(ProcessorLibraryStoreTest)
+QTEST_GUILESS_MAIN(ProcessorLibraryPersistenceTest)
 
-#include "test_processorlibrarystore.moc"
+#include "test_processorlibrary_persistence.moc"

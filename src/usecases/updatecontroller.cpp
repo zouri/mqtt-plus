@@ -1,5 +1,6 @@
 #include "usecases/updatecontroller.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QTimer>
 #include <QVersionNumber>
@@ -9,6 +10,11 @@ namespace {
 constexpr auto kAutomaticChecksKey = "updates/automaticChecksEnabled";
 constexpr auto kLastCheckAttemptKey = "updates/lastCheckAttemptUtc";
 constexpr qint64 kAutomaticCheckIntervalSeconds = 24 * 60 * 60;
+
+QString updateText(const char *source)
+{
+    return QCoreApplication::translate("UpdateController", source);
+}
 
 } // namespace
 
@@ -39,6 +45,42 @@ UpdateController::UpdateController(
 QString UpdateController::currentVersion() const { return m_currentVersion; }
 
 QString UpdateController::latestVersion() const { return m_latestRelease.version; }
+
+QString UpdateController::statusMessage() const
+{
+    switch (m_status) {
+    case Status::Idle:
+        return updateText(QT_TRANSLATE_NOOP(
+            "UpdateController",
+            "Updates are provided through GitHub Releases."));
+    case Status::Checking:
+        return updateText(QT_TRANSLATE_NOOP(
+            "UpdateController",
+            "Checking GitHub Releases..."));
+    case Status::UpdateAvailable:
+        return updateText(QT_TRANSLATE_NOOP(
+            "UpdateController",
+            "Version %1 is available."))
+            .arg(latestVersion());
+    case Status::UpToDate:
+        return updateText(QT_TRANSLATE_NOOP(
+            "UpdateController",
+            "You are using the latest version."));
+    case Status::NoReleases:
+        return updateText(QT_TRANSLATE_NOOP(
+            "UpdateController",
+            "No published releases were found."));
+    case Status::NetworkError:
+        return updateText(QT_TRANSLATE_NOOP(
+            "UpdateController",
+            "Could not check for updates. Check your network connection and try again."));
+    case Status::InvalidRelease:
+        return updateText(QT_TRANSLATE_NOOP(
+            "UpdateController",
+            "GitHub returned release information that this version cannot read."));
+    }
+    return {};
+}
 
 UpdateController::Status UpdateController::status() const { return m_status; }
 
@@ -98,9 +140,19 @@ void UpdateController::checkForUpdates(CheckMode mode)
     m_service.fetchLatestRelease();
 }
 
+void UpdateController::checkForUpdates()
+{
+    checkForUpdates(CheckMode::Manual);
+}
+
 bool UpdateController::openDownloadPage() const
 {
     return m_updateAvailable && m_service.openRelease(m_latestRelease);
+}
+
+void UpdateController::retranslate()
+{
+    emit stateChanged();
 }
 
 void UpdateController::handleReleaseFetched(const UpdateRelease &release)

@@ -10,6 +10,13 @@
 class UpdateController : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(QString currentVersion READ currentVersion CONSTANT)
+    Q_PROPERTY(QString latestVersion READ latestVersion NOTIFY stateChanged)
+    Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY stateChanged)
+    Q_PROPERTY(bool busy READ busy NOTIFY stateChanged)
+    Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY stateChanged)
+    Q_PROPERTY(bool directDownloadAvailable READ directDownloadAvailable NOTIFY stateChanged)
+    Q_PROPERTY(bool automaticChecksEnabled READ automaticChecksEnabled WRITE setAutomaticChecksEnabled NOTIFY automaticChecksEnabledChanged)
 
 public:
     enum class CheckMode
@@ -37,6 +44,7 @@ public:
 
     QString currentVersion() const;
     QString latestVersion() const;
+    QString statusMessage() const;
     Status status() const;
     bool busy() const;
     bool updateAvailable() const;
@@ -46,7 +54,12 @@ public:
     void setAutomaticChecksEnabled(bool enabled);
     void scheduleAutomaticCheck();
     void checkForUpdates(CheckMode mode);
-    bool openDownloadPage() const;
+
+    Q_INVOKABLE void checkForUpdates();
+    Q_INVOKABLE bool openDownloadPage() const;
+
+public slots:
+    void retranslate();
 
 signals:
     void stateChanged();

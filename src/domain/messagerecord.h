@@ -1,5 +1,7 @@
 #pragma once
 
+#include "messageparsing.h"
+
 #include <QByteArray>
 #include <QString>
 
@@ -40,6 +42,26 @@ struct MessageRecord {
     QString payloadHash;
     int payloadFormat = -1;
 };
+
+inline void applyParseOutcome(MessageRecord &message, const ParseOutcome &outcome)
+{
+    message.displayPayload = outcome.displayPayload;
+    message.displayFormat = outcome.displayFormat;
+    message.displayError = outcome.displayError;
+    message.displayState = messageParseStateName(outcome.state);
+    message.processorId = outcome.processorId;
+    message.processorRevisionId = outcome.processorRevisionId;
+    message.processorName = outcome.processorName;
+    message.processorLanguageId = outcome.processorLanguageId;
+    message.processorRuntimeId = outcome.processorRuntimeId;
+    message.processorContentHash = outcome.processorContentHash;
+    message.processorResultCbor = outcome.processorResultCbor;
+    message.processorResultPreview = outcome.processorResultPreview;
+    message.processorExecutionState = outcome.processorExecutionState;
+    message.processorExecutionErrorCode = outcome.processorExecutionErrorCode;
+    message.processorExecutionError = outcome.processorExecutionError;
+    message.processorExecutionDurationUs = outcome.processorExecutionDurationUs;
+}
 
 inline QString messageDirectionName(MessageDirection direction)
 {

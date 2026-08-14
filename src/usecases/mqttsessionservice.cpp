@@ -160,8 +160,7 @@ bool MqttSessionService::publishCurrentSession(
         m_pendingPublishes.insert(pendingKey(session->id, messageId), status);
     }
 
-    appendRecentTrafficSample(
-        session->runtime.recentPublishedTraffic,
+    session->runtime.recentPublishedTraffic.add(
         QDateTime::currentMSecsSinceEpoch(),
         payloadBytes.size());
     recordRecentPublish(trimmedTopic, payload, format, publishQos, retain, payloadBytes.size());

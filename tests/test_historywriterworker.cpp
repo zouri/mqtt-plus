@@ -118,7 +118,7 @@ void HistoryWriterWorkerTest::rejectsMessagesAtCountAndByteLimits()
     const qint64 parseMessageId = parseResultWriter.enqueueMessage(
         makeRecord(QStringLiteral("session-1"), QStringLiteral("parsed"), QByteArrayLiteral("{}")));
     QVERIFY(parseMessageId > 0);
-    MessageParseResult parseResult;
+    ParseOutcome parseResult;
     parseResult.messageId = parseMessageId;
     parseResult.sessionId = QStringLiteral("session-1");
     parseResult.state = MessageParseState::Succeeded;
@@ -181,9 +181,9 @@ void HistoryWriterWorkerTest::recoversInvalidInitialMessageId()
     QVERIFY(writer.drain(2000));
 
     HistoryStore reader(dataPath);
-    QCOMPARE(
-        reader.loadMessage(messageId).value(QStringLiteral("topic")).toString(),
-        QStringLiteral("recovered"));
+    const auto recovered = reader.loadMessage(messageId);
+    QVERIFY(recovered);
+    QCOMPARE(recovered->topic, QStringLiteral("recovered"));
 }
 
 void HistoryWriterWorkerTest::writesQueuedMessagesInReservedIdOrder()
@@ -208,11 +208,11 @@ void HistoryWriterWorkerTest::writesQueuedMessagesInReservedIdOrder()
     QCOMPARE(threaded.worker->pendingMessageCount(), 0);
 
     HistoryStore reader(dataDir.path());
-    const QVariantList rows = reader.loadMessages(QStringLiteral("session-1"), 10);
+    const QVector<MessageRecord> rows = reader.loadMessages(QStringLiteral("session-1"), 10);
     QCOMPARE(rows.size(), 3);
-    QCOMPARE(rows.at(0).toMap().value(QStringLiteral("id")).toLongLong(), nextId);
-    QCOMPARE(rows.at(1).toMap().value(QStringLiteral("id")).toLongLong(), nextId + 1);
-    QCOMPARE(rows.at(2).toMap().value(QStringLiteral("id")).toLongLong(), nextId + 2);
+    QCOMPARE(rows.at(0).id, nextId);
+    QCOMPARE(rows.at(1).id, nextId + 1);
+    QCOMPARE(rows.at(2).id, nextId + 2);
 }
 
 void HistoryWriterWorkerTest::retriesLockedDatabaseWithoutAnotherEnqueue()
@@ -264,7 +264,9 @@ void HistoryWriterWorkerTest::retriesLockedDatabaseWithoutAnotherEnqueue()
     QSqlDatabase::removeDatabase(connectionName);
 
     HistoryStore reader(dataDir.path());
-    QCOMPARE(reader.loadMessage(messageId).value(QStringLiteral("topic")).toString(), QStringLiteral("locked"));
+    const auto stored = reader.loadMessage(messageId);
+    QVERIFY(stored);
+    QCOMPARE(stored->topic, QStringLiteral("locked"));
 }
 
 void HistoryWriterWorkerTest::writesCaptureBeforeParseUpdateInOneQueue()
@@ -287,7 +289,7 @@ void HistoryWriterWorkerTest::writesCaptureBeforeParseUpdateInOneQueue()
             QByteArrayLiteral("{\"value\":1}")));
     QVERIFY(messageId > 0);
 
-    MessageParseResult parseResult;
+    ParseOutcome parseResult;
     parseResult.messageId = messageId;
     parseResult.sessionId = QStringLiteral("session-1");
     parseResult.displayPayload = QStringLiteral("{\n    \"value\": 1\n}");
@@ -306,12 +308,13 @@ void HistoryWriterWorkerTest::writesCaptureBeforeParseUpdateInOneQueue()
     QVERIFY(writer.drain(2000));
 
     HistoryStore reader(dataDir.path());
-    const QVariantMap stored = reader.loadMessage(messageId);
-    QCOMPARE(stored.value(QStringLiteral("display_state")).toString(), QStringLiteral("succeeded"));
-    QCOMPARE(stored.value(QStringLiteral("display_payload")).toString(), parseResult.displayPayload);
-    QCOMPARE(stored.value(QStringLiteral("display_format")).toString(), parseResult.displayFormat);
-    QCOMPARE(stored.value(QStringLiteral("processor_id")).toString(), parseResult.processorId);
-    QCOMPARE(stored.value(QStringLiteral("processor_result_cbor")).toByteArray(), parseResult.processorResultCbor);
+    const auto stored = reader.loadMessage(messageId);
+    QVERIFY(stored);
+    QCOMPARE(stored->displayState, QStringLiteral("succeeded"));
+    QCOMPARE(stored->displayPayload, parseResult.displayPayload);
+    QCOMPARE(stored->displayFormat, parseResult.displayFormat);
+    QCOMPARE(stored->processorId, parseResult.processorId);
+    QCOMPARE(stored->processorResultCbor, parseResult.processorResultCbor);
 }
 
 void HistoryWriterWorkerTest::oversizedProcessorResultKeepsRevisionIdentity()
@@ -330,7 +333,7 @@ void HistoryWriterWorkerTest::oversizedProcessorResultKeepsRevisionIdentity()
             QByteArrayLiteral("{}")));
     QVERIFY(messageId > 0);
 
-    MessageParseResult result;
+    ParseOutcome result;
     result.messageId = messageId;
     result.sessionId = QStringLiteral("session-1");
     result.processorId = QStringLiteral("processor-1");

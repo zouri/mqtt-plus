@@ -1,11 +1,13 @@
 #pragma once
 
+#include "presentation/eventrow.h"
+
 #include <QSortFilterProxyModel>
 #include <QList>
 #include <QStringList>
 #include <QTimer>
-#include <QVariantList>
 #include <QVariantMap>
+#include <QVector>
 
 class MessageFilterModel : public QSortFilterProxyModel
 {
@@ -35,7 +37,7 @@ public:
 
     Q_INVOKABLE QVariantMap rowAt(int row) const;
     Q_INVOKABLE int indexOfHistoryId(const QString &historyId) const;
-    int matchingMessageCount(const QVariantList &rows) const;
+    int matchingMessageCount(const QVector<EventRow> &rows) const;
 
 signals:
     void filterTextChanged();
