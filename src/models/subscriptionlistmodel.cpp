@@ -4,7 +4,6 @@
 #include "services/payload/payloadcodec.h"
 #include "services/processors/processorlibrary.h"
 
-#include <QCborValue>
 #include <QDateTime>
 
 #include <algorithm>
@@ -67,8 +66,6 @@ QVariant SubscriptionListModel::data(const QModelIndex &index, int role) const
         return row.processorId;
     case ProcessorNameRole:
         return row.processorName;
-    case ProcessorParametersCborBase64Role:
-        return row.processorParametersCborBase64;
     case ProcessorBindingAvailableRole:
         return row.processorBindingAvailable;
     case ProcessorBindingDetailRole:
@@ -100,7 +97,6 @@ QHash<int, QByteArray> SubscriptionListModel::roleNames() const
         {FormatNameRole, "formatName"},
         {ProcessorIdRole, "processorId"},
         {ProcessorNameRole, "processorName"},
-        {ProcessorParametersCborBase64Role, "processorParametersCborBase64"},
         {ProcessorBindingAvailableRole, "processorBindingAvailable"},
         {ProcessorBindingDetailRole, "processorBindingDetail"},
         {ColorRole, "topicColor"},
@@ -190,7 +186,7 @@ bool SubscriptionListModel::updateTopicFps(
                 history.clear();
             } else {
                 row.topicFps = static_cast<qreal>(
-                    recentMessageCount(subscription.recentMessages, nowMs));
+                    subscription.recentMessages.eventCount(nowMs));
                 const qreal currentRate = row.topicFps;
                 if (history.isEmpty() && currentRate > 0.0) {
                     history.reserve(kSubscriptionRateHistorySampleCount);
@@ -267,13 +263,11 @@ SubscriptionListModel::SubscriptionRow SubscriptionListModel::rowFromSubscriptio
         subscription.grantedQos,
         subscription.paused
             ? 0.0
-            : static_cast<qreal>(recentMessageCount(subscription.recentMessages, nowMs)),
+            : static_cast<qreal>(subscription.recentMessages.eventCount(nowMs)),
         {},
         subscription.format,
         subscription.processor.processorId,
         processorName,
-        QString::fromLatin1(
-            QCborValue(subscription.processor.parameters).toCbor().toBase64()),
         bindingAvailable,
         bindingDetail,
         subscription.color,
@@ -297,9 +291,6 @@ QVariantMap SubscriptionListModel::rowToMap(const SubscriptionRow &row)
     map.insert(QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(row.format)));
     map.insert(QStringLiteral("processorId"), row.processorId);
     map.insert(QStringLiteral("processorName"), row.processorName);
-    map.insert(
-        QStringLiteral("processorParametersCborBase64"),
-        row.processorParametersCborBase64);
     map.insert(QStringLiteral("processorBindingAvailable"), row.processorBindingAvailable);
     map.insert(QStringLiteral("processorBindingDetail"), row.processorBindingDetail);
     map.insert(QStringLiteral("color"), row.color);
@@ -349,9 +340,6 @@ QList<int> SubscriptionListModel::changedRoles(
     }
     if (before.processorName != after.processorName) {
         roles.append(ProcessorNameRole);
-    }
-    if (before.processorParametersCborBase64 != after.processorParametersCborBase64) {
-        roles.append(ProcessorParametersCborBase64Role);
     }
     if (before.processorBindingAvailable != after.processorBindingAvailable) {
         roles.append(ProcessorBindingAvailableRole);

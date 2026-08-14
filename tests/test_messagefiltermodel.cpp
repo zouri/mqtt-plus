@@ -19,20 +19,20 @@ private slots:
 };
 
 namespace {
-QVariantMap messageRow(
+EventRow messageRow(
     const QString &topic,
     const QString &alias,
     const QString &payload,
     const QString &direction)
 {
-    return {
-        {QStringLiteral("kind"), QStringLiteral("message")},
-        {QStringLiteral("topic"), topic},
-        {QStringLiteral("alias"), alias},
-        {QStringLiteral("payload"), payload},
-        {QStringLiteral("payloadFormat"), QStringLiteral("JSON")},
-        {QStringLiteral("direction"), direction},
-    };
+    EventRow row;
+    row.kind = QStringLiteral("message");
+    row.topic = topic;
+    row.alias = alias;
+    row.payload = payload;
+    row.payloadFormat = QStringLiteral("JSON");
+    row.direction = direction;
+    return row;
 }
 }
 
@@ -64,7 +64,7 @@ void MessageFilterModelTest::hidesDividersOnlyWhileFiltering()
 {
     EventStreamModel source;
     source.setRows({
-        QVariantMap {{QStringLiteral("kind"), QStringLiteral("divider")}},
+        EventRow {.kind = QStringLiteral("divider")},
         messageRow(QStringLiteral("home/light"), QStringLiteral("Light"), QStringLiteral("off"), QStringLiteral("incoming")),
     });
 
@@ -81,7 +81,7 @@ void MessageFilterModelTest::reportsVisibleAndTotalMessageCounts()
 {
     EventStreamModel source;
     source.setRows({
-        QVariantMap {{QStringLiteral("kind"), QStringLiteral("divider")}},
+        EventRow {.kind = QStringLiteral("divider")},
         messageRow(QStringLiteral("home/light"), QStringLiteral("Light"), QStringLiteral("off"), QStringLiteral("incoming")),
         messageRow(QStringLiteral("home/light/set"), QString(), QStringLiteral("on"), QStringLiteral("outgoing")),
     });
@@ -183,7 +183,7 @@ void MessageFilterModelTest::countsRowsAcceptedByCurrentFilter()
     proxy.setDirection(QStringLiteral("incoming"));
 
     QCOMPARE(
-        proxy.matchingMessageCount(QVariantList {
+        proxy.matchingMessageCount(QVector<EventRow> {
             messageRow(
                 QStringLiteral("home/kitchen/temp"),
                 QStringLiteral("Kitchen"),
@@ -206,18 +206,18 @@ void MessageFilterModelTest::countsRowsAcceptedByCurrentFilter()
 void MessageFilterModelTest::findsHistoryIdInFilteredRows()
 {
     EventStreamModel source;
-    QVariantMap first = messageRow(
+    EventRow first = messageRow(
         QStringLiteral("home/kitchen/temp"),
         QStringLiteral("Kitchen"),
         QStringLiteral("23.7"),
         QStringLiteral("incoming"));
-    first.insert(QStringLiteral("historyId"), 41);
-    QVariantMap second = messageRow(
+    first.historyId = 41;
+    EventRow second = messageRow(
         QStringLiteral("home/light"),
         QStringLiteral("Light"),
         QStringLiteral("on"),
         QStringLiteral("incoming"));
-    second.insert(QStringLiteral("historyId"), 42);
+    second.historyId = 42;
     source.setRows({first, second});
 
     MessageFilterModel proxy;

@@ -5,17 +5,17 @@
 #include "services/processors/messageprocessorengine.h"
 #include "services/processors/processorlibrary.h"
 
-#include <utility>
+#include <algorithm>
 
 ProcessorsViewModel::ProcessorsViewModel(
     ProcessorLibrary &library,
     ProcessorLibraryModel &processors,
-    ProcessorUsageLookup usageLookup,
+    const QVector<SessionState> &sessions,
     QObject *parent)
     : QObject(parent)
     , m_library(library)
     , m_processors(processors)
-    , m_usageLookup(std::move(usageLookup))
+    , m_sessions(sessions)
     , m_engine(createDefaultMessageProcessorEngine())
     , m_filteredProcessors(this)
     , m_editor(library, *m_engine, this)
@@ -92,7 +92,18 @@ bool ProcessorsViewModel::deleteCurrent()
     if (processorId.isEmpty()) {
         return false;
     }
-    const QStringList usage = m_usageLookup ? m_usageLookup(processorId) : QStringList {};
+    QStringList usage;
+    for (const SessionState &session : m_sessions) {
+        const bool used = std::any_of(
+            session.subscriptions.cbegin(),
+            session.subscriptions.cend(),
+            [&processorId](const SubscriptionEntry &subscription) {
+                return subscription.processor.processorId == processorId;
+            });
+        if (used) {
+            usage.append(session.name);
+        }
+    }
     if (!usage.isEmpty()) {
         m_editor.setOperationError(tr(
             "This processor is used by subscriptions in: %1. Remove those bindings before deleting it.")

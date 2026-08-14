@@ -5,11 +5,12 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
-#include <QVariantMap>
 #include <QVector>
 
+#include <optional>
+
 #include "domain/messagerecord.h"
-#include "domain/messageenvelope.h"
+#include "domain/messageparsing.h"
 
 struct HistoryWriteResult
 {
@@ -38,7 +39,7 @@ public:
     HistoryWriteResult appendMessages(const QVector<MessageRecord> &messages);
     HistoryWriteResult writeMessageBatch(
         const QVector<MessageRecord> &messages,
-        const QVector<MessageParseResult> &parseResults);
+        const QVector<ParseOutcome> &parseResults);
 
     qint64 totalMessageCount(const QString &sessionId) const;
     qint64 appendEvent(
@@ -46,9 +47,12 @@ public:
         const QString &timestamp,
         const QString &channel,
         const QString &message);
-    QVariantList loadMessages(const QString &sessionId, int limit) const;
-    QVariantList loadMessagesBefore(const QString &sessionId, qint64 beforeId, int limit) const;
-    QVariantMap loadMessage(qint64 messageId) const;
+    QVector<MessageRecord> loadMessages(const QString &sessionId, int limit) const;
+    QVector<MessageRecord> loadMessagesBefore(
+        const QString &sessionId,
+        qint64 beforeId,
+        int limit) const;
+    std::optional<MessageRecord> loadMessage(qint64 messageId) const;
     QByteArray loadMessagePayloadBytes(qint64 messageId) const;
     QVariantList loadLogs(const QString &sessionId, int limit) const;
     QVariantList loadLogsBefore(const QString &sessionId, qint64 beforeId, int limit) const;

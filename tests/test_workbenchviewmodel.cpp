@@ -5,7 +5,7 @@
 #include "models/draftlibrarymodel.h"
 #include "models/processorlibrarymodel.h"
 #include "models/subscriptionlistmodel.h"
-#include "services/messaging/messagecapturepolicy.h"
+#include "domain/messagecapturepolicy.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
@@ -148,6 +148,7 @@ private slots:
     void preparesSubscriptionEditorForCreate();
     void addsBatchSubscriptions();
     void rejectsInvalidSubscriptionEditorIndex();
+    void opensFilteredSubscriptionEditorWithTypedEntry();
     void ignoresInvalidSessionIndexes();
     void updatesPublishDraft();
     void savedDraftQuickPublishDoesNotReplaceComposer();
@@ -244,8 +245,12 @@ void WorkbenchViewModelTest::persistsAndDuplicatesMessageCapturePolicy()
     fixture.viewModel.requestSessionDuplicate(0);
     QCOMPARE(fixture.sessionService.sessions().size(), 2);
     const QString duplicateSessionId = fixture.sessionService.currentSession()->id;
-    const MessageCapturePolicy sourcePolicy = fixture.sessionService.messageCapturePolicy(sourceSessionId);
-    const MessageCapturePolicy duplicatePolicy = fixture.sessionService.messageCapturePolicy(duplicateSessionId);
+    const SessionState *sourceSession = fixture.sessionService.sessionById(sourceSessionId);
+    const SessionState *duplicateSession = fixture.sessionService.sessionById(duplicateSessionId);
+    QVERIFY(sourceSession);
+    QVERIFY(duplicateSession);
+    const MessageCapturePolicy sourcePolicy = sourceSession->capturePolicy;
+    const MessageCapturePolicy duplicatePolicy = duplicateSession->capturePolicy;
     QCOMPARE(duplicatePolicy.captureIncoming, sourcePolicy.captureIncoming);
     QCOMPARE(duplicatePolicy.captureOutgoing, sourcePolicy.captureOutgoing);
     QCOMPARE(duplicatePolicy.includeTopicFilters, sourcePolicy.includeTopicFilters);
@@ -259,7 +264,9 @@ void WorkbenchViewModelTest::persistsAndDuplicatesMessageCapturePolicy()
         reloadedPreferences);
     QVERIFY(reloadedService.loadSessions());
     QCOMPARE(reloadedService.sessions().size(), 2);
-    const MessageCapturePolicy reloadedPolicy = reloadedService.messageCapturePolicy(sourceSessionId);
+    const SessionState *reloadedSession = reloadedService.sessionById(sourceSessionId);
+    QVERIFY(reloadedSession);
+    const MessageCapturePolicy reloadedPolicy = reloadedSession->capturePolicy;
     QCOMPARE(reloadedPolicy.captureIncoming, true);
     QCOMPARE(reloadedPolicy.captureOutgoing, false);
     QCOMPARE(reloadedPolicy.includeTopicFilters, sourcePolicy.includeTopicFilters);
@@ -375,7 +382,7 @@ void WorkbenchViewModelTest::rollsBackSessionEditWhenSettingsWriteFails()
     session.runtime.publishStatus.topic = QStringLiteral("devices/status");
     session.runtime.publishStatus.reason = QStringLiteral("Existing publish status");
     session.runtime.publishStatus.updatedAt = QStringLiteral("2026-07-25T12:00:00.000Z");
-    const QVariantMap previousConfig = fixture.sessionService.sessionConfigAt(0);
+    const SessionConnectionConfig previousConfig = fixture.sessionService.sessionConfigAt(0);
     const QVariantMap previousPublishStatus = session.runtime.publishStatus.toVariantMap();
     QSignalSpy storageErrorSpy(&fixture.sessionService, &SessionService::storageError);
     QSignalSpy sessionsChangedSpy(&fixture.sessionService, &SessionService::sessionsChanged);
@@ -387,7 +394,7 @@ void WorkbenchViewModelTest::rollsBackSessionEditWhenSettingsWriteFails()
     fixture.viewModel.sessionEditor()->setHost(QStringLiteral("changed.example.com"));
 
     QVERIFY(!fixture.viewModel.submitSessionEditor());
-    QCOMPARE(fixture.sessionService.sessionConfigAt(0), previousConfig);
+    QVERIFY(fixture.sessionService.sessionConfigAt(0) == previousConfig);
     QCOMPARE(session.runtime.lastError, QStringLiteral("Existing runtime error"));
     QVERIFY(session.runtime.sessionRestored);
     QCOMPARE(session.runtime.publishStatus.toVariantMap(), previousPublishStatus);
@@ -472,6 +479,50 @@ void WorkbenchViewModelTest::rejectsInvalidSubscriptionEditorIndex()
 
     QVERIFY(!viewModel.openSubscriptionEditorForEdit(0));
     QVERIFY(!viewModel.subscriptionEditor()->editMode());
+}
+
+void WorkbenchViewModelTest::opensFilteredSubscriptionEditorWithTypedEntry()
+{
+    WorkbenchFixture fixture;
+    WorkbenchViewModel &viewModel = fixture.viewModel;
+
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    SubscriptionEntry hidden;
+    hidden.topic = QStringLiteral("devices/hidden");
+    session.subscriptions.append(hidden);
+    SubscriptionEntry visible;
+    visible.topic = QStringLiteral("devices/visible");
+    visible.alias = QStringLiteral("Visible device");
+    visible.requestedQos = 2;
+    visible.format = 1;
+    visible.processor.processorId = QStringLiteral("processor-1");
+    visible.processor.parameters.insert(QStringLiteral("gain"), 4);
+    visible.color = QStringLiteral("#34C759");
+    session.subscriptions.append(visible);
+    fixture.sessionService.sessions().append(session);
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.subscriptionsModel.setSubscriptions(
+        session.id,
+        session.subscriptions,
+        &fixture.processorLibrary);
+    fixture.filteredSubscriptionsModel.setFilterText(QStringLiteral("visible"));
+
+    QCOMPARE(fixture.filteredSubscriptionsModel.rowCount(), 1);
+    QVERIFY(viewModel.openSubscriptionEditorForEdit(0));
+    QCOMPARE(viewModel.subscriptionEditor()->editTopic(), visible.topic);
+    QCOMPARE(viewModel.subscriptionEditor()->alias(), visible.alias);
+    QCOMPARE(viewModel.subscriptionEditor()->qos(), visible.requestedQos);
+    QCOMPARE(viewModel.subscriptionEditor()->format(), visible.format);
+    QCOMPARE(viewModel.subscriptionEditor()->processorId(), visible.processor.processorId);
+    QCOMPARE(viewModel.subscriptionEditor()->color(), visible.color);
+    QCOMPARE(
+        viewModel.subscriptionEditor()
+            ->submission()
+            .processor.parameters.value(QStringLiteral("gain"))
+            .toInteger(),
+        4);
 }
 
 void WorkbenchViewModelTest::ignoresInvalidSessionIndexes()
@@ -661,27 +712,27 @@ void WorkbenchViewModelTest::forwardsMessageBatchNotifications()
     QSignalSpy appendSpy(&viewModel, &WorkbenchViewModel::messageStreamRowsAppended);
 
     fixture.filteredMessagesModel.setSelectedTopics({QStringLiteral("visible/#")});
-    emit fixture.eventHistoryService.messageRowsAppended(QVariantList {
-        QVariantMap {
-            {QStringLiteral("kind"), QStringLiteral("message")},
-            {QStringLiteral("topic"), QStringLiteral("visible/one")},
-            {QStringLiteral("direction"), QStringLiteral("incoming")},
+    emit fixture.eventHistoryService.messageRowsAppended(QVector<EventRow> {
+        EventRow {
+            .kind = QStringLiteral("message"),
+            .topic = QStringLiteral("visible/one"),
+            .direction = QStringLiteral("incoming"),
         },
-        QVariantMap {
-            {QStringLiteral("kind"), QStringLiteral("message")},
-            {QStringLiteral("topic"), QStringLiteral("hidden/one")},
-            {QStringLiteral("direction"), QStringLiteral("incoming")},
+        EventRow {
+            .kind = QStringLiteral("message"),
+            .topic = QStringLiteral("hidden/one"),
+            .direction = QStringLiteral("incoming"),
         },
     });
 
     QCOMPARE(appendSpy.size(), 1);
     QCOMPARE(appendSpy.first().at(0).toInt(), 1);
 
-    emit fixture.eventHistoryService.messageRowsAppended(QVariantList {
-        QVariantMap {
-            {QStringLiteral("kind"), QStringLiteral("message")},
-            {QStringLiteral("topic"), QStringLiteral("hidden/two")},
-            {QStringLiteral("direction"), QStringLiteral("incoming")},
+    emit fixture.eventHistoryService.messageRowsAppended(QVector<EventRow> {
+        EventRow {
+            .kind = QStringLiteral("message"),
+            .topic = QStringLiteral("hidden/two"),
+            .direction = QStringLiteral("incoming"),
         },
     });
     QCOMPARE(appendSpy.size(), 1);

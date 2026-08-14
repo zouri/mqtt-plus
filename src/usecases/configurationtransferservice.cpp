@@ -416,10 +416,7 @@ ConfigurationTransfer::Bundle ConfigurationTransferService::exportBundle(
         session.authenticationMethod = state.authenticationMethod;
         session.authenticationData = includeSensitiveData ? state.authenticationData : QString();
         session.outputPaused = state.outputPaused;
-        session.captureIncoming = state.captureIncoming;
-        session.captureOutgoing = state.captureOutgoing;
-        session.captureIncludeTopicFilters = state.captureIncludeTopicFilters;
-        session.captureExcludeTopicFilters = state.captureExcludeTopicFilters;
+        session.capturePolicy = state.capturePolicy;
         session.subscriptions.reserve(state.subscriptions.size());
         for (const SubscriptionEntry &entry : state.subscriptions) {
             SubscriptionData subscription;
@@ -536,39 +533,35 @@ bool ConfigurationTransferService::prepareImport(
         }
         SessionImportRequest request;
         request.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-        QVariantMap config {
-            {QStringLiteral("name"), session.name},
-            {QStringLiteral("host"), session.host},
-            {QStringLiteral("port"), session.port},
-            {QStringLiteral("transport"), session.transport},
-            {QStringLiteral("protocolVersion"), session.protocolVersion},
-            {QStringLiteral("sslSecure"), session.sslSecure},
-            {QStringLiteral("alpn"), session.alpn},
-            {QStringLiteral("certificateType"), session.certificateType},
-            {QStringLiteral("clientId"), session.clientId},
-            {QStringLiteral("username"), session.username},
-            {QStringLiteral("password"), session.password},
-            {QStringLiteral("cleanSession"), session.cleanSession},
-            {QStringLiteral("keepAliveSeconds"), session.keepAliveSeconds},
-            {QStringLiteral("connectTimeoutSeconds"), session.connectTimeoutSeconds},
-            {QStringLiteral("sessionExpiryInterval"), session.sessionExpiryInterval},
-            {QStringLiteral("receiveMaximum"), session.receiveMaximum > 0 ? QString::number(session.receiveMaximum) : QString()},
-            {QStringLiteral("maximumPacketSize"), session.maximumPacketSize > 0 ? QString::number(session.maximumPacketSize) : QString()},
-            {QStringLiteral("topicAliasMaximum"), session.topicAliasMaximum > 0 ? QString::number(session.topicAliasMaximum) : QString()},
-            {QStringLiteral("requestResponseInformation"), session.requestResponseInformation},
-            {QStringLiteral("requestProblemInformation"), session.requestProblemInformation},
-            {QStringLiteral("authenticationMethod"), session.authenticationMethod},
-            {QStringLiteral("authenticationData"), session.authenticationData},
-        };
+        SessionConnectionConfig config;
+        config.name = session.name;
+        config.host = session.host;
+        config.port = session.port;
+        config.transport = session.transport;
+        config.protocolVersion = session.protocolVersion;
+        config.sslSecure = session.sslSecure;
+        config.alpn = session.alpn;
+        config.certificateType = session.certificateType;
+        config.clientId = session.clientId;
+        config.username = session.username;
+        config.password = session.password;
+        config.cleanSession = session.cleanSession;
+        config.keepAliveSeconds = session.keepAliveSeconds;
+        config.connectTimeoutSeconds = session.connectTimeoutSeconds;
+        config.sessionExpiryInterval = session.sessionExpiryInterval;
+        config.receiveMaximum = session.receiveMaximum;
+        config.maximumPacketSize = session.maximumPacketSize;
+        config.topicAliasMaximum = session.topicAliasMaximum;
+        config.requestResponseInformation = session.requestResponseInformation;
+        config.requestProblemInformation = session.requestProblemInformation;
+        config.authenticationMethod = session.authenticationMethod;
+        config.authenticationData = session.authenticationData;
         if (!materializeSessionAssets(session, request.id, config, errorMessage)) {
             return false;
         }
         request.config = config;
         request.outputPaused = session.outputPaused;
-        request.captureIncoming = session.captureIncoming;
-        request.captureOutgoing = session.captureOutgoing;
-        request.captureIncludeTopicFilters = session.captureIncludeTopicFilters;
-        request.captureExcludeTopicFilters = session.captureExcludeTopicFilters;
+        request.capturePolicy = session.capturePolicy;
         request.subscriptions.reserve(session.subscriptions.size());
         for (const SubscriptionData &source : session.subscriptions) {
             SubscriptionEntry entry;
@@ -623,7 +616,7 @@ bool ConfigurationTransferService::prepareImport(
 bool ConfigurationTransferService::materializeSessionAssets(
     ConfigurationTransfer::SessionData &session,
     const QString &sessionId,
-    QVariantMap &config,
+    SessionConnectionConfig &config,
     QString &errorMessage)
 {
     const bool hasAssets = !session.caCertificate.isEmpty()
@@ -680,9 +673,9 @@ bool ConfigurationTransferService::materializeSessionAssets(
         || !writeAsset(session.clientKey, QStringLiteral("client-key.pem"), keyPath)) {
         return false;
     }
-    config.insert(QStringLiteral("caFile"), caPath);
-    config.insert(QStringLiteral("clientCertificateFile"), certificatePath);
-    config.insert(QStringLiteral("clientKeyFile"), keyPath);
+    config.caFile = caPath;
+    config.clientCertificateFile = certificatePath;
+    config.clientKeyFile = keyPath;
     return true;
 }
 

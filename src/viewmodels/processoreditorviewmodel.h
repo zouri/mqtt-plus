@@ -1,14 +1,12 @@
 #pragma once
 
-#include "services/processors/processorlibrarystore.h"
+#include "services/processors/processorlibrary.h"
 
 #include <QObject>
 #include <QStringList>
 #include <QVariantList>
 
 class MessageProcessorEngine;
-class ProcessorLibrary;
-
 class ProcessorEditorViewModel : public QObject
 {
     Q_OBJECT

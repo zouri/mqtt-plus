@@ -28,7 +28,6 @@ public:
         FormatNameRole,
         ProcessorIdRole,
         ProcessorNameRole,
-        ProcessorParametersCborBase64Role,
         ProcessorBindingAvailableRole,
         ProcessorBindingDetailRole,
         ColorRole,
@@ -68,7 +67,6 @@ private:
         int format = 0;
         QString processorId;
         QString processorName;
-        QString processorParametersCborBase64;
         bool processorBindingAvailable = true;
         QString processorBindingDetail;
         QString color;

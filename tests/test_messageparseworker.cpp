@@ -16,13 +16,13 @@ MessageParseTask makeTask(
     const QByteArray &payload)
 {
     MessageParseTask task;
-    task.envelope.messageId = messageId;
-    task.envelope.sessionId = sessionId;
-    task.envelope.sequence = sequence;
-    task.envelope.timestamp = QStringLiteral("2026-08-01T12:00:00.000Z");
-    task.envelope.topic = QStringLiteral("devices/%1").arg(messageId);
-    task.envelope.payloadBytes = payload;
-    task.envelope.payloadFormat = static_cast<int>(PayloadFormat::Json);
+    task.messageId = messageId;
+    task.sessionId = sessionId;
+    task.sequence = sequence;
+    task.timestamp = QStringLiteral("2026-08-01T12:00:00.000Z");
+    task.topic = QStringLiteral("devices/%1").arg(messageId);
+    task.payloadBytes = payload;
+    task.payloadFormat = static_cast<int>(PayloadFormat::Json);
     return task;
 }
 
@@ -160,11 +160,11 @@ void MessageParseWorkerTest::preservesPerSessionSequenceWhileDecoding()
         makeTask(3, QStringLiteral("session-1"), 2, QByteArrayLiteral("{\"value\":3}"))));
 
     QTRY_COMPARE_WITH_TIMEOUT(resultSpy.count(), 3, 2000);
-    QCOMPARE(resultSpy.at(0).at(0).value<MessageParseResult>().sequence, 1);
-    QCOMPARE(resultSpy.at(1).at(0).value<MessageParseResult>().sessionId, QStringLiteral("session-2"));
-    QCOMPARE(resultSpy.at(2).at(0).value<MessageParseResult>().sequence, 2);
-    QCOMPARE(resultSpy.at(2).at(0).value<MessageParseResult>().state, MessageParseState::Succeeded);
-    QVERIFY(resultSpy.at(2).at(0).value<MessageParseResult>().displayPayload.contains(QStringLiteral("\"value\": 3")));
+    QCOMPARE(resultSpy.at(0).at(0).value<ParseOutcome>().sequence, 1);
+    QCOMPARE(resultSpy.at(1).at(0).value<ParseOutcome>().sessionId, QStringLiteral("session-2"));
+    QCOMPARE(resultSpy.at(2).at(0).value<ParseOutcome>().sequence, 2);
+    QCOMPARE(resultSpy.at(2).at(0).value<ParseOutcome>().state, MessageParseState::Succeeded);
+    QVERIFY(resultSpy.at(2).at(0).value<ParseOutcome>().displayPayload.contains(QStringLiteral("\"value\": 3")));
     QVERIFY(threaded.worker->drain(2000));
 }
 
@@ -189,7 +189,7 @@ void MessageParseWorkerTest::runsProcessorEngineWithImmutableRevision()
 
     QVERIFY(threaded.worker->enqueueTask(task));
     QTRY_COMPARE_WITH_TIMEOUT(resultSpy.count(), 1, 2000);
-    const MessageParseResult result = resultSpy.first().at(0).value<MessageParseResult>();
+    const ParseOutcome result = resultSpy.first().at(0).value<ParseOutcome>();
     QCOMPARE(result.state, MessageParseState::Succeeded);
     QCOMPARE(result.processorId, QStringLiteral("processor-1"));
     QCOMPARE(result.processorRevisionId, QStringLiteral("revision-1"));
@@ -232,8 +232,8 @@ void MessageParseWorkerTest::queuedTasksKeepTheirResolvedRevision()
     QVERIFY(worker.drain(2000));
     QCOMPARE(resultSpy.count(), 2);
 
-    const MessageParseResult firstResult = resultSpy.at(0).at(0).value<MessageParseResult>();
-    const MessageParseResult secondResult = resultSpy.at(1).at(0).value<MessageParseResult>();
+    const ParseOutcome firstResult = resultSpy.at(0).at(0).value<ParseOutcome>();
+    const ParseOutcome secondResult = resultSpy.at(1).at(0).value<ParseOutcome>();
     QCOMPARE(firstResult.processorRevisionId, QStringLiteral("revision-1"));
     QCOMPARE(secondResult.processorRevisionId, QStringLiteral("revision-2"));
     QCOMPARE(QCborValue::fromCbor(firstResult.processorResultCbor).toInteger(), qint64(1));

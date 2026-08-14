@@ -1,6 +1,6 @@
 #include "messagestreamprofiledriver.h"
 
-#include "services/messaging/messagecapturepolicy.h"
+#include "domain/messagecapturepolicy.h"
 #include "services/payload/payloadcodec.h"
 #include "usecases/eventhistoryservice.h"
 #include "usecases/sessionservice.h"
@@ -69,7 +69,7 @@ void MessageStreamProfileDriver::start()
     }
     sessionService->setCurrentOutputPaused(false);
     workbench->clearMessageFilters();
-    if (!eventHistory->setMessageCapturePolicy(session->id, MessageCapturePolicy {})) {
+    if (!sessionService->setMessageCapturePolicy(session->id, MessageCapturePolicy {})) {
         qCritical().noquote() << "PROFILE_MESSAGE_STREAM could not reset capture policy";
         m_finished = true;
         return;

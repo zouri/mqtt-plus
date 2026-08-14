@@ -15,6 +15,7 @@ private slots:
     void updatesSingleHistoryRowWithoutReset();
     void detectsMatchingLastRow();
     void exposesCanonicalMessageMetadata();
+    void rowAtMatchesRoleInterface();
     void maintainsMessageCountIncrementally();
     void cachesExpandedPayloadByHistoryId();
 };
@@ -22,15 +23,9 @@ private slots:
 void EventStreamModelTest::setRowsIgnoresUnchangedRows()
 {
     EventStreamModel model;
-    const QVariantList rows {
-        QVariantMap {
-            {QStringLiteral("id"), 1},
-            {QStringLiteral("title"), QStringLiteral("first")},
-        },
-        QVariantMap {
-            {QStringLiteral("id"), 2},
-            {QStringLiteral("title"), QStringLiteral("second")},
-        },
+    const QVector<EventRow> rows {
+        EventRow {.title = QStringLiteral("first"), .historyId = 1},
+        EventRow {.title = QStringLiteral("second"), .historyId = 2},
     };
     model.setRows(rows);
     QSignalSpy countSpy(&model, &EventStreamModel::countChanged);
@@ -46,21 +41,15 @@ void EventStreamModelTest::setRowsIgnoresUnchangedRows()
 void EventStreamModelTest::setRowsUpdatesRowsWithoutResetWhenCountIsStable()
 {
     EventStreamModel model;
-    model.setRows(QVariantList {
-        QVariantMap {
-            {QStringLiteral("id"), 1},
-            {QStringLiteral("title"), QStringLiteral("first")},
-        },
+    model.setRows(QVector<EventRow> {
+        EventRow {.title = QStringLiteral("first"), .historyId = 1},
     });
     QSignalSpy countSpy(&model, &EventStreamModel::countChanged);
     QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
     QSignalSpy resetSpy(&model, &EventStreamModel::modelReset);
 
-    model.setRows(QVariantList {
-        QVariantMap {
-            {QStringLiteral("id"), 1},
-            {QStringLiteral("title"), QStringLiteral("updated")},
-        },
+    model.setRows(QVector<EventRow> {
+        EventRow {.title = QStringLiteral("updated"), .historyId = 1},
     });
 
     QCOMPARE(model.count(), 1);
@@ -75,10 +64,10 @@ void EventStreamModelTest::setRowsUpdatesRowsWithoutResetWhenCountIsStable()
 void EventStreamModelTest::trimToLimitRemovesOldestRows()
 {
     EventStreamModel model;
-    model.setRows(QVariantList {
-        QVariantMap {{QStringLiteral("id"), 1}},
-        QVariantMap {{QStringLiteral("id"), 2}},
-        QVariantMap {{QStringLiteral("id"), 3}},
+    model.setRows(QVector<EventRow> {
+        EventRow {.historyId = 1},
+        EventRow {.historyId = 2},
+        EventRow {.historyId = 3},
     });
 
     QSignalSpy countSpy(&model, &EventStreamModel::countChanged);
@@ -91,33 +80,30 @@ void EventStreamModelTest::trimToLimitRemovesOldestRows()
     QCOMPARE(removeSpy.count(), 1);
     QCOMPARE(removeSpy.first().at(1).toInt(), 0);
     QCOMPARE(removeSpy.first().at(2).toInt(), 0);
-    QCOMPARE(model.rowAt(0).value(QStringLiteral("id")).toInt(), 2);
-    QCOMPARE(model.rowAt(1).value(QStringLiteral("id")).toInt(), 3);
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("historyId")).toLongLong(), 2);
+    QCOMPARE(model.rowAt(1).value(QStringLiteral("historyId")).toLongLong(), 3);
 }
 
 void EventStreamModelTest::updatesSingleHistoryRowWithoutReset()
 {
     EventStreamModel model;
-    model.setRows(QVariantList {
-        QVariantMap {
-            {QStringLiteral("historyId"), 41},
-            {QStringLiteral("payload"), QStringLiteral("pending")},
-            {QStringLiteral("parseState"), QStringLiteral("pending")},
+    model.setRows(QVector<EventRow> {
+        EventRow {
+            .payload = QStringLiteral("pending"),
+            .historyId = 41,
+            .parseState = QStringLiteral("pending"),
         },
-        QVariantMap {
-            {QStringLiteral("historyId"), 42},
-            {QStringLiteral("payload"), QStringLiteral("unchanged")},
-        },
+        EventRow {.payload = QStringLiteral("unchanged"), .historyId = 42},
     });
     QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
     QSignalSpy resetSpy(&model, &EventStreamModel::modelReset);
 
     QVERIFY(model.updateRowByHistoryId(
         41,
-        QVariantMap {
-            {QStringLiteral("historyId"), 41},
-            {QStringLiteral("payload"), QStringLiteral("parsed")},
-            {QStringLiteral("parseState"), QStringLiteral("succeeded")},
+        EventRow {
+            .payload = QStringLiteral("parsed"),
+            .historyId = 41,
+            .parseState = QStringLiteral("succeeded"),
         }));
 
     QCOMPARE(model.rowAt(0).value(QStringLiteral("payload")).toString(), QStringLiteral("parsed"));
@@ -131,12 +117,12 @@ void EventStreamModelTest::updatesSingleHistoryRowWithoutReset()
 void EventStreamModelTest::cachesExpandedPayloadByHistoryId()
 {
     EventStreamModel model;
-    model.setRows(QVariantList {
-        QVariantMap {
-            {QStringLiteral("historyId"), 41},
-            {QStringLiteral("kind"), QStringLiteral("message")},
-            {QStringLiteral("payload"), QStringLiteral("preview")},
-            {QStringLiteral("expandedPayloadNeeded"), true},
+    model.setRows(QVector<EventRow> {
+        EventRow {
+            .kind = QStringLiteral("message"),
+            .payload = QStringLiteral("preview"),
+            .historyId = 41,
+            .expandedPayloadNeeded = true,
         },
     });
     QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
@@ -161,10 +147,10 @@ void EventStreamModelTest::cachesExpandedPayloadByHistoryId()
 void EventStreamModelTest::appendRowsAndTrimFrontKeepsIncrementalWindow()
 {
     EventStreamModel model;
-    model.setRows(QVariantList {
-        QVariantMap {{QStringLiteral("id"), 1}},
-        QVariantMap {{QStringLiteral("id"), 2}},
-        QVariantMap {{QStringLiteral("id"), 3}},
+    model.setRows(QVector<EventRow> {
+        EventRow {.historyId = 1},
+        EventRow {.historyId = 2},
+        EventRow {.historyId = 3},
     });
 
     QSignalSpy countSpy(&model, &EventStreamModel::countChanged);
@@ -175,16 +161,16 @@ void EventStreamModelTest::appendRowsAndTrimFrontKeepsIncrementalWindow()
 
     QCOMPARE(
         model.appendRowsAndTrimFront(
-            QVariantList {
-                QVariantMap {{QStringLiteral("id"), 4}},
-                QVariantMap {{QStringLiteral("id"), 5}},
+            QVector<EventRow> {
+                EventRow {.historyId = 4},
+                EventRow {.historyId = 5},
             },
             3),
         2);
 
     QCOMPARE(model.count(), 3);
-    QCOMPARE(model.rowAt(0).value(QStringLiteral("id")).toInt(), 3);
-    QCOMPARE(model.rowAt(2).value(QStringLiteral("id")).toInt(), 5);
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("historyId")).toLongLong(), 3);
+    QCOMPARE(model.rowAt(2).value(QStringLiteral("historyId")).toLongLong(), 5);
     QCOMPARE(removeSpy.count(), 1);
     QCOMPARE(removeSpy.first().at(1).toInt(), 0);
     QCOMPARE(removeSpy.first().at(2).toInt(), 1);
@@ -199,10 +185,10 @@ void EventStreamModelTest::appendRowsAndTrimFrontKeepsIncrementalWindow()
 void EventStreamModelTest::prependRowsAndTrimBackKeepsIncrementalWindow()
 {
     EventStreamModel model;
-    model.setRows(QVariantList {
-        QVariantMap {{QStringLiteral("id"), 3}},
-        QVariantMap {{QStringLiteral("id"), 4}},
-        QVariantMap {{QStringLiteral("id"), 5}},
+    model.setRows(QVector<EventRow> {
+        EventRow {.historyId = 3},
+        EventRow {.historyId = 4},
+        EventRow {.historyId = 5},
     });
 
     QSignalSpy countSpy(&model, &EventStreamModel::countChanged);
@@ -213,16 +199,16 @@ void EventStreamModelTest::prependRowsAndTrimBackKeepsIncrementalWindow()
 
     QCOMPARE(
         model.prependRowsAndTrimBack(
-            QVariantList {
-                QVariantMap {{QStringLiteral("id"), 1}},
-                QVariantMap {{QStringLiteral("id"), 2}},
+            QVector<EventRow> {
+                EventRow {.historyId = 1},
+                EventRow {.historyId = 2},
             },
             3),
         2);
 
     QCOMPARE(model.count(), 3);
-    QCOMPARE(model.rowAt(0).value(QStringLiteral("id")).toInt(), 1);
-    QCOMPARE(model.rowAt(2).value(QStringLiteral("id")).toInt(), 3);
+    QCOMPARE(model.rowAt(0).value(QStringLiteral("historyId")).toLongLong(), 1);
+    QCOMPARE(model.rowAt(2).value(QStringLiteral("historyId")).toLongLong(), 3);
     QCOMPARE(removeSpy.count(), 1);
     QCOMPARE(removeSpy.first().at(1).toInt(), 1);
     QCOMPARE(removeSpy.first().at(2).toInt(), 2);
@@ -237,31 +223,26 @@ void EventStreamModelTest::prependRowsAndTrimBackKeepsIncrementalWindow()
 void EventStreamModelTest::detectsMatchingLastRow()
 {
     EventStreamModel model;
-    const QVariantMap row {
-        {QStringLiteral("id"), 1},
-        {QStringLiteral("title"), QStringLiteral("one")},
-    };
+    const EventRow row {.title = QStringLiteral("one"), .historyId = 1};
     model.appendRow(row);
 
     QVERIFY(model.lastRowEquals(row));
-    QVERIFY(!model.lastRowEquals(QVariantMap {
-        {QStringLiteral("id"), 2},
-        {QStringLiteral("title"), QStringLiteral("two")},
-    }));
+    QVERIFY(!model.lastRowEquals(
+        EventRow {.title = QStringLiteral("two"), .historyId = 2}));
 }
 
 void EventStreamModelTest::maintainsMessageCountIncrementally()
 {
     EventStreamModel model;
-    model.setRows(QVariantList {
-        QVariantMap {{QStringLiteral("kind"), QStringLiteral("divider")}},
-        QVariantMap {{QStringLiteral("kind"), QStringLiteral("message")}, {QStringLiteral("historyId"), 1}},
-        QVariantMap {{QStringLiteral("kind"), QStringLiteral("message")}, {QStringLiteral("historyId"), 2}},
+    model.setRows(QVector<EventRow> {
+        EventRow {.kind = QStringLiteral("divider")},
+        EventRow {.kind = QStringLiteral("message"), .historyId = 1},
+        EventRow {.kind = QStringLiteral("message"), .historyId = 2},
     });
     QCOMPARE(model.messageCount(), 2);
     QSignalSpy messageCountSpy(&model, &EventStreamModel::messageCountChanged);
 
-    model.appendRow(QVariantMap {{QStringLiteral("kind"), QStringLiteral("message")}});
+    model.appendRow(EventRow {.kind = QStringLiteral("message")});
     QCOMPARE(model.messageCount(), 3);
     QCOMPARE(messageCountSpy.count(), 1);
 
@@ -271,10 +252,7 @@ void EventStreamModelTest::maintainsMessageCountIncrementally()
 
     QVERIFY(model.updateRowByHistoryId(
         2,
-        QVariantMap {
-            {QStringLiteral("kind"), QStringLiteral("divider")},
-            {QStringLiteral("historyId"), 2},
-        }));
+        EventRow {.kind = QStringLiteral("divider"), .historyId = 2}));
     QCOMPARE(model.messageCount(), 1);
     QCOMPARE(messageCountSpy.count(), 3);
 
@@ -286,16 +264,16 @@ void EventStreamModelTest::maintainsMessageCountIncrementally()
 void EventStreamModelTest::exposesCanonicalMessageMetadata()
 {
     EventStreamModel model;
-    model.appendRow(QVariantMap {
-        {QStringLiteral("direction"), QStringLiteral("outgoing")},
-        {QStringLiteral("alias"), QStringLiteral("Living room light")},
-        {QStringLiteral("qos"), 1},
-        {QStringLiteral("retain"), true},
-        {QStringLiteral("retainKnown"), true},
-        {QStringLiteral("parsedPayload"), QStringLiteral("on")},
-        {QStringLiteral("historyId"), 42},
-        {QStringLiteral("payloadState"), QStringLiteral("full")},
-        {QStringLiteral("payloadHash"), QStringLiteral("abc")},
+    model.appendRow(EventRow {
+        .historyId = 42,
+        .direction = QStringLiteral("outgoing"),
+        .alias = QStringLiteral("Living room light"),
+        .qos = 1,
+        .retain = true,
+        .retainKnown = true,
+        .parsedPayload = QStringLiteral("on"),
+        .payloadState = QStringLiteral("full"),
+        .payloadHash = QStringLiteral("abc"),
     });
 
     QCOMPARE(model.data(model.index(0, 0), EventStreamModel::DirectionRole).toString(), QStringLiteral("outgoing"));
@@ -307,6 +285,50 @@ void EventStreamModelTest::exposesCanonicalMessageMetadata()
     QCOMPARE(model.data(model.index(0, 0), EventStreamModel::PayloadStateRole).toString(), QStringLiteral("full"));
     QCOMPARE(model.data(model.index(0, 0), EventStreamModel::PayloadHashRole).toString(), QStringLiteral("abc"));
     QCOMPARE(model.rowAt(0).value(QStringLiteral("parsedPayload")).toString(), QStringLiteral("on"));
+}
+
+void EventStreamModelTest::rowAtMatchesRoleInterface()
+{
+    EventStreamModel model;
+    model.appendRow(EventRow {
+        .kind = QStringLiteral("message"),
+        .timestamp = QStringLiteral("12:34:56"),
+        .timestampRaw = QStringLiteral("2026-08-14T12:34:56.000Z"),
+        .title = QStringLiteral("devices/temperature"),
+        .payload = QStringLiteral("23"),
+        .payloadFormat = QStringLiteral("Plaintext"),
+        .payloadSize = 2,
+        .topic = QStringLiteral("devices/temperature"),
+        .topicColor = QStringLiteral("#112233"),
+        .testPayload = QStringLiteral("23"),
+        .testFormat = 1,
+        .testFormatName = QStringLiteral("Plaintext"),
+        .historyId = 9007199254740991LL,
+        .direction = QStringLiteral("incoming"),
+        .alias = QStringLiteral("Temperature"),
+        .qos = 1,
+        .retain = true,
+        .retainKnown = true,
+        .parsedPayload = QStringLiteral("23"),
+        .parseState = QStringLiteral("succeeded"),
+        .payloadState = QStringLiteral("full"),
+        .payloadHash = QStringLiteral("abc"),
+        .expandedPayload = QStringLiteral("23"),
+        .expandedPayloadState = QStringLiteral("ready"),
+        .expandedPayloadNeeded = true,
+    });
+
+    const QModelIndex index = model.index(0, 0);
+    const QHash<int, QByteArray> roles = model.roleNames();
+    const QVariantMap row = model.rowAt(0);
+    QCOMPARE(row.size(), roles.size());
+    for (auto role = roles.cbegin(); role != roles.cend(); ++role) {
+        QCOMPARE(row.value(QString::fromLatin1(role.value())), model.data(index, role.key()));
+    }
+    QCOMPARE(
+        row.value(QStringLiteral("historyId")).metaType().id(),
+        int(QMetaType::QString));
+    QVERIFY(!row.contains(QStringLiteral("timestampRaw")));
 }
 
 QTEST_MAIN(EventStreamModelTest)

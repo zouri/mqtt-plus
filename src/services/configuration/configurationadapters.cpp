@@ -195,10 +195,10 @@ QJsonObject serializeSession(const ConfigurationTransfer::SessionData &session)
         {QStringLiteral("authenticationMethod"), session.authenticationMethod},
         {QStringLiteral("authenticationData"), session.authenticationData},
         {QStringLiteral("outputPaused"), session.outputPaused},
-        {QStringLiteral("captureIncoming"), session.captureIncoming},
-        {QStringLiteral("captureOutgoing"), session.captureOutgoing},
-        {QStringLiteral("captureIncludeTopicFilters"), stringListToJson(session.captureIncludeTopicFilters)},
-        {QStringLiteral("captureExcludeTopicFilters"), stringListToJson(session.captureExcludeTopicFilters)},
+        {QStringLiteral("captureIncoming"), session.capturePolicy.captureIncoming},
+        {QStringLiteral("captureOutgoing"), session.capturePolicy.captureOutgoing},
+        {QStringLiteral("captureIncludeTopicFilters"), stringListToJson(session.capturePolicy.includeTopicFilters)},
+        {QStringLiteral("captureExcludeTopicFilters"), stringListToJson(session.capturePolicy.excludeTopicFilters)},
         {QStringLiteral("subscriptions"), subscriptions},
     };
     if (!assets.isEmpty()) {
@@ -595,10 +595,16 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
         session.authenticationMethod = object.value(QStringLiteral("authenticationMethod")).toString().trimmed();
         session.authenticationData = object.value(QStringLiteral("authenticationData")).toString();
         session.outputPaused = object.value(QStringLiteral("outputPaused")).toBool(false);
-        session.captureIncoming = object.value(QStringLiteral("captureIncoming")).toBool(true);
-        session.captureOutgoing = object.value(QStringLiteral("captureOutgoing")).toBool(true);
-        session.captureIncludeTopicFilters = stringListFromJson(object.value(QStringLiteral("captureIncludeTopicFilters")));
-        session.captureExcludeTopicFilters = stringListFromJson(object.value(QStringLiteral("captureExcludeTopicFilters")));
+        session.capturePolicy.captureIncoming = object.value(
+                                                          QStringLiteral("captureIncoming"))
+                                                  .toBool(true);
+        session.capturePolicy.captureOutgoing = object.value(
+                                                          QStringLiteral("captureOutgoing"))
+                                                  .toBool(true);
+        session.capturePolicy.includeTopicFilters = stringListFromJson(
+            object.value(QStringLiteral("captureIncludeTopicFilters")));
+        session.capturePolicy.excludeTopicFilters = stringListFromJson(
+            object.value(QStringLiteral("captureExcludeTopicFilters")));
         if (!session.password.isEmpty()) {
             ++result.sensitiveFieldCount;
         }

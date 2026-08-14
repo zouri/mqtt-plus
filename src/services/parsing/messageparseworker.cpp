@@ -222,10 +222,10 @@ void MessageParseWorker::notifyDropped()
 
 qint64 MessageParseWorker::approximateBytes(const MessageParseTask &task)
 {
-    return task.envelope.payloadBytes.size()
-    + stringBytes(task.envelope.sessionId)
-        + stringBytes(task.envelope.timestamp)
-        + stringBytes(task.envelope.topic)
+    return task.payloadBytes.size()
+    + stringBytes(task.sessionId)
+        + stringBytes(task.timestamp)
+        + stringBytes(task.topic)
         + stringBytes(task.processorName)
         + (task.processorRevision
                 ? stringBytes(task.processorRevision->id)
@@ -236,18 +236,18 @@ qint64 MessageParseWorker::approximateBytes(const MessageParseTask &task)
         + qint64(sizeof(MessageParseTask));
 }
 
-MessageParseResult MessageParseWorker::parse(const MessageParseTask &task)
+ParseOutcome MessageParseWorker::parse(const MessageParseTask &task)
 {
-    MessageParseResult result;
-    result.messageId = task.envelope.messageId;
-    result.sequence = task.envelope.sequence;
-    result.sessionId = task.envelope.sessionId;
+    ParseOutcome result;
+    result.messageId = task.messageId;
+    result.sequence = task.sequence;
+    result.sessionId = task.sessionId;
 
-    const PayloadFormat format = PayloadCodec::formatFromInt(task.envelope.payloadFormat);
+    const PayloadFormat format = PayloadCodec::formatFromInt(task.payloadFormat);
     QString decodeError;
     const QString decodedPayload = PayloadCodec::decodeForDisplay(
         format,
-        task.envelope.payloadBytes,
+        task.payloadBytes,
         decodeError);
 
     if (!task.processorRevision) {
@@ -278,9 +278,9 @@ MessageParseResult MessageParseWorker::parse(const MessageParseTask &task)
     result.processorContentHash = revision.contentHash;
 
     MessageProcessorContext context;
-    context.topic = task.envelope.topic;
-    context.payload = task.envelope.payloadBytes;
-    context.receivedAt = task.envelope.timestamp;
+    context.topic = task.topic;
+    context.payload = task.payloadBytes;
+    context.receivedAt = task.timestamp;
     context.format = PayloadCodec::formatName(format);
     context.decoded = decodedPayload;
     context.decodeError = decodeError;

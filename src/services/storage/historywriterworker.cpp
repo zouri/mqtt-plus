@@ -103,13 +103,13 @@ qint64 HistoryWriterWorker::enqueueMessage(const MessageRecord &message)
     return messageId;
 }
 
-bool HistoryWriterWorker::enqueueParseResult(const MessageParseResult &result)
+bool HistoryWriterWorker::enqueueParseResult(const ParseOutcome &result)
 {
     if (result.messageId <= 0) {
         return false;
     }
 
-    MessageParseResult pending = result;
+    ParseOutcome pending = result;
     qint64 bytes = approximateBytes(pending);
     if (bytes > m_limits.maxBytes) {
         const QString error = QStringLiteral(
@@ -207,15 +207,15 @@ std::optional<MessageRecord> HistoryWriterWorker::pendingMessage(qint64 messageI
         if (operation.type == WriteOperation::Type::Capture) {
             message = operation.message;
         } else if (message) {
-            applyParseResult(*message, operation.parseResult);
+            applyParseOutcome(*message, operation.parseResult);
         }
     }
     return message;
 }
 
-std::optional<MessageParseResult> HistoryWriterWorker::pendingParseResult(qint64 messageId) const
+std::optional<ParseOutcome> HistoryWriterWorker::pendingParseResult(qint64 messageId) const
 {
-    std::optional<MessageParseResult> result;
+    std::optional<ParseOutcome> result;
     QMutexLocker locker(&m_mutex);
     for (const WriteOperation &operation : m_queue) {
         if (operation.type == WriteOperation::Type::ParseUpdate
@@ -242,16 +242,16 @@ QVector<MessageRecord> HistoryWriterWorker::pendingMessages(const QString &sessi
         } else {
             const auto index = indexes.constFind(operation.parseResult.messageId);
             if (index != indexes.cend()) {
-                applyParseResult(messages[*index], operation.parseResult);
+                applyParseOutcome(messages[*index], operation.parseResult);
             }
         }
     }
     return messages;
 }
 
-QVector<MessageParseResult> HistoryWriterWorker::pendingParseResults(const QString &sessionId) const
+QVector<ParseOutcome> HistoryWriterWorker::pendingParseResults(const QString &sessionId) const
 {
-    QVector<MessageParseResult> results;
+    QVector<ParseOutcome> results;
     QMutexLocker locker(&m_mutex);
     for (const WriteOperation &operation : m_queue) {
         if (operation.type == WriteOperation::Type::ParseUpdate
@@ -368,15 +368,15 @@ void HistoryWriterWorker::loadExpandedMessage(qint64 messageId)
             emit expandedMessageLoaded(messageId, QString(), QStringLiteral("unavailable"));
             return;
         }
-        const QVariantMap stored = m_store->loadMessage(messageId);
-        if (stored.isEmpty()) {
+        const auto stored = m_store->loadMessage(messageId);
+        if (!stored) {
             emit expandedMessageLoaded(messageId, QString(), QStringLiteral("unavailable"));
             return;
         }
-        payloadBytes = stored.value(QStringLiteral("payload_bytes")).toByteArray();
-        parsedPayload = stored.value(QStringLiteral("display_payload")).toString();
-        parseState = stored.value(QStringLiteral("display_state")).toString();
-        payloadFormat = stored.value(QStringLiteral("payload_format"), -1).toInt();
+        payloadBytes = stored->payloadBytes;
+        parsedPayload = stored->displayPayload;
+        parseState = stored->displayState;
+        payloadFormat = stored->payloadFormat;
         if (const auto pendingResult = pendingParseResult(messageId)) {
             parsedPayload = pendingResult->displayPayload;
             parseState = messageParseStateName(pendingResult->state);
@@ -448,7 +448,7 @@ void HistoryWriterWorker::flushBatch()
     }
 
     QVector<MessageRecord> captures;
-    QVector<MessageParseResult> parseResults;
+    QVector<ParseOutcome> parseResults;
     captures.reserve(batch.size());
     parseResults.reserve(batch.size());
     for (const WriteOperation &operation : std::as_const(batch)) {
@@ -544,7 +544,7 @@ qint64 HistoryWriterWorker::approximateBytes(const MessageRecord &message)
         + qint64(sizeof(MessageRecord));
 }
 
-qint64 HistoryWriterWorker::approximateBytes(const MessageParseResult &result)
+qint64 HistoryWriterWorker::approximateBytes(const ParseOutcome &result)
 {
     return result.processorResultCbor.size()
         + stringBytes(result.sessionId)
@@ -561,7 +561,7 @@ qint64 HistoryWriterWorker::approximateBytes(const MessageParseResult &result)
         + stringBytes(result.processorExecutionState)
         + stringBytes(result.processorExecutionErrorCode)
         + stringBytes(result.processorExecutionError)
-        + qint64(sizeof(MessageParseResult));
+        + qint64(sizeof(ParseOutcome));
 }
 
 qint64 HistoryWriterWorker::approximateBytes(const WriteOperation &operation)
@@ -583,28 +583,6 @@ QString HistoryWriterWorker::operationSessionId(const WriteOperation &operation)
     return operation.type == WriteOperation::Type::Capture
         ? operation.message.sessionId
         : operation.parseResult.sessionId;
-}
-
-void HistoryWriterWorker::applyParseResult(
-    MessageRecord &message,
-    const MessageParseResult &result)
-{
-    message.displayPayload = result.displayPayload;
-    message.displayFormat = result.displayFormat;
-    message.displayError = result.displayError;
-    message.displayState = messageParseStateName(result.state);
-    message.processorId = result.processorId;
-    message.processorRevisionId = result.processorRevisionId;
-    message.processorName = result.processorName;
-    message.processorLanguageId = result.processorLanguageId;
-    message.processorRuntimeId = result.processorRuntimeId;
-    message.processorContentHash = result.processorContentHash;
-    message.processorResultCbor = result.processorResultCbor;
-    message.processorResultPreview = result.processorResultPreview;
-    message.processorExecutionState = result.processorExecutionState;
-    message.processorExecutionErrorCode = result.processorExecutionErrorCode;
-    message.processorExecutionError = result.processorExecutionError;
-    message.processorExecutionDurationUs = result.processorExecutionDurationUs;
 }
 
 HistoryWriterWorker::PressureState HistoryWriterWorker::pressureStateForQueueLocked() const

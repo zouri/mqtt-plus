@@ -17,8 +17,8 @@ private slots:
 void SessionEditorViewModelTest::opensForCreateAndEdit()
 {
     SessionEditorViewModel editor;
-    QVariantMap existing = SessionEditorViewModel::defaultConfig(3);
-    existing.insert(QStringLiteral("name"), QStringLiteral("Existing"));
+    SessionConnectionConfig existing = SessionEditorViewModel::defaultConfig(3);
+    existing.name = QStringLiteral("Existing");
 
     editor.openForCreate(SessionEditorViewModel::defaultConfig(1));
     QVERIFY(!editor.editMode());
@@ -85,14 +85,14 @@ void SessionEditorViewModelTest::collectsSanitizedConfig()
     editor.setProtocolVersion(4);
     editor.setClientId(QStringLiteral("client-a"));
 
-    const QVariantMap config = editor.collectedConfig();
+    const SessionConnectionConfig config = editor.collectedConfig();
 
-    QCOMPARE(config.value(QStringLiteral("name")).toString(), QStringLiteral("Production"));
-    QCOMPARE(config.value(QStringLiteral("host")).toString(), QStringLiteral("mqtt.example.com"));
-    QCOMPARE(config.value(QStringLiteral("transport")).toString(), QStringLiteral("tls"));
-    QCOMPARE(config.value(QStringLiteral("port")).toInt(), 8883);
-    QCOMPARE(config.value(QStringLiteral("protocolVersion")).toInt(), 4);
-    QCOMPARE(config.value(QStringLiteral("clientId")).toString(), QStringLiteral("client-a"));
+    QCOMPARE(config.name, QStringLiteral("Production"));
+    QCOMPARE(config.host, QStringLiteral("mqtt.example.com"));
+    QCOMPARE(config.transport, QStringLiteral("tls"));
+    QCOMPARE(config.port, 8883);
+    QCOMPARE(config.protocolVersion, 4);
+    QCOMPARE(config.clientId, QStringLiteral("client-a"));
 }
 
 void SessionEditorViewModelTest::collectsAdvancedConfig()
@@ -119,26 +119,26 @@ void SessionEditorViewModelTest::collectsAdvancedConfig()
     editor.setAuthenticationMethod(QStringLiteral("token"));
     editor.setAuthenticationData(QStringLiteral("data"));
 
-    const QVariantMap config = editor.collectedConfig();
+    const SessionConnectionConfig config = editor.collectedConfig();
 
-    QCOMPARE(config.value(QStringLiteral("sslSecure")).toBool(), false);
-    QCOMPARE(config.value(QStringLiteral("alpn")).toString(), QStringLiteral("mqtt"));
-    QCOMPARE(config.value(QStringLiteral("certificateType")).toString(), QStringLiteral("self"));
-    QCOMPARE(config.value(QStringLiteral("caFile")).toString(), QStringLiteral("/tmp/ca.pem"));
-    QCOMPARE(config.value(QStringLiteral("clientCertificateFile")).toString(), QStringLiteral("/tmp/client.pem"));
-    QCOMPARE(config.value(QStringLiteral("clientKeyFile")).toString(), QStringLiteral("/tmp/client.key"));
-    QCOMPARE(config.value(QStringLiteral("username")).toString(), QStringLiteral("user"));
-    QCOMPARE(config.value(QStringLiteral("password")).toString(), QStringLiteral("secret"));
-    QCOMPARE(config.value(QStringLiteral("keepAliveSeconds")).toInt(), 45);
-    QCOMPARE(config.value(QStringLiteral("cleanSession")).toBool(), false);
-    QCOMPARE(config.value(QStringLiteral("sessionExpiryInterval")).toString(), QStringLiteral("60"));
-    QCOMPARE(config.value(QStringLiteral("receiveMaximum")).toString(), QStringLiteral("100"));
-    QCOMPARE(config.value(QStringLiteral("maximumPacketSize")).toString(), QStringLiteral("1024"));
-    QCOMPARE(config.value(QStringLiteral("topicAliasMaximum")).toString(), QStringLiteral("5"));
-    QCOMPARE(config.value(QStringLiteral("requestResponseInformation")).toBool(), true);
-    QCOMPARE(config.value(QStringLiteral("requestProblemInformation")).toBool(), true);
-    QCOMPARE(config.value(QStringLiteral("authenticationMethod")).toString(), QStringLiteral("token"));
-    QCOMPARE(config.value(QStringLiteral("authenticationData")).toString(), QStringLiteral("data"));
+    QCOMPARE(config.sslSecure, false);
+    QCOMPARE(config.alpn, QStringLiteral("mqtt"));
+    QCOMPARE(config.certificateType, QStringLiteral("self"));
+    QCOMPARE(config.caFile, QStringLiteral("/tmp/ca.pem"));
+    QCOMPARE(config.clientCertificateFile, QStringLiteral("/tmp/client.pem"));
+    QCOMPARE(config.clientKeyFile, QStringLiteral("/tmp/client.key"));
+    QCOMPARE(config.username, QStringLiteral("user"));
+    QCOMPARE(config.password, QStringLiteral("secret"));
+    QCOMPARE(config.keepAliveSeconds, 45);
+    QCOMPARE(config.cleanSession, false);
+    QCOMPARE(config.sessionExpiryInterval, quint32(60));
+    QCOMPARE(config.receiveMaximum, quint16(100));
+    QCOMPARE(config.maximumPacketSize, quint32(1024));
+    QCOMPARE(config.topicAliasMaximum, quint16(5));
+    QCOMPARE(config.requestResponseInformation, true);
+    QCOMPARE(config.requestProblemInformation, true);
+    QCOMPARE(config.authenticationMethod, QStringLiteral("token"));
+    QCOMPARE(config.authenticationData, QStringLiteral("data"));
 }
 
 QTEST_MAIN(SessionEditorViewModelTest)

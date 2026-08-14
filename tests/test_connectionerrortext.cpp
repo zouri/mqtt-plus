@@ -292,9 +292,9 @@ void ConnectionErrorTextTest::connectionValidationErrorsIgnoreApplicationTransla
 
     QCOMPARE(session.runtime.lastError, expected);
     QCOMPARE(logSpy.count(), 1);
-    const QVariantMap row = logSpy.takeFirst().at(0).toMap();
-    QCOMPARE(row.value(QStringLiteral("title")).toString(), QStringLiteral("Connection"));
-    QCOMPARE(row.value(QStringLiteral("payload")).toString(), expected);
+    const EventRow row = logSpy.takeFirst().at(0).value<EventRow>();
+    QCOMPARE(row.title, QStringLiteral("Connection"));
+    QCOMPARE(row.payload, expected);
 }
 
 void ConnectionErrorTextTest::clientErrorUsesSameRawTextForSessionAndLog()
@@ -310,9 +310,9 @@ void ConnectionErrorTextTest::clientErrorUsesSameRawTextForSessionAndLog()
     QVERIFY2(session.runtime.lastError.startsWith(QStringLiteral("Invalid transport")),
         qPrintable(session.runtime.lastError));
     QCOMPARE(logSpy.count(), 1);
-    const QVariantMap row = logSpy.takeFirst().at(0).toMap();
-    QCOMPARE(row.value(QStringLiteral("title")).toString(), QStringLiteral("Error"));
-    QCOMPARE(row.value(QStringLiteral("payload")).toString(), session.runtime.lastError);
+    const EventRow row = logSpy.takeFirst().at(0).value<EventRow>();
+    QCOMPARE(row.title, QStringLiteral("Error"));
+    QCOMPARE(row.payload, session.runtime.lastError);
 }
 
 void ConnectionErrorTextTest::connectionTimeoutIgnoresApplicationTranslator()
@@ -341,9 +341,9 @@ void ConnectionErrorTextTest::connectionTimeoutIgnoresApplicationTranslator()
     QCOMPARE(arguments.at(1).toString(), QStringLiteral("Error"));
     QCOMPARE(arguments.at(2).toString(), session.runtime.lastError);
     QVERIFY(logSpy.count() >= 1);
-    const QVariantMap row = logSpy.takeFirst().at(0).toMap();
-    QCOMPARE(row.value(QStringLiteral("title")).toString(), QStringLiteral("Error"));
-    QCOMPARE(row.value(QStringLiteral("payload")).toString(), session.runtime.lastError);
+    const EventRow row = logSpy.takeFirst().at(0).value<EventRow>();
+    QCOMPARE(row.title, QStringLiteral("Error"));
+    QCOMPARE(row.payload, session.runtime.lastError);
 }
 
 void ConnectionErrorTextTest::pendingReconnectStartsAfterDisconnectedSignal()

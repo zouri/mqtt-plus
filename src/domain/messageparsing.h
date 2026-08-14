@@ -33,7 +33,7 @@ inline QString messageParseStateName(MessageParseState state)
     return QStringLiteral("not_required");
 }
 
-struct MessageEnvelope {
+struct MessageParseTask {
     qint64 messageId = 0;
     qint64 sequence = 0;
     QString sessionId;
@@ -41,16 +41,12 @@ struct MessageEnvelope {
     QString topic;
     QByteArray payloadBytes;
     int payloadFormat = -1;
-};
-
-struct MessageParseTask {
-    MessageEnvelope envelope;
     QSharedPointer<const ProcessorRevisionSnapshot> processorRevision;
     QString processorName;
     QCborMap processorParameters;
 };
 
-struct MessageParseResult {
+struct ParseOutcome {
     qint64 messageId = 0;
     qint64 sequence = 0;
     QString sessionId;
@@ -72,4 +68,4 @@ struct MessageParseResult {
     MessageParseState state = MessageParseState::NotRequired;
 };
 
-Q_DECLARE_METATYPE(MessageParseResult)
+Q_DECLARE_METATYPE(ParseOutcome)

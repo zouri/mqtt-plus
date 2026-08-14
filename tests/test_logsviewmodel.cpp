@@ -84,20 +84,20 @@ private slots:
 void LogsViewModelTest::formatsLogRows()
 {
     LogsFixture fixture;
-    fixture.logs.setRows(QVariantList {
-        QVariantMap {
-            {QStringLiteral("timestamp"), QStringLiteral("10:00:00")},
-            {QStringLiteral("title"), QStringLiteral("mqtt")},
-            {QStringLiteral("payload"), QStringLiteral("connected\nsession ready")},
+    fixture.logs.setRows(QVector<EventRow> {
+        EventRow {
+            .timestamp = QStringLiteral("10:00:00"),
+            .title = QStringLiteral("mqtt"),
+            .payload = QStringLiteral("connected\nsession ready"),
         },
-        QVariantMap {
-            {QStringLiteral("timestamp"), QStringLiteral("10:00:01")},
-            {QStringLiteral("title"), QStringLiteral("warn")},
-            {QStringLiteral("payload"), QStringLiteral("invalid topic")},
+        EventRow {
+            .timestamp = QStringLiteral("10:00:01"),
+            .title = QStringLiteral("warn"),
+            .payload = QStringLiteral("invalid topic"),
         },
-        QVariantMap {
-            {QStringLiteral("kind"), QStringLiteral("divider")},
-            {QStringLiteral("title"), QStringLiteral("Current launch")},
+        EventRow {
+            .kind = QStringLiteral("divider"),
+            .title = QStringLiteral("Current launch"),
         },
     });
 
@@ -120,10 +120,10 @@ void LogsViewModelTest::emitsIncrementalTextChanges()
     fixture.history.logStreamChanged();
     QCOMPARE(textSpy.count(), 1);
 
-    fixture.logs.appendRow(QVariantMap {
-        {QStringLiteral("timestamp"), QStringLiteral("10:00:00")},
-        {QStringLiteral("title"), QStringLiteral("broker")},
-        {QStringLiteral("payload"), QStringLiteral("connected")},
+    fixture.logs.appendRow(EventRow {
+        .timestamp = QStringLiteral("10:00:00"),
+        .title = QStringLiteral("broker"),
+        .payload = QStringLiteral("connected"),
     });
     QCOMPARE(textSpy.count(), 2);
     QCOMPARE(insertSpy.count(), 1);
@@ -132,10 +132,10 @@ void LogsViewModelTest::emitsIncrementalTextChanges()
     QCOMPARE(fixture.viewModel.logText(), insertSpy.first().at(1).toString());
 
     fixture.logs.prependRowsAndTrimBack(
-        {QVariantMap {
-            {QStringLiteral("timestamp"), QStringLiteral("09:59:59")},
-            {QStringLiteral("title"), QStringLiteral("debug")},
-            {QStringLiteral("payload"), QStringLiteral("packet")},
+        {EventRow {
+            .timestamp = QStringLiteral("09:59:59"),
+            .title = QStringLiteral("debug"),
+            .payload = QStringLiteral("packet"),
         }},
         2);
     QCOMPARE(textSpy.count(), 3);

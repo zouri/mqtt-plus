@@ -49,13 +49,6 @@ struct PayloadStoragePlan {
     QString reportMessage;
 };
 
-struct MessageSubscriptionMatch {
-    const SubscriptionEntry *displaySubscription = nullptr;
-    QString topicColor;
-    int payloadFormat = -1;
-    bool currentSubscriptionActivity = false;
-};
-
 bool requiresBackgroundParse(PayloadFormat format)
 {
     return format == PayloadFormat::Json
@@ -151,118 +144,38 @@ PayloadStoragePlan makePayloadStoragePlan(
     return plan;
 }
 
-QVariantMap messageRecordRow(const MessageRecord &record)
-{
-    QVariantMap row;
-    row.insert(QStringLiteral("id"), record.id);
-    row.insert(QStringLiteral("timestamp"), record.timestamp);
-    row.insert(QStringLiteral("entry_type"), QStringLiteral("message"));
-    row.insert(QStringLiteral("direction"), messageDirectionName(record.direction));
-    row.insert(QStringLiteral("topic"), record.topic);
-    row.insert(QStringLiteral("qos"), record.qos);
-    row.insert(QStringLiteral("retain"), record.retain);
-    row.insert(QStringLiteral("retain_known"), record.retainKnown);
-    row.insert(QStringLiteral("payload_bytes"), record.payloadBytes);
-    row.insert(QStringLiteral("payload_size"), record.payloadSize);
-    row.insert(QStringLiteral("payload_state"), record.payloadState);
-    row.insert(QStringLiteral("payload_preview"), record.payloadPreview);
-    row.insert(QStringLiteral("payload_hash"), record.payloadHash);
-    row.insert(QStringLiteral("payload_format"), record.payloadFormat);
-    row.insert(QStringLiteral("display_payload"), record.displayPayload);
-    row.insert(QStringLiteral("display_format"), record.displayFormat);
-    row.insert(QStringLiteral("display_error"), record.displayError);
-    row.insert(QStringLiteral("display_state"), record.displayState);
-    row.insert(QStringLiteral("processor_id"), record.processorId);
-    row.insert(QStringLiteral("processor_revision_id"), record.processorRevisionId);
-    row.insert(QStringLiteral("processor_name"), record.processorName);
-    row.insert(QStringLiteral("processor_language_id"), record.processorLanguageId);
-    row.insert(QStringLiteral("processor_runtime_id"), record.processorRuntimeId);
-    row.insert(QStringLiteral("processor_content_hash"), record.processorContentHash);
-    row.insert(QStringLiteral("processor_result_preview"), record.processorResultPreview);
-    row.insert(QStringLiteral("processor_execution_state"), record.processorExecutionState);
-    row.insert(QStringLiteral("processor_execution_error_code"), record.processorExecutionErrorCode);
-    row.insert(QStringLiteral("processor_execution_error"), record.processorExecutionError);
-    row.insert(QStringLiteral("processor_execution_duration_us"), record.processorExecutionDurationUs);
-    return row;
 }
 
-void applyParseResultToStorageRow(QVariantMap &row, const MessageParseResult &result)
+EventHistoryService::VisibleStreamState &EventHistoryService::visibleStreamState(
+    const SessionState &session)
 {
-    row.insert(QStringLiteral("display_payload"), result.displayPayload);
-    row.insert(QStringLiteral("display_format"), result.displayFormat);
-    row.insert(QStringLiteral("display_error"), result.displayError);
-    row.insert(QStringLiteral("display_state"), messageParseStateName(result.state));
-    row.insert(QStringLiteral("processor_id"), result.processorId);
-    row.insert(QStringLiteral("processor_revision_id"), result.processorRevisionId);
-    row.insert(QStringLiteral("processor_name"), result.processorName);
-    row.insert(QStringLiteral("processor_language_id"), result.processorLanguageId);
-    row.insert(QStringLiteral("processor_runtime_id"), result.processorRuntimeId);
-    row.insert(QStringLiteral("processor_content_hash"), result.processorContentHash);
-    row.insert(QStringLiteral("processor_result_cbor"), result.processorResultCbor);
-    row.insert(QStringLiteral("processor_result_preview"), result.processorResultPreview);
-    row.insert(QStringLiteral("processor_execution_state"), result.processorExecutionState);
-    row.insert(QStringLiteral("processor_execution_error_code"), result.processorExecutionErrorCode);
-    row.insert(QStringLiteral("processor_execution_error"), result.processorExecutionError);
-    row.insert(QStringLiteral("processor_execution_duration_us"), result.processorExecutionDurationUs);
-}
-
-MessageSubscriptionMatch matchSubscriptionsForMessage(
-    SessionState &session,
-    const QString &topic,
-    qint64 nowMs,
-    bool isCurrentSession)
-{
-    MessageSubscriptionMatch match;
-    int bestDisplayScore = -1;
-    QString bestDisplayFilter;
-    int bestColorScore = -1;
-    QString bestColorFilter;
-
-    for (auto &subscription : session.subscriptions) {
-        if (!PayloadCodec::topicFilterMatches(subscription.topic, topic)) {
-            continue;
-        }
-
-        if (!subscription.paused) {
-            appendRecentMessage(subscription.recentMessages, nowMs);
-            match.currentSubscriptionActivity = match.currentSubscriptionActivity || isCurrentSession;
-        }
-
-        const int score = PayloadCodec::topicSpecificityScore(subscription.topic);
-        if (score > bestDisplayScore
-            || (score == bestDisplayScore && (bestDisplayFilter.isEmpty() || subscription.topic < bestDisplayFilter))) {
-            bestDisplayScore = score;
-            bestDisplayFilter = subscription.topic;
-            match.displaySubscription = &subscription;
-            match.payloadFormat = subscription.format;
-        }
-
-        if (!subscription.color.isEmpty()
-            && (score > bestColorScore
-                || (score == bestColorScore && (bestColorFilter.isEmpty() || subscription.topic < bestColorFilter)))) {
-            bestColorScore = score;
-            bestColorFilter = subscription.topic;
-            match.topicColor = subscription.color;
-        }
+    if (m_visibleStreamSessionId != session.id) {
+        m_visibleStreamState = {};
+        m_visibleStreamSessionId = session.id;
     }
-
-    return match;
-}
+    return m_visibleStreamState;
 }
 
-QVariantList &EventHistoryService::streamRows(SessionState &session, Stream kind)
+QVector<EventRow> &EventHistoryService::streamRows(const SessionState &session, Stream kind)
 {
-    return kind == Stream::Message ? session.runtime.messageRows : session.runtime.logRows;
+    VisibleStreamState &state = visibleStreamState(session);
+    return kind == Stream::Message ? state.messageRows : state.logRows;
 }
 
-qint64 &EventHistoryService::oldestLoadedId(SessionState &session, Stream kind)
+qint64 &EventHistoryService::oldestLoadedId(const SessionState &session, Stream kind)
 {
-    return kind == Stream::Message ? session.runtime.oldestLoadedMessageId : session.runtime.oldestLoadedLogId;
+    VisibleStreamState &state = visibleStreamState(session);
+    return kind == Stream::Message
+        ? state.oldestLoadedMessageId
+        : state.oldestLoadedLogId;
 }
 
-bool &EventHistoryService::loadedAllHistory(SessionState &session, Stream kind)
+bool &EventHistoryService::loadedAllHistory(const SessionState &session, Stream kind)
 {
-    return kind == Stream::Message ? session.runtime.loadedAllMessageHistory : session.runtime.loadedAllLogHistory;
+    VisibleStreamState &state = visibleStreamState(session);
+    return kind == Stream::Message
+        ? state.loadedAllMessageHistory
+        : state.loadedAllLogHistory;
 }
 
 EventHistoryService::EventHistoryService(
@@ -340,15 +253,15 @@ EventHistoryService::EventHistoryService(
         &m_messageParser,
         &MessageParseWorker::parseCompleted,
         this,
-        [this](const MessageParseResult &result) {
+        [this](const ParseOutcome &result) {
             if (!m_historyWriter.enqueueParseResult(result)) {
                 return;
             }
-            MessageParseResult visibleResult = result;
+            ParseOutcome visibleResult = result;
             visibleResult.processorResultCbor.clear();
             QMetaObject::invokeMethod(
                 this,
-                [this, visibleResult]() { handleMessageParseResult(visibleResult); },
+                [this, visibleResult]() { handleParseOutcome(visibleResult); },
                 Qt::QueuedConnection);
         },
         Qt::DirectConnection);
@@ -386,7 +299,10 @@ EventHistoryService::EventHistoryService(
         &m_sessionService,
         &SessionService::messageCapturePolicyChanged,
         this,
-        &EventHistoryService::invalidateMessageContexts);
+        [this]() {
+            invalidateMessageContexts();
+            scheduleMessagePressureNotification();
+        });
     connect(
         &m_preferencesController,
         &PreferencesController::maxIncomingPayloadBytesChanged,
@@ -443,21 +359,19 @@ bool EventHistoryService::clearStream(Stream kind, bool allSessions)
         return false;
     }
 
-    auto clearRuntime = [kind](SessionState &session) {
-        streamRows(session, kind).clear();
-        if (kind == Stream::Message) {
+    if (allSessions && isMessage) {
+        for (SessionState &session : m_sessionService.sessions()) {
             session.runtime.totalMessageCount = 0;
             session.runtime.viewedMessageCount = 0;
         }
-        oldestLoadedId(session, kind) = 0;
-        loadedAllHistory(session, kind) = true;
-    };
-    if (allSessions) {
-        for (SessionState &session : m_sessionService.sessions()) {
-            clearRuntime(session);
-        }
-    } else {
-        clearRuntime(*current);
+    } else if (isMessage) {
+        current->runtime.totalMessageCount = 0;
+        current->runtime.viewedMessageCount = 0;
+    }
+    if (current) {
+        streamRows(*current, kind).clear();
+        oldestLoadedId(*current, kind) = 0;
+        loadedAllHistory(*current, kind) = true;
     }
 
     if (isMessage) {
@@ -527,15 +441,11 @@ bool EventHistoryService::clearAllHistory()
     }
 
     for (SessionState &session : m_sessionService.sessions()) {
-        streamRows(session, Stream::Message).clear();
-        streamRows(session, Stream::Log).clear();
         session.runtime.totalMessageCount = 0;
         session.runtime.viewedMessageCount = 0;
-        oldestLoadedId(session, Stream::Message) = 0;
-        oldestLoadedId(session, Stream::Log) = 0;
-        loadedAllHistory(session, Stream::Message) = true;
-        loadedAllHistory(session, Stream::Log) = true;
     }
+    m_visibleStreamState = {};
+    m_visibleStreamSessionId = current ? current->id : QString();
     resetMessageStreamTransientState(true, nullptr);
     m_messages.clear();
     m_logs.clear();
@@ -566,15 +476,18 @@ int EventHistoryService::loadOlderCurrentSession(Stream kind)
     const auto renderContext = isMessage
         ? subscriptionRenderContext(*session)
         : QSharedPointer<const SubscriptionRenderContext> {};
-    QVariantList rows = EventRenderer::loadHistoryRows(
-        isMessage
-            ? m_historyStore.loadMessagesBefore(session->id, oldestId, pageSize)
-            : m_historyStore.loadLogsBefore(session->id, oldestId, pageSize),
-        isMessage ? renderContext->formats : QHash<QString, int> {},
-        isMessage ? renderContext->colors : QHash<QString, QString> {},
-        isMessage ? renderContext->aliases : QHash<QString, QString> {},
-        m_launchTimestamp,
-        false);
+    QVector<EventRow> rows = isMessage
+        ? EventRenderer::loadHistoryRows(
+            m_historyStore.loadMessagesBefore(session->id, oldestId, pageSize),
+            renderContext->formats,
+            renderContext->colors,
+            renderContext->aliases,
+            m_launchTimestamp,
+            false)
+        : EventRenderer::loadLogRows(
+            m_historyStore.loadLogsBefore(session->id, oldestId, pageSize),
+            m_launchTimestamp,
+            false);
     if (rows.isEmpty()) {
         loadedAllHistory(*session, kind) = true;
         return 0;
@@ -596,7 +509,7 @@ int EventHistoryService::loadOlderCurrentSession(Stream kind)
         return model.prependRowsAndTrimBack(rows, kMaxVisibleEventRows);
     }
 
-    QVariantList merged = rows;
+    QVector<EventRow> merged = rows;
     merged.append(currentRows);
     if (merged.size() > kMaxVisibleEventRows) {
         merged.resize(kMaxVisibleEventRows);
@@ -625,7 +538,7 @@ void EventHistoryService::setMessageStreamFrozen(bool frozen)
     if (frozen) {
         flushPendingVisibleMessageRows();
         if (const auto *session = m_sessionService.currentSession()) {
-            m_frozenOldestLoadedMessageId = session->runtime.oldestLoadedMessageId;
+            m_frozenOldestLoadedMessageId = oldestLoadedId(*session, Stream::Message);
         }
         m_messageStreamFrozen = true;
         return;
@@ -638,8 +551,9 @@ void EventHistoryService::setMessageStreamFrozen(bool frozen)
         return;
     }
 
-    if (session->runtime.totalMessageCount > session->runtime.messageRows.size()) {
-        session->runtime.loadedAllMessageHistory = false;
+    auto &messageRows = streamRows(*session, Stream::Message);
+    if (session->runtime.totalMessageCount > messageRows.size()) {
+        loadedAllHistory(*session, Stream::Message) = false;
     }
 
     if (m_pendingVisibleMessageSessionId == session->id) {
@@ -647,17 +561,17 @@ void EventHistoryService::setMessageStreamFrozen(bool frozen)
         m_pendingVisibleMessageSessionId.clear();
         m_visibleMessageRowsFlushTimer.stop();
     }
-    m_messages.setRows(session->runtime.messageRows);
+    m_messages.setRows(messageRows);
 }
 
-void EventHistoryService::appendRenderedMessageRow(SessionState &session, const QVariantMap &row)
+void EventHistoryService::appendRenderedMessageRow(SessionState &session, const EventRow &row)
 {
-    appendRenderedMessageRows(session, QVariantList {row});
+    appendRenderedMessageRows(session, QVector<EventRow> {row});
 }
 
 void EventHistoryService::appendRenderedMessageRows(
     SessionState &session,
-    const QVariantList &rows)
+    const QVector<EventRow> &rows)
 {
     if (rows.isEmpty()) {
         return;
@@ -666,7 +580,7 @@ void EventHistoryService::appendRenderedMessageRows(
         return;
     }
 
-    session.runtime.messageRows.append(rows);
+    streamRows(session, Stream::Message).append(rows);
     trimVisibleRows(session, Stream::Message);
 
     if (!m_pendingVisibleMessageSessionId.isEmpty()
@@ -687,7 +601,7 @@ void EventHistoryService::flushPendingVisibleMessageRows()
     auto *currentSession = m_sessionService.currentSession();
     const bool stillShowingSession = currentSession
         && currentSession->id == m_pendingVisibleMessageSessionId;
-    const QVariantList rows = m_pendingVisibleMessageRows;
+    const QVector<EventRow> rows = m_pendingVisibleMessageRows;
     m_pendingVisibleMessageRows.clear();
     m_pendingVisibleMessageSessionId.clear();
 
@@ -697,8 +611,8 @@ void EventHistoryService::flushPendingVisibleMessageRows()
 
     if (!m_messageStreamFrozen) {
         const bool pendingRowsAlreadyReflected = m_messages.rowCount()
-                == currentSession->runtime.messageRows.size()
-            && m_messages.lastRowEquals(rows.constLast().toMap());
+                == streamRows(*currentSession, Stream::Message).size()
+            && m_messages.lastRowEquals(rows.constLast());
         if (!pendingRowsAlreadyReflected) {
             m_messages.appendRowsAndTrimFront(rows, kMaxVisibleEventRows);
         }
@@ -709,13 +623,13 @@ void EventHistoryService::flushPendingVisibleMessageRows()
     }
 }
 
-void EventHistoryService::appendRenderedLogRow(SessionState &session, const QVariantMap &row)
+void EventHistoryService::appendRenderedLogRow(SessionState &session, const EventRow &row)
 {
     if (&session != m_sessionService.currentSession()) {
         return;
     }
 
-    session.runtime.logRows.append(row);
+    streamRows(session, Stream::Log).append(row);
     trimVisibleRows(session, Stream::Log);
     m_logs.appendRow(row);
     m_logs.trimToLimit(kMaxVisibleEventRows);
@@ -738,13 +652,13 @@ void EventHistoryService::enqueueMessageParsing(
     const QCborMap &processorParameters)
 {
     MessageParseTask task;
-    task.envelope.messageId = record.id;
-    task.envelope.sequence = sequence;
-    task.envelope.sessionId = record.sessionId;
-    task.envelope.timestamp = record.timestamp;
-    task.envelope.topic = record.topic;
-    task.envelope.payloadBytes = record.payloadBytes;
-    task.envelope.payloadFormat = record.payloadFormat;
+    task.messageId = record.id;
+    task.sequence = sequence;
+    task.sessionId = record.sessionId;
+    task.timestamp = record.timestamp;
+    task.topic = record.topic;
+    task.payloadBytes = record.payloadBytes;
+    task.payloadFormat = record.payloadFormat;
     task.processorRevision = processorRevision;
     task.processorName = record.processorName;
     task.processorParameters = processorParameters;
@@ -752,7 +666,7 @@ void EventHistoryService::enqueueMessageParsing(
         return;
     }
 
-    MessageParseResult result;
+    ParseOutcome result;
     result.messageId = record.id;
     result.sequence = sequence;
     result.sessionId = record.sessionId;
@@ -773,11 +687,11 @@ void EventHistoryService::enqueueMessageParsing(
         result.processorExecutionError = result.displayError;
     }
     if (m_historyWriter.enqueueParseResult(result)) {
-        handleMessageParseResult(result);
+        handleParseOutcome(result);
     }
 }
 
-void EventHistoryService::handleMessageParseResult(const MessageParseResult &result)
+void EventHistoryService::handleParseOutcome(const ParseOutcome &result)
 {
     auto *session = m_sessionService.sessionById(result.sessionId);
     if (!session) {
@@ -789,64 +703,59 @@ void EventHistoryService::handleMessageParseResult(const MessageParseResult &res
 
 void EventHistoryService::updateRenderedParseResult(
     SessionState &session,
-    const MessageParseResult &result)
+    const ParseOutcome &result)
 {
-    auto applyResult = [&result](QVariantMap &row) {
-        if (row.value(QStringLiteral("historyId")).toLongLong() != result.messageId) {
+    auto applyResult = [&result](EventRow &row) {
+        if (row.historyId != result.messageId) {
             return false;
         }
 
         const QString visibleParsedPayload = result.displayPayload.left(kVisibleParsedCharacters);
-        row.insert(QStringLiteral("parseState"), messageParseStateName(result.state));
-        row.insert(QStringLiteral("parsedPayload"), visibleParsedPayload);
-        row.insert(QStringLiteral("expandedPayload"), QString());
-        row.insert(QStringLiteral("expandedPayloadState"), QStringLiteral("idle"));
-        row.insert(
-            QStringLiteral("expandedPayloadNeeded"),
-            result.state == MessageParseState::Succeeded
-                && (result.displayPayload.size() > visibleParsedPayload.size()
-                    || result.displayPayload.count(QLatin1Char('\n')) >= 4096));
+        row.parseState = messageParseStateName(result.state);
+        row.parsedPayload = visibleParsedPayload;
+        row.expandedPayload.clear();
+        row.expandedPayloadState = QStringLiteral("idle");
+        row.expandedPayloadNeeded = result.state == MessageParseState::Succeeded
+            && (result.displayPayload.size() > visibleParsedPayload.size()
+                || result.displayPayload.count(QLatin1Char('\n')) >= 4096);
         if (result.state == MessageParseState::Succeeded) {
-            row.insert(QStringLiteral("payload"), visibleParsedPayload);
-            row.insert(QStringLiteral("payloadFormat"), result.displayFormat);
+            row.payload = visibleParsedPayload;
+            row.payloadFormat = result.displayFormat;
             if (result.processorId.isEmpty()) {
-                row.insert(QStringLiteral("testPayload"), visibleParsedPayload);
+                row.testPayload = visibleParsedPayload;
             }
         } else if (result.state == MessageParseState::Failed) {
             const QString errorLabel = result.processorId.isEmpty()
                 ? QStringLiteral("Parser Error")
                 : QStringLiteral("Processor Error");
-            const QString basePayload = row.value(QStringLiteral("testPayload")).toString();
-            row.insert(
-                QStringLiteral("payload"),
-                basePayload.isEmpty()
-                    ? QStringLiteral("%1: %2").arg(errorLabel, result.displayError)
-                    : QStringLiteral("%1\n%2: %3").arg(basePayload, errorLabel, result.displayError));
-            row.insert(
-                QStringLiteral("payloadFormat"),
-                result.processorId.isEmpty()
-                    ? (result.displayFormat.isEmpty()
-                        ? QStringLiteral("Parser Error")
-                        : QStringLiteral("%1 Error").arg(result.displayFormat))
-                    : QStringLiteral("Processor Error"));
+            row.payload = row.testPayload.isEmpty()
+                ? QStringLiteral("%1: %2").arg(errorLabel, result.displayError)
+                : QStringLiteral("%1\n%2: %3").arg(
+                    row.testPayload,
+                    errorLabel,
+                    result.displayError);
+            row.payloadFormat = result.processorId.isEmpty()
+                ? (result.displayFormat.isEmpty()
+                    ? QStringLiteral("Parser Error")
+                    : QStringLiteral("%1 Error").arg(result.displayFormat))
+                : QStringLiteral("Processor Error");
         } else if (result.state == MessageParseState::SkippedOverload) {
-            row.insert(QStringLiteral("payloadFormat"), QStringLiteral("Parse skipped"));
+            row.payloadFormat = QStringLiteral("Parse skipped");
         }
         return true;
     };
 
-    QVariantMap updatedRow;
-    for (auto item = session.runtime.messageRows.rbegin();
-         item != session.runtime.messageRows.rend();
+    std::optional<EventRow> updatedRow;
+    auto &messageRows = streamRows(session, Stream::Message);
+    for (auto item = messageRows.rbegin();
+         item != messageRows.rend();
          ++item) {
-        QVariantMap row = item->toMap();
-        if (applyResult(row)) {
-            *item = row;
-            updatedRow = row;
+        if (applyResult(*item)) {
+            updatedRow = *item;
             break;
         }
     }
-    if (updatedRow.isEmpty()) {
+    if (!updatedRow) {
         return;
     }
 
@@ -855,9 +764,7 @@ void EventHistoryService::updateRenderedParseResult(
         for (auto item = m_pendingVisibleMessageRows.rbegin();
              item != m_pendingVisibleMessageRows.rend();
              ++item) {
-            QVariantMap row = item->toMap();
-            if (applyResult(row)) {
-                *item = row;
+            if (applyResult(*item)) {
                 pendingRowUpdated = true;
                 break;
             }
@@ -867,7 +774,7 @@ void EventHistoryService::updateRenderedParseResult(
     if (&session == m_sessionService.currentSession()
         && !m_messageStreamFrozen
         && !pendingRowUpdated) {
-        m_messages.updateRowByHistoryId(result.messageId, updatedRow);
+        m_messages.updateRowByHistoryId(result.messageId, *updatedRow);
     }
 }
 
@@ -880,7 +787,7 @@ QSharedPointer<const MessageAdmissionContext> EventHistoryService::messageAdmiss
     }
 
     auto context = QSharedPointer<MessageAdmissionContext>::create();
-    context->capturePolicy = m_sessionService.messageCapturePolicy(session.id);
+    context->capturePolicy = session.capturePolicy;
     context->subscriptionFormats = subscriptionRenderContext(session)->formats;
     context->maxPayloadBytes = m_preferencesController.maxIncomingPayloadBytes();
     context->outputPaused = session.outputPaused;
@@ -975,7 +882,7 @@ void EventHistoryService::applyPreparedIncomingMessages()
     }
 
     QVector<PreparedIncomingMessage> prepared = m_messageAdmissionWorker->takePrepared();
-    QVariantList currentVisibleRows;
+    QVector<EventRow> currentVisibleRows;
     const SessionState *currentSession = m_sessionService.currentSession();
     const QString currentSessionId = currentSession ? currentSession->id : QString();
     bool totalCountChanged = false;
@@ -986,8 +893,7 @@ void EventHistoryService::applyPreparedIncomingMessages()
             continue;
         }
 
-        appendRecentTrafficSample(
-            session->runtime.recentReceivedTraffic,
+        session->runtime.recentReceivedTraffic.add(
             message.receivedAtMs,
             message.payloadBytes);
         if (!message.captured) {
@@ -997,7 +903,7 @@ void EventHistoryService::applyPreparedIncomingMessages()
 
         for (SubscriptionEntry &subscription : session->subscriptions) {
             if (message.activeSubscriptionTopics.contains(subscription.topic)) {
-                appendRecentMessage(subscription.recentMessages, message.receivedAtMs);
+                subscription.recentMessages.add(message.receivedAtMs);
                 currentSubscriptionActivityChanged = currentSubscriptionActivityChanged
                     || session == m_sessionService.currentSession();
             }
@@ -1019,6 +925,7 @@ void EventHistoryService::applyPreparedIncomingMessages()
         }
 
         message.record.id = historyId;
+        message.sequence = sequence;
         m_nextMessageSequence.insert(message.sessionId, sequence);
         if (message.parsingSkippedForPressure) {
             recordPressureSkippedParse();
@@ -1031,17 +938,10 @@ void EventHistoryService::applyPreparedIncomingMessages()
         m_lastMessageStorageError.clear();
 
         if (session->id == currentSessionId && !session->outputPaused) {
-            message.renderedRow.insert(QStringLiteral("historyId"), historyId);
+            message.renderedRow.historyId = historyId;
             currentVisibleRows.append(message.renderedRow);
         }
 
-        if (message.parsingRequired) {
-            enqueueMessageParsing(
-                message.record,
-                sequence,
-                message.processorRevision,
-                message.processorParameters);
-        }
     }
 
     if (!currentVisibleRows.isEmpty()) {
@@ -1050,182 +950,20 @@ void EventHistoryService::applyPreparedIncomingMessages()
         }
     }
 
+    for (const PreparedIncomingMessage &message : std::as_const(prepared)) {
+        if (message.parsingRequired && message.record.id > 0) {
+            enqueueMessageParsing(
+                message.record,
+                message.sequence,
+                message.processorRevision,
+                message.processorParameters);
+        }
+    }
+
     scheduleMessageActivityNotification(
         totalCountChanged,
         currentSubscriptionActivityChanged);
     scheduleMessagePressureNotification();
-}
-
-void EventHistoryService::appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes)
-{
-    auto *session = m_sessionService.sessionById(sessionId);
-    if (!session) {
-        return;
-    }
-
-    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    appendRecentTrafficSample(
-        session->runtime.recentReceivedTraffic,
-        nowMs,
-        payloadBytes.size());
-    if (!shouldCaptureMessage(*session, MessageDirection::Incoming, topic)
-        || (session->outputPaused && !m_preferencesController.saveMessagesWhenOutputPaused())) {
-        recordCaptureFiltered();
-        return;
-    }
-
-    const bool isCurrentSession = session == m_sessionService.currentSession();
-    const bool pressureSkipsParsing = shouldSkipParsingForPressure();
-    const MessageSubscriptionMatch subscriptionMatch = matchSubscriptionsForMessage(*session, topic, nowMs, isCurrentSession);
-    if (subscriptionMatch.currentSubscriptionActivity) {
-        emit subscriptionActivityChanged();
-    }
-
-    const QString timestamp = timestampNow();
-    const SubscriptionEntry *displaySubscription = subscriptionMatch.displaySubscription;
-    const PayloadStoragePlan payloadPlan = makePayloadStoragePlan(
-        topic,
-        payloadBytes,
-        m_preferencesController.maxIncomingPayloadBytes(),
-        pressureSkipsParsing);
-    if (payloadPlan.shouldReport) {
-        const QString reportKey = QStringLiteral("%1|%2|%3").arg(session->id, topic, payloadPlan.state);
-        if (!m_reportedPayloadStorageStates.contains(reportKey)) {
-            m_reportedPayloadStorageStates.insert(reportKey);
-            appendEvent(*session, QStringLiteral("Payload"), payloadPlan.reportMessage);
-        }
-    }
-
-    const ProcessorReference *processorReference = displaySubscription
-            && !displaySubscription->processor.processorId.isEmpty()
-        ? &displaySubscription->processor
-        : nullptr;
-    std::optional<ResolvedProcessor> resolvedProcessor;
-    QString processorResolutionError;
-    if (processorReference) {
-        resolvedProcessor = m_processorLibrary.resolve(
-            *processorReference,
-            &processorResolutionError);
-    }
-    const int payloadFormat = subscriptionMatch.payloadFormat >= 0
-        ? subscriptionMatch.payloadFormat
-        : static_cast<int>(PayloadCodec::resolveTopicFormat(
-            session->runtime.subscriptionFormats,
-            topic));
-    bool parsingRequired = requiresBackgroundParse(PayloadCodec::formatFromInt(payloadFormat))
-        || processorReference;
-    bool parsingSkippedForPressure = false;
-    QSharedPointer<const ProcessorRevisionSnapshot> processorRevision;
-    QCborMap processorParameters;
-
-    MessageRecord record;
-    record.sessionId = sessionId;
-    record.timestamp = timestamp;
-    record.direction = MessageDirection::Incoming;
-    record.topic = topic;
-    record.payloadBytes = payloadPlan.storedBytes;
-    record.payloadPreview = payloadPlan.preview;
-    record.payloadState = payloadPlan.state;
-    record.payloadSize = payloadPlan.originalSize;
-    record.payloadHash = payloadPlan.hash;
-    record.payloadFormat = payloadFormat;
-    if (processorReference) {
-        record.processorId = processorReference->processorId;
-        processorParameters = processorReference->parameters;
-        if (resolvedProcessor) {
-            processorRevision = resolvedProcessor->revision;
-            record.processorRevisionId = resolvedProcessor->revision->id;
-            record.processorName = resolvedProcessor->processor.name;
-            record.processorLanguageId = resolvedProcessor->revision->languageId;
-            record.processorRuntimeId = resolvedProcessor->revision->runtimeId;
-            record.processorContentHash = resolvedProcessor->revision->contentHash;
-        } else if (const auto processor = m_processorLibrary.processorById(record.processorId)) {
-            record.processorName = processor->name;
-        }
-    }
-    if (!parsingRequired) {
-        record.displayState = messageParseStateName(MessageParseState::NotRequired);
-    } else if (processorReference && !resolvedProcessor) {
-        record.displayState = messageParseStateName(MessageParseState::Failed);
-        record.displayError = processorResolutionError.isEmpty()
-            ? QStringLiteral("Selected Processor is unavailable.")
-            : processorResolutionError;
-        record.displayFormat = QStringLiteral("Processor Error");
-        record.processorExecutionState = QStringLiteral("preparation_failed");
-        record.processorExecutionErrorCode = QStringLiteral("processor_not_found");
-        record.processorExecutionError = record.displayError;
-        parsingRequired = false;
-    } else if (!payloadPlan.allowFullProcessing) {
-        record.displayState = messageParseStateName(MessageParseState::Failed);
-        record.displayError = processorReference
-            ? QStringLiteral("Processor skipped because the payload exceeds the configured size limit.")
-            : QStringLiteral("Payload parsing skipped because the payload exceeds the configured size limit.");
-        record.displayFormat = processorReference
-            ? QStringLiteral("Processor Error")
-            : PayloadCodec::formatName(PayloadCodec::formatFromInt(payloadFormat));
-        if (processorReference) {
-            record.processorExecutionState = QStringLiteral("skipped_payload_limit");
-            record.processorExecutionErrorCode = QStringLiteral("payload_too_large");
-            record.processorExecutionError = record.displayError;
-        }
-        parsingRequired = false;
-    } else if (pressureSkipsParsing) {
-        record.displayState = messageParseStateName(MessageParseState::SkippedOverload);
-        record.displayError = QStringLiteral(
-            "Payload parsing skipped while the capture pipeline is under pressure.");
-        record.displayFormat = processorReference
-            ? QStringLiteral("Processor skipped")
-            : PayloadCodec::formatName(PayloadCodec::formatFromInt(payloadFormat));
-        if (processorReference) {
-            record.processorExecutionState = QStringLiteral("skipped_overload");
-            record.processorExecutionErrorCode = QStringLiteral("capture_pipeline_overloaded");
-            record.processorExecutionError = record.displayError;
-        }
-        parsingRequired = false;
-        parsingSkippedForPressure = true;
-    } else {
-        record.displayState = messageParseStateName(MessageParseState::Pending);
-        if (processorReference) {
-            record.processorExecutionState = QStringLiteral("pending");
-        }
-    }
-
-    const qint64 sequence = m_nextMessageSequence.value(sessionId) + 1;
-    const qint64 historyId = m_historyWriter.enqueueMessage(record);
-    record.id = historyId;
-    if (historyId <= 0) {
-        return;
-    } else {
-        m_nextMessageSequence.insert(sessionId, sequence);
-        if (parsingSkippedForPressure) {
-            recordPressureSkippedParse();
-        }
-        ++session->runtime.totalMessageCount;
-        if (session == m_sessionService.currentSession()) {
-            session->runtime.viewedMessageCount = session->runtime.totalMessageCount;
-        }
-        emit totalMessageCountChanged();
-        m_lastMessageStorageError.clear();
-    }
-
-    if (session == m_sessionService.currentSession() && !session->outputPaused) {
-        const auto renderContext = subscriptionRenderContext(*session);
-        QVariantMap historyRow = messageRecordRow(record);
-        if (!subscriptionMatch.topicColor.isEmpty()) {
-            historyRow.insert(QStringLiteral("topic_color"), subscriptionMatch.topicColor);
-        }
-        appendRenderedMessageRow(
-            *session,
-            EventRenderer::renderHistoryRow(
-                historyRow,
-                renderContext->formats,
-                renderContext->colors,
-                renderContext->aliases));
-    }
-
-    if (parsingRequired) {
-        enqueueMessageParsing(record, sequence, processorRevision, processorParameters);
-    }
 }
 
 void EventHistoryService::appendPublishedMessage(
@@ -1311,12 +1049,11 @@ void EventHistoryService::appendPublishedMessage(
     }
 
     if (session == m_sessionService.currentSession()) {
-        const QVariantMap historyRow = messageRecordRow(record);
         const auto renderContext = subscriptionRenderContext(*session);
         appendRenderedMessageRow(
             *session,
-            EventRenderer::renderHistoryRow(
-                historyRow,
+            EventRenderer::renderMessageRow(
+                record,
                 renderContext->formats,
                 renderContext->colors,
                 renderContext->aliases));
@@ -1393,16 +1130,18 @@ QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
         return {};
     }
 
-    QVariantMap stored;
+    std::optional<MessageRecord> stored;
     if (const auto pending = m_historyWriter.pendingMessage(messageId)) {
-        stored = messageRecordRow(*pending);
+        stored = *pending;
     } else {
         stored = m_historyStore.loadMessage(messageId);
-        if (const auto pendingResult = m_historyWriter.pendingParseResult(messageId)) {
-            applyParseResultToStorageRow(stored, *pendingResult);
+        if (stored) {
+            if (const auto pendingResult = m_historyWriter.pendingParseResult(messageId)) {
+                applyParseOutcome(*stored, *pendingResult);
+            }
         }
     }
-    if (stored.isEmpty()) {
+    if (!stored) {
         return {};
     }
 
@@ -1411,56 +1150,47 @@ QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
         renderContext = subscriptionRenderContext(*session);
     }
 
-    QVariantMap details = EventRenderer::renderHistoryRow(
-        stored,
+    QVariantMap details = eventRowToVariantMap(EventRenderer::renderMessageRow(
+        *stored,
         renderContext ? renderContext->formats : QHash<QString, int> {},
         renderContext ? renderContext->colors : QHash<QString, QString> {},
-        renderContext ? renderContext->aliases : QHash<QString, QString> {});
+        renderContext ? renderContext->aliases : QHash<QString, QString> {}));
     details.insert(
         QStringLiteral("payloadFormat"),
         PayloadCodec::formatName(PayloadCodec::formatFromInt(
-            stored.value(QStringLiteral("payload_format"), -1).toInt())));
-    details.insert(QStringLiteral("parsedPayload"), stored.value(QStringLiteral("display_payload")));
-    details.insert(QStringLiteral("parseError"), stored.value(QStringLiteral("display_error")));
-    details.insert(QStringLiteral("parseState"), stored.value(QStringLiteral("display_state")));
-    details.insert(QStringLiteral("processorId"), stored.value(QStringLiteral("processor_id")));
-    details.insert(
-        QStringLiteral("processorRevisionId"),
-        stored.value(QStringLiteral("processor_revision_id")));
-    details.insert(QStringLiteral("processorName"), stored.value(QStringLiteral("processor_name")));
-    details.insert(
-        QStringLiteral("processorExecutionState"),
-        stored.value(QStringLiteral("processor_execution_state")));
+            stored->payloadFormat)));
+    details.insert(QStringLiteral("parsedPayload"), stored->displayPayload);
+    details.insert(QStringLiteral("parseError"), stored->displayError);
+    details.insert(QStringLiteral("parseState"), stored->displayState);
+    details.insert(QStringLiteral("processorId"), stored->processorId);
+    details.insert(QStringLiteral("processorRevisionId"), stored->processorRevisionId);
+    details.insert(QStringLiteral("processorName"), stored->processorName);
+    details.insert(QStringLiteral("processorExecutionState"), stored->processorExecutionState);
     details.insert(
         QStringLiteral("processorExecutionErrorCode"),
-        stored.value(QStringLiteral("processor_execution_error_code")));
-    details.insert(
-        QStringLiteral("processorExecutionError"),
-        stored.value(QStringLiteral("processor_execution_error")));
-    const QByteArray payloadBytes = stored.value(QStringLiteral("payload_bytes")).toByteArray();
-    const qint64 payloadSize = stored.value(QStringLiteral("payload_size")).toLongLong();
-    const QString payloadState = stored.value(QStringLiteral("payload_state")).toString();
-    const bool fullPayloadAvailable = payloadState != QStringLiteral("skipped")
-        && (payloadSize == 0 || !payloadBytes.isEmpty());
+        stored->processorExecutionErrorCode);
+    details.insert(QStringLiteral("processorExecutionError"), stored->processorExecutionError);
+    const bool fullPayloadAvailable = stored->payloadState != QStringLiteral("skipped")
+        && (stored->payloadSize == 0 || !stored->payloadBytes.isEmpty());
 
     QString fullPayload;
     if (fullPayloadAvailable) {
         QString decodeError;
         fullPayload = PayloadCodec::decodeForDisplay(
-            PayloadCodec::formatFromInt(stored.value(QStringLiteral("payload_format"), -1).toInt()),
-            payloadBytes,
+            PayloadCodec::formatFromInt(stored->payloadFormat),
+            stored->payloadBytes,
             decodeError);
         if (!decodeError.isEmpty()) {
-            fullPayload = stored.value(QStringLiteral("payload_preview")).toString();
+            fullPayload = stored->payloadPreview;
         }
     } else {
-        fullPayload = stored.value(QStringLiteral("payload_preview")).toString();
+        fullPayload = stored->payloadPreview;
     }
 
     details.insert(QStringLiteral("fullPayloadAvailable"), fullPayloadAvailable);
     details.insert(QStringLiteral("fullPayload"), fullPayload);
-    details.insert(QStringLiteral("payloadPreview"), stored.value(QStringLiteral("payload_preview")));
-    details.insert(QStringLiteral("payloadHash"), stored.value(QStringLiteral("payload_hash")));
+    details.insert(QStringLiteral("payloadPreview"), stored->payloadPreview);
+    details.insert(QStringLiteral("payloadHash"), stored->payloadHash);
     return details;
 }
 
@@ -1489,33 +1219,33 @@ void EventHistoryService::reloadCurrentSessionHistory()
 
     const int pageSize = m_preferencesController.historyPageSize();
     const QVector<MessageRecord> pendingMessages = m_historyWriter.pendingMessages(session->id);
-    const QVector<MessageParseResult> pendingParseResults =
+    const QVector<ParseOutcome> pendingParseResults =
         m_historyWriter.pendingParseResults(session->id);
-    QVariantList messageRows = m_historyStore.loadMessages(session->id, pageSize);
+    QVector<MessageRecord> messageRows = m_historyStore.loadMessages(session->id, pageSize);
     const bool loadedAllPersistedMessageHistory = messageRows.size() < pageSize;
-    QMap<qint64, QVariantMap> messageRowsById;
-    for (const QVariant &rowValue : std::as_const(messageRows)) {
-        const QVariantMap row = rowValue.toMap();
-        messageRowsById.insert(row.value(QStringLiteral("id")).toLongLong(), row);
+    QMap<qint64, MessageRecord> messageRowsById;
+    for (const MessageRecord &row : std::as_const(messageRows)) {
+        messageRowsById.insert(row.id, row);
     }
     for (const MessageRecord &message : pendingMessages) {
-        messageRowsById.insert(message.id, messageRecordRow(message));
+        messageRowsById.insert(message.id, message);
     }
-    for (const MessageParseResult &parseResult : pendingParseResults) {
+    for (const ParseOutcome &parseResult : pendingParseResults) {
         auto row = messageRowsById.find(parseResult.messageId);
         if (row != messageRowsById.end()) {
-            applyParseResultToStorageRow(row.value(), parseResult);
+            applyParseOutcome(row.value(), parseResult);
         }
     }
     while (messageRowsById.size() > pageSize) {
         messageRowsById.erase(messageRowsById.begin());
     }
     messageRows.clear();
-    for (const QVariantMap &row : std::as_const(messageRowsById)) {
+    for (const MessageRecord &row : std::as_const(messageRowsById)) {
         messageRows.append(row);
     }
     const auto renderContext = subscriptionRenderContext(*session);
-    session->runtime.messageRows = EventRenderer::loadHistoryRows(
+    auto &visibleMessageRows = streamRows(*session, Stream::Message);
+    visibleMessageRows = EventRenderer::loadHistoryRows(
         messageRows,
         renderContext->formats,
         renderContext->colors,
@@ -1532,21 +1262,19 @@ void EventHistoryService::reloadCurrentSessionHistory()
     }
     session->runtime.viewedMessageCount = session->runtime.totalMessageCount;
     emit totalMessageCountChanged();
-    session->runtime.oldestLoadedMessageId = EventRenderer::firstHistoryId(session->runtime.messageRows);
-    session->runtime.loadedAllMessageHistory = loadedAllPersistedMessageHistory;
-    m_messages.setRows(session->runtime.messageRows);
+    oldestLoadedId(*session, Stream::Message) = EventRenderer::firstHistoryId(visibleMessageRows);
+    loadedAllHistory(*session, Stream::Message) = loadedAllPersistedMessageHistory;
+    m_messages.setRows(visibleMessageRows);
 
     const QVariantList logRows = m_historyStore.loadLogs(session->id, pageSize);
-    session->runtime.logRows = EventRenderer::loadHistoryRows(
+    auto &visibleLogRows = streamRows(*session, Stream::Log);
+    visibleLogRows = EventRenderer::loadLogRows(
         logRows,
-        session->runtime.subscriptionFormats,
-        {},
-        {},
         m_launchTimestamp,
         true);
-    session->runtime.oldestLoadedLogId = EventRenderer::firstHistoryId(session->runtime.logRows);
-    session->runtime.loadedAllLogHistory = logRows.size() < pageSize;
-    m_logs.setRows(session->runtime.logRows);
+    oldestLoadedId(*session, Stream::Log) = EventRenderer::firstHistoryId(visibleLogRows);
+    loadedAllHistory(*session, Stream::Log) = logRows.size() < pageSize;
+    m_logs.setRows(visibleLogRows);
 }
 
 bool EventHistoryService::flushPendingMessageHistory(int timeoutMs)
@@ -1665,25 +1393,6 @@ qint64 EventHistoryService::messageParserBacklogBytes() const
 qint64 EventHistoryService::droppedParseTaskCount() const
 {
     return m_messageParser.droppedTaskCount();
-}
-
-bool EventHistoryService::setMessageCapturePolicy(
-    const QString &sessionId,
-    const MessageCapturePolicy &policy)
-{
-    if (sessionId.isEmpty()) {
-        return false;
-    }
-    if (!m_sessionService.setMessageCapturePolicy(sessionId, policy)) {
-        return false;
-    }
-    scheduleMessagePressureNotification();
-    return true;
-}
-
-MessageCapturePolicy EventHistoryService::messageCapturePolicy(const QString &sessionId) const
-{
-    return m_sessionService.messageCapturePolicy(sessionId);
 }
 
 qint64 EventHistoryService::captureFilteredMessageCount() const
@@ -1840,7 +1549,7 @@ bool EventHistoryService::shouldCaptureMessage(
     MessageDirection direction,
     const QString &topic) const
 {
-    return m_sessionService.messageCapturePolicy(session.id).accepts(direction, topic);
+    return session.capturePolicy.accepts(direction, topic);
 }
 
 bool EventHistoryService::shouldSkipParsingForPressure() const

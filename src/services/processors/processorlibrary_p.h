@@ -1,6 +1,6 @@
 #pragma once
 
-#include "domain/messageprocessor.h"
+#include "services/processors/processorlibrary.h"
 #include "services/processors/processorpackagehash.h"
 
 #include <QSharedPointer>
@@ -10,38 +10,19 @@
 
 #include <optional>
 
-struct SaveProcessorRevisionCommand
-{
-    QString processorId;
-    QString name;
-    QString description;
-    ProcessorRevisionContent content;
-};
-
-struct SaveProcessorRevisionResult
-{
-    bool ok = false;
-    bool createdProcessor = false;
-    bool createdRevision = false;
-    ProcessorDefinition processor;
-    QSharedPointer<const ProcessorRevisionSnapshot> revision;
-    QString error;
-};
-
-class ProcessorLibraryStore
+class ProcessorLibrary::Impl
 {
 public:
-    explicit ProcessorLibraryStore(
+    explicit Impl(
         const QString &storageDirectory = QString(),
         ProcessorPackageLimits packageLimits = {});
-    ~ProcessorLibraryStore();
+    ~Impl();
 
-    Q_DISABLE_COPY_MOVE(ProcessorLibraryStore)
+    Q_DISABLE_COPY_MOVE(Impl)
 
     bool isReady() const;
     QString lastError() const;
     QString storageDirectory() const;
-    QString databasePath() const;
 
     SaveProcessorRevisionResult saveRevision(const SaveProcessorRevisionCommand &command);
     bool deleteProcessor(const QString &processorId);
@@ -51,9 +32,6 @@ public:
         const QString &processorId) const;
     QSharedPointer<const ProcessorRevisionSnapshot> revisionById(
         const QString &revisionId) const;
-    QSharedPointer<const ProcessorRevisionSnapshot> resolve(
-        const ProcessorReference &reference,
-        QString *error = nullptr) const;
 
 private:
     bool initialize(const QString &storageDirectory);

@@ -168,35 +168,6 @@ SubscriptionMatch matchSubscriptions(
     return match;
 }
 
-QVariantMap messageRecordRow(
-    const MessageRecord &record,
-    const QString &alias,
-    const QString &color)
-{
-    return {
-        {QStringLiteral("id"), record.id},
-        {QStringLiteral("timestamp"), record.timestamp},
-        {QStringLiteral("entry_type"), QStringLiteral("message")},
-        {QStringLiteral("direction"), messageDirectionName(record.direction)},
-        {QStringLiteral("topic"), record.topic},
-        {QStringLiteral("topic_alias"), alias},
-        {QStringLiteral("topic_color"), color},
-        {QStringLiteral("qos"), record.qos},
-        {QStringLiteral("retain"), record.retain},
-        {QStringLiteral("retain_known"), record.retainKnown},
-        {QStringLiteral("payload_bytes"), record.payloadBytes},
-        {QStringLiteral("payload_size"), record.payloadSize},
-        {QStringLiteral("payload_state"), record.payloadState},
-        {QStringLiteral("payload_preview"), record.payloadPreview},
-        {QStringLiteral("payload_hash"), record.payloadHash},
-        {QStringLiteral("payload_format"), record.payloadFormat},
-        {QStringLiteral("display_payload"), record.displayPayload},
-        {QStringLiteral("display_format"), record.displayFormat},
-        {QStringLiteral("display_error"), record.displayError},
-        {QStringLiteral("display_state"), record.displayState},
-        {QStringLiteral("processor_id"), record.processorId},
-    };
-}
 } // namespace
 
 MessageAdmissionWorker::MessageAdmissionWorker(
@@ -450,11 +421,13 @@ PreparedIncomingMessage MessageAdmissionWorker::prepare(
         }
     }
 
-    result.renderedRow = EventRenderer::renderHistoryRow(
-        messageRecordRow(record, match.alias, match.color),
+    result.renderedRow = EventRenderer::renderMessageRow(
+        record,
         {},
         {},
-        {});
+        {},
+        match.color,
+        match.alias);
     return result;
 }
 

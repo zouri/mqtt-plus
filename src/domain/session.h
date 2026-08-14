@@ -1,10 +1,10 @@
 #pragma once
 
+#include "messagecapturepolicy.h"
 #include "sessionruntime.h"
 #include "subscription.h"
 
 #include <QString>
-#include <QStringList>
 #include <QVector>
 
 struct SessionState {
@@ -28,10 +28,7 @@ struct SessionState {
     QString authenticationMethod;
     QString authenticationData;
     bool outputPaused = false;
-    bool captureIncoming = true;
-    bool captureOutgoing = true;
-    QStringList captureIncludeTopicFilters;
-    QStringList captureExcludeTopicFilters;
+    MessageCapturePolicy capturePolicy;
     QVector<SubscriptionEntry> subscriptions;
     SessionRuntimeState runtime;
 };

@@ -650,17 +650,18 @@ if(BUILD_TESTING)
     )
     add_test(NAME messagecapturepolicy COMMAND test_messagecapturepolicy)
 
-    add_mqtt_plus_qt_test(test_processorlibrarystore
-        tests/test_processorlibrarystore.cpp
+    add_mqtt_plus_qt_test(test_processorlibrary_persistence
+        tests/test_processorlibrary_persistence.cpp
+        src/services/processors/processorlibrary.cpp
+        src/services/processors/processorlibrary_p.cpp
         src/services/processors/processorpackagehash.cpp
-        src/services/processors/processorlibrarystore.cpp
     )
 
     add_mqtt_plus_qt_test(test_processorlibrary
         tests/test_processorlibrary.cpp
         src/services/processors/processorlibrary.cpp
+        src/services/processors/processorlibrary_p.cpp
         src/services/processors/processorpackagehash.cpp
-        src/services/processors/processorlibrarystore.cpp
     )
 
     add_mqtt_plus_qt_test(test_messageprocessorengine

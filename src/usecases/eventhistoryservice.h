@@ -2,8 +2,9 @@
 
 #include "domain/session.h"
 #include "domain/subscription.h"
-#include "domain/messageenvelope.h"
-#include "services/messaging/messagecapturepolicy.h"
+#include "domain/messageparsing.h"
+#include "presentation/eventrow.h"
+#include "domain/messagecapturepolicy.h"
 
 #include <QHash>
 #include <QObject>
@@ -11,8 +12,8 @@
 #include <QSharedPointer>
 #include <QThread>
 #include <QTimer>
-#include <QVariantList>
 #include <QVariantMap>
+#include <QVector>
 
 #include <optional>
 
@@ -62,7 +63,6 @@ public:
         int format,
         int qos = -1,
         bool retain = false);
-    void appendIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
     void queueIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
     QString messagePayloadForReuse(
         qint64 messageId,
@@ -86,8 +86,6 @@ public:
     int messageParserBacklog() const;
     qint64 messageParserBacklogBytes() const;
     qint64 droppedParseTaskCount() const;
-    bool setMessageCapturePolicy(const QString &sessionId, const MessageCapturePolicy &policy);
-    MessageCapturePolicy messageCapturePolicy(const QString &sessionId) const;
     qint64 captureFilteredMessageCount() const;
     qint64 pressureSkippedParseCount() const;
     QString messagePressureState() const;
@@ -101,29 +99,39 @@ signals:
     void messageStreamChanged();
     void totalMessageCountChanged();
     void logStreamChanged();
-    void messageRowsAppended(const QVariantList &rows);
+    void messageRowsAppended(const QVector<EventRow> &rows);
     void messageParseResultChanged(qint64 historyId);
-    void logAppended(const QVariantMap &row);
+    void logAppended(const EventRow &row);
     void subscriptionActivityChanged();
     void messageWriterStateChanged();
 
 private:
     enum class Stream { Message, Log };
 
-    static QVariantList &streamRows(SessionState &session, Stream kind);
-    static qint64 &oldestLoadedId(SessionState &session, Stream kind);
-    static bool &loadedAllHistory(SessionState &session, Stream kind);
+    struct VisibleStreamState {
+        QVector<EventRow> messageRows;
+        QVector<EventRow> logRows;
+        qint64 oldestLoadedMessageId = 0;
+        qint64 oldestLoadedLogId = 0;
+        bool loadedAllMessageHistory = false;
+        bool loadedAllLogHistory = false;
+    };
 
-    void appendRenderedMessageRow(SessionState &session, const QVariantMap &row);
-    void appendRenderedMessageRows(SessionState &session, const QVariantList &rows);
-    void appendRenderedLogRow(SessionState &session, const QVariantMap &row);
+    VisibleStreamState &visibleStreamState(const SessionState &session);
+    QVector<EventRow> &streamRows(const SessionState &session, Stream kind);
+    qint64 &oldestLoadedId(const SessionState &session, Stream kind);
+    bool &loadedAllHistory(const SessionState &session, Stream kind);
+
+    void appendRenderedMessageRow(SessionState &session, const EventRow &row);
+    void appendRenderedMessageRows(SessionState &session, const QVector<EventRow> &rows);
+    void appendRenderedLogRow(SessionState &session, const EventRow &row);
     void enqueueMessageParsing(
         const MessageRecord &record,
         qint64 sequence,
         const QSharedPointer<const ProcessorRevisionSnapshot> &processorRevision = {},
         const QCborMap &processorParameters = {});
-    void handleMessageParseResult(const MessageParseResult &result);
-    void updateRenderedParseResult(SessionState &session, const MessageParseResult &result);
+    void handleParseOutcome(const ParseOutcome &result);
+    void updateRenderedParseResult(SessionState &session, const ParseOutcome &result);
     bool clearStream(Stream kind, bool allSessions);
     void resetMessageStreamTransientState(bool allSessions, const SessionState *current);
     int loadOlderCurrentSession(Stream kind);
@@ -164,10 +172,12 @@ private:
     QHash<QString, QSharedPointer<const MessageAdmissionContext>> m_messageAdmissionContexts;
     mutable QHash<QString, QSharedPointer<const SubscriptionRenderContext>>
         m_subscriptionRenderContexts;
+    VisibleStreamState m_visibleStreamState;
+    QString m_visibleStreamSessionId;
     QTimer m_visibleMessageRowsFlushTimer;
     QTimer m_messagePressureNotificationTimer;
     QTimer m_messageActivityNotificationTimer;
-    QVariantList m_pendingVisibleMessageRows;
+    QVector<EventRow> m_pendingVisibleMessageRows;
     QString m_pendingVisibleMessageSessionId;
     qint64 m_frozenOldestLoadedMessageId = 0;
     QSet<QString> m_reportedPayloadStorageStates;

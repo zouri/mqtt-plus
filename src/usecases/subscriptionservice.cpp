@@ -537,7 +537,7 @@ bool SubscriptionService::currentSessionHasActiveSubscriptionFps(qint64 nowMs) c
 
     for (const auto &subscription : session->subscriptions) {
         if (!subscription.paused
-            && recentMessageCount(subscription.recentMessages, nowMs) > 0) {
+            && subscription.recentMessages.eventCount(nowMs) > 0) {
             return true;
         }
     }

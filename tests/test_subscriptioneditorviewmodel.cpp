@@ -48,15 +48,15 @@ void SubscriptionEditorViewModelTest::opensForEditWithExistingProcessorBinding()
 {
     SubscriptionEditorViewModel editor;
     editor.setProcessorOptions(processorOptions());
-    editor.openForEdit({
-        {QStringLiteral("topic"), QStringLiteral("sensors/+/temp")},
-        {QStringLiteral("alias"), QStringLiteral("Temperature")},
-        {QStringLiteral("requestedQos"), 2},
-        {QStringLiteral("format"), 1},
-        {QStringLiteral("processorId"), QStringLiteral("processor-1")},
-        {QStringLiteral("processorParametersCborBase64"), QStringLiteral("oWRnYWluBA==")},
-        {QStringLiteral("color"), QStringLiteral("#34C759")},
-    });
+    SubscriptionEntry subscription;
+    subscription.topic = QStringLiteral("sensors/+/temp");
+    subscription.alias = QStringLiteral("Temperature");
+    subscription.requestedQos = 2;
+    subscription.format = 1;
+    subscription.processor.processorId = QStringLiteral("processor-1");
+    subscription.processor.parameters.insert(QStringLiteral("gain"), 4);
+    subscription.color = QStringLiteral("#34C759");
+    editor.openForEdit(subscription);
 
     QVERIFY(editor.editMode());
     QCOMPARE(editor.editTopic(), QStringLiteral("sensors/+/temp"));
@@ -66,6 +66,7 @@ void SubscriptionEditorViewModelTest::opensForEditWithExistingProcessorBinding()
     QCOMPARE(editor.format(), 1);
     QCOMPARE(editor.processorId(), QStringLiteral("processor-1"));
     QVERIFY(editor.processorBindingDetail().isEmpty());
+    QCOMPARE(editor.submission().processor.parameters.value(QStringLiteral("gain")).toInteger(), 4);
 }
 
 void SubscriptionEditorViewModelTest::preservesUnavailableBindingWhenOptionsRefresh()
@@ -92,9 +93,9 @@ void SubscriptionEditorViewModelTest::validatesAndCollectsCurrentSubmission()
     editor.setProcessorId(QStringLiteral("processor-1"));
 
     QVERIFY(editor.canSubmit());
-    const QVariantMap submission = editor.submission();
-    QCOMPARE(submission.value(QStringLiteral("topic")).toString(), QStringLiteral("sensors/+/temp"));
-    QCOMPARE(submission.value(QStringLiteral("processorId")).toString(), QStringLiteral("processor-1"));
+    const SubscriptionEditorSubmission submission = editor.submission();
+    QCOMPARE(submission.topic, QStringLiteral("sensors/+/temp"));
+    QCOMPARE(submission.processor.processorId, QStringLiteral("processor-1"));
 
     editor.setQos(3);
     QCOMPARE(editor.qos(), 2);
@@ -109,13 +110,11 @@ void SubscriptionEditorViewModelTest::parsesAndDeduplicatesBatchTopics()
         "sensors/one\r\n  sensors/three "));
 
     QVERIFY(editor.canSubmit());
-    QCOMPARE(
-        editor.submission().value(QStringLiteral("topics")).toStringList(),
-        QStringList({
-            QStringLiteral("sensors/one"),
-            QStringLiteral("sensors/two"),
-            QStringLiteral("sensors/three"),
-        }));
+    QCOMPARE(editor.submission().topics, QStringList({
+        QStringLiteral("sensors/one"),
+        QStringLiteral("sensors/two"),
+        QStringLiteral("sensors/three"),
+    }));
 
     editor.setTopic(QStringLiteral(" , \n "));
     QVERIFY(!editor.canSubmit());

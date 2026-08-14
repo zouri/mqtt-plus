@@ -1,4 +1,4 @@
-#include "processorlibrarystore.h"
+#include "processorlibrary_p.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -50,7 +50,7 @@ QString normalizedId(const QString &id)
 
 } // namespace
 
-ProcessorLibraryStore::ProcessorLibraryStore(
+ProcessorLibrary::Impl::Impl(
     const QString &storageDirectory,
     ProcessorPackageLimits packageLimits)
     : m_packageLimits(std::move(packageLimits))
@@ -58,7 +58,7 @@ ProcessorLibraryStore::ProcessorLibraryStore(
     initialize(storageDirectory);
 }
 
-ProcessorLibraryStore::~ProcessorLibraryStore()
+ProcessorLibrary::Impl::~Impl()
 {
     if (m_db.isValid()) {
         m_db.close();
@@ -69,27 +69,22 @@ ProcessorLibraryStore::~ProcessorLibraryStore()
     }
 }
 
-bool ProcessorLibraryStore::isReady() const
+bool ProcessorLibrary::Impl::isReady() const
 {
     return m_db.isValid() && m_db.isOpen() && m_lastError.isEmpty();
 }
 
-QString ProcessorLibraryStore::lastError() const
+QString ProcessorLibrary::Impl::lastError() const
 {
     return m_lastError;
 }
 
-QString ProcessorLibraryStore::storageDirectory() const
+QString ProcessorLibrary::Impl::storageDirectory() const
 {
     return m_storageDirectory;
 }
 
-QString ProcessorLibraryStore::databasePath() const
-{
-    return m_databasePath;
-}
-
-bool ProcessorLibraryStore::initialize(const QString &storageDirectory)
+bool ProcessorLibrary::Impl::initialize(const QString &storageDirectory)
 {
     m_storageDirectory = storageDirectory.trimmed().isEmpty()
         ? defaultStorageDirectory()
@@ -149,7 +144,7 @@ bool ProcessorLibraryStore::initialize(const QString &storageDirectory)
         "UPDATE processors SET archived_at = NULL WHERE archived_at IS NOT NULL"));
 }
 
-bool ProcessorLibraryStore::createSchema()
+bool ProcessorLibrary::Impl::createSchema()
 {
     if (!m_db.transaction()) {
         m_lastError = m_db.lastError().text();
@@ -225,7 +220,7 @@ bool ProcessorLibraryStore::createSchema()
     return true;
 }
 
-bool ProcessorLibraryStore::executeStatement(const QString &statement)
+bool ProcessorLibrary::Impl::executeStatement(const QString &statement)
 {
     QSqlQuery query(m_db);
     if (query.exec(statement)) {
@@ -235,7 +230,7 @@ bool ProcessorLibraryStore::executeStatement(const QString &statement)
     return false;
 }
 
-SaveProcessorRevisionResult ProcessorLibraryStore::saveRevision(
+SaveProcessorRevisionResult ProcessorLibrary::Impl::saveRevision(
     const SaveProcessorRevisionCommand &sourceCommand)
 {
     SaveProcessorRevisionResult result;
@@ -421,7 +416,7 @@ SaveProcessorRevisionResult ProcessorLibraryStore::saveRevision(
     return result;
 }
 
-bool ProcessorLibraryStore::deleteProcessor(const QString &processorId)
+bool ProcessorLibrary::Impl::deleteProcessor(const QString &processorId)
 {
     if (!isReady()) {
         return false;
@@ -455,7 +450,7 @@ bool ProcessorLibraryStore::deleteProcessor(const QString &processorId)
     return true;
 }
 
-std::optional<ProcessorDefinition> ProcessorLibraryStore::processorById(
+std::optional<ProcessorDefinition> ProcessorLibrary::Impl::processorById(
     const QString &processorId) const
 {
     if (!isReady()) {
@@ -478,7 +473,7 @@ std::optional<ProcessorDefinition> ProcessorLibraryStore::processorById(
     return processorFromQuery(query);
 }
 
-QVector<ProcessorDefinition> ProcessorLibraryStore::processors() const
+QVector<ProcessorDefinition> ProcessorLibrary::Impl::processors() const
 {
     QVector<ProcessorDefinition> result;
     if (!isReady()) {
@@ -499,7 +494,7 @@ QVector<ProcessorDefinition> ProcessorLibraryStore::processors() const
     return result;
 }
 
-QVector<QSharedPointer<const ProcessorRevisionSnapshot>> ProcessorLibraryStore::revisions(
+QVector<QSharedPointer<const ProcessorRevisionSnapshot>> ProcessorLibrary::Impl::revisions(
     const QString &processorId) const
 {
     QVector<QSharedPointer<const ProcessorRevisionSnapshot>> result;
@@ -532,13 +527,13 @@ QVector<QSharedPointer<const ProcessorRevisionSnapshot>> ProcessorLibraryStore::
     return result;
 }
 
-QSharedPointer<const ProcessorRevisionSnapshot> ProcessorLibraryStore::revisionById(
+QSharedPointer<const ProcessorRevisionSnapshot> ProcessorLibrary::Impl::revisionById(
     const QString &revisionId) const
 {
     return loadRevision(normalizedId(revisionId), nullptr);
 }
 
-QSharedPointer<const ProcessorRevisionSnapshot> ProcessorLibraryStore::loadRevision(
+QSharedPointer<const ProcessorRevisionSnapshot> ProcessorLibrary::Impl::loadRevision(
     const QString &revisionId,
     QString *error) const
 {
@@ -631,32 +626,4 @@ QSharedPointer<const ProcessorRevisionSnapshot> ProcessorLibraryStore::loadRevis
         error->clear();
     }
     return revision;
-}
-
-QSharedPointer<const ProcessorRevisionSnapshot> ProcessorLibraryStore::resolve(
-    const ProcessorReference &reference,
-    QString *error) const
-{
-    const QString processorId = normalizedId(reference.processorId);
-    if (processorId.isEmpty()) {
-        if (error) {
-            *error = QStringLiteral("Processor ID is required.");
-        }
-        return {};
-    }
-
-    const std::optional<ProcessorDefinition> processor = processorById(processorId);
-    if (!processor) {
-        if (error) {
-            *error = QStringLiteral("Processor was not found.");
-        }
-        return {};
-    }
-    if (processor->currentRevisionId.isEmpty()) {
-        if (error) {
-            *error = QStringLiteral("Processor has no content.");
-        }
-        return {};
-    }
-    return loadRevision(processor->currentRevisionId, error);
 }

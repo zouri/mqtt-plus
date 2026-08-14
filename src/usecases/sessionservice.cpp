@@ -2,7 +2,6 @@
 
 #include "domain/sessionconfig.h"
 #include "services/apputils.h"
-#include "services/messaging/messagecapturepolicy.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
@@ -21,37 +20,6 @@
 #include <utility>
 
 using namespace AppUtils;
-
-namespace {
-MessageCapturePolicy capturePolicyFromSession(const SessionState &session)
-{
-    MessageCapturePolicy policy;
-    policy.captureIncoming = session.captureIncoming;
-    policy.captureOutgoing = session.captureOutgoing;
-    policy.includeTopicFilters = session.captureIncludeTopicFilters;
-    policy.excludeTopicFilters = session.captureExcludeTopicFilters;
-    return policy.normalized();
-}
-
-void applyCapturePolicy(SessionState &session, const MessageCapturePolicy &policy)
-{
-    const MessageCapturePolicy normalized = policy.normalized();
-    session.captureIncoming = normalized.captureIncoming;
-    session.captureOutgoing = normalized.captureOutgoing;
-    session.captureIncludeTopicFilters = normalized.includeTopicFilters;
-    session.captureExcludeTopicFilters = normalized.excludeTopicFilters;
-}
-
-bool capturePoliciesEqual(
-    const MessageCapturePolicy &left,
-    const MessageCapturePolicy &right)
-{
-    return left.captureIncoming == right.captureIncoming
-        && left.captureOutgoing == right.captureOutgoing
-        && left.includeTopicFilters == right.includeTopicFilters
-        && left.excludeTopicFilters == right.excludeTopicFilters;
-}
-} // namespace
 
 SessionService::SessionService(
     QSettings &settings,
@@ -110,12 +78,6 @@ const SessionState *SessionService::sessionById(const QString &sessionId) const
     return nullptr;
 }
 
-MessageCapturePolicy SessionService::messageCapturePolicy(const QString &sessionId) const
-{
-    const SessionState *session = sessionById(sessionId);
-    return session ? capturePolicyFromSession(*session) : MessageCapturePolicy {};
-}
-
 bool SessionService::setMessageCapturePolicy(
     const QString &sessionId,
     const MessageCapturePolicy &policy)
@@ -125,16 +87,16 @@ bool SessionService::setMessageCapturePolicy(
         return false;
     }
 
-    const MessageCapturePolicy previousPolicy = capturePolicyFromSession(*session);
+    const MessageCapturePolicy previousPolicy = session->capturePolicy;
     const MessageCapturePolicy normalized = policy.normalized();
-    if (capturePoliciesEqual(previousPolicy, normalized)) {
+    if (previousPolicy == normalized) {
         return true;
     }
 
-    applyCapturePolicy(*session, normalized);
+    session->capturePolicy = normalized;
     QString errorMessage;
     if (!SessionSettingsStore::writeSessions(m_settings, m_sessions, errorMessage)) {
-        applyCapturePolicy(*session, previousPolicy);
+        session->capturePolicy = previousPolicy;
         QString ignoredError;
         SessionSettingsStore::writeSessions(m_settings, m_sessions, ignoredError);
         emit storageError(
@@ -161,7 +123,7 @@ bool SessionService::loadSessions()
         SessionSettingsStore::LoadedSession loaded = SessionSettingsStore::readSession(m_settings, i);
 
         initializeSessionRuntime(loaded.session);
-        applyConfig(loaded.session, loaded.config, false);
+        applyConfig(loaded.session, loaded.config);
         m_sessions.append(std::move(loaded.session));
         emit sessionRuntimeReady(&m_sessions.last());
     }
@@ -217,12 +179,12 @@ void SessionService::setCurrentSessionIndex(int index)
     emit currentSessionChanged();
 }
 
-QVariantMap SessionService::defaultSessionConfig() const
+SessionConnectionConfig SessionService::defaultSessionConfig() const
 {
     return SessionConfig::defaultConfig(m_sessions.size() + 1);
 }
 
-QVariantMap SessionService::sessionConfigAt(int index) const
+SessionConnectionConfig SessionService::sessionConfigAt(int index) const
 {
     if (!isValidIndex(index)) {
         return defaultSessionConfig();
@@ -230,7 +192,9 @@ QVariantMap SessionService::sessionConfigAt(int index) const
     return SessionSettingsStore::configFromState(m_sessions.at(index));
 }
 
-bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
+bool SessionService::updateSessionConfigAt(
+    int index,
+    const SessionConnectionConfig &config)
 {
     if (!isValidIndex(index)) {
         return false;
@@ -242,7 +206,7 @@ bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
         return false;
     }
 
-    const QVariantMap previousConfig = SessionSettingsStore::configFromState(session);
+    const SessionConnectionConfig previousConfig = SessionSettingsStore::configFromState(session);
     const bool reconnect = client->state() != QMqttClient::Disconnected;
     if (reconnect) {
         session.runtime.reconnectPending = false;
@@ -250,11 +214,11 @@ bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
         client->disconnectFromHost();
     }
 
-    applyConfig(session, config, true);
+    applyConfig(session, config);
 
     QString errorMessage;
     if (!SessionSettingsStore::writeSessions(m_settings, m_sessions, errorMessage)) {
-        applyConfig(session, previousConfig, true);
+        applyConfig(session, previousConfig);
 
         QString ignoredError;
         SessionSettingsStore::writeSessions(m_settings, m_sessions, ignoredError);
@@ -285,15 +249,15 @@ bool SessionService::updateSessionConfigAt(int index, const QVariantMap &config)
     return true;
 }
 
-bool SessionService::addSessionWithConfig(const QVariantMap &config)
+bool SessionService::addSessionWithConfig(const SessionConnectionConfig &config)
 {
-    const QString configuredName = config.value(QStringLiteral("name")).toString().trimmed();
+    const QString configuredName = config.name.trimmed();
     const QString fallbackName = configuredName.isEmpty()
         ? tr("Session %1").arg(m_sessions.size() + 1)
         : configuredName;
 
     SessionState session = createDefaultSession(fallbackName);
-    applyConfig(session, config, false);
+    applyConfig(session, config);
     m_sessions.append(std::move(session));
 
     QString errorMessage;
@@ -337,7 +301,7 @@ bool SessionService::importSessions(
     QVector<SessionState> imported;
     imported.reserve(requests.size());
     for (const SessionImportRequest &request : requests) {
-        QString name = request.config.value(QStringLiteral("name")).toString().trimmed();
+        QString name = request.config.name.trimmed();
         if (name.isEmpty()) {
             name = tr("Imported connection");
         }
@@ -356,14 +320,11 @@ bool SessionService::importSessions(
         ids.insert(sessionId);
         session.id = sessionId;
 
-        QVariantMap config = request.config;
-        config.insert(QStringLiteral("name"), name);
-        applyConfig(session, config, false);
+        SessionConnectionConfig config = request.config;
+        config.name = name;
+        applyConfig(session, config);
         session.outputPaused = request.outputPaused;
-        session.captureIncoming = request.captureIncoming;
-        session.captureOutgoing = request.captureOutgoing;
-        session.captureIncludeTopicFilters = request.captureIncludeTopicFilters;
-        session.captureExcludeTopicFilters = request.captureExcludeTopicFilters;
+        session.capturePolicy = request.capturePolicy.normalized();
 
         QSet<QString> topics;
         for (SubscriptionEntry subscription : request.subscriptions) {
@@ -495,15 +456,12 @@ void SessionService::duplicateSessionAt(int index)
     }
 
     const SessionState &source = m_sessions.at(index);
-    const QVariantMap config = SessionSettingsStore::duplicateConfigFromState(source);
+    const SessionConnectionConfig config = SessionSettingsStore::duplicateConfigFromState(source);
 
     SessionState session = createDefaultSession(tr("%1 Copy").arg(source.name));
-    applyConfig(session, config, false);
+    applyConfig(session, config);
     session.outputPaused = source.outputPaused;
-    session.captureIncoming = source.captureIncoming;
-    session.captureOutgoing = source.captureOutgoing;
-    session.captureIncludeTopicFilters = source.captureIncludeTopicFilters;
-    session.captureExcludeTopicFilters = source.captureExcludeTopicFilters;
+    session.capturePolicy = source.capturePolicy;
     session.runtime.subscriptionFormats = source.runtime.subscriptionFormats;
     session.subscriptions = source.subscriptions;
     for (auto &subscription : session.subscriptions) {
@@ -617,83 +575,60 @@ void SessionService::requestReconnect(SessionState &session)
 
 void SessionService::applyConfig(
     SessionState &session,
-    const QVariantMap &config,
-    bool keepNameFallback) const
+    const SessionConnectionConfig &config) const
 {
     auto *client = session.runtime.client;
     if (!client) {
         return;
     }
 
-    QString name = config.value(QStringLiteral("name")).toString().trimmed();
-    if (name.isEmpty() && !keepNameFallback) {
-        name = session.name;
-    }
+    const QString name = config.name.trimmed();
     if (!name.isEmpty()) {
         session.name = name;
     }
 
-    session.transport = SessionConfig::sanitizeTransport(config.value(QStringLiteral("transport")));
-    session.protocolVersion = SessionConfig::sanitizeProtocolVersion(
-        config.value(QStringLiteral("protocolVersion"), 5));
-    session.sslSecure = config.value(QStringLiteral("sslSecure"), true).toBool();
-    session.alpn = config.value(QStringLiteral("alpn")).toString().trimmed();
-    session.certificateType = config.value(
-                                  QStringLiteral("certificateType"),
-                                  QStringLiteral("ca"))
-                                      .toString()
-            == QStringLiteral("self")
+    session.transport = SessionConfig::sanitizeTransport(config.transport);
+    session.protocolVersion = SessionConfig::sanitizeProtocolVersion(config.protocolVersion);
+    session.sslSecure = config.sslSecure;
+    session.alpn = config.alpn.trimmed();
+    session.certificateType = config.certificateType == QStringLiteral("self")
         ? QStringLiteral("self")
         : QStringLiteral("ca");
-    session.caFile = config.value(QStringLiteral("caFile")).toString().trimmed();
-    session.clientCertificateFile = config.value(
-                                            QStringLiteral("clientCertificateFile"))
-                                        .toString()
-                                        .trimmed();
-    session.clientKeyFile = config.value(QStringLiteral("clientKeyFile")).toString().trimmed();
+    session.caFile = config.caFile.trimmed();
+    session.clientCertificateFile = config.clientCertificateFile.trimmed();
+    session.clientKeyFile = config.clientKeyFile.trimmed();
     session.connectTimeoutSeconds = SessionConfig::sanitizeBoundedInt(
-        config.value(QStringLiteral("connectTimeoutSeconds"), 10), 10, 1, 300);
-    session.sessionExpiryInterval = SessionConfig::sanitizeOptionalUInt32(
-        config.value(QStringLiteral("sessionExpiryInterval"), 0));
-    session.receiveMaximum = SessionConfig::sanitizeOptionalUInt16(
-        config.value(QStringLiteral("receiveMaximum")));
-    session.maximumPacketSize = SessionConfig::sanitizeOptionalUInt32(
-        config.value(QStringLiteral("maximumPacketSize")));
-    session.topicAliasMaximum = SessionConfig::sanitizeOptionalUInt16(
-        config.value(QStringLiteral("topicAliasMaximum")));
-    session.requestResponseInformation = config.value(
-                                                QStringLiteral("requestResponseInformation"),
-                                                false)
-                                            .toBool();
-    session.requestProblemInformation = config.value(
-                                               QStringLiteral("requestProblemInformation"),
-                                               false)
-                                           .toBool();
-    session.authenticationMethod = config.value(
-                                             QStringLiteral("authenticationMethod"))
-                                         .toString()
-                                         .trimmed();
-    session.authenticationData = config.value(QStringLiteral("authenticationData")).toString();
+        config.connectTimeoutSeconds,
+        10,
+        1,
+        300);
+    session.sessionExpiryInterval = config.sessionExpiryInterval;
+    session.receiveMaximum = config.receiveMaximum;
+    session.maximumPacketSize = config.maximumPacketSize;
+    session.topicAliasMaximum = config.topicAliasMaximum;
+    session.requestResponseInformation = config.requestResponseInformation;
+    session.requestProblemInformation = config.requestProblemInformation;
+    session.authenticationMethod = config.authenticationMethod.trimmed();
+    session.authenticationData = config.authenticationData;
 
-    QString host = config.value(QStringLiteral("host")).toString().trimmed();
+    QString host = config.host.trimmed();
     if (host.isEmpty()) {
         host = QStringLiteral("broker.emqx.io");
     }
 
     client->setHostname(host);
-    client->setPort(SessionConfig::sanitizePort(config.value(QStringLiteral("port")), session.transport));
+    client->setPort(SessionConfig::sanitizePort(config.port, session.transport));
     client->setProtocolVersion(toProtocolVersion(session.protocolVersion));
 
-    QString clientId = config.value(QStringLiteral("clientId")).toString().trimmed();
+    QString clientId = config.clientId.trimmed();
     if (clientId.isEmpty()) {
         clientId = SessionConfig::generateClientId();
     }
     client->setClientId(clientId);
-    client->setUsername(config.value(QStringLiteral("username")).toString());
-    client->setPassword(config.value(QStringLiteral("password")).toString());
-    client->setCleanSession(config.value(QStringLiteral("cleanSession"), true).toBool());
-    client->setKeepAlive(SessionConfig::sanitizeKeepAlive(
-        config.value(QStringLiteral("keepAliveSeconds"), SessionConfig::kDefaultKeepAlive)));
+    client->setUsername(config.username);
+    client->setPassword(config.password);
+    client->setCleanSession(config.cleanSession);
+    client->setKeepAlive(SessionConfig::sanitizeKeepAlive(config.keepAliveSeconds));
     client->setAutoKeepAlive(true);
     if (session.runtime.connectTimeoutTimer) {
         session.runtime.connectTimeoutTimer->setInterval(session.connectTimeoutSeconds * 1000);
@@ -776,8 +711,8 @@ SessionState SessionService::createDefaultSession(const QString &name)
     session.protocolVersion = 5;
     initializeSessionRuntime(session);
 
-    QVariantMap config = SessionConfig::defaultConfig(1);
-    config.insert(QStringLiteral("name"), name);
-    applyConfig(session, config, false);
+    SessionConnectionConfig config = SessionConfig::defaultConfig(1);
+    config.name = name;
+    applyConfig(session, config);
     return session;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "domain/messagecapturepolicy.h"
 #include "domain/publishdraft.h"
 
 #include <QByteArray>
@@ -47,10 +48,7 @@ struct SessionData {
     QString authenticationMethod;
     QString authenticationData;
     bool outputPaused = false;
-    bool captureIncoming = true;
-    bool captureOutgoing = true;
-    QStringList captureIncludeTopicFilters;
-    QStringList captureExcludeTopicFilters;
+    MessageCapturePolicy capturePolicy;
     QVector<SubscriptionData> subscriptions;
 };
 

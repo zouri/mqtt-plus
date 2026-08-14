@@ -79,6 +79,15 @@ struct Fixture {
         sessions.setCurrentSessionIndex(0);
         return *sessions.currentSession();
     }
+
+    void appendIncomingMessage(
+        const QString &sessionId,
+        const QString &topic,
+        const QByteArray &payload)
+    {
+        eventHistory.queueIncomingMessage(sessionId, topic, payload);
+        QVERIFY(eventHistory.flushPendingIncomingMessages());
+    }
 };
 
 } // namespace
@@ -255,12 +264,14 @@ void SubscriptionServiceTest::subscriptionEditInvalidatesRenderContext()
     session.runtime.subscriptionFormats.insert(entry.topic, entry.format);
     SessionState &currentSession = fixture.setCurrentSession(std::move(session));
 
-    fixture.eventHistory.appendIncomingMessage(
+    fixture.appendIncomingMessage(
         currentSession.id,
         entry.topic,
         QByteArrayLiteral("23"));
+    QTRY_COMPARE(fixture.messages.count(), 1);
     QCOMPARE(
-        currentSession.runtime.messageRows.constLast().toMap().value(QStringLiteral("alias")).toString(),
+        fixture.messages.rowAt(fixture.messages.count() - 1)
+            .value(QStringLiteral("alias")).toString(),
         QStringLiteral("Temperature"));
 
     QVERIFY(fixture.service.updateCurrentSubscription(
@@ -271,13 +282,15 @@ void SubscriptionServiceTest::subscriptionEditInvalidatesRenderContext()
         entry.format,
         {},
         QString()));
-    fixture.eventHistory.appendIncomingMessage(
+    fixture.appendIncomingMessage(
         currentSession.id,
         entry.topic,
         QByteArrayLiteral("24"));
+    QTRY_COMPARE(fixture.messages.count(), 2);
 
     QCOMPARE(
-        currentSession.runtime.messageRows.constLast().toMap().value(QStringLiteral("alias")).toString(),
+        fixture.messages.rowAt(fixture.messages.count() - 1)
+            .value(QStringLiteral("alias")).toString(),
         QStringLiteral("Room temperature"));
 }
 

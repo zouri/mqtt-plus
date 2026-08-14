@@ -67,15 +67,15 @@ void SessionConfigTest::sanitizeEnumsAndModes()
 
 void SessionConfigTest::defaultConfigContainsExpectedBaseline()
 {
-    const QVariantMap config = SessionConfig::defaultConfig(3);
-    QCOMPARE(config.value(QStringLiteral("name")).toString(), QStringLiteral("Session 3"));
-    QCOMPARE(config.value(QStringLiteral("host")).toString(), QStringLiteral("broker.emqx.io"));
-    QCOMPARE(config.value(QStringLiteral("port")).toInt(), SessionConfig::kDefaultPort);
-    QCOMPARE(config.value(QStringLiteral("transport")).toString(), QStringLiteral("tcp"));
-    QCOMPARE(config.value(QStringLiteral("protocolVersion")).toInt(), 5);
-    QCOMPARE(config.value(QStringLiteral("sslSecure")).toBool(), true);
-    QCOMPARE(config.value(QStringLiteral("keepAliveSeconds")).toInt(), SessionConfig::kDefaultKeepAlive);
-    QVERIFY(config.value(QStringLiteral("clientId")).toString().startsWith(QStringLiteral("mqtt-plus-")));
+    const SessionConnectionConfig config = SessionConfig::defaultConfig(3);
+    QCOMPARE(config.name, QStringLiteral("Session 3"));
+    QCOMPARE(config.host, QStringLiteral("broker.emqx.io"));
+    QCOMPARE(config.port, SessionConfig::kDefaultPort);
+    QCOMPARE(config.transport, QStringLiteral("tcp"));
+    QCOMPARE(config.protocolVersion, 5);
+    QCOMPARE(config.sslSecure, true);
+    QCOMPARE(config.keepAliveSeconds, SessionConfig::kDefaultKeepAlive);
+    QVERIFY(config.clientId.startsWith(QStringLiteral("mqtt-plus-")));
 }
 
 QTEST_MAIN(SessionConfigTest)
