@@ -4,23 +4,34 @@
 
 [English](README.en.md) | 简体中文
 
-MQTT Plus 是一个使用 Qt Quick 构建的跨平台桌面 MQTT 客户端。
+MQTT Plus 是面向 MQTT 开发、联调和问题定位的跨平台桌面客户端。它将多连接管理、订阅与发布、持久化消息流和可编程载荷处理集中在一个本地工作台中。
 
-[下载最新版本](https://github.com/zouri/mqtt-plus/releases/latest) · [提交问题](https://github.com/zouri/mqtt-plus/issues)
-
-## 界面预览
-
-### MQTT 工作台
+[下载最新版本](https://github.com/zouri/mqtt-plus/releases/latest) · [快速开始](#下载与快速开始) · [提交问题](https://github.com/zouri/mqtt-plus/issues)
 
 ![MQTT Plus 工作台：连接、订阅、消息流与发布编辑器](docs/images/mqtt-plus-workbench.png)
 
-### 消息处理器
+## 为什么选择 MQTT Plus
 
-![MQTT Plus 消息处理器：Lua 脚本编辑与验证](docs/images/mqtt-plus-processors.png)
+- **集中完成 MQTT 调试**：在同一个工作台中管理多个连接、订阅主题、检查消息并构造发布请求。
+- **让载荷更容易理解**：直接查看常用文本和二进制格式，也可以为订阅绑定 Lua 或 JavaScript 处理器。
+- **保留可复现的调试上下文**：本地保存消息、日志、发布草稿、处理器版本和连接配置。
 
-### 个性化设置
+## 下载与快速开始
 
-![MQTT Plus 设置：主题、字体、语言与工作台选项](docs/images/mqtt-plus-settings.png)
+[GitHub Releases](https://github.com/zouri/mqtt-plus/releases) 提供以下安装包：
+
+| 平台 | 安装包 |
+| --- | --- |
+| Windows x64 | NSIS 安装程序（`.exe`） |
+| Linux x64 | Debian 包（`.deb`）和 AppImage |
+| macOS | Intel x64 和 Apple Silicon arm64（`.dmg`） |
+
+1. 从 Releases 下载并安装适合当前平台的软件包。
+2. 启动 MQTT Plus，新建连接并填写 Broker 地址、端口，以及需要的认证或 TLS 设置。
+3. 连接后添加订阅，选择 QoS 和载荷格式，即可查看消息流。
+4. 使用底部发布编辑器发送消息；需要自定义解析时，为订阅绑定消息处理器。
+
+MQTT Plus 不包含内置 Broker，开始前需要一个可以访问的 MQTT Broker。
 
 ## 功能
 
@@ -33,15 +44,15 @@ MQTT Plus 是一个使用 Qt Quick 构建的跨平台桌面 MQTT 客户端。
 - MQTT Plus 配置导入/导出，以及 MQTTX 连接配置导入。
 - 英文和简体中文界面；支持系统、浅色和深色主题。
 
-## 下载
+## 更多界面预览
 
-[GitHub Releases](https://github.com/zouri/mqtt-plus/releases) 提供以下安装包：
+### 消息处理器
 
-| 平台 | 安装包 |
-| --- | --- |
-| Windows x64 | NSIS 安装程序（`.exe`） |
-| Linux x64 | Debian 包（`.deb`）和 AppImage |
-| macOS | Intel x64 和 Apple Silicon arm64（`.dmg`） |
+![MQTT Plus 消息处理器：Lua 脚本编辑与验证](docs/images/mqtt-plus-processors.png)
+
+### 个性化设置
+
+![MQTT Plus 设置：主题、字体、语言与工作台选项](docs/images/mqtt-plus-settings.png)
 
 ## 从源码构建
 
@@ -99,7 +110,7 @@ Windows 需要 NSIS，在 Developer PowerShell 中运行：
 
 ## 消息处理器
 
-处理器绑定到订阅，在消息写入历史和界面前接收解码结果。入口函数固定为 `process(context)`：
+处理器绑定到订阅，在后台接收消息的解码结果；处理完成后，消息历史和界面中的解析结果会随之更新。入口函数固定为 `process(context)`：
 
 ```lua
 function process(context)
@@ -149,9 +160,13 @@ docs/adr/         架构决策记录
 - [ ] MQTT 主题树：根据收到的主题构建可展开的层级视图，支持搜索、快速订阅，并展示各节点的最新消息与活动状态。
 - [ ] Broker 状态信息监控面板：汇总连接状态、运行时间、客户端与订阅数量、消息吞吐量及资源使用情况；在 Broker 提供 `$SYS` 主题时自动采集并可视化相关指标。
 
-## 参与贡献
+## 获取帮助与参与贡献
+
+遇到问题或希望提出功能建议，请使用 [GitHub Issues](https://github.com/zouri/mqtt-plus/issues)。报告问题时建议附上操作系统、MQTT Plus 版本、复现步骤和相关日志；请先移除密码、证书和包含敏感数据的配置。
 
 提交 PR 前请运行构建、`all_qmllint` 和完整测试。涉及界面或 MQTT 流程的变更，请在 PR 中说明手动验证步骤；界面变更请附截图。
+
+项目由 [zouri](https://github.com/zouri) 维护，感谢 [所有贡献者](https://github.com/zouri/mqtt-plus/graphs/contributors)。
 
 ## 许可证
 
