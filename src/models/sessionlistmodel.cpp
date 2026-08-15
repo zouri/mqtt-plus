@@ -164,7 +164,7 @@ SessionListModel::SessionRow SessionListModel::rowFromSession(const SessionState
     row.port = client ? client->port() : SessionConfig::kDefaultPort;
     row.clientId = client ? client->clientId() : QString();
     row.transport = session.transport;
-    row.transportLabel = transportLabel(session.transport);
+    row.transportLabel = SessionConfig::transportLabel(session.transport);
     row.protocolVersion = session.protocolVersion;
     row.protocolVersionName = protocolVersionLabel(session.protocolVersion);
     row.summary = session.runtime.brokerInfo.isEmpty()

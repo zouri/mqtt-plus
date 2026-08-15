@@ -292,7 +292,7 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
             boundSession->runtime.brokerInfo =
                 QStringLiteral("%1 • %2 • client %3")
                     .arg(protocolVersionLabel(boundSession->protocolVersion))
-                    .arg(transportLabel(boundSession->transport))
+                    .arg(SessionConfig::transportLabel(boundSession->transport))
                     .arg(boundClient ? boundClient->clientId() : QString());
             m_eventHistoryService.appendEvent(
                 *boundSession,
@@ -458,7 +458,7 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
             boundSession->runtime.brokerInfo =
                 QStringLiteral("%1 • %2 • ping ok")
                     .arg(protocolVersionLabel(boundSession->protocolVersion))
-                    .arg(transportLabel(boundSession->transport));
+                    .arg(SessionConfig::transportLabel(boundSession->transport));
         }
         emit sessionStateChanged();
     });
@@ -485,7 +485,7 @@ void MqttSessionService::connectSession(SessionState &session, const QString &ev
             .arg(eventPrefix)
             .arg(client->hostname())
             .arg(client->port())
-            .arg(transportLabel(session.transport))
+            .arg(SessionConfig::transportLabel(session.transport))
             .arg(protocolVersionLabel(session.protocolVersion)));
 
     const SessionConfig::Transport transport = SessionConfig::transportFromValue(

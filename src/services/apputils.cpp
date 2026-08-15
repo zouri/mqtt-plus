@@ -31,20 +31,6 @@ QString displayTimestamp(const QString &timestamp)
     return dateTime.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz"));
 }
 
-QString transportLabel(const QString &transport)
-{
-    if (transport == QStringLiteral("tls")) {
-        return QStringLiteral("TLS");
-    }
-    if (transport == QStringLiteral("ws")) {
-        return QStringLiteral("WebSocket");
-    }
-    if (transport == QStringLiteral("wss")) {
-        return QStringLiteral("Secure WebSocket");
-    }
-    return QStringLiteral("TCP");
-}
-
 QString protocolVersionLabel(int protocolVersion)
 {
     return protocolVersion >= 5 ? QStringLiteral("MQTT 5") : QStringLiteral("MQTT 3.1.1");

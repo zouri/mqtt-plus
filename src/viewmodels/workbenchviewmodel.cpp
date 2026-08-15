@@ -234,7 +234,7 @@ QVariantMap WorkbenchViewModel::currentSession() const
     row.insert(QStringLiteral("host"), client ? client->hostname() : QString());
     row.insert(QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort);
     row.insert(QStringLiteral("transport"), session->transport);
-    row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
+    row.insert(QStringLiteral("transportLabel"), SessionConfig::transportLabel(session->transport));
     row.insert(QStringLiteral("protocolVersion"), session->protocolVersion);
     row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
     row.insert(QStringLiteral("clientId"), client ? client->clientId() : QString());
@@ -261,7 +261,7 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
                       .arg(protocolVersionLabel(session->protocolVersion))
                       .arg(client ? client->hostname() : QString())
                       .arg(client ? client->port() : SessionConfig::kDefaultPort)
-                      .arg(transportLabel(session->transport));
+                      .arg(SessionConfig::transportLabel(session->transport));
         if (session->runtime.sessionRestored) {
             summary.append(QCoreApplication::translate("WorkbenchViewModel", " • session restored"));
         }
@@ -269,7 +269,7 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
         summary = QCoreApplication::translate("WorkbenchViewModel", "Connecting to %1:%2 over %3")
                       .arg(client ? client->hostname() : QString())
                       .arg(client ? client->port() : SessionConfig::kDefaultPort)
-                      .arg(transportLabel(session->transport));
+                      .arg(SessionConfig::transportLabel(session->transport));
     } else if (state == QStringLiteral("disconnecting")) {
         summary = QCoreApplication::translate("WorkbenchViewModel", "Disconnecting from broker");
     } else if (!session->runtime.lastError.isEmpty()) {
@@ -286,7 +286,7 @@ QVariantMap WorkbenchViewModel::sessionStatus() const
     row.insert(QStringLiteral("hasError"), !session->runtime.lastError.isEmpty());
     row.insert(QStringLiteral("brokerInfo"), session->runtime.brokerInfo);
     row.insert(QStringLiteral("sessionRestored"), session->runtime.sessionRestored);
-    row.insert(QStringLiteral("transportLabel"), transportLabel(session->transport));
+    row.insert(QStringLiteral("transportLabel"), SessionConfig::transportLabel(session->transport));
     row.insert(QStringLiteral("protocolVersionName"), protocolVersionLabel(session->protocolVersion));
     row.insert(QStringLiteral("connectedAtMs"), session->runtime.connectedAtMs);
     row.insert(QStringLiteral("connectionStartedAtMs"), session->runtime.connectionStartedAtMs);

@@ -22,7 +22,6 @@ constexpr int kSubscriptionRateHistorySampleCount =
 
 QString timestampNow();
 QString displayTimestamp(const QString &timestamp);
-QString transportLabel(const QString &transport);
 QString protocolVersionLabel(int protocolVersion);
 QList<QByteArray> alpnProtocols(const QString &alpn);
 QSslKey readPrivateKey(const QString &path);
