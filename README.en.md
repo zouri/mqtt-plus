@@ -4,23 +4,34 @@
 
 English | [简体中文](README.md)
 
-MQTT Plus is a cross-platform desktop MQTT client built with Qt Quick.
+MQTT Plus is a cross-platform desktop client for MQTT development, integration testing, and troubleshooting. It brings multiple connections, subscriptions and publishing, persistent message streams, and programmable payload processing into one local workbench.
 
-[Download the latest release](https://github.com/zouri/mqtt-plus/releases/latest) · [Report an issue](https://github.com/zouri/mqtt-plus/issues)
-
-## Screenshots
-
-### MQTT Workbench
+[Download the latest release](https://github.com/zouri/mqtt-plus/releases/latest) · [Quick start](#downloads-and-quick-start) · [Report an issue](https://github.com/zouri/mqtt-plus/issues)
 
 ![MQTT Plus workbench with connections, subscriptions, message stream, and publish composer](docs/images/mqtt-plus-workbench.png)
 
-### Message Processors
+## Why MQTT Plus
 
-![MQTT Plus message processor with Lua script editing and validation](docs/images/mqtt-plus-processors.png)
+- **Debug MQTT in one place:** manage multiple connections, subscribe to topics, inspect messages, and compose publishes in the same workbench.
+- **Make payloads easier to understand:** inspect common text and binary formats directly, or bind Lua and JavaScript processors to subscriptions.
+- **Keep reproducible debugging context:** store messages, logs, publish drafts, processor revisions, and connection configuration locally.
 
-### Preferences
+## Downloads and Quick Start
 
-![MQTT Plus preferences for theme, font, language, and workbench behavior](docs/images/mqtt-plus-settings.png)
+[GitHub Releases](https://github.com/zouri/mqtt-plus/releases) provides installers for the following platforms:
+
+| Platform | Package |
+| --- | --- |
+| Windows x64 | NSIS installer (`.exe`) |
+| Linux x64 | Debian package (`.deb`) and AppImage |
+| macOS | Intel x64 and Apple Silicon arm64 (`.dmg`) |
+
+1. Download and install the package for your platform from Releases.
+2. Start MQTT Plus, create a connection, and enter the broker address, port, and any required authentication or TLS settings.
+3. Connect, add a subscription, and choose its QoS and payload format to start inspecting the message stream.
+4. Use the publish composer at the bottom of the workbench to send messages. Bind a message processor when custom parsing is required.
+
+MQTT Plus does not include a broker. You need access to an MQTT broker before getting started.
 
 ## Features
 
@@ -33,15 +44,15 @@ MQTT Plus is a cross-platform desktop MQTT client built with Qt Quick.
 - MQTT Plus configuration import/export and MQTTX connection configuration import.
 - English and Simplified Chinese interfaces, with system, light, and dark themes.
 
-## Downloads
+## More Screenshots
 
-[GitHub Releases](https://github.com/zouri/mqtt-plus/releases) provides installers for the following platforms:
+### Message Processors
 
-| Platform | Package |
-| --- | --- |
-| Windows x64 | NSIS installer (`.exe`) |
-| Linux x64 | Debian package (`.deb`) and AppImage |
-| macOS | Intel x64 and Apple Silicon arm64 (`.dmg`) |
+![MQTT Plus message processor with Lua script editing and validation](docs/images/mqtt-plus-processors.png)
+
+### Preferences
+
+![MQTT Plus preferences for theme, font, language, and workbench behavior](docs/images/mqtt-plus-settings.png)
 
 ## Building from Source
 
@@ -99,7 +110,7 @@ Windows requires NSIS. Run the following command in Developer PowerShell:
 
 ## Message Processors
 
-Processors are bound to subscriptions and receive decoded results before messages are written to history and displayed in the interface. The entry point is always `process(context)`:
+Processors are bound to subscriptions and receive decoded message data in the background. Their results update the stored message and the interface when processing completes. The entry point is always `process(context)`:
 
 ```lua
 function process(context)
@@ -149,9 +160,13 @@ Session passwords are stored in the local `QSettings` store rather than the syst
 - [ ] MQTT topic tree: build an expandable hierarchy from observed topics, with search, quick subscriptions, and the latest message and activity state for each node.
 - [ ] Broker status monitoring dashboard: summarize connection status, uptime, client and subscription counts, message throughput, and resource usage; automatically collect and visualize metrics from `$SYS` topics when the broker provides them.
 
-## Contributing
+## Help and Contributing
+
+Use [GitHub Issues](https://github.com/zouri/mqtt-plus/issues) for problems and feature requests. Include the operating system, MQTT Plus version, reproduction steps, and relevant logs when reporting a bug. Remove passwords, certificates, and sensitive configuration data first.
 
 Before submitting a pull request, run the build, `all_qmllint`, and the complete test suite. For UI or MQTT workflow changes, describe the manual verification steps in the pull request and include screenshots for visible UI changes.
+
+MQTT Plus is maintained by [zouri](https://github.com/zouri). Thanks to [all contributors](https://github.com/zouri/mqtt-plus/graphs/contributors).
 
 ## License
 
