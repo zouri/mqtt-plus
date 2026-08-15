@@ -187,11 +187,12 @@ void ArchitectureBoundariesTest::messageAdmissionChecksMetadataBeforePayloadWork
     QVERIFY2(captureEnqueueIndex >= 0 && captureEnqueueIndex < parseEnqueueIndex,
         "Raw capture admission must happen before optional structured parsing");
 
-    QString mqttSessionSource;
-    QVERIFY(readSourceFile(QStringLiteral("src/usecases/mqttsessionservice.cpp"), mqttSessionSource));
-    const int callbackIndex = mqttSessionSource.indexOf(QStringLiteral("&QMqttClient::messageReceived"));
+    QString subscriptionSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/usecases/subscriptionservice.cpp"), subscriptionSource));
+    const int callbackIndex = subscriptionSource.indexOf(
+        QStringLiteral("&QMqttSubscription::messageReceived"));
     QVERIFY(callbackIndex >= 0);
-    const QString callbackSource = mqttSessionSource.mid(callbackIndex, 500);
+    const QString callbackSource = subscriptionSource.mid(callbackIndex, 900);
     QVERIFY2(callbackSource.contains(QStringLiteral("queueIncomingMessage")),
         "The MQTT receive callback must hand payload admission to the bounded worker queue");
     QVERIFY2(!callbackSource.contains(QStringLiteral("appendIncomingMessage")),

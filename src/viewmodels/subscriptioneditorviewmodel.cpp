@@ -54,6 +54,9 @@ QStringList SubscriptionEditorViewModel::processorOptionIds() const { return m_p
 QStringList SubscriptionEditorViewModel::processorOptionNames() const { return m_processorOptionNames; }
 QString SubscriptionEditorViewModel::processorBindingDetail() const { return m_processorBindingDetail; }
 QString SubscriptionEditorViewModel::color() const { return m_color; }
+bool SubscriptionEditorViewModel::noLocal() const { return m_noLocal; }
+QString SubscriptionEditorViewModel::subscriptionIdentifierText() const { return m_subscriptionIdentifierText; }
+QString SubscriptionEditorViewModel::userPropertiesText() const { return m_userPropertiesText; }
 
 QStringList SubscriptionEditorViewModel::colorOptions() const
 {
@@ -72,9 +75,16 @@ QStringList SubscriptionEditorViewModel::colorOptions() const
 
 bool SubscriptionEditorViewModel::canSubmit() const
 {
-    return m_editMode
+    bool identifierOk = false;
+    const QString identifierText = m_subscriptionIdentifierText.trimmed();
+    const qulonglong identifier = identifierText.toULongLong(&identifierOk);
+    const bool hasValidIdentifier = identifierText.isEmpty()
+        || (identifierOk
+            && identifier > 0
+            && identifier <= SessionConfig::kMaximumSubscriptionIdentifier);
+    return hasValidIdentifier && (m_editMode
         ? !m_topic.trimmed().isEmpty()
-        : !topicFiltersFromEditorText(m_topic).isEmpty();
+        : !topicFiltersFromEditorText(m_topic).isEmpty());
 }
 
 void SubscriptionEditorViewModel::setTopic(const QString &topic)
@@ -152,6 +162,37 @@ void SubscriptionEditorViewModel::setColor(const QString &color)
     emit colorChanged();
 }
 
+void SubscriptionEditorViewModel::setNoLocal(bool noLocal)
+{
+    if (m_noLocal == noLocal) {
+        return;
+    }
+    m_noLocal = noLocal;
+    emit optionsChanged();
+}
+
+void SubscriptionEditorViewModel::setSubscriptionIdentifierText(const QString &text)
+{
+    if (m_subscriptionIdentifierText == text) {
+        return;
+    }
+    const bool wasSubmittable = canSubmit();
+    m_subscriptionIdentifierText = text;
+    emit optionsChanged();
+    if (wasSubmittable != canSubmit()) {
+        emit canSubmitChanged();
+    }
+}
+
+void SubscriptionEditorViewModel::setUserPropertiesText(const QString &text)
+{
+    if (m_userPropertiesText == text) {
+        return;
+    }
+    m_userPropertiesText = text;
+    emit optionsChanged();
+}
+
 void SubscriptionEditorViewModel::openForCreate()
 {
     setEditMode(false);
@@ -163,6 +204,9 @@ void SubscriptionEditorViewModel::openForCreate()
     m_processorParameters.clear();
     setProcessorId({});
     setColor({});
+    setNoLocal(false);
+    setSubscriptionIdentifierText({});
+    setUserPropertiesText({});
 }
 
 void SubscriptionEditorViewModel::openForEdit(const SubscriptionEntry &subscription)
@@ -176,6 +220,11 @@ void SubscriptionEditorViewModel::openForEdit(const SubscriptionEntry &subscript
     m_processorParameters = subscription.processor.parameters;
     setProcessorId(subscription.processor.processorId);
     setColor(subscription.color);
+    setNoLocal(subscription.options.noLocal);
+    setSubscriptionIdentifierText(subscription.options.subscriptionIdentifier > 0
+            ? QString::number(subscription.options.subscriptionIdentifier)
+            : QString());
+    setUserPropertiesText(mqttUserPropertiesToText(subscription.options.userProperties));
 }
 
 void SubscriptionEditorViewModel::setProcessorOptions(const QVariantList &processors)
@@ -188,6 +237,8 @@ void SubscriptionEditorViewModel::setProcessorOptions(const QVariantList &proces
 SubscriptionEditorSubmission SubscriptionEditorViewModel::submission() const
 {
     const QString normalizedTopic = m_topic.trimmed();
+    bool identifierOk = false;
+    const qulonglong identifier = m_subscriptionIdentifierText.trimmed().toULongLong(&identifierOk);
     return SubscriptionEditorSubmission {
         .editMode = m_editMode,
         .editTopic = m_editTopic,
@@ -203,6 +254,14 @@ SubscriptionEditorSubmission SubscriptionEditorViewModel::submission() const
             .parameters = m_processorParameters,
         },
         .color = m_color,
+        .options = {
+            .noLocal = m_noLocal,
+            .subscriptionIdentifier = identifierOk
+                    && identifier <= SessionConfig::kMaximumSubscriptionIdentifier
+                ? static_cast<quint32>(identifier)
+                : 0,
+            .userProperties = mqttUserPropertiesFromText(m_userPropertiesText),
+        },
     };
 }
 

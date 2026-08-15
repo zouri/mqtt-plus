@@ -29,6 +29,11 @@ QVariantList subscriptionsToVariantList(const QVector<SubscriptionEntry> &subscr
         row.insert(QStringLiteral("alias"), entry.alias);
         row.insert(QStringLiteral("qos"), entry.requestedQos);
         row.insert(QStringLiteral("format"), entry.format);
+        row.insert(QStringLiteral("noLocal"), entry.options.noLocal);
+        row.insert(QStringLiteral("subscriptionIdentifier"), entry.options.subscriptionIdentifier);
+        row.insert(
+            QStringLiteral("userProperties"),
+            mqttUserPropertiesToVariantList(entry.options.userProperties));
         QVariantMap processor;
         processor.insert(QStringLiteral("processorId"), entry.processor.processorId);
         processor.insert(
@@ -40,6 +45,59 @@ QVariantList subscriptionsToVariantList(const QVector<SubscriptionEntry> &subscr
         rows.append(row);
     }
     return rows;
+}
+
+QVariantMap lastWillToVariantMap(const MqttLastWillConfig &will)
+{
+    return {
+        {QStringLiteral("enabled"), will.enabled},
+        {QStringLiteral("topic"), will.topic},
+        {QStringLiteral("payload"), will.payload},
+        {QStringLiteral("payloadFormat"), will.payloadFormat},
+        {QStringLiteral("qos"), will.qos},
+        {QStringLiteral("retain"), will.retain},
+        {QStringLiteral("delayInterval"), will.properties.delayInterval},
+        {QStringLiteral("payloadFormatIndicatorSet"), will.properties.payloadFormatIndicator.has_value()},
+        {QStringLiteral("payloadFormatUtf8"),
+         will.properties.payloadFormatIndicator == MqttPayloadFormatIndicator::Utf8},
+        {QStringLiteral("messageExpiryIntervalSet"), will.properties.messageExpiryInterval.has_value()},
+        {QStringLiteral("messageExpiryInterval"), will.properties.messageExpiryInterval.value_or(0)},
+        {QStringLiteral("contentType"), will.properties.contentType},
+        {QStringLiteral("responseTopic"), will.properties.responseTopic},
+        {QStringLiteral("correlationDataBase64"), QString::fromLatin1(will.properties.correlationData.toBase64())},
+        {QStringLiteral("userProperties"), mqttUserPropertiesToVariantList(will.properties.userProperties)},
+    };
+}
+
+MqttLastWillConfig lastWillFromVariantMap(const QVariantMap &row)
+{
+    MqttLastWillConfig will;
+    will.enabled = row.value(QStringLiteral("enabled"), false).toBool();
+    will.topic = row.value(QStringLiteral("topic")).toString();
+    will.payload = row.value(QStringLiteral("payload")).toString();
+    will.payloadFormat = row.value(QStringLiteral("payloadFormat"), 0).toInt();
+    will.qos = SessionConfig::sanitizeQos(row.value(QStringLiteral("qos"), 0).toInt());
+    will.retain = row.value(QStringLiteral("retain"), false).toBool();
+    will.properties.delayInterval = row.value(QStringLiteral("delayInterval"), 0).toUInt();
+    if (row.value(QStringLiteral("payloadFormatIndicatorSet"), false).toBool()) {
+        will.properties.payloadFormatIndicator = row.value(
+                                                         QStringLiteral("payloadFormatUtf8"),
+                                                         false)
+                                                         .toBool()
+            ? MqttPayloadFormatIndicator::Utf8
+            : MqttPayloadFormatIndicator::Unspecified;
+    }
+    if (row.value(QStringLiteral("messageExpiryIntervalSet"), false).toBool()) {
+        will.properties.messageExpiryInterval = row.value(
+            QStringLiteral("messageExpiryInterval"), 0).toUInt();
+    }
+    will.properties.contentType = row.value(QStringLiteral("contentType")).toString();
+    will.properties.responseTopic = row.value(QStringLiteral("responseTopic")).toString();
+    will.properties.correlationData = QByteArray::fromBase64(
+        row.value(QStringLiteral("correlationDataBase64")).toString().toLatin1());
+    will.properties.userProperties = mqttUserPropertiesFromVariantList(
+        row.value(QStringLiteral("userProperties")).toList());
+    return will;
 }
 
 } // namespace
@@ -54,6 +112,7 @@ SessionConnectionConfig configFromState(const SessionState &session)
     config.host = client ? client->hostname() : QString();
     config.port = client ? client->port() : SessionConfig::kDefaultPort;
     config.transport = session.transport;
+    config.webSocketPath = session.webSocketPath;
     config.protocolVersion = session.protocolVersion;
     config.sslSecure = session.sslSecure;
     config.alpn = session.alpn;
@@ -75,6 +134,8 @@ SessionConnectionConfig configFromState(const SessionState &session)
     config.requestProblemInformation = session.requestProblemInformation;
     config.authenticationMethod = session.authenticationMethod;
     config.authenticationData = session.authenticationData;
+    config.userProperties = session.userProperties;
+    config.lastWill = session.lastWill;
     return config;
 }
 
@@ -129,6 +190,11 @@ LoadedSession readSession(QSettings &settings, int index)
         entry.alias = row.value(QStringLiteral("alias")).toString().trimmed();
         entry.requestedQos = SessionConfig::sanitizeQos(row.value(QStringLiteral("qos"), 0).toInt());
         entry.format = row.value(QStringLiteral("format"), 0).toInt();
+        entry.options.noLocal = row.value(QStringLiteral("noLocal"), false).toBool();
+        entry.options.subscriptionIdentifier = SessionConfig::sanitizeSubscriptionIdentifier(
+            row.value(QStringLiteral("subscriptionIdentifier"), 0));
+        entry.options.userProperties = mqttUserPropertiesFromVariantList(
+            row.value(QStringLiteral("userProperties")).toList());
         const QVariantMap processor = row.value(QStringLiteral("processor")).toMap();
         entry.processor.processorId = processor.value(QStringLiteral("processorId")).toString().trimmed();
         QCborParserError parserError;
@@ -153,6 +219,8 @@ LoadedSession readSession(QSettings &settings, int index)
         settings.value(QStringLiteral("port")),
         session.transport);
     loaded.config.transport = session.transport;
+    loaded.config.webSocketPath = SessionConfig::sanitizeWebSocketPath(
+        settings.value(QStringLiteral("webSocketPath"), QStringLiteral("/mqtt")));
     loaded.config.protocolVersion = session.protocolVersion;
     loaded.config.sslSecure = settings.value(QStringLiteral("sslSecure"), true).toBool();
     loaded.config.alpn = settings.value(QStringLiteral("alpn")).toString();
@@ -203,6 +271,10 @@ LoadedSession readSession(QSettings &settings, int index)
     loaded.config.authenticationData = settings.value(
                                                      QStringLiteral("authenticationData"))
                                              .toString();
+    loaded.config.userProperties = mqttUserPropertiesFromVariantList(
+        settings.value(QStringLiteral("userProperties")).toList());
+    loaded.config.lastWill = lastWillFromVariantMap(
+        settings.value(QStringLiteral("lastWill")).toMap());
     return loaded;
 }
 
@@ -220,6 +292,7 @@ bool writeSessions(QSettings &settings, const QVector<SessionState> &sessions, Q
         settings.setValue(QStringLiteral("host"), client ? client->hostname() : QString());
         settings.setValue(QStringLiteral("port"), client ? client->port() : SessionConfig::kDefaultPort);
         settings.setValue(QStringLiteral("transport"), session.transport);
+        settings.setValue(QStringLiteral("webSocketPath"), session.webSocketPath);
         settings.setValue(QStringLiteral("protocolVersion"), session.protocolVersion);
         settings.setValue(QStringLiteral("sslSecure"), session.sslSecure);
         settings.setValue(QStringLiteral("alpn"), session.alpn);
@@ -241,6 +314,10 @@ bool writeSessions(QSettings &settings, const QVector<SessionState> &sessions, Q
         settings.setValue(QStringLiteral("requestProblemInformation"), session.requestProblemInformation);
         settings.setValue(QStringLiteral("authenticationMethod"), session.authenticationMethod);
         settings.setValue(QStringLiteral("authenticationData"), session.authenticationData);
+        settings.setValue(
+            QStringLiteral("userProperties"),
+            mqttUserPropertiesToVariantList(session.userProperties));
+        settings.setValue(QStringLiteral("lastWill"), lastWillToVariantMap(session.lastWill));
         settings.setValue(QStringLiteral("outputPaused"), session.outputPaused);
         settings.setValue(
             QStringLiteral("captureIncoming"),

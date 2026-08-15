@@ -1,6 +1,7 @@
 #pragma once
 
 #include "models/draftfiltermodel.h"
+#include "domain/mqttproperties.h"
 
 #include <QObject>
 #include <QString>
@@ -21,6 +22,13 @@ class PublishComposerViewModel : public QObject
     Q_PROPERTY(int format READ format WRITE setFormat NOTIFY formatChanged)
     Q_PROPERTY(int qos READ qos WRITE setQos NOTIFY qosChanged)
     Q_PROPERTY(bool retain READ retain WRITE setRetain NOTIFY retainChanged)
+    Q_PROPERTY(bool payloadUtf8 READ payloadUtf8 WRITE setPayloadUtf8 NOTIFY propertiesChanged)
+    Q_PROPERTY(QString messageExpiryText READ messageExpiryText WRITE setMessageExpiryText NOTIFY propertiesChanged)
+    Q_PROPERTY(QString topicAliasText READ topicAliasText WRITE setTopicAliasText NOTIFY propertiesChanged)
+    Q_PROPERTY(QString responseTopic READ responseTopic WRITE setResponseTopic NOTIFY propertiesChanged)
+    Q_PROPERTY(QString correlationDataBase64 READ correlationDataBase64 WRITE setCorrelationDataBase64 NOTIFY propertiesChanged)
+    Q_PROPERTY(QString contentType READ contentType WRITE setContentType NOTIFY propertiesChanged)
+    Q_PROPERTY(QString userPropertiesText READ userPropertiesText WRITE setUserPropertiesText NOTIFY propertiesChanged)
     Q_PROPERTY(bool canPublish READ canPublish NOTIFY canPublishChanged)
     Q_PROPERTY(bool hasContent READ hasContent NOTIFY composerStateChanged)
     Q_PROPERTY(QVariantList recentPublishes READ recentPublishes NOTIFY recentPublishesChanged)
@@ -44,6 +52,13 @@ public:
     int format() const;
     int qos() const;
     bool retain() const;
+    bool payloadUtf8() const;
+    QString messageExpiryText() const;
+    QString topicAliasText() const;
+    QString responseTopic() const;
+    QString correlationDataBase64() const;
+    QString contentType() const;
+    QString userPropertiesText() const;
     bool canPublish() const;
     bool hasContent() const;
     QVariantList recentPublishes() const;
@@ -58,6 +73,13 @@ public:
     void setFormat(int format);
     void setQos(int qos);
     void setRetain(bool retain);
+    void setPayloadUtf8(bool enabled);
+    void setMessageExpiryText(const QString &text);
+    void setTopicAliasText(const QString &text);
+    void setResponseTopic(const QString &topic);
+    void setCorrelationDataBase64(const QString &data);
+    void setContentType(const QString &contentType);
+    void setUserPropertiesText(const QString &text);
 
     Q_INVOKABLE void useMessageAsDraft(const QString &topic, const QString &payload, const QString &testPayload, int format);
     Q_INVOKABLE bool useRecentPublish(int index);
@@ -78,6 +100,7 @@ signals:
     void formatChanged();
     void qosChanged();
     void retainChanged();
+    void propertiesChanged();
     void canPublishChanged();
     void composerStateChanged();
     void recentPublishesChanged();
@@ -93,4 +116,14 @@ private:
     int m_format = 1;
     int m_qos = 0;
     bool m_retain = false;
+    bool m_payloadUtf8 = false;
+    QString m_messageExpiryText;
+    QString m_topicAliasText;
+    QString m_responseTopic;
+    QString m_correlationDataBase64;
+    QString m_contentType;
+    QString m_userPropertiesText;
+
+    MqttPublishProperties collectedProperties() const;
+    void loadProperties(const MqttPublishProperties &properties);
 };

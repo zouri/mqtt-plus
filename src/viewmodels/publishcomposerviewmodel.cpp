@@ -10,6 +10,17 @@
 
 using namespace AppUtils;
 
+namespace {
+bool isValidBase64(const QString &text)
+{
+    const QByteArray encoded = text.trimmed().toLatin1();
+    return encoded.isEmpty()
+        || QByteArray::fromBase64Encoding(
+               encoded,
+               QByteArray::AbortOnBase64DecodingErrors);
+}
+}
+
 PublishComposerViewModel::PublishComposerViewModel(
     SessionService &sessionService,
     MqttSessionService &mqttService,
@@ -40,6 +51,13 @@ QString PublishComposerViewModel::payload() const { return m_payload; }
 int PublishComposerViewModel::format() const { return m_format; }
 int PublishComposerViewModel::qos() const { return m_qos; }
 bool PublishComposerViewModel::retain() const { return m_retain; }
+bool PublishComposerViewModel::payloadUtf8() const { return m_payloadUtf8; }
+QString PublishComposerViewModel::messageExpiryText() const { return m_messageExpiryText; }
+QString PublishComposerViewModel::topicAliasText() const { return m_topicAliasText; }
+QString PublishComposerViewModel::responseTopic() const { return m_responseTopic; }
+QString PublishComposerViewModel::correlationDataBase64() const { return m_correlationDataBase64; }
+QString PublishComposerViewModel::contentType() const { return m_contentType; }
+QString PublishComposerViewModel::userPropertiesText() const { return m_userPropertiesText; }
 QVariantList PublishComposerViewModel::recentPublishes() const { return m_mqttService.recentPublishes(); }
 DraftFilterModel *PublishComposerViewModel::drafts() { return &m_drafts; }
 bool PublishComposerViewModel::draftsLoading() const { return m_draftService.loading(); }
@@ -52,12 +70,18 @@ bool PublishComposerViewModel::canPublish() const
     const SessionState *session = m_sessionService.currentSession();
     return session
         && sessionStateName(*session, session->runtime.client) == QStringLiteral("connected")
-        && !m_topic.trimmed().isEmpty();
+        && !m_topic.trimmed().isEmpty()
+        && isValidBase64(m_correlationDataBase64);
 }
 
 bool PublishComposerViewModel::hasContent() const
 {
-    return !m_topic.trimmed().isEmpty() || !m_payload.isEmpty() || m_format != 1 || m_qos != 0 || m_retain;
+    return !m_topic.trimmed().isEmpty()
+        || !m_payload.isEmpty()
+        || m_format != 1
+        || m_qos != 0
+        || m_retain
+        || !collectedProperties().isEmpty();
 }
 
 void PublishComposerViewModel::setTopic(const QString &topic)
@@ -103,6 +127,97 @@ void PublishComposerViewModel::setRetain(bool retain)
     emit composerStateChanged();
 }
 
+void PublishComposerViewModel::setPayloadUtf8(bool enabled)
+{
+    if (m_payloadUtf8 == enabled) return;
+    m_payloadUtf8 = enabled;
+    emit propertiesChanged();
+    emit composerStateChanged();
+}
+
+void PublishComposerViewModel::setMessageExpiryText(const QString &text)
+{
+    if (m_messageExpiryText == text) return;
+    m_messageExpiryText = text;
+    emit propertiesChanged();
+    emit composerStateChanged();
+}
+
+void PublishComposerViewModel::setTopicAliasText(const QString &text)
+{
+    if (m_topicAliasText == text) return;
+    m_topicAliasText = text;
+    emit propertiesChanged();
+    emit composerStateChanged();
+}
+
+void PublishComposerViewModel::setResponseTopic(const QString &topic)
+{
+    if (m_responseTopic == topic) return;
+    m_responseTopic = topic;
+    emit propertiesChanged();
+    emit composerStateChanged();
+}
+
+void PublishComposerViewModel::setCorrelationDataBase64(const QString &data)
+{
+    if (m_correlationDataBase64 == data) return;
+    const bool wasPublishable = canPublish();
+    m_correlationDataBase64 = data;
+    emit propertiesChanged();
+    emit composerStateChanged();
+    if (wasPublishable != canPublish()) emit canPublishChanged();
+}
+
+void PublishComposerViewModel::setContentType(const QString &contentType)
+{
+    if (m_contentType == contentType) return;
+    m_contentType = contentType;
+    emit propertiesChanged();
+    emit composerStateChanged();
+}
+
+void PublishComposerViewModel::setUserPropertiesText(const QString &text)
+{
+    if (m_userPropertiesText == text) return;
+    m_userPropertiesText = text;
+    emit propertiesChanged();
+    emit composerStateChanged();
+}
+
+MqttPublishProperties PublishComposerViewModel::collectedProperties() const
+{
+    MqttPublishProperties properties;
+    if (m_payloadUtf8) {
+        properties.payloadFormatIndicator = MqttPayloadFormatIndicator::Utf8;
+    }
+    if (!m_messageExpiryText.trimmed().isEmpty()) {
+        properties.messageExpiryInterval = SessionConfig::sanitizeOptionalUInt32(
+            m_messageExpiryText);
+    }
+    if (!m_topicAliasText.trimmed().isEmpty()) {
+        properties.topicAlias = SessionConfig::sanitizeOptionalUInt16(m_topicAliasText);
+    }
+    properties.responseTopic = m_responseTopic.trimmed();
+    properties.correlationData = QByteArray::fromBase64(m_correlationDataBase64.trimmed().toLatin1());
+    properties.contentType = m_contentType.trimmed();
+    properties.userProperties = mqttUserPropertiesFromText(m_userPropertiesText);
+    return properties;
+}
+
+void PublishComposerViewModel::loadProperties(const MqttPublishProperties &properties)
+{
+    setPayloadUtf8(properties.payloadFormatIndicator == MqttPayloadFormatIndicator::Utf8);
+    setMessageExpiryText(properties.messageExpiryInterval
+            ? QString::number(*properties.messageExpiryInterval)
+            : QString());
+    setTopicAliasText(properties.topicAlias ? QString::number(*properties.topicAlias) : QString());
+    setResponseTopic(properties.responseTopic);
+    setCorrelationDataBase64(QString::fromLatin1(properties.correlationData.toBase64()));
+    setContentType(properties.contentType);
+    setUserPropertiesText(mqttUserPropertiesToText(properties.userProperties));
+}
+
 void PublishComposerViewModel::useMessageAsDraft(
     const QString &topic,
     const QString &payload,
@@ -124,6 +239,9 @@ bool PublishComposerViewModel::useRecentPublish(int index)
     setFormat(entry.value(QStringLiteral("format"), m_format).toInt());
     setQos(entry.value(QStringLiteral("qos"), m_qos).toInt());
     setRetain(entry.value(QStringLiteral("retain"), m_retain).toBool());
+    loadProperties(mqttPublishPropertiesFromBase64Cbor(
+                       entry.value(QStringLiteral("propertiesCborBase64")).toString())
+                       .value_or(MqttPublishProperties {}));
     return true;
 }
 
@@ -138,6 +256,9 @@ bool PublishComposerViewModel::quickPublishRecent(int index)
         entry.value(QStringLiteral("format"), 1).toInt(),
         entry.value(QStringLiteral("qos"), 0).toInt(),
         entry.value(QStringLiteral("retain"), false).toBool(),
+        mqttPublishPropertiesFromBase64Cbor(
+            entry.value(QStringLiteral("propertiesCborBase64")).toString())
+            .value_or(MqttPublishProperties {}),
         tr("Recent publish"));
 }
 
@@ -150,7 +271,13 @@ bool PublishComposerViewModel::publishDraft()
 {
     return canPublish()
         && m_mqttService.publishCurrentSession(
-            m_topic.trimmed(), m_payload, m_format, m_qos, m_retain, tr("Publish composer"));
+            m_topic.trimmed(),
+            m_payload,
+            m_format,
+            m_qos,
+            m_retain,
+            collectedProperties(),
+            tr("Publish composer"));
 }
 
 void PublishComposerViewModel::setDraftFilterText(const QString &text)
@@ -177,6 +304,9 @@ bool PublishComposerViewModel::useSavedDraft(int index)
     setFormat(row.value(QStringLiteral("format"), 1).toInt());
     setQos(row.value(QStringLiteral("qos"), 0).toInt());
     setRetain(row.value(QStringLiteral("retain"), false).toBool());
+    loadProperties(mqttPublishPropertiesFromBase64Cbor(
+                       row.value(QStringLiteral("propertiesCborBase64")).toString())
+                       .value_or(MqttPublishProperties {}));
     m_draftService.markUsed(row.value(QStringLiteral("id")).toString());
     return true;
 }
@@ -193,6 +323,9 @@ bool PublishComposerViewModel::quickPublishDraft(int index, const QString &tempo
         row.value(QStringLiteral("format"), 1).toInt(),
         row.value(QStringLiteral("qos"), 0).toInt(),
         row.value(QStringLiteral("retain"), false).toBool(),
+        mqttPublishPropertiesFromBase64Cbor(
+            row.value(QStringLiteral("propertiesCborBase64")).toString())
+            .value_or(MqttPublishProperties {}),
         row.value(QStringLiteral("name")).toString());
     if (sent) m_draftService.markUsed(row.value(QStringLiteral("id")).toString());
     return sent;
@@ -212,7 +345,10 @@ bool PublishComposerViewModel::wouldReplaceWithDraft(int index) const
         || m_payload != row.value(QStringLiteral("payload")).toString()
         || m_format != row.value(QStringLiteral("format"), 1).toInt()
         || m_qos != row.value(QStringLiteral("qos"), 0).toInt()
-        || m_retain != row.value(QStringLiteral("retain"), false).toBool();
+        || m_retain != row.value(QStringLiteral("retain"), false).toBool()
+        || collectedProperties() != mqttPublishPropertiesFromBase64Cbor(
+                                        row.value(QStringLiteral("propertiesCborBase64")).toString())
+                                        .value_or(MqttPublishProperties {});
 }
 
 bool PublishComposerViewModel::saveAsDraft(const QString &name)
@@ -224,5 +360,6 @@ bool PublishComposerViewModel::saveAsDraft(const QString &name)
     draft.formatId = PayloadCodec::formatId(PayloadCodec::formatFromInt(m_format));
     draft.qos = m_qos;
     draft.retain = m_retain;
+    draft.properties = collectedProperties();
     return m_draftService.createDraft(draft);
 }

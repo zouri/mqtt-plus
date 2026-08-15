@@ -34,6 +34,8 @@ QVariant DraftLibraryModel::data(const QModelIndex &index, int role) const
     case FormatNameRole: return PayloadCodec::formatName(formatOk ? format : PayloadFormat::Plaintext);
     case QosRole: return draft.qos;
     case RetainRole: return draft.retain;
+    case PropertiesCborBase64Role:
+        return mqttPublishPropertiesToBase64Cbor(draft.properties);
     case CreatedAtRole: return draft.createdAt;
     case UpdatedAtRole: return draft.updatedAt;
     case LastUsedAtRole: return draft.lastUsedAt;
@@ -55,6 +57,7 @@ QHash<int, QByteArray> DraftLibraryModel::roleNames() const
         {FormatNameRole, "formatName"},
         {QosRole, "qos"},
         {RetainRole, "retain"},
+        {PropertiesCborBase64Role, "propertiesCborBase64"},
         {CreatedAtRole, "createdAt"},
         {UpdatedAtRole, "updatedAt"},
         {LastUsedAtRole, "lastUsedAt"},

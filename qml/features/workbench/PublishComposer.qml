@@ -21,10 +21,17 @@ Item {
     property string fontFamily: ""
     readonly property int collapsedHeight: root.ui.compactControlHeight + 2
     readonly property int metadataControlHeight: root.ui.compactCheckHeight
+    property bool propertiesExpanded: false
     readonly property int minComposerHeight: 150
+    readonly property int propertiesMinComposerHeight: 280
     readonly property int maxComposerHeight: 300
+    readonly property int effectiveMinComposerHeight: root.propertiesExpanded
+                                                      ? root.propertiesMinComposerHeight
+                                                      : root.minComposerHeight
+    readonly property int effectiveComposerHeight: Math.max(root.composerHeight,
+                                                             root.effectiveMinComposerHeight)
     readonly property real animatedComposerHeight: root.collapsedHeight
-                                                   + (root.composerHeight - root.collapsedHeight)
+                                                   + (root.effectiveComposerHeight - root.collapsedHeight)
                                                    * root.expansionProgress
     readonly property bool expansionInProgress: Math.abs(root.expansionProgress
                                                          - (root.expanded ? 1 : 0)) > 0.001
@@ -42,7 +49,7 @@ Item {
     SplitView.preferredHeight: root.animatedComposerHeight
     SplitView.minimumHeight: root.expansionInProgress
                              ? root.animatedComposerHeight
-                             : (root.expanded ? root.minComposerHeight : root.collapsedHeight)
+                             : (root.expanded ? root.effectiveMinComposerHeight : root.collapsedHeight)
     SplitView.maximumHeight: root.expansionInProgress
                              ? root.animatedComposerHeight
                              : (root.expanded ? root.maxComposerHeight : root.collapsedHeight)
@@ -81,7 +88,8 @@ Item {
     }
 
     function resizeComposer(height) {
-        root.composerHeight = Math.max(root.minComposerHeight, Math.min(root.maxComposerHeight, Math.round(height)));
+        root.composerHeight = Math.max(root.effectiveMinComposerHeight,
+                                       Math.min(root.maxComposerHeight, Math.round(height)));
     }
 
     function revealDraftEditor() {
@@ -327,8 +335,110 @@ Item {
                 font.bold: true
             }
 
+            AppIconButton {
+                ui: root.ui
+                Layout.preferredWidth: root.metadataControlHeight
+                Layout.preferredHeight: root.metadataControlHeight
+                iconSource: root.ui.materialIcon("settings")
+                iconSize: 15
+                forceActive: root.propertiesExpanded
+                accessibleName: qsTr("MQTT 5 properties")
+                toolTipText: qsTr("MQTT 5 properties")
+                toolTipPosition: AppToolTip.Position.Bottom
+                onClicked: root.propertiesExpanded = !root.propertiesExpanded
+            }
+
             Item {
                 Layout.fillWidth: true
+            }
+        }
+
+        RowLayout {
+            visible: root.propertiesExpanded && (root.expanded || root.expansionInProgress)
+            Layout.fillWidth: true
+            Layout.leftMargin: root.ui.spaceSm
+            Layout.rightMargin: root.ui.spaceSm
+            Layout.bottomMargin: 6
+            Layout.preferredHeight: visible ? root.metadataControlHeight : 0
+            spacing: 6
+
+            AppCheckBox {
+                ui: root.ui
+                Layout.preferredWidth: 82
+                Layout.preferredHeight: root.metadataControlHeight
+                text: qsTr("UTF-8")
+                checked: root.publisher.payloadUtf8
+                onToggled: root.publisher.payloadUtf8 = checked
+            }
+            AppTextField {
+                ui: root.ui
+                Layout.fillWidth: true
+                Layout.preferredHeight: root.metadataControlHeight
+                placeholderText: qsTr("Content type")
+                text: root.publisher.contentType
+                onTextEdited: root.publisher.contentType = text
+            }
+            AppTextField {
+                ui: root.ui
+                Layout.preferredWidth: 112
+                Layout.preferredHeight: root.metadataControlHeight
+                inputMethodHints: Qt.ImhDigitsOnly
+                placeholderText: qsTr("Expiry (s)")
+                text: root.publisher.messageExpiryText
+                onTextEdited: root.publisher.messageExpiryText = text
+            }
+            AppTextField {
+                ui: root.ui
+                Layout.preferredWidth: 106
+                Layout.preferredHeight: root.metadataControlHeight
+                inputMethodHints: Qt.ImhDigitsOnly
+                placeholderText: qsTr("Topic alias")
+                text: root.publisher.topicAliasText
+                onTextEdited: root.publisher.topicAliasText = text
+            }
+        }
+
+        RowLayout {
+            visible: root.propertiesExpanded && (root.expanded || root.expansionInProgress)
+            Layout.fillWidth: true
+            Layout.leftMargin: root.ui.spaceSm
+            Layout.rightMargin: root.ui.spaceSm
+            Layout.bottomMargin: 6
+            Layout.preferredHeight: visible ? root.metadataControlHeight : 0
+            spacing: 6
+
+            AppTextField {
+                ui: root.ui
+                Layout.fillWidth: true
+                Layout.preferredHeight: root.metadataControlHeight
+                placeholderText: qsTr("Response topic")
+                text: root.publisher.responseTopic
+                onTextEdited: root.publisher.responseTopic = text
+            }
+            AppTextField {
+                ui: root.ui
+                Layout.fillWidth: true
+                Layout.preferredHeight: root.metadataControlHeight
+                placeholderText: qsTr("Correlation data (Base64)")
+                text: root.publisher.correlationDataBase64
+                onTextEdited: root.publisher.correlationDataBase64 = text
+            }
+        }
+
+        AppTextArea {
+            visible: root.propertiesExpanded && (root.expanded || root.expansionInProgress)
+            ui: root.ui
+            Layout.fillWidth: true
+            Layout.leftMargin: root.ui.spaceSm
+            Layout.rightMargin: root.ui.spaceSm
+            Layout.bottomMargin: 6
+            Layout.preferredHeight: visible ? 58 : 0
+            placeholderText: qsTr("MQTT 5 user properties: name=value, one per line")
+            text: root.publisher.userPropertiesText
+            onTextChanged: {
+                if (root.publisher.userPropertiesText !== text) {
+                    root.publisher.userPropertiesText = text
+                }
             }
         }
 

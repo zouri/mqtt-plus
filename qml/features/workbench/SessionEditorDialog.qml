@@ -189,9 +189,9 @@ AppDialog {
                             id: transportField
                             ui: root.ui
                             Layout.preferredWidth: 132
-                            model: ["mqtt://", "mqtts://"]
-                            currentIndex: root.editor.transport === "tls" ? 1 : 0
-                            onActivated: root.editor.transport = currentIndex === 1 ? "tls" : "tcp"
+                            model: root.editor.transportSchemes
+                            currentIndex: root.editor.transportIndex
+                            onActivated: root.editor.transportIndex = currentIndex
                         }
 
                         AppTextField {
@@ -213,6 +213,19 @@ AppDialog {
                         validator: IntValidator { bottom: 1; top: 65535 }
                         text: root.editor.portText
                         onTextEdited: root.editor.portText = text
+                    }
+
+                    FormLabel {
+                        visible: root.editor.webSocketTransport
+                        text: qsTr("WebSocket path")
+                    }
+                    AppTextField {
+                        visible: root.editor.webSocketTransport
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("/mqtt")
+                        text: root.editor.webSocketPath
+                        onTextEdited: root.editor.webSocketPath = text
                     }
 
                     FormLabel { text: qsTr("Client ID") }
@@ -357,6 +370,148 @@ AppDialog {
                     }
                 }
 
+                SectionTitle { text: qsTr("Last Will") }
+                FormSection {
+                    FormLabel { text: qsTr("Enabled") }
+                    AppCheckBox {
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        text: qsTr("Publish a Last Will after an ungraceful disconnect")
+                        checked: root.editor.willEnabled
+                        onToggled: root.editor.willEnabled = checked
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled; text: qsTr("Topic") }
+                    AppTextField {
+                        visible: root.editor.willEnabled
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("clients/status")
+                        text: root.editor.willTopic
+                        onTextEdited: root.editor.willTopic = text
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled; text: qsTr("Payload") }
+                    AppTextArea {
+                        visible: root.editor.willEnabled
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 92
+                        placeholderText: qsTr("offline")
+                        text: root.editor.willPayload
+                        onTextChanged: {
+                            if (root.editor.willPayload !== text) {
+                                root.editor.willPayload = text
+                            }
+                        }
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled; text: qsTr("Format and QoS") }
+                    RowLayout {
+                        visible: root.editor.willEnabled
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.fillWidth: true
+                            model: root.viewModel.payloadFormats
+                            currentIndex: root.editor.willPayloadFormat
+                            onActivated: root.editor.willPayloadFormat = currentIndex
+                        }
+                        AppComboBox {
+                            ui: root.ui
+                            Layout.fillWidth: true
+                            model: [qsTr("QoS 0"), qsTr("QoS 1"), qsTr("QoS 2")]
+                            currentIndex: root.editor.willQos
+                            onActivated: root.editor.willQos = currentIndex
+                        }
+                        AppCheckBox {
+                            ui: root.ui
+                            text: qsTr("Retain")
+                            checked: root.editor.willRetain
+                            onToggled: root.editor.willRetain = checked
+                        }
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled && root.editor.protocolVersion === 5; text: qsTr("Delay interval") }
+                    AppTextField {
+                        visible: root.editor.willEnabled && root.editor.protocolVersion === 5
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        placeholderText: qsTr("Seconds")
+                        text: root.editor.willDelayText
+                        onTextEdited: root.editor.willDelayText = text
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled && root.editor.protocolVersion === 5; text: qsTr("Message expiry") }
+                    AppTextField {
+                        visible: root.editor.willEnabled && root.editor.protocolVersion === 5
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        placeholderText: qsTr("Optional seconds")
+                        text: root.editor.willExpiryText
+                        onTextEdited: root.editor.willExpiryText = text
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled && root.editor.protocolVersion === 5; text: qsTr("Payload indicator") }
+                    AppCheckBox {
+                        visible: root.editor.willEnabled && root.editor.protocolVersion === 5
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        text: qsTr("Payload is valid UTF-8")
+                        checked: root.editor.willPayloadUtf8
+                        onToggled: root.editor.willPayloadUtf8 = checked
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled && root.editor.protocolVersion === 5; text: qsTr("Content type") }
+                    AppTextField {
+                        visible: root.editor.willEnabled && root.editor.protocolVersion === 5
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("application/json")
+                        text: root.editor.willContentType
+                        onTextEdited: root.editor.willContentType = text
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled && root.editor.protocolVersion === 5; text: qsTr("Response topic") }
+                    AppTextField {
+                        visible: root.editor.willEnabled && root.editor.protocolVersion === 5
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("Optional topic")
+                        text: root.editor.willResponseTopic
+                        onTextEdited: root.editor.willResponseTopic = text
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled && root.editor.protocolVersion === 5; text: qsTr("Correlation data") }
+                    AppTextField {
+                        visible: root.editor.willEnabled && root.editor.protocolVersion === 5
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("Base64")
+                        text: root.editor.willCorrelationDataBase64
+                        onTextEdited: root.editor.willCorrelationDataBase64 = text
+                    }
+
+                    FormLabel { visible: root.editor.willEnabled && root.editor.protocolVersion === 5; text: qsTr("User properties") }
+                    AppTextArea {
+                        visible: root.editor.willEnabled && root.editor.protocolVersion === 5
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 74
+                        placeholderText: qsTr("name=value, one per line")
+                        text: root.editor.willUserPropertiesText
+                        onTextChanged: {
+                            if (root.editor.willUserPropertiesText !== text) {
+                                root.editor.willUserPropertiesText = text
+                            }
+                        }
+                    }
+                }
+
                 SectionTitle { text: qsTr("Advanced") }
                 FormSection {
                     FormLabel { text: qsTr("MQTT version") }
@@ -485,6 +640,20 @@ AppDialog {
                         placeholderText: qsTr("MQTT 5 enhanced auth data")
                         text: root.editor.authenticationData
                         onTextEdited: root.editor.authenticationData = text
+                    }
+
+                    FormLabel { text: qsTr("User properties") }
+                    AppTextArea {
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 74
+                        placeholderText: qsTr("name=value, one per line")
+                        text: root.editor.userPropertiesText
+                        onTextChanged: {
+                            if (root.editor.userPropertiesText !== text) {
+                                root.editor.userPropertiesText = text
+                            }
+                        }
                     }
                 }
             }

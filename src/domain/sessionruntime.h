@@ -4,9 +4,12 @@
 #include "recenttrafficwindow.h"
 
 #include <QHash>
+#include <QPointer>
 #include <QString>
 #include <QTimer>
 #include <QMqttClient>
+
+class QWebSocket;
 
 struct SessionRuntimeState {
     bool disconnectRequested = false;
@@ -23,5 +26,6 @@ struct SessionRuntimeState {
     RecentTrafficWindow recentReceivedTraffic;
     RecentTrafficWindow recentPublishedTraffic;
     QMqttClient *client = nullptr;
+    QPointer<QWebSocket> webSocket;
     QTimer *connectTimeoutTimer = nullptr;
 };

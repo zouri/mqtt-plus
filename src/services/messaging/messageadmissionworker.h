@@ -43,6 +43,9 @@ struct IncomingMessageAdmissionTask
     QString sessionId;
     QString topic;
     QByteArray payloadBytes;
+    int qos = -1;
+    bool retain = false;
+    MqttPublishProperties publishProperties;
     qint64 receivedAtMs = 0;
     bool pressureSkipsParsing = false;
     QSharedPointer<const MessageAdmissionContext> context;

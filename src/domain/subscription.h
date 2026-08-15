@@ -1,6 +1,7 @@
 #pragma once
 
 #include "messageprocessor.h"
+#include "mqttproperties.h"
 #include "recenttrafficwindow.h"
 
 #include <QPointer>
@@ -14,6 +15,7 @@ struct SubscriptionEntry {
     int requestedQos = 0;
     int grantedQos = -1;
     int format = 0;
+    MqttSubscriptionOptions options;
     ProcessorReference processor;
     QString color;
     bool paused = false;

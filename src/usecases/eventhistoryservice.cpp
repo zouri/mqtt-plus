@@ -856,7 +856,10 @@ void EventHistoryService::invalidateMessageContexts()
 void EventHistoryService::queueIncomingMessage(
     const QString &sessionId,
     const QString &topic,
-    const QByteArray &payloadBytes)
+    const QByteArray &payloadBytes,
+    int qos,
+    bool retain,
+    const MqttPublishProperties &properties)
 {
     auto *session = m_sessionService.sessionById(sessionId);
     if (!session || !m_messageAdmissionWorker) {
@@ -867,6 +870,9 @@ void EventHistoryService::queueIncomingMessage(
     task.sessionId = sessionId;
     task.topic = topic;
     task.payloadBytes = payloadBytes;
+    task.qos = qos;
+    task.retain = retain;
+    task.publishProperties = properties;
     task.receivedAtMs = QDateTime::currentMSecsSinceEpoch();
     task.pressureSkipsParsing = shouldSkipParsingForPressure();
     task.context = messageAdmissionContext(*session);
@@ -972,7 +978,8 @@ void EventHistoryService::appendPublishedMessage(
     const QByteArray &payloadBytes,
     int format,
     int qos,
-    bool retain)
+    bool retain,
+    const MqttPublishProperties &properties)
 {
     auto *session = m_sessionService.sessionById(sessionId);
     if (!session) {
@@ -1009,6 +1016,7 @@ void EventHistoryService::appendPublishedMessage(
     record.payloadSize = payloadPlan.originalSize;
     record.payloadHash = payloadPlan.hash;
     record.payloadFormat = format;
+    record.publishProperties = properties;
     bool parsingRequired = requiresBackgroundParse(PayloadCodec::formatFromInt(format));
     bool parsingSkippedForPressure = false;
     if (!parsingRequired) {
@@ -1170,6 +1178,30 @@ QVariantMap EventHistoryService::messageDetails(qint64 messageId) const
         QStringLiteral("processorExecutionErrorCode"),
         stored->processorExecutionErrorCode);
     details.insert(QStringLiteral("processorExecutionError"), stored->processorExecutionError);
+    const QVariantMap mqttProperties = mqttPublishPropertiesToVariantMap(
+        stored->publishProperties);
+    details.insert(QStringLiteral("mqttProperties"), mqttProperties);
+    QStringList propertyLines;
+    for (auto it = mqttProperties.cbegin(); it != mqttProperties.cend(); ++it) {
+        if (it.key() == QStringLiteral("userProperties")) {
+            for (const QVariant &propertyValue : it.value().toList()) {
+                const QVariantMap property = propertyValue.toMap();
+                propertyLines.append(QStringLiteral("%1 = %2").arg(
+                    property.value(QStringLiteral("name")).toString(),
+                    property.value(QStringLiteral("value")).toString()));
+            }
+        } else if (it.key() == QStringLiteral("subscriptionIdentifiers")) {
+            QStringList identifiers;
+            for (const QVariant &identifier : it.value().toList()) {
+                identifiers.append(identifier.toString());
+            }
+            propertyLines.append(QStringLiteral("subscriptionIdentifiers: %1").arg(
+                identifiers.join(QStringLiteral(", "))));
+        } else {
+            propertyLines.append(QStringLiteral("%1: %2").arg(it.key(), it.value().toString()));
+        }
+    }
+    details.insert(QStringLiteral("mqttPropertiesText"), propertyLines.join(QLatin1Char('\n')));
     const bool fullPayloadAvailable = stored->payloadState != QStringLiteral("skipped")
         && (stored->payloadSize == 0 || !stored->payloadBytes.isEmpty());
 

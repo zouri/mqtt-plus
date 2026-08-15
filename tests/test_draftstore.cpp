@@ -33,6 +33,8 @@ PublishDraft draft(const QString &id, const QString &name, const QString &payloa
     result.formatId = QStringLiteral("json");
     result.qos = 2;
     result.retain = true;
+    result.properties.contentType = QStringLiteral("application/json");
+    result.properties.userProperties.append({QStringLiteral("source"), QStringLiteral("test")});
     result.createdAt = QStringLiteral("2026-08-03T00:00:00.000");
     result.updatedAt = result.createdAt;
     return result;
@@ -59,13 +61,15 @@ void DraftStoreTest::savesLoadsAndKeepsBackup()
     primaryFile.close();
     const QJsonDocument storedDocument = QJsonDocument::fromJson(storedContent);
     QVERIFY(storedDocument.isObject());
-    QCOMPARE(storedDocument.object().value(QStringLiteral("version")).toInt(), 2);
+    QCOMPARE(storedDocument.object().value(QStringLiteral("version")).toInt(), 3);
 
     const DraftStore::LoadResult firstLoad = DraftStore::loadDrafts(temporaryDirectory.path());
     QCOMPARE(firstLoad.state, DraftStore::LoadState::Ready);
     QCOMPARE(firstLoad.drafts.size(), 1);
     QCOMPARE(firstLoad.drafts.first().name, QStringLiteral("First"));
     QCOMPARE(firstLoad.drafts.first().qos, 2);
+    QCOMPARE(firstLoad.drafts.first().properties.contentType, QStringLiteral("application/json"));
+    QCOMPARE(firstLoad.drafts.first().properties.userProperties.size(), 1);
 
     const QVector<PublishDraft> second {draft(QStringLiteral("two"), QStringLiteral("Second"), QStringLiteral("{\"v\":2}"))};
     QVERIFY(DraftStore::saveDrafts(second, temporaryDirectory.path()).ok);

@@ -598,7 +598,8 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
             submission.qos,
             submission.format,
             submission.processor,
-            submission.color);
+            submission.color,
+            submission.options);
     }
 
     return m_subscriptionService.upsertCurrentSubscriptions(
@@ -607,7 +608,8 @@ bool WorkbenchViewModel::submitSubscriptionEditor()
         submission.format,
         submission.processor,
         submission.color,
-        submission.alias);
+        submission.alias,
+        submission.options);
 }
 
 void WorkbenchViewModel::requestSubscriptionDelete(const QString &topic, const QString &displayName)

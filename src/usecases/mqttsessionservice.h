@@ -32,6 +32,7 @@ public:
         int format,
         int qos,
         bool retain,
+        const MqttPublishProperties &properties = {},
         const QString &sourceLabel = QString());
     QVariantList recentPublishes() const;
     void clearRecentPublishes();
@@ -60,6 +61,7 @@ private:
         int format,
         int qos,
         bool retain,
+        const MqttPublishProperties &properties,
         qint64 encodedSize);
     static QString pendingKey(const QString &sessionId, qint32 messageId);
 

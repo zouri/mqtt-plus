@@ -360,12 +360,16 @@ PreparedIncomingMessage MessageAdmissionWorker::prepare(
                            .toString(Qt::ISODateWithMs);
     record.direction = MessageDirection::Incoming;
     record.topic = task.topic;
+    record.qos = task.qos;
+    record.retain = task.retain;
+    record.retainKnown = task.qos >= 0;
     record.payloadBytes = payloadPlan.storedBytes;
     record.payloadPreview = payloadPlan.preview;
     record.payloadState = payloadPlan.state;
     record.payloadSize = payloadPlan.originalSize;
     record.payloadHash = payloadPlan.hash;
     record.payloadFormat = payloadFormat;
+    record.publishProperties = task.publishProperties;
 
     if (processorReference) {
         record.processorId = processorReference->processorId;

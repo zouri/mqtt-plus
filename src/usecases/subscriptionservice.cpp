@@ -3,9 +3,11 @@
 #include "usecases/eventhistoryservice.h"
 #include "usecases/sessionservice.h"
 #include "services/apputils.h"
+#include "services/mqtt/qtmqttpropertycodec.h"
 #include "domain/sessionconfig.h"
 #include <QRegularExpression>
 #include <QSet>
+#include <QTimer>
 
 #include <algorithm>
 
@@ -65,9 +67,10 @@ bool SubscriptionService::upsertCurrentSubscription(
     int format,
     const ProcessorReference &processor,
     const QString &color,
-    const QString &alias)
+    const QString &alias,
+    const MqttSubscriptionOptions &options)
 {
-    return upsertCurrentSubscriptions({topic}, qos, format, processor, color, alias);
+    return upsertCurrentSubscriptions({topic}, qos, format, processor, color, alias, options);
 }
 
 bool SubscriptionService::upsertCurrentSubscriptions(
@@ -76,7 +79,8 @@ bool SubscriptionService::upsertCurrentSubscriptions(
     int format,
     const ProcessorReference &processor,
     const QString &color,
-    const QString &alias)
+    const QString &alias,
+    const MqttSubscriptionOptions &options)
 {
     auto *session = m_sessionService.currentSession();
     if (!session) {
@@ -119,6 +123,7 @@ bool SubscriptionService::upsertCurrentSubscriptions(
             subscription.alias = displayAlias;
             subscription.requestedQos = SessionConfig::sanitizeQos(qos);
             subscription.format = format;
+            subscription.options = options;
             subscription.processor = normalizedProcessor;
             subscription.color = sanitizedColor;
             session->subscriptions.append(subscription);
@@ -129,6 +134,7 @@ bool SubscriptionService::upsertCurrentSubscriptions(
             entry->alias = displayAlias;
             entry->requestedQos = SessionConfig::sanitizeQos(qos);
             entry->format = format;
+            entry->options = options;
             entry->processor = normalizedProcessor;
             entry->color = sanitizedColor;
             entry->paused = false;
@@ -157,7 +163,8 @@ bool SubscriptionService::updateCurrentSubscription(
     int qos,
     int format,
     const ProcessorReference &processor,
-    const QString &color)
+    const QString &color,
+    const MqttSubscriptionOptions &options)
 {
     auto *session = m_sessionService.currentSession();
     if (!session) {
@@ -198,17 +205,19 @@ bool SubscriptionService::updateCurrentSubscription(
     const bool colorChanged = entry->color != sanitizedColor;
     const bool qosChanged = entry->requestedQos != sanitizedQos;
     const bool formatChanged = entry->format != sanitizedFormat;
+    const bool optionsChanged = entry->options != options;
     if (!topicChanged
         && !colorChanged
         && entry->alias == displayAlias
         && entry->requestedQos == sanitizedQos
         && entry->format == sanitizedFormat
+        && !optionsChanged
         && entry->processor.processorId == normalizedProcessor.processorId
         && entry->processor.parameters == normalizedProcessor.parameters) {
         return true;
     }
 
-    const bool shouldResubscribe = topicChanged || qosChanged;
+    const bool shouldResubscribe = topicChanged || qosChanged || optionsChanged;
     auto *client = session->runtime.client;
     if (shouldResubscribe) {
         if (entry->runtimeSubscription) {
@@ -234,6 +243,7 @@ bool SubscriptionService::updateCurrentSubscription(
     entry->alias = displayAlias;
     entry->requestedQos = sanitizedQos;
     entry->format = sanitizedFormat;
+    entry->options = options;
     entry->processor = normalizedProcessor;
     entry->color = sanitizedColor;
     session->runtime.subscriptionFormats.insert(entry->topic, entry->format);
@@ -436,7 +446,12 @@ void SubscriptionService::ensureSubscriptionActive(SessionState &session, Subscr
         return;
     }
 
-    QMqttSubscription *subscription = client->subscribe(filter, SessionConfig::sanitizeQos(entry.requestedQos));
+    QMqttSubscription *subscription = session.protocolVersion == 5
+        ? client->subscribe(
+              filter,
+              QtMqttPropertyCodec::toQtSubscriptionProperties(entry.options),
+              SessionConfig::sanitizeQos(entry.requestedQos))
+        : client->subscribe(filter, SessionConfig::sanitizeQos(entry.requestedQos));
     if (!subscription) {
         entry.runtimeState = QStringLiteral("error");
         entry.lastError = tr("Qt MQTT returned no subscription object.");
@@ -478,6 +493,48 @@ void SubscriptionService::observeSubscription(SessionState &session, Subscriptio
             QMqttSubscription::SubscriptionState state) {
             updateSubscriptionState(sessionId, topic, subscription, state);
         });
+    connect(
+        subscription,
+        &QMqttSubscription::messageReceived,
+        this,
+        [this,
+         sessionId = session.id,
+         source = QPointer<QMqttSubscription>(subscription)](const QMqttMessage &message) {
+            queueDeduplicatedIncomingMessage(sessionId, source, message);
+        });
+}
+
+void SubscriptionService::queueDeduplicatedIncomingMessage(
+    const QString &sessionId,
+    const QPointer<QMqttSubscription> &source,
+    const QMqttMessage &message)
+{
+    const auto previous = m_pendingIncomingDelivery.constFind(sessionId);
+    if (previous != m_pendingIncomingDelivery.cend()
+        && previous->message == message
+        && previous->source != source) {
+        return;
+    }
+
+    m_pendingIncomingDelivery.insert(sessionId, {message, source});
+    m_eventHistoryService.queueIncomingMessage(
+        sessionId,
+        message.topic().name(),
+        message.payload(),
+        message.qos(),
+        message.retain(),
+        QtMqttPropertyCodec::fromQtPublishProperties(message.publishProperties()));
+
+    // Overlapping subscription objects emit the same broker delivery synchronously.
+    // Keep the identity only until control returns to the event loop.
+    QTimer::singleShot(0, this, [this, sessionId, source, message]() {
+        const auto current = m_pendingIncomingDelivery.constFind(sessionId);
+        if (current != m_pendingIncomingDelivery.cend()
+            && current->message == message
+            && current->source == source) {
+            m_pendingIncomingDelivery.erase(current);
+        }
+    });
 }
 
 void SubscriptionService::updateSubscriptionState(
@@ -505,10 +562,16 @@ void SubscriptionService::updateSubscriptionState(
 
     if (previousState != entry->runtimeState) {
         if (state == QMqttSubscription::Subscribed) {
+            const MqttUserProperties responseProperties =
+                QtMqttPropertyCodec::fromQtUserProperties(subscription->userProperties());
+            const QString responseSuffix = responseProperties.isEmpty()
+                ? QString()
+                : QStringLiteral(" (%1)").arg(mqttUserPropertiesToText(responseProperties)
+                                                   .replace(QLatin1Char('\n'), QStringLiteral(", ")));
             m_eventHistoryService.appendEvent(
                 *session,
                 QStringLiteral("Subscription"),
-                QStringLiteral("Subscribed to %1").arg(entry->topic));
+                QStringLiteral("Subscribed to %1%2").arg(entry->topic, responseSuffix));
         } else if (state == QMqttSubscription::Unsubscribed && entry->paused) {
             m_eventHistoryService.appendEvent(
                 *session,

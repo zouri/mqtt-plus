@@ -4,17 +4,17 @@
 <context>
     <name>AddSubscriptionDialog</name>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="134"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="169"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="156"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="191"/>
         <source>No topic color</source>
         <translation>不使用主题颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="157"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="192"/>
         <source>Topic color %1</source>
         <translation>主题颜色 %1</translation>
     </message>
@@ -29,7 +29,7 @@
         <translation>添加订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="255"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="290"/>
         <source>sensor/+/temperature</source>
         <translation>sensor/+/temperature</translation>
     </message>
@@ -54,52 +54,67 @@
         <translation>QoS 2</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="106"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="108"/>
+        <source>No Local</source>
+        <translation>不接收本地发布</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="117"/>
+        <source>Subscription ID</source>
+        <translation>订阅标识符</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="127"/>
+        <source>MQTT 5 user properties: name=value</source>
+        <translation>MQTT 5 用户属性：名称=值</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="141"/>
         <source>Message Processor</source>
         <translation>消息处理器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="182"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="217"/>
         <source>Choose custom topic color</source>
         <translation>选择自定义主题颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="207"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="242"/>
         <source>Choose custom color</source>
         <translation>选择自定义颜色</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="231"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="266"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="243"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="278"/>
         <source>Save subscription</source>
         <translation>保存订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="243"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="278"/>
         <source>Add subscription</source>
         <translation>添加订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="256"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="291"/>
         <source>Topic filter</source>
         <translation>主题过滤器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="267"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="302"/>
         <source>sensor/one, sensor/two</source>
         <translation>sensor/one, sensor/two</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="269"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="304"/>
         <source>Topic filters</source>
         <translation>主题过滤器列表</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="277"/>
+        <location filename="../qml/features/workbench/AddSubscriptionDialog.qml" line="312"/>
         <source>Choose topic color</source>
         <translation>选择主题颜色</translation>
     </message>
@@ -284,107 +299,107 @@
 <context>
     <name>Application</name>
     <message>
-        <location filename="../src/app/application.cpp" line="247"/>
+        <location filename="../src/app/application.cpp" line="244"/>
         <source>Draft library error</source>
         <translation>草稿库错误</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="252"/>
+        <location filename="../src/app/application.cpp" line="249"/>
         <source>Restore backup</source>
         <translation>恢复备份</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="267"/>
+        <location filename="../src/app/application.cpp" line="264"/>
         <source>Draft saved</source>
         <translation>草稿已保存</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="272"/>
+        <location filename="../src/app/application.cpp" line="269"/>
         <source>Draft deleted</source>
         <translation>草稿已删除</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="273"/>
+        <location filename="../src/app/application.cpp" line="270"/>
         <source>The draft was removed from the library.</source>
         <translation>该草稿已从草稿库中移除。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="276"/>
+        <location filename="../src/app/application.cpp" line="273"/>
         <source>Draft library restored</source>
         <translation>草稿库已恢复</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="277"/>
+        <location filename="../src/app/application.cpp" line="274"/>
         <source>The backup was restored successfully.</source>
         <translation>备份已成功恢复。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="307"/>
+        <location filename="../src/app/application.cpp" line="304"/>
         <source>Software update available</source>
         <translation>有可用的软件更新</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="308"/>
+        <location filename="../src/app/application.cpp" line="305"/>
         <source>Version %1 is ready to download.</source>
         <translation>版本 %1 已可下载。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="313"/>
+        <location filename="../src/app/application.cpp" line="310"/>
         <source>Download</source>
         <translation>下载</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="314"/>
+        <location filename="../src/app/application.cpp" line="311"/>
         <source>View release</source>
         <translation>查看发布页面</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="319"/>
+        <location filename="../src/app/application.cpp" line="316"/>
         <source>MQTT Plus is up to date</source>
         <translation>MQTT Plus 已是最新版本</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="320"/>
+        <location filename="../src/app/application.cpp" line="317"/>
         <source>You are using the latest version.</source>
         <translation>你正在使用最新版本。</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="335"/>
+        <location filename="../src/app/application.cpp" line="332"/>
         <source>Update check failed</source>
         <translation>检查更新失败</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="357"/>
+        <location filename="../src/app/application.cpp" line="354"/>
         <source>Publish failed</source>
         <translation>发送失败</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="359"/>
+        <location filename="../src/app/application.cpp" line="356"/>
         <source>View logs</source>
         <translation>查看日志</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="364"/>
+        <location filename="../src/app/application.cpp" line="361"/>
         <source>Message sent</source>
         <translation>消息已发送</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="369"/>
+        <location filename="../src/app/application.cpp" line="366"/>
         <source>Waiting for broker confirmation</source>
         <translation>正在等待代理确认</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="370"/>
+        <location filename="../src/app/application.cpp" line="367"/>
         <source>Publish queued</source>
         <translation>发送已排队</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="376"/>
+        <location filename="../src/app/application.cpp" line="373"/>
         <source>QoS %1</source>
         <translation>QoS %1</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="378"/>
+        <location filename="../src/app/application.cpp" line="375"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
@@ -392,95 +407,85 @@
 <context>
     <name>ConfigurationAdapters</name>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="239"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="308"/>
         <source>The file is not a supported MQTTX connection export.</source>
         <translation>文件不是受支持的 MQTTX 连接导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="288"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="360"/>
         <source>Imported connection %1</source>
         <translation>导入的连接 %1</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="412"/>
-        <source>MQTT 5 connection user properties are not supported and will be ignored.</source>
-        <translation>不支持 MQTT 5 连接用户属性，将忽略。</translation>
-    </message>
-    <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="420"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="512"/>
         <source>The MQTTX export contains no supported connections.</source>
         <translation>MQTTX 导出中没有受支持的连接。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="427"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="519"/>
         <source>%1 unsupported or incomplete connections will be skipped.</source>
         <translation>将跳过 %1 个不支持或不完整的连接。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="434"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="665"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="526"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="773"/>
         <source>%1 invalid or duplicate subscriptions will be skipped.</source>
         <translation>将跳过 %1 个无效或重复的订阅。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="441"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="533"/>
         <source>Automatic reconnect settings from %1 connections are not supported.</source>
         <translation>不支持 %1 个连接的自动重连设置。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="448"/>
-        <source>Last-will settings from %1 connections are not supported.</source>
-        <translation>不支持 %1 个连接的遗嘱设置。</translation>
-    </message>
-    <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="455"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="540"/>
         <source>%1 MQTTX message records will not be imported as drafts or history.</source>
         <translation>不会将 %1 条 MQTTX 消息记录导入为草稿或历史记录。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="462"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="547"/>
         <source>Advanced MQTT 5 options on %1 subscriptions are not supported.</source>
         <translation>不支持 %1 个订阅中的 MQTT 5 高级选项。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="469"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="554"/>
         <source>%1 certificate fields do not look like PEM data and may require manual repair.</source>
         <translation>%1 个证书字段不像 PEM 数据，可能需要手动修复。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="492"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="577"/>
         <source>The file is not a valid MQTT Plus configuration export.</source>
         <translation>文件不是有效的 MQTT Plus 配置导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="499"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="584"/>
         <source>The file is not an MQTT Plus configuration export.</source>
         <translation>文件不是 MQTT Plus 配置导出文件。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="506"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="591"/>
         <source>This configuration export requires a newer application version.</source>
         <translation>此配置导出需要更新版本的应用程序。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="512"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="597"/>
         <source>The configuration export version is not supported.</source>
         <translation>不支持此配置导出版本。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="524"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="531"/>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="539"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="609"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="616"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="624"/>
         <source>The configuration export has an invalid structure.</source>
         <translation>配置导出的结构无效。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="630"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="728"/>
         <source>%1 scripts are present but script import is not supported yet.</source>
         <translation>检测到 %1 个脚本，但暂不支持导入脚本。</translation>
     </message>
     <message>
-        <location filename="../src/services/configuration/configurationadapters.cpp" line="658"/>
+        <location filename="../src/services/configuration/configurationadapters.cpp" line="766"/>
         <source>%1 incomplete sessions will be skipped.</source>
         <translation>将跳过 %1 个不完整的连接。</translation>
     </message>
@@ -511,7 +516,7 @@
     <message>
         <location filename="../src/usecases/configurationtransferservice.cpp" line="253"/>
         <location filename="../src/usecases/configurationtransferservice.cpp" line="282"/>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="761"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="762"/>
         <source>Import failed</source>
         <translation>导入失败</translation>
     </message>
@@ -563,62 +568,62 @@
         <translation>配置已导出</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="477"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="478"/>
         <source>Cannot write imported settings: access denied.</source>
         <translation>无法写入导入的设置：访问被拒绝。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="480"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="481"/>
         <source>Cannot write imported settings: invalid settings format.</source>
         <translation>无法写入导入的设置：设置格式无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="497"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="498"/>
         <source>The Draft Library is not ready for import.</source>
         <translation>草稿库尚未就绪，无法导入。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="524"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="525"/>
         <source>Imported draft</source>
         <translation>导入的草稿</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="610"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="611"/>
         <source>Cannot save imported drafts.</source>
         <translation>无法保存导入的草稿。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="647"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="648"/>
         <source>The imported certificate directory already exists.</source>
         <translation>导入的证书目录已存在。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="653"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="654"/>
         <source>Cannot create the imported certificate directory.</source>
         <translation>无法创建导入的证书目录。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="704"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="705"/>
         <source>Configuration imported</source>
         <translation>配置已导入</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="730"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="731"/>
         <source>Cannot remove an imported certificate file: %1</source>
         <translation>无法删除导入的证书文件：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="740"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="741"/>
         <source>Cannot remove an imported certificate directory: %1</source>
         <translation>无法删除导入的证书目录：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="752"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="753"/>
         <source>Rollback also reported: %1</source>
         <translation>回滚还报告了以下问题：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/configurationtransferservice.cpp" line="791"/>
+        <location filename="../src/usecases/configurationtransferservice.cpp" line="792"/>
         <source>Imported %1 connections, %2 subscriptions, and %3 drafts.</source>
         <translation>已导入 %1 个连接、%2 个订阅和 %3 个草稿。</translation>
     </message>
@@ -898,22 +903,22 @@
 <context>
     <name>EventHistoryService</name>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="439"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="355"/>
         <source>Cannot clear message history: %1</source>
         <translation>无法清除消息历史：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="440"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="356"/>
         <source>Cannot clear log history: %1</source>
         <translation>无法清除日志历史：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="524"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="438"/>
         <source>Cannot clear history: %1</source>
         <translation>无法清除历史记录：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/eventhistoryservice.cpp" line="1566"/>
+        <location filename="../src/usecases/eventhistoryservice.cpp" line="1326"/>
         <source>Timed out while saving queued messages.</source>
         <translation>保存排队消息时超时。</translation>
     </message>
@@ -1364,17 +1369,17 @@
         <translation>关闭消息检查器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="353"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="376"/>
         <source>Parsed result</source>
         <translation>解析结果</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="263"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="286"/>
         <source>Payload preview</source>
         <translation>Payload 预览</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="264"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="287"/>
         <source>Payload</source>
         <translation>Payload</translation>
     </message>
@@ -1384,12 +1389,12 @@
         <translation>选择一条消息以查看详情</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="327"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="350"/>
         <source>The full payload was not stored. Hash: %1</source>
         <translation>完整 Payload 未存储。哈希：%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="328"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="351"/>
         <source>Unavailable</source>
         <translation>不可用</translation>
     </message>
@@ -1471,32 +1476,37 @@
         <translation>否</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="276"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="258"/>
+        <source>MQTT 5 properties</source>
+        <translation>MQTT 5 属性</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="299"/>
         <source>Payload display format</source>
         <translation>Payload 显示格式</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="339"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="362"/>
         <source>Parser error: %1</source>
         <translation>解析错误：%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="411"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="434"/>
         <source>Copy parsed result</source>
         <translation>复制解析结果</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="417"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="440"/>
         <source>Copy Payload</source>
         <translation>复制 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="423"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="446"/>
         <source>Copy Topic</source>
         <translation>复制主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="429"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="452"/>
         <source>Use as draft</source>
         <translation>用作草稿</translation>
     </message>
@@ -1504,43 +1514,53 @@
 <context>
     <name>MqttSessionService</name>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="119"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="162"/>
         <source>Select a connection before publishing.</source>
         <translation>发送前请选择一个连接。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="124"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="167"/>
         <source>Topic cannot be empty.</source>
         <translation>主题不能为空。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="129"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="172"/>
         <source>Invalid topic name: %1</source>
         <translation>无效的主题名称：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="133"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="176"/>
         <source>Connect before publishing.</source>
         <translation>发送前请先连接。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="144"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="181"/>
+        <source>Invalid response topic: %1</source>
+        <translation>响应主题无效：%1</translation>
+    </message>
+    <message>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="186"/>
+        <source>Topic alias exceeds the broker&apos;s advertised maximum.</source>
+        <translation>主题别名超过代理公布的最大值。</translation>
+    </message>
+    <message>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="198"/>
         <source>Too many publishes are waiting for broker confirmation.</source>
         <translation>等待代理确认的发送任务过多。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="152"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="214"/>
         <source>Qt MQTT rejected the publish request.</source>
         <translation>Qt MQTT 拒绝了发布请求。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="260"/>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="268"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="339"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="347"/>
         <source>Connection closed before broker confirmation.</source>
         <translation>代理确认前连接已关闭。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/mqttsessionservice.cpp" line="361"/>
+        <location filename="../src/usecases/mqttsessionservice.cpp" line="432"/>
         <source>Broker rejected the publish request.</source>
         <translation>代理拒绝了发送请求。</translation>
     </message>
@@ -1759,7 +1779,7 @@
 <context>
     <name>ProcessorsViewModel</name>
     <message>
-        <location filename="../src/viewmodels/processorsviewmodel.cpp" line="97"/>
+        <location filename="../src/viewmodels/processorsviewmodel.cpp" line="108"/>
         <source>This processor is used by subscriptions in: %1. Remove those bindings before deleting it.</source>
         <translation>此处理器正被以下连接中的订阅使用：%1。请先移除这些绑定，再删除处理器。</translation>
     </message>
@@ -1767,281 +1787,322 @@
 <context>
     <name>PublishComposer</name>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="33"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="617"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="765"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="34"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="720"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="868"/>
         <source>Connect before publishing</source>
         <translation>请先连接再发布</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="33"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="34"/>
         <source>Enter a topic before publishing</source>
         <translation>请输入发布主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="160"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="161"/>
         <source>Collapse publish composer</source>
         <translation>收起发布区</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="160"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="161"/>
         <source>Expand publish composer</source>
         <translation>展开发布区</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="178"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="179"/>
         <source>Publish Message</source>
         <translation>发布消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="211"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="412"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="212"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="515"/>
         <source>Send Library</source>
         <translation>发送库</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="212"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="213"/>
         <source>Drafts and recent publishes</source>
         <translation>草稿与最近发送</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="231"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="935"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="232"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="1038"/>
         <source>Save composer as draft</source>
         <translation>将编辑器内容保存为草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="262"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="263"/>
         <source>Collapse</source>
         <translation>收起</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="262"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="263"/>
         <source>Expand</source>
         <translation>展开</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="297"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="298"/>
         <source>QoS 2</source>
         <translation>QoS 2</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="378"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="338"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="339"/>
+        <source>MQTT 5 properties</source>
+        <translation>MQTT 5 属性</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="362"/>
+        <source>UTF-8</source>
+        <translation>UTF-8</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="370"/>
+        <source>Content type</source>
+        <translation>内容类型</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="379"/>
+        <source>Expiry (s)</source>
+        <translation>过期时间（秒）</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="388"/>
+        <source>Topic alias</source>
+        <translation>主题别名</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="407"/>
+        <source>Response topic</source>
+        <translation>响应主题</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="415"/>
+        <source>Correlation data (Base64)</source>
+        <translation>关联数据（Base64）</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="429"/>
+        <source>MQTT 5 user properties: name=value, one per line</source>
+        <translation>MQTT 5 用户属性：名称=值，每行一项</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="481"/>
         <source>Publish message (%1+Enter)</source>
         <translation>发布消息（%1+Enter）</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="378"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="481"/>
         <source>Command</source>
         <translation>Command</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="378"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="481"/>
         <source>Ctrl</source>
         <translation>Ctrl</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="420"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="523"/>
         <source>Manage drafts</source>
         <translation>管理草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="436"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="539"/>
         <source>Drafts</source>
         <translation>草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="444"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="547"/>
         <source>Recent</source>
         <translation>最近</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="461"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="564"/>
         <source>Search draft name, description, Topic, or Payload</source>
         <translation>搜索草稿名称、说明、主题或 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="470"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="573"/>
         <source>Loading draft library…</source>
         <translation>正在加载草稿库…</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="483"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="586"/>
         <source>No matching drafts</source>
         <translation>没有匹配的草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="484"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="587"/>
         <source>Save a composer message to build your Draft Library.</source>
         <translation>将编辑器消息保存为草稿，即可建立草稿库。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="558"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="730"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="661"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="833"/>
         <source>RETAIN</source>
         <translation>保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="569"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="672"/>
         <source>Topic requested when sending</source>
         <translation>发送时填写主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="577"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="718"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="680"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="821"/>
         <source>%1 · QoS %2 · %3</source>
         <translation>%1 · QoS %2 · %3</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="596"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="699"/>
         <source>Load draft into composer</source>
         <translation>将草稿载入编辑器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="612"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="715"/>
         <source>Quick publish draft</source>
         <translation>快速发送草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="615"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="718"/>
         <source>Quick publish with Retain enabled</source>
         <translation>快速发送，已启用保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="635"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="738"/>
         <source>Runtime-only recent publishes</source>
         <translation>仅在本次运行中保留的最近发送</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="650"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="753"/>
         <source>Clear recent publishes</source>
         <translation>清空最近发布</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="660"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="763"/>
         <source>Published messages will appear here for quick reuse.</source>
         <translation>发布过的消息会显示在这里，便于快速复用。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="743"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="846"/>
         <source>Load into composer</source>
         <translation>载入编辑器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="763"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="866"/>
         <source>Publish again with Retain enabled</source>
         <translation>再次发送，已启用保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="796"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="899"/>
         <source>Replace composer contents?</source>
         <translation>替换编辑器内容？</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="804"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="907"/>
         <source>Loading this draft replaces the current Topic, Payload, format, QoS, and Retain values.</source>
         <translation>载入此草稿会替换当前主题、Payload、格式、QoS 和保留设置。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="818"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="891"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="976"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="921"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="994"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="1079"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="825"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="928"/>
         <source>Replace</source>
         <translation>替换</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="861"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="964"/>
         <source>Topic for this publish</source>
         <translation>本次发送的主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="869"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="972"/>
         <source>This draft has no default Topic. This value is used once without changing the draft or composer.</source>
         <translation>此草稿没有默认主题。该值仅使用一次，不会更改草稿或编辑器。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="880"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="983"/>
         <source>devices/example/set</source>
         <translation>devices/example/set</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="898"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="1001"/>
         <source>Quick Publish</source>
         <translation>快速发送</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="943"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="1046"/>
         <source>The draft is saved as an independent copy. Later composer edits do not update it automatically.</source>
         <translation>草稿会保存为独立副本，之后对编辑器的修改不会自动更新草稿。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="955"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="1058"/>
         <source>Unique draft name</source>
         <translation>唯一的草稿名称</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="983"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="1086"/>
         <source>Save Draft</source>
         <translation>保存草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="995"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="1098"/>
         <source>The draft could not be saved.</source>
         <translation>无法保存草稿。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="582"/>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="721"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="685"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="824"/>
         <source>Empty payload</source>
         <translation>空 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="760"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="863"/>
         <source>Publish again</source>
         <translation>再次发布</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="32"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="33"/>
         <source>Publish status: %1</source>
         <translation>发布状态：%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="288"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="289"/>
         <source>home/living-room/light/set</source>
         <translation>home/living-room/light/set</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="297"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="298"/>
         <source>QoS 0</source>
         <translation>QoS 0</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="297"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="298"/>
         <source>QoS 1</source>
         <translation>QoS 1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="317"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="318"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="324"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="325"/>
         <source>Retain enabled</source>
         <translation>已启用保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="348"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="451"/>
         <source>Payload</source>
         <translation>Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/PublishComposer.qml" line="377"/>
+        <location filename="../qml/features/workbench/PublishComposer.qml" line="480"/>
         <source>Publish message</source>
         <translation>发布消息</translation>
     </message>
@@ -2049,12 +2110,12 @@
 <context>
     <name>PublishComposerViewModel</name>
     <message>
-        <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="141"/>
+        <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="273"/>
         <source>Recent publish</source>
         <translation>最近发送</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="153"/>
+        <location filename="../src/viewmodels/publishcomposerviewmodel.cpp" line="291"/>
         <source>Publish composer</source>
         <translation>发送编辑器</translation>
     </message>
@@ -2077,38 +2138,38 @@
         <translation>浏览</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="372"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="529"/>
         <source>Connection timeout</source>
         <translation>连接超时</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="384"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="541"/>
         <source>Keep Alive</source>
         <translation>Keep Alive</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="406"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="563"/>
         <source>Session expiry interval</source>
         <translation>会话过期间隔</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="417"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="574"/>
         <source>Receive maximum</source>
         <translation>最大接收数</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="428"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="585"/>
         <source>Maximum packet size</source>
         <translation>最大报文大小</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="439"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="596"/>
         <source>Topic alias maximum</source>
         <translation>主题别名上限</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="148"/>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="513"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="684"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -2128,186 +2189,324 @@
         <translation>* 服务器地址</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="202"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="204"/>
         <source>broker.emqx.io</source>
         <translation>broker.emqx.io</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="207"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="209"/>
         <source>* Port</source>
         <translation>* 端口</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="218"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="222"/>
+        <source>WebSocket path</source>
+        <translation>WebSocket 路径</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="228"/>
+        <source>/mqtt</source>
+        <translation>/mqtt</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="233"/>
         <source>Client ID</source>
         <translation>客户端 ID</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="233"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="248"/>
         <source>Generate</source>
         <translation>生成</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="239"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="254"/>
         <source>Username</source>
         <translation>用户名</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="248"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="263"/>
         <source>Password</source>
         <translation>密码</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="259"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="274"/>
         <source>Certificates</source>
         <translation>证书</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="261"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="276"/>
         <source>SSL secure</source>
         <translation>SSL 安全连接</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="266"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="281"/>
         <source>Verify server certificate</source>
         <translation>验证服务器证书</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="271"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="286"/>
         <source>ALPN</source>
         <translation>ALPN</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="276"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="291"/>
         <source>Optional, comma separated</source>
         <translation>可选，用逗号分隔</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="281"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="296"/>
         <source>Certificate type</source>
         <translation>证书类型</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="289"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="304"/>
         <source>CA signed server certificate</source>
         <translation>CA 签名服务器证书</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="307"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="322"/>
         <source>CA or self signed certificates</source>
         <translation>CA 或自签名证书</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="324"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="339"/>
         <source>CA file</source>
         <translation>CA 文件</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="330"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="345"/>
         <source>Select CA file</source>
         <translation>选择 CA 文件</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="336"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="351"/>
         <source>Client certificate</source>
         <translation>客户端证书</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="342"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="357"/>
         <source>Select client certificate</source>
         <translation>选择客户端证书</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="348"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="363"/>
         <source>Client key file</source>
         <translation>客户端密钥文件</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="354"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="369"/>
         <source>Select client key file</source>
         <translation>选择客户端密钥文件</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="360"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="375"/>
+        <source>Last Will</source>
+        <translation>遗嘱消息</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="377"/>
+        <source>Enabled</source>
+        <translation>启用</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="381"/>
+        <source>Publish a Last Will after an ungraceful disconnect</source>
+        <translation>异常断开连接后发布遗嘱消息</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="386"/>
+        <source>Topic</source>
+        <translation>主题</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="391"/>
+        <source>clients/status</source>
+        <translation>clients/status</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="396"/>
+        <source>Payload</source>
+        <translation>Payload</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="402"/>
+        <source>offline</source>
+        <translation>offline</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="411"/>
+        <source>Format and QoS</source>
+        <translation>格式和 QoS</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="427"/>
+        <source>QoS 0</source>
+        <translation>QoS 0</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="427"/>
+        <source>QoS 1</source>
+        <translation>QoS 1</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="427"/>
+        <source>QoS 2</source>
+        <translation>QoS 2</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="433"/>
+        <source>Retain</source>
+        <translation>保留</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="439"/>
+        <source>Delay interval</source>
+        <translation>延迟间隔</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="450"/>
+        <source>Message expiry</source>
+        <translation>消息过期时间</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="456"/>
+        <source>Optional seconds</source>
+        <translation>可选，单位为秒</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="461"/>
+        <source>Payload indicator</source>
+        <translation>载荷格式指示</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="466"/>
+        <source>Payload is valid UTF-8</source>
+        <translation>载荷为有效的 UTF-8</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="471"/>
+        <source>Content type</source>
+        <translation>内容类型</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="476"/>
+        <source>application/json</source>
+        <translation>application/json</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="481"/>
+        <source>Response topic</source>
+        <translation>响应主题</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="486"/>
+        <source>Optional topic</source>
+        <translation>可选主题</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="491"/>
+        <source>Correlation data</source>
+        <translation>关联数据</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="496"/>
+        <source>Base64</source>
+        <translation>Base64</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="501"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="647"/>
+        <source>User properties</source>
+        <translation>用户属性</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="507"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="652"/>
+        <source>name=value, one per line</source>
+        <translation>名称=值，每行一项</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="517"/>
         <source>Advanced</source>
         <translation>高级</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="362"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="519"/>
         <source>MQTT version</source>
         <translation>MQTT 版本</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="379"/>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="391"/>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="412"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="445"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="536"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="548"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="569"/>
         <source>Seconds</source>
         <translation>秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="396"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="553"/>
         <source>Clean Start</source>
         <translation>Clean Start</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="401"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="558"/>
         <source>Start with a clean broker session</source>
         <translation>使用干净的代理会话启动</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="423"/>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="434"/>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="445"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="580"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="591"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="602"/>
         <source>Optional</source>
         <translation>可选</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="450"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="607"/>
         <source>Request response information</source>
         <translation>请求响应信息</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="455"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="612"/>
         <source>Ask broker for response information</source>
         <translation>向代理请求响应信息</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="460"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="617"/>
         <source>Request problem information</source>
         <translation>请求问题信息</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="465"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="622"/>
         <source>Ask broker for problem details</source>
         <translation>向代理请求问题详情</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="470"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="627"/>
         <source>Auth method</source>
         <translation>认证方法</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="475"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="632"/>
         <source>MQTT 5 enhanced auth method</source>
         <translation>MQTT 5 增强认证方法</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="480"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="637"/>
         <source>Auth data</source>
         <translation>认证数据</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="485"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="642"/>
         <source>MQTT 5 enhanced auth data</source>
         <translation>MQTT 5 增强认证数据</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="520"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="691"/>
         <source>Create</source>
         <translation>创建</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="520"/>
+        <location filename="../qml/features/workbench/SessionEditorDialog.qml" line="691"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
@@ -2371,72 +2570,72 @@
 <context>
     <name>SessionService</name>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="175"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="187"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="139"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="151"/>
         <source>Session 1</source>
         <translation>会话 1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="180"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="144"/>
         <source>Cannot read session settings: access denied.</source>
         <translation>无法读取会话设置：访问被拒绝。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="181"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="145"/>
         <source>Cannot read session settings: invalid settings format.</source>
         <translation>无法读取会话设置：设置格式无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="141"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="204"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="267"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="306"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="105"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="168"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="233"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="272"/>
         <source>Cannot save sessions.</source>
         <translation>无法保存会话。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="342"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="308"/>
         <source>Imported connection</source>
         <translation>导入的连接</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="347"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="313"/>
         <source>%1 (Imported %2)</source>
         <translation>%1（导入 %2）</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="409"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="372"/>
         <source>Cannot save imported sessions.</source>
         <translation>无法保存导入的连接。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="444"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="407"/>
         <source>Cannot roll back imported sessions.</source>
         <translation>无法回滚导入的连接。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="536"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="496"/>
         <source>Cannot delete session history: queued message parsing timed out.</source>
         <translation>无法删除会话历史：排队中的消息解析超时。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="546"/>
-        <location filename="../src/usecases/sessionservice.cpp" line="554"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="506"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="514"/>
         <source>Cannot delete session history: %1</source>
         <translation>无法删除会话历史：%1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="544"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="504"/>
         <source>Timed out while saving queued messages.</source>
         <translation>保存排队消息时超时。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="292"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="258"/>
         <source>Session %1</source>
         <translation>会话 %1</translation>
     </message>
     <message>
-        <location filename="../src/usecases/sessionservice.cpp" line="500"/>
+        <location filename="../src/usecases/sessionservice.cpp" line="463"/>
         <source>%1 Copy</source>
         <translation>%1 副本</translation>
     </message>
@@ -2444,17 +2643,17 @@
 <context>
     <name>SessionSettingsStore</name>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="111"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="138"/>
         <source>%1 Copy</source>
         <translation>%1 副本</translation>
     </message>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="247"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="336"/>
         <source>Cannot write session settings: access denied.</source>
         <translation>无法写入会话设置：访问被拒绝。</translation>
     </message>
     <message>
-        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="248"/>
+        <location filename="../src/services/storage/sessionsettingsstore.cpp" line="337"/>
         <source>Cannot write session settings: invalid settings format.</source>
         <translation>无法写入会话设置：设置格式无效。</translation>
     </message>
@@ -3113,22 +3312,22 @@
     <name>SubscriptionEditorViewModel</name>
     <message>
         <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="40"/>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="234"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="294"/>
         <source>None</source>
         <translation>无</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="255"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="315"/>
         <source>Unavailable: %1</source>
         <translation>不可用：%1</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="292"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="352"/>
         <source>The selected Message Processor is unavailable.</source>
         <translation>所选消息处理器不可用。</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="285"/>
+        <location filename="../src/viewmodels/subscriptioneditorviewmodel.cpp" line="345"/>
         <source>The selected Message Processor is unavailable. The binding will be preserved.</source>
         <translation>所选消息处理器不可用，将保留此绑定。</translation>
     </message>
@@ -3136,12 +3335,12 @@
 <context>
     <name>SubscriptionService</name>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="429"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="439"/>
         <source>Invalid topic filter.</source>
         <translation>主题过滤器无效。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/subscriptionservice.cpp" line="442"/>
+        <location filename="../src/usecases/subscriptionservice.cpp" line="457"/>
         <source>Qt MQTT returned no subscription object.</source>
         <translation>Qt MQTT 未返回订阅对象。</translation>
     </message>
@@ -3276,37 +3475,37 @@
 <context>
     <name>UpdateController</name>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="39"/>
+        <location filename="../src/usecases/updatecontroller.cpp" line="53"/>
         <source>Updates are provided through GitHub Releases.</source>
         <translation>软件更新通过 GitHub Releases 提供。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="43"/>
+        <location filename="../src/usecases/updatecontroller.cpp" line="57"/>
         <source>Checking GitHub Releases...</source>
         <translation>正在检查 GitHub Releases...</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="47"/>
+        <location filename="../src/usecases/updatecontroller.cpp" line="61"/>
         <source>Version %1 is available.</source>
         <translation>版本 %1 已可用。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="52"/>
+        <location filename="../src/usecases/updatecontroller.cpp" line="66"/>
         <source>You are using the latest version.</source>
         <translation>你正在使用最新版本。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="56"/>
+        <location filename="../src/usecases/updatecontroller.cpp" line="70"/>
         <source>No published releases were found.</source>
         <translation>未找到已发布的版本。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="60"/>
+        <location filename="../src/usecases/updatecontroller.cpp" line="74"/>
         <source>Could not check for updates. Check your network connection and try again.</source>
         <translation>无法检查更新。请检查网络连接后重试。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="64"/>
+        <location filename="../src/usecases/updatecontroller.cpp" line="78"/>
         <source>GitHub returned release information that this version cannot read.</source>
         <translation>GitHub 返回了当前版本无法读取的发布信息。</translation>
     </message>
@@ -3498,27 +3697,27 @@
 <context>
     <name>WorkbenchViewModel</name>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="278"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="260"/>
         <source>%1 • %2:%3 • %4</source>
         <translation>%1 • %2:%3 • %4</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="284"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="266"/>
         <source> • session restored</source>
         <translation> • 会话已恢复</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="287"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="269"/>
         <source>Connecting to %1:%2 over %3</source>
         <translation>正在通过 %3 连接到 %1:%2</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="292"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="274"/>
         <source>Disconnecting from broker</source>
         <translation>正在断开代理连接</translation>
     </message>
     <message>
-        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="296"/>
+        <location filename="../src/viewmodels/workbenchviewmodel.cpp" line="278"/>
         <source>Disconnected</source>
         <translation>已断开</translation>
     </message>

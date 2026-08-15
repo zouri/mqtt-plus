@@ -33,7 +33,16 @@ QString displayTimestamp(const QString &timestamp)
 
 QString transportLabel(const QString &transport)
 {
-    return transport == QStringLiteral("tls") ? QStringLiteral("TLS") : QStringLiteral("TCP");
+    if (transport == QStringLiteral("tls")) {
+        return QStringLiteral("TLS");
+    }
+    if (transport == QStringLiteral("ws")) {
+        return QStringLiteral("WebSocket");
+    }
+    if (transport == QStringLiteral("wss")) {
+        return QStringLiteral("Secure WebSocket");
+    }
+    return QStringLiteral("TCP");
 }
 
 QString protocolVersionLabel(int protocolVersion)

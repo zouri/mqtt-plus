@@ -16,6 +16,10 @@ class SessionEditorViewModel : public QObject
     Q_PROPERTY(QString portText READ portText WRITE setPortText NOTIFY portTextChanged)
     Q_PROPERTY(QString connectTimeoutText READ connectTimeoutText WRITE setConnectTimeoutText NOTIFY connectTimeoutTextChanged)
     Q_PROPERTY(QString transport READ transport WRITE setTransport NOTIFY transportChanged)
+    Q_PROPERTY(int transportIndex READ transportIndex WRITE setTransportIndex NOTIFY transportChanged)
+    Q_PROPERTY(QStringList transportSchemes READ transportSchemes CONSTANT)
+    Q_PROPERTY(bool webSocketTransport READ webSocketTransport NOTIFY transportChanged)
+    Q_PROPERTY(QString webSocketPath READ webSocketPath WRITE setWebSocketPath NOTIFY webSocketPathChanged)
     Q_PROPERTY(int protocolVersion READ protocolVersion WRITE setProtocolVersion NOTIFY protocolVersionChanged)
     Q_PROPERTY(bool sslSecure READ sslSecure WRITE setSslSecure NOTIFY sslSecureChanged)
     Q_PROPERTY(QString alpn READ alpn WRITE setAlpn NOTIFY alpnChanged)
@@ -36,6 +40,20 @@ class SessionEditorViewModel : public QObject
     Q_PROPERTY(bool requestProblemInformation READ requestProblemInformation WRITE setRequestProblemInformation NOTIFY requestProblemInformationChanged)
     Q_PROPERTY(QString authenticationMethod READ authenticationMethod WRITE setAuthenticationMethod NOTIFY authenticationMethodChanged)
     Q_PROPERTY(QString authenticationData READ authenticationData WRITE setAuthenticationData NOTIFY authenticationDataChanged)
+    Q_PROPERTY(QString userPropertiesText READ userPropertiesText WRITE setUserPropertiesText NOTIFY userPropertiesTextChanged)
+    Q_PROPERTY(bool willEnabled READ willEnabled WRITE setWillEnabled NOTIFY willEnabledChanged)
+    Q_PROPERTY(QString willTopic READ willTopic WRITE setWillTopic NOTIFY willTopicChanged)
+    Q_PROPERTY(QString willPayload READ willPayload WRITE setWillPayload NOTIFY willPayloadChanged)
+    Q_PROPERTY(int willPayloadFormat READ willPayloadFormat WRITE setWillPayloadFormat NOTIFY willPayloadFormatChanged)
+    Q_PROPERTY(int willQos READ willQos WRITE setWillQos NOTIFY willQosChanged)
+    Q_PROPERTY(bool willRetain READ willRetain WRITE setWillRetain NOTIFY willRetainChanged)
+    Q_PROPERTY(QString willDelayText READ willDelayText WRITE setWillDelayText NOTIFY willDelayTextChanged)
+    Q_PROPERTY(bool willPayloadUtf8 READ willPayloadUtf8 WRITE setWillPayloadUtf8 NOTIFY willPayloadUtf8Changed)
+    Q_PROPERTY(QString willExpiryText READ willExpiryText WRITE setWillExpiryText NOTIFY willExpiryTextChanged)
+    Q_PROPERTY(QString willContentType READ willContentType WRITE setWillContentType NOTIFY willContentTypeChanged)
+    Q_PROPERTY(QString willResponseTopic READ willResponseTopic WRITE setWillResponseTopic NOTIFY willResponseTopicChanged)
+    Q_PROPERTY(QString willCorrelationDataBase64 READ willCorrelationDataBase64 WRITE setWillCorrelationDataBase64 NOTIFY willCorrelationDataBase64Changed)
+    Q_PROPERTY(QString willUserPropertiesText READ willUserPropertiesText WRITE setWillUserPropertiesText NOTIFY willUserPropertiesTextChanged)
     Q_PROPERTY(QString validationError READ validationError NOTIFY validationErrorChanged)
 
 public:
@@ -51,6 +69,10 @@ public:
     QString portText() const;
     QString connectTimeoutText() const;
     QString transport() const;
+    int transportIndex() const;
+    QStringList transportSchemes() const;
+    bool webSocketTransport() const;
+    QString webSocketPath() const;
     int protocolVersion() const;
     bool sslSecure() const;
     QString alpn() const;
@@ -71,6 +93,20 @@ public:
     bool requestProblemInformation() const;
     QString authenticationMethod() const;
     QString authenticationData() const;
+    QString userPropertiesText() const;
+    bool willEnabled() const;
+    QString willTopic() const;
+    QString willPayload() const;
+    int willPayloadFormat() const;
+    int willQos() const;
+    bool willRetain() const;
+    QString willDelayText() const;
+    bool willPayloadUtf8() const;
+    QString willExpiryText() const;
+    QString willContentType() const;
+    QString willResponseTopic() const;
+    QString willCorrelationDataBase64() const;
+    QString willUserPropertiesText() const;
     QString validationError() const;
 
     void setName(const QString &name);
@@ -78,6 +114,8 @@ public:
     void setPortText(const QString &portText);
     void setConnectTimeoutText(const QString &connectTimeoutText);
     void setTransport(const QString &transport);
+    void setTransportIndex(int index);
+    void setWebSocketPath(const QString &webSocketPath);
     void setProtocolVersion(int protocolVersion);
     void setSslSecure(bool sslSecure);
     void setAlpn(const QString &alpn);
@@ -98,6 +136,20 @@ public:
     void setRequestProblemInformation(bool requestProblemInformation);
     void setAuthenticationMethod(const QString &authenticationMethod);
     void setAuthenticationData(const QString &authenticationData);
+    void setUserPropertiesText(const QString &text);
+    void setWillEnabled(bool enabled);
+    void setWillTopic(const QString &topic);
+    void setWillPayload(const QString &payload);
+    void setWillPayloadFormat(int format);
+    void setWillQos(int qos);
+    void setWillRetain(bool retain);
+    void setWillDelayText(const QString &text);
+    void setWillPayloadUtf8(bool enabled);
+    void setWillExpiryText(const QString &text);
+    void setWillContentType(const QString &contentType);
+    void setWillResponseTopic(const QString &topic);
+    void setWillCorrelationDataBase64(const QString &data);
+    void setWillUserPropertiesText(const QString &text);
 
     void openForCreate(const SessionConnectionConfig &config);
     void openForEdit(int index, const SessionConnectionConfig &config);
@@ -114,6 +166,7 @@ signals:
     void portTextChanged();
     void connectTimeoutTextChanged();
     void transportChanged();
+    void webSocketPathChanged();
     void protocolVersionChanged();
     void sslSecureChanged();
     void alpnChanged();
@@ -134,6 +187,20 @@ signals:
     void requestProblemInformationChanged();
     void authenticationMethodChanged();
     void authenticationDataChanged();
+    void userPropertiesTextChanged();
+    void willEnabledChanged();
+    void willTopicChanged();
+    void willPayloadChanged();
+    void willPayloadFormatChanged();
+    void willQosChanged();
+    void willRetainChanged();
+    void willDelayTextChanged();
+    void willPayloadUtf8Changed();
+    void willExpiryTextChanged();
+    void willContentTypeChanged();
+    void willResponseTopicChanged();
+    void willCorrelationDataBase64Changed();
+    void willUserPropertiesTextChanged();
     void validationErrorChanged();
 
 private:
@@ -151,6 +218,7 @@ private:
     QString m_portText = QStringLiteral("1883");
     QString m_connectTimeoutText = QStringLiteral("10");
     QString m_transport = QStringLiteral("tcp");
+    QString m_webSocketPath = QStringLiteral("/mqtt");
     int m_protocolVersion = 5;
     bool m_sslSecure = true;
     QString m_alpn;
@@ -171,5 +239,19 @@ private:
     bool m_requestProblemInformation = false;
     QString m_authenticationMethod;
     QString m_authenticationData;
+    QString m_userPropertiesText;
+    bool m_willEnabled = false;
+    QString m_willTopic;
+    QString m_willPayload;
+    int m_willPayloadFormat = 0;
+    int m_willQos = 0;
+    bool m_willRetain = false;
+    QString m_willDelayText;
+    bool m_willPayloadUtf8 = false;
+    QString m_willExpiryText;
+    QString m_willContentType;
+    QString m_willResponseTopic;
+    QString m_willCorrelationDataBase64;
+    QString m_willUserPropertiesText;
     QString m_validationError;
 };

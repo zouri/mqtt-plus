@@ -18,6 +18,7 @@ struct SubscriptionEditorSubmission
     int format = 0;
     ProcessorReference processor;
     QString color;
+    MqttSubscriptionOptions options;
 };
 
 class SubscriptionEditorViewModel : public QObject
@@ -35,6 +36,9 @@ class SubscriptionEditorViewModel : public QObject
     Q_PROPERTY(QStringList processorOptionNames READ processorOptionNames NOTIFY processorOptionsChanged)
     Q_PROPERTY(QString processorBindingDetail READ processorBindingDetail NOTIFY processorBindingDetailChanged)
     Q_PROPERTY(QString color READ color WRITE setColor NOTIFY colorChanged)
+    Q_PROPERTY(bool noLocal READ noLocal WRITE setNoLocal NOTIFY optionsChanged)
+    Q_PROPERTY(QString subscriptionIdentifierText READ subscriptionIdentifierText WRITE setSubscriptionIdentifierText NOTIFY optionsChanged)
+    Q_PROPERTY(QString userPropertiesText READ userPropertiesText WRITE setUserPropertiesText NOTIFY optionsChanged)
     Q_PROPERTY(QStringList colorOptions READ colorOptions CONSTANT)
     Q_PROPERTY(bool canSubmit READ canSubmit NOTIFY canSubmitChanged)
 
@@ -53,6 +57,9 @@ public:
     QStringList processorOptionNames() const;
     QString processorBindingDetail() const;
     QString color() const;
+    bool noLocal() const;
+    QString subscriptionIdentifierText() const;
+    QString userPropertiesText() const;
     QStringList colorOptions() const;
     bool canSubmit() const;
 
@@ -63,6 +70,9 @@ public:
     void setProcessorId(const QString &processorId);
     void setProcessorIndex(int index);
     void setColor(const QString &color);
+    void setNoLocal(bool noLocal);
+    void setSubscriptionIdentifierText(const QString &text);
+    void setUserPropertiesText(const QString &text);
 
     void openForCreate();
     void openForEdit(const SubscriptionEntry &subscription);
@@ -81,6 +91,7 @@ signals:
     void processorOptionsChanged();
     void processorBindingDetailChanged();
     void colorChanged();
+    void optionsChanged();
     void canSubmitChanged();
 
 private:
@@ -105,4 +116,7 @@ private:
     QCborMap m_processorParameters;
     QVariantList m_processorRows;
     QString m_color;
+    bool m_noLocal = false;
+    QString m_subscriptionIdentifierText;
+    QString m_userPropertiesText;
 };
