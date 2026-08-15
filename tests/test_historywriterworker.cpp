@@ -83,9 +83,9 @@ void HistoryWriterWorkerTest::rejectsMessagesAtCountAndByteLimits()
     limits.highWaterMessages = 1;
     limits.lowWaterMessages = 0;
     limits.maxMessages = 2;
-    limits.highWaterBytes = 1024;
-    limits.lowWaterBytes = 512;
-    limits.maxBytes = 2048;
+    limits.highWaterBytes = 2048;
+    limits.lowWaterBytes = 1024;
+    limits.maxBytes = 4096;
 
     HistoryWriterWorker writer(dataDir.path(), 41, limits);
     QCOMPARE(writer.enqueueMessage(makeRecord(QStringLiteral("session-1"), QStringLiteral("one"), QByteArray(100, 'a'))), 41);

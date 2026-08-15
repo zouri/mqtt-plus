@@ -5,6 +5,8 @@
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
+#include "services/mqtt/qtmqttpropertycodec.h"
+#include "services/payload/payloadcodec.h"
 #include "services/storage/sessionsettingsstore.h"
 #include "usecases/preferencescontroller.h"
 
@@ -588,6 +590,7 @@ void SessionService::applyConfig(
     }
 
     session.transport = SessionConfig::sanitizeTransport(config.transport);
+    session.webSocketPath = SessionConfig::sanitizeWebSocketPath(config.webSocketPath);
     session.protocolVersion = SessionConfig::sanitizeProtocolVersion(config.protocolVersion);
     session.sslSecure = config.sslSecure;
     session.alpn = config.alpn.trimmed();
@@ -610,6 +613,9 @@ void SessionService::applyConfig(
     session.requestProblemInformation = config.requestProblemInformation;
     session.authenticationMethod = config.authenticationMethod.trimmed();
     session.authenticationData = config.authenticationData;
+    session.userProperties = config.userProperties;
+    session.lastWill = config.lastWill;
+    session.lastWill.qos = SessionConfig::sanitizeQos(session.lastWill.qos);
 
     QString host = config.host.trimmed();
     if (host.isEmpty()) {
@@ -651,7 +657,31 @@ void SessionService::applyConfig(
         connectionProperties.setAuthenticationMethod(session.authenticationMethod);
         connectionProperties.setAuthenticationData(session.authenticationData.toUtf8());
     }
+    if (session.protocolVersion == 5 && !session.userProperties.isEmpty()) {
+        connectionProperties.setUserProperties(
+            QtMqttPropertyCodec::toQtUserProperties(session.userProperties));
+    }
     client->setConnectionProperties(connectionProperties);
+
+    QByteArray willPayload;
+    if (session.lastWill.enabled) {
+        QString encodeError;
+        if (!PayloadCodec::encodeForPublish(
+                PayloadCodec::formatFromInt(session.lastWill.payloadFormat),
+                session.lastWill.payload,
+                willPayload,
+                encodeError)) {
+            willPayload = session.lastWill.payload.toUtf8();
+        }
+    }
+    client->setWillTopic(session.lastWill.enabled ? session.lastWill.topic.trimmed() : QString());
+    client->setWillMessage(willPayload);
+    client->setWillQoS(static_cast<quint8>(session.lastWill.qos));
+    client->setWillRetain(session.lastWill.enabled && session.lastWill.retain);
+    client->setLastWillProperties(
+        session.protocolVersion == 5 && session.lastWill.enabled
+            ? QtMqttPropertyCodec::toQtLastWillProperties(session.lastWill.properties)
+            : QMqttLastWillProperties());
 }
 
 void SessionService::initializeSessionRuntime(SessionState &session)
@@ -699,6 +729,7 @@ void SessionService::destroySessionRuntime(SessionState &session)
         session.runtime.client->disconnectFromHost();
         session.runtime.client->deleteLater();
         session.runtime.client = nullptr;
+        session.runtime.webSocket.clear();
     }
 }
 

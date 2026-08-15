@@ -392,6 +392,7 @@ ConfigurationTransfer::Bundle ConfigurationTransferService::exportBundle(
         session.host = client ? client->hostname() : QString();
         session.port = client ? client->port() : 1883;
         session.transport = state.transport;
+        session.webSocketPath = state.webSocketPath;
         session.protocolVersion = state.protocolVersion;
         session.sslSecure = state.sslSecure;
         session.alpn = state.alpn;
@@ -415,6 +416,8 @@ ConfigurationTransfer::Bundle ConfigurationTransferService::exportBundle(
         session.requestProblemInformation = state.requestProblemInformation;
         session.authenticationMethod = state.authenticationMethod;
         session.authenticationData = includeSensitiveData ? state.authenticationData : QString();
+        session.userProperties = state.userProperties;
+        session.lastWill = state.lastWill;
         session.outputPaused = state.outputPaused;
         session.capturePolicy = state.capturePolicy;
         session.subscriptions.reserve(state.subscriptions.size());
@@ -426,6 +429,7 @@ ConfigurationTransfer::Bundle ConfigurationTransferService::exportBundle(
             subscription.format = entry.format;
             subscription.color = entry.color;
             subscription.paused = entry.paused;
+            subscription.options = entry.options;
             session.subscriptions.append(subscription);
         }
         bundle.sessions.append(std::move(session));
@@ -538,6 +542,7 @@ bool ConfigurationTransferService::prepareImport(
         config.host = session.host;
         config.port = session.port;
         config.transport = session.transport;
+        config.webSocketPath = session.webSocketPath;
         config.protocolVersion = session.protocolVersion;
         config.sslSecure = session.sslSecure;
         config.alpn = session.alpn;
@@ -556,6 +561,8 @@ bool ConfigurationTransferService::prepareImport(
         config.requestProblemInformation = session.requestProblemInformation;
         config.authenticationMethod = session.authenticationMethod;
         config.authenticationData = session.authenticationData;
+        config.userProperties = session.userProperties;
+        config.lastWill = session.lastWill;
         if (!materializeSessionAssets(session, request.id, config, errorMessage)) {
             return false;
         }
@@ -571,6 +578,7 @@ bool ConfigurationTransferService::prepareImport(
             entry.format = source.format;
             entry.color = source.color;
             entry.paused = source.paused;
+            entry.options = source.options;
             request.subscriptions.append(entry);
             ++m_importedSubscriptionCount;
         }

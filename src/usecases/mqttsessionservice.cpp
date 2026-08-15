@@ -6,15 +6,56 @@
 #include "services/apputils.h"
 #include "domain/sessionconfig.h"
 #include "services/payload/payloadcodec.h"
+#include "services/mqtt/qtmqttpropertycodec.h"
 
 #include <QSslCertificate>
 #include <QSslSocket>
 #include <QDateTime>
+#include <QUrl>
 #include <QUuid>
+#include <QWebSocket>
+#include <QWebSocketHandshakeOptions>
 
 #include <algorithm>
 
 using namespace AppUtils;
+
+namespace {
+QString serverPropertiesSummary(const QMqttServerConnectionProperties &properties)
+{
+    if (!properties.isValid()) {
+        return {};
+    }
+
+    const auto available = properties.availableProperties();
+    QStringList details;
+    if (available.testFlag(QMqttServerConnectionProperties::MaximumQoS)) {
+        details.append(QStringLiteral("maximum QoS %1").arg(properties.maximumQoS()));
+    }
+    if (available.testFlag(QMqttServerConnectionProperties::RetainAvailable)) {
+        details.append(properties.retainAvailable()
+                ? QStringLiteral("retain supported")
+                : QStringLiteral("retain unavailable"));
+    }
+    if (available.testFlag(QMqttServerConnectionProperties::MaximumPacketSize)) {
+        details.append(QStringLiteral("maximum packet %1 bytes")
+                           .arg(properties.maximumPacketSize()));
+    }
+    if (available.testFlag(QMqttServerConnectionProperties::MaximumTopicAlias)) {
+        details.append(QStringLiteral("topic alias maximum %1")
+                           .arg(properties.maximumTopicAlias()));
+    }
+    if (available.testFlag(QMqttServerConnectionProperties::SubscriptionIdentifierSupport)) {
+        details.append(properties.subscriptionIdentifierSupported()
+                ? QStringLiteral("subscription identifiers supported")
+                : QStringLiteral("subscription identifiers unavailable"));
+    }
+    for (const QMqttStringPair &property : properties.userProperties()) {
+        details.append(QStringLiteral("%1=%2").arg(property.name(), property.value()));
+    }
+    return details.join(QStringLiteral(", "));
+}
+}
 
 MqttSessionService::MqttSessionService(
     SessionService &sessionService,
@@ -85,6 +126,7 @@ bool MqttSessionService::publishCurrentSession(
     int format,
     int qos,
     bool retain,
+    const MqttPublishProperties &properties,
     const QString &sourceLabel)
 {
     auto *session = m_sessionService.currentSession();
@@ -133,6 +175,21 @@ bool MqttSessionService::publishCurrentSession(
         return fail(tr("Connect before publishing."));
     }
 
+    if (client->protocolVersion() == QMqttClient::MQTT_5_0) {
+        if (!properties.responseTopic.isEmpty()
+            && !QMqttTopicName(properties.responseTopic).isValid()) {
+            return fail(tr("Invalid response topic: %1").arg(properties.responseTopic));
+        }
+        if (properties.topicAlias) {
+            const quint16 maximumAlias = client->serverConnectionProperties().maximumTopicAlias();
+            if (*properties.topicAlias == 0
+                || maximumAlias == 0
+                || *properties.topicAlias > maximumAlias) {
+                return fail(tr("Topic alias exceeds the broker's advertised maximum."));
+            }
+        }
+    }
+
     QByteArray payloadBytes;
     QString error;
     if (!PayloadCodec::encodeForPublish(payloadFormat, payload, payloadBytes, error)) {
@@ -147,7 +204,15 @@ bool MqttSessionService::publishCurrentSession(
     status.state = QStringLiteral("queued");
     session->runtime.publishStatus = status;
 
-    const qint32 messageId = client->publish(topicName, payloadBytes, publishQos, retain);
+    const qint32 messageId = client->protocolVersion() == QMqttClient::MQTT_5_0
+            && !properties.isEmpty()
+        ? client->publish(
+              topicName,
+              QtMqttPropertyCodec::toQtPublishProperties(properties),
+              payloadBytes,
+              publishQos,
+              retain)
+        : client->publish(topicName, payloadBytes, publishQos, retain);
     if (messageId < 0) {
         return fail(tr("Qt MQTT rejected the publish request."));
     }
@@ -163,14 +228,22 @@ bool MqttSessionService::publishCurrentSession(
     session->runtime.recentPublishedTraffic.add(
         QDateTime::currentMSecsSinceEpoch(),
         payloadBytes.size());
-    recordRecentPublish(trimmedTopic, payload, format, publishQos, retain, payloadBytes.size());
+    recordRecentPublish(
+        trimmedTopic,
+        payload,
+        format,
+        publishQos,
+        retain,
+        properties,
+        payloadBytes.size());
     m_eventHistoryService.appendPublishedMessage(
         session->id,
         trimmedTopic,
         payloadBytes,
         format,
         publishQos,
-        retain);
+        retain,
+        properties);
     m_eventHistoryService.appendEvent(
         *session,
         QStringLiteral("Publish"),
@@ -225,6 +298,16 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
                 *boundSession,
                 QStringLiteral("Connection"),
                 QStringLiteral("Connected to broker"));
+            if (boundClient && boundSession->protocolVersion == 5) {
+                const QString properties = serverPropertiesSummary(
+                    boundClient->serverConnectionProperties());
+                if (!properties.isEmpty()) {
+                    m_eventHistoryService.appendEvent(
+                        *boundSession,
+                        QStringLiteral("MQTT 5"),
+                        QStringLiteral("Broker properties: %1").arg(properties));
+                }
+            }
             m_subscriptionService.restoreActiveSubscriptions(*boundSession, false);
         }
 
@@ -306,14 +389,6 @@ void MqttSessionService::bindSessionSignals(SessionState *session)
         }
         emit sessionStateChanged();
     });
-
-    connect(
-        client,
-        &QMqttClient::messageReceived,
-        this,
-        [this, sessionId = session->id](const QByteArray &message, const QMqttTopicName &topic) {
-            m_eventHistoryService.queueIncomingMessage(sessionId, topic.name(), message);
-        });
 
     connect(client, &QMqttClient::messageSent, this, [this, sessionId = session->id](qint32 messageId) {
         if (auto *boundSession = m_sessionService.sessionById(sessionId)) {
@@ -413,9 +488,13 @@ void MqttSessionService::connectSession(SessionState &session, const QString &ev
             .arg(transportLabel(session.transport))
             .arg(protocolVersionLabel(session.protocolVersion)));
 
-    if (session.transport == QStringLiteral("tls")) {
+    const SessionConfig::Transport transport = SessionConfig::transportFromValue(
+        session.transport);
+    const bool secureTransport = SessionConfig::isSecure(transport);
+    QSslConfiguration configuration;
+    if (secureTransport) {
         QString tlsError;
-        const QSslConfiguration configuration = sslConfigurationForSession(session, tlsError);
+        configuration = sslConfigurationForSession(session, tlsError);
         if (!tlsError.isEmpty()) {
             if (session.runtime.connectTimeoutTimer) {
                 session.runtime.connectTimeoutTimer->stop();
@@ -425,6 +504,36 @@ void MqttSessionService::connectSession(SessionState &session, const QString &ev
             m_eventHistoryService.appendEvent(session, QStringLiteral("Error"), tlsError);
             return;
         }
+    }
+
+    if (SessionConfig::usesWebSocket(transport)) {
+        if (session.runtime.webSocket) {
+            session.runtime.webSocket->deleteLater();
+            session.runtime.webSocket.clear();
+        }
+        auto *webSocket = new QWebSocket(
+            QString(),
+            QWebSocketProtocol::VersionLatest,
+            client);
+        if (secureTransport) {
+            webSocket->setSslConfiguration(configuration);
+        }
+        session.runtime.webSocket = webSocket;
+
+        QUrl url;
+        url.setScheme(SessionConfig::transportScheme(transport));
+        url.setHost(client->hostname());
+        url.setPort(client->port());
+        url.setPath(SessionConfig::sanitizeWebSocketPath(session.webSocketPath));
+        QWebSocketHandshakeOptions options;
+        options.setSubprotocols({QStringLiteral("mqtt")});
+        if (secureTransport) {
+            client->connectToHostWebSocketEncrypted(webSocket);
+        } else {
+            client->connectToHostWebSocket(webSocket);
+        }
+        webSocket->open(url, options);
+    } else if (secureTransport) {
         client->connectToHostEncrypted(configuration);
     } else {
         client->connectToHost();
@@ -519,8 +628,10 @@ void MqttSessionService::recordRecentPublish(
     int format,
     int qos,
     bool retain,
+    const MqttPublishProperties &properties,
     qint64 encodedSize)
 {
+    const QString propertiesCborBase64 = mqttPublishPropertiesToBase64Cbor(properties);
     QVariantMap entry {
         {QStringLiteral("topic"), topic},
         {QStringLiteral("payload"), payload},
@@ -528,6 +639,7 @@ void MqttSessionService::recordRecentPublish(
         {QStringLiteral("formatName"), PayloadCodec::formatName(PayloadCodec::formatFromInt(format))},
         {QStringLiteral("qos"), qos},
         {QStringLiteral("retain"), retain},
+        {QStringLiteral("propertiesCborBase64"), propertiesCborBase64},
         {QStringLiteral("publishedAt"), QDateTime::currentDateTime().toString(Qt::ISODate)},
         {QStringLiteral("encodedSize"), encodedSize},
     };
@@ -537,7 +649,8 @@ void MqttSessionService::recordRecentPublish(
             && existing.value(QStringLiteral("payload")) == payload
             && existing.value(QStringLiteral("format")) == format
             && existing.value(QStringLiteral("qos")) == qos
-            && existing.value(QStringLiteral("retain")) == retain) {
+            && existing.value(QStringLiteral("retain")) == retain
+            && existing.value(QStringLiteral("propertiesCborBase64")) == propertiesCborBase64) {
             m_recentPublishBytes -= existing.value(QStringLiteral("encodedSize")).toLongLong();
             m_recentPublishes.removeAt(index);
         }

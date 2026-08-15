@@ -1,6 +1,7 @@
 #pragma once
 
 #include "messageparsing.h"
+#include "mqttproperties.h"
 
 #include <QByteArray>
 #include <QString>
@@ -41,6 +42,7 @@ struct MessageRecord {
     qint64 payloadSize = 0;
     QString payloadHash;
     int payloadFormat = -1;
+    MqttPublishProperties publishProperties;
 };
 
 inline void applyParseOutcome(MessageRecord &message, const ParseOutcome &outcome)

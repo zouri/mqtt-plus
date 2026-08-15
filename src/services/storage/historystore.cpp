@@ -1,6 +1,8 @@
 #include "historystore.h"
 
 #include <QDir>
+#include <QCborParserError>
+#include <QCborValue>
 #include <QHash>
 #include <QSet>
 #include <QSqlError>
@@ -11,7 +13,7 @@
 #include <algorithm>
 
 namespace {
-constexpr int kHistorySchemaVersion = 2;
+constexpr int kHistorySchemaVersion = 3;
 
 QString nonNullString(const QString &value)
 {
@@ -51,6 +53,7 @@ QStringList requiredMessageColumns()
         QStringLiteral("payload_preview"),
         QStringLiteral("payload_hash"),
         QStringLiteral("payload_format"),
+        QStringLiteral("publish_properties_cbor"),
     };
 }
 
@@ -89,6 +92,11 @@ MessageRecord messageRecordFromQuery(const QSqlQuery &query, const QString &sess
     row.payloadPreview = query.value(26).toString();
     row.payloadHash = query.value(27).toString();
     row.payloadFormat = query.value(28).toInt();
+    QCborParserError propertiesError;
+    const QCborValue properties = QCborValue::fromCbor(query.value(29).toByteArray(), &propertiesError);
+    if (propertiesError.error == QCborError::NoError && properties.isMap()) {
+        row.publishProperties = mqttPublishPropertiesFromCbor(properties.toMap());
+    }
     return row;
 }
 
@@ -128,7 +136,27 @@ bool resetIncompatibleMessageTable(QSqlDatabase &db, QString &error)
     }
 
     const QStringList requiredColumns = requiredMessageColumns();
-    bool isCompatible = versionQuery.value(0).toInt() >= kHistorySchemaVersion;
+    if (!columns.contains(QStringLiteral("publish_properties_cbor"))) {
+        bool legacySchemaComplete = true;
+        for (const QString &column : requiredColumns) {
+            if (column != QStringLiteral("publish_properties_cbor")
+                && !columns.contains(column)) {
+                legacySchemaComplete = false;
+                break;
+            }
+        }
+        if (legacySchemaComplete) {
+            QSqlQuery migrationQuery(db);
+            if (!migrationQuery.exec(QStringLiteral(
+                    "ALTER TABLE mqtt_messages ADD COLUMN publish_properties_cbor BLOB"))
+                || !migrationQuery.exec(QStringLiteral("PRAGMA user_version = 3"))) {
+                error = migrationQuery.lastError().text();
+                return false;
+            }
+            return true;
+        }
+    }
+    bool isCompatible = true;
     for (const QString &column : requiredColumns) {
         if (!columns.contains(column)) {
             isCompatible = false;
@@ -136,6 +164,13 @@ bool resetIncompatibleMessageTable(QSqlDatabase &db, QString &error)
         }
     }
     if (isCompatible) {
+        if (versionQuery.value(0).toInt() < kHistorySchemaVersion) {
+            QSqlQuery migrationQuery(db);
+            if (!migrationQuery.exec(QStringLiteral("PRAGMA user_version = 3"))) {
+                error = migrationQuery.lastError().text();
+                return false;
+            }
+        }
         return true;
     }
 
@@ -304,8 +339,8 @@ HistoryWriteResult HistoryStore::writeMessageBatch(
                 "processor_result_preview, processor_execution_state, "
                 "processor_execution_error_code, processor_execution_error, "
                 "processor_execution_duration_us, payload_bytes, payload_size, payload_state, "
-                "payload_preview, payload_hash, payload_format) "
-                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
+                "payload_preview, payload_hash, payload_format, publish_properties_cbor) "
+                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"))) {
         m_lastError = insertQuery.lastError().text();
         result.error = m_lastError;
         return result;
@@ -384,6 +419,9 @@ HistoryWriteResult HistoryStore::writeMessageBatch(
         insertQuery.bindValue(27, nonNullString(message.payloadPreview));
         insertQuery.bindValue(28, nonNullString(message.payloadHash));
         insertQuery.bindValue(29, message.payloadFormat);
+        insertQuery.bindValue(
+            30,
+            QCborValue(mqttPublishPropertiesToCbor(message.publishProperties)).toCbor());
         if (!insertQuery.exec()) {
             m_lastError = insertQuery.lastError().text();
             m_db.rollback();
@@ -529,7 +567,7 @@ QVector<MessageRecord> HistoryStore::loadMessages(
             "processor_runtime_id, processor_content_hash, processor_result_cbor, "
             "processor_result_preview, processor_execution_state, processor_execution_error_code, "
             "processor_execution_error, processor_execution_duration_us, payload_bytes, "
-            "payload_size, payload_state, payload_preview, payload_hash, payload_format "
+            "payload_size, payload_state, payload_preview, payload_hash, payload_format, publish_properties_cbor "
             "FROM ("
             "    SELECT id, timestamp, direction, topic, qos, retain, retain_known, "
             "    display_payload, display_format, display_error, display_state, "
@@ -537,7 +575,7 @@ QVector<MessageRecord> HistoryStore::loadMessages(
             "    processor_runtime_id, processor_content_hash, NULL AS processor_result_cbor, "
             "    processor_result_preview, processor_execution_state, processor_execution_error_code, "
             "    processor_execution_error, processor_execution_duration_us, NULL AS payload_bytes, "
-            "    payload_size, payload_state, payload_preview, payload_hash, payload_format "
+            "    payload_size, payload_state, payload_preview, payload_hash, payload_format, publish_properties_cbor "
             "    FROM mqtt_messages "
             "    WHERE session_id = ? "
             "    ORDER BY id DESC "
@@ -577,7 +615,7 @@ QVector<MessageRecord> HistoryStore::loadMessagesBefore(
             "processor_runtime_id, processor_content_hash, processor_result_cbor, "
             "processor_result_preview, processor_execution_state, processor_execution_error_code, "
             "processor_execution_error, processor_execution_duration_us, payload_bytes, "
-            "payload_size, payload_state, payload_preview, payload_hash, payload_format "
+            "payload_size, payload_state, payload_preview, payload_hash, payload_format, publish_properties_cbor "
             "FROM ("
             "    SELECT id, timestamp, direction, topic, qos, retain, retain_known, "
             "    display_payload, display_format, display_error, display_state, "
@@ -585,7 +623,7 @@ QVector<MessageRecord> HistoryStore::loadMessagesBefore(
             "    processor_runtime_id, processor_content_hash, NULL AS processor_result_cbor, "
             "    processor_result_preview, processor_execution_state, processor_execution_error_code, "
             "    processor_execution_error, processor_execution_duration_us, NULL AS payload_bytes, "
-            "    payload_size, payload_state, payload_preview, payload_hash, payload_format "
+            "    payload_size, payload_state, payload_preview, payload_hash, payload_format, publish_properties_cbor "
             "    FROM mqtt_messages "
             "    WHERE session_id = ? AND id < ? "
             "    ORDER BY id DESC "
@@ -621,13 +659,13 @@ std::optional<MessageRecord> HistoryStore::loadMessage(qint64 messageId) const
         "processor_runtime_id, processor_content_hash, processor_result_cbor, "
         "processor_result_preview, processor_execution_state, processor_execution_error_code, "
         "processor_execution_error, processor_execution_duration_us, payload_bytes, "
-        "payload_size, payload_state, payload_preview, payload_hash, payload_format, session_id "
+        "payload_size, payload_state, payload_preview, payload_hash, payload_format, publish_properties_cbor, session_id "
         "FROM mqtt_messages WHERE id = ?"));
     query.addBindValue(messageId);
     if (!query.exec() || !query.next()) {
         return {};
     }
-    return messageRecordFromQuery(query, query.value(29).toString());
+    return messageRecordFromQuery(query, query.value(30).toString());
 }
 
 QByteArray HistoryStore::loadMessagePayloadBytes(qint64 messageId) const
@@ -948,7 +986,8 @@ bool HistoryStore::initialize(const QString &dataPath, int busyTimeoutMs)
                 "payload_state TEXT NOT NULL DEFAULT 'full', "
                 "payload_preview TEXT NOT NULL DEFAULT '', "
                 "payload_hash TEXT NOT NULL DEFAULT '', "
-                "payload_format INTEGER NOT NULL DEFAULT -1)"))) {
+                "payload_format INTEGER NOT NULL DEFAULT -1, "
+                "publish_properties_cbor BLOB)"))) {
         m_lastError = query.lastError().text();
         return false;
     }

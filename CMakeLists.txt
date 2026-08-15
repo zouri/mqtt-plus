@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core Gui Network Qml Quick QuickControls2 Sql Svg Test LinguistTools)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core Gui Network Qml Quick QuickControls2 Sql Svg Test LinguistTools WebSockets)
 
 option(
     MQTT_PLUS_FORCE_BUNDLED_QTMQTT
@@ -246,6 +246,9 @@ if(NOT TARGET Qt6::Mqtt)
         "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqtttopicfilter.cpp"
         "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqtttopicname.cpp"
         "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/qmqtttype.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/transportLayers/mqtt_secure_websocket_io.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/transportLayers/mqtt_websocket_io.cpp"
+        "${MQTT_PLUS_QTMQTT_SOURCE_DIR}/transportLayers/mqtt_websocket_io_base.cpp"
     )
     add_library(Qt6::Mqtt ALIAS mqtt_plus_qtmqtt)
     target_include_directories(mqtt_plus_qtmqtt
@@ -256,9 +259,10 @@ if(NOT TARGET Qt6::Mqtt)
             "${MQTT_PLUS_QTMQTT_SOURCE_DIR}"
     )
     target_link_libraries(mqtt_plus_qtmqtt
-        PUBLIC Qt6::Core Qt6::Network
+        PUBLIC Qt6::Core Qt6::Network Qt6::WebSockets
         PRIVATE Qt6::CorePrivate
     )
+    target_compile_definitions(mqtt_plus_qtmqtt PRIVATE QT_MQTT_WITH_WEBSOCKETS)
     set_target_properties(mqtt_plus_qtmqtt PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 
@@ -349,6 +353,7 @@ target_link_libraries(mqtt_plus_app
         Qt6::QuickControls2
         Qt6::Sql
         Qt6::Svg
+        Qt6::WebSockets
         KF6SyntaxHighlighting
         MqttPlus::Lua
 )
@@ -508,6 +513,7 @@ if(BUILD_TESTING)
                 Qt6::Sql
                 Qt6::Svg
                 Qt6::Test
+                Qt6::WebSockets
                 KF6SyntaxHighlighting
                 MqttPlus::Lua
         )
@@ -553,7 +559,10 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_configurationadapters
         tests/test_configurationadapters.cpp
+        src/domain/mqttproperties.cpp
+        src/domain/sessionconfig.cpp
         src/services/configuration/configurationadapters.cpp
+        src/services/mqtt/qtmqttpropertycodec.cpp
     )
 
     add_mqtt_plus_qt_test(test_configurationtransferservice
@@ -578,12 +587,14 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_draftstore
         tests/test_draftstore.cpp
+        src/domain/mqttproperties.cpp
         src/services/payload/payloadcodec.cpp
         src/services/storage/draftstore.cpp
     )
 
     add_mqtt_plus_qt_test(test_draftlibraryservice
         tests/test_draftlibraryservice.cpp
+        src/domain/mqttproperties.cpp
         src/services/apputils.cpp
         src/services/payload/payloadcodec.cpp
         src/services/storage/draftstore.cpp
@@ -599,6 +610,7 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_draftmodels
         tests/test_draftmodels.cpp
+        src/domain/mqttproperties.cpp
         src/models/draftfiltermodel.cpp
         src/models/draftlibrarymodel.cpp
         src/services/payload/payloadcodec.cpp
@@ -689,6 +701,7 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_sessioneditorviewmodel
         tests/test_sessioneditorviewmodel.cpp
+        src/domain/mqttproperties.cpp
         src/domain/sessionconfig.cpp
         src/viewmodels/sessioneditorviewmodel.cpp
     )
@@ -700,6 +713,7 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_subscriptioneditorviewmodel
         tests/test_subscriptioneditorviewmodel.cpp
+        src/domain/mqttproperties.cpp
         src/domain/sessionconfig.cpp
         src/viewmodels/subscriptioneditorviewmodel.cpp
     )
@@ -735,11 +749,13 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_historystore
         tests/test_historystore.cpp
+        src/domain/mqttproperties.cpp
         src/services/storage/historystore.cpp
     )
 
     add_mqtt_plus_qt_test(test_historywriterworker
         tests/test_historywriterworker.cpp
+        src/domain/mqttproperties.cpp
         src/services/payload/payloadcodec.cpp
         src/services/storage/historystore.cpp
         src/services/storage/historywriterworker.cpp

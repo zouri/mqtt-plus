@@ -3,6 +3,7 @@
 #include "domain/sessionconfig.h"
 
 #include <algorithm>
+#include <QMqttTopicName>
 #include <QStringList>
 
 SessionEditorViewModel::SessionEditorViewModel(QObject *parent)
@@ -54,6 +55,26 @@ QString SessionEditorViewModel::connectTimeoutText() const
 QString SessionEditorViewModel::transport() const
 {
     return m_transport;
+}
+
+int SessionEditorViewModel::transportIndex() const
+{
+    return SessionConfig::transportIndex(SessionConfig::transportFromValue(m_transport));
+}
+
+QStringList SessionEditorViewModel::transportSchemes() const
+{
+    return SessionConfig::transportSchemes();
+}
+
+bool SessionEditorViewModel::webSocketTransport() const
+{
+    return SessionConfig::usesWebSocket(SessionConfig::transportFromValue(m_transport));
+}
+
+QString SessionEditorViewModel::webSocketPath() const
+{
+    return m_webSocketPath;
 }
 
 int SessionEditorViewModel::protocolVersion() const
@@ -156,6 +177,21 @@ QString SessionEditorViewModel::authenticationData() const
     return m_authenticationData;
 }
 
+QString SessionEditorViewModel::userPropertiesText() const { return m_userPropertiesText; }
+bool SessionEditorViewModel::willEnabled() const { return m_willEnabled; }
+QString SessionEditorViewModel::willTopic() const { return m_willTopic; }
+QString SessionEditorViewModel::willPayload() const { return m_willPayload; }
+int SessionEditorViewModel::willPayloadFormat() const { return m_willPayloadFormat; }
+int SessionEditorViewModel::willQos() const { return m_willQos; }
+bool SessionEditorViewModel::willRetain() const { return m_willRetain; }
+QString SessionEditorViewModel::willDelayText() const { return m_willDelayText; }
+bool SessionEditorViewModel::willPayloadUtf8() const { return m_willPayloadUtf8; }
+QString SessionEditorViewModel::willExpiryText() const { return m_willExpiryText; }
+QString SessionEditorViewModel::willContentType() const { return m_willContentType; }
+QString SessionEditorViewModel::willResponseTopic() const { return m_willResponseTopic; }
+QString SessionEditorViewModel::willCorrelationDataBase64() const { return m_willCorrelationDataBase64; }
+QString SessionEditorViewModel::willUserPropertiesText() const { return m_willUserPropertiesText; }
+
 QString SessionEditorViewModel::validationError() const
 {
     return m_validationError;
@@ -203,17 +239,33 @@ void SessionEditorViewModel::setConnectTimeoutText(const QString &connectTimeout
 
 void SessionEditorViewModel::setTransport(const QString &transport)
 {
-    const QString normalized = SessionConfig::sanitizeTransport(transport);
+    const SessionConfig::Transport normalizedTransport = SessionConfig::transportFromValue(
+        transport);
+    const QString normalized = SessionConfig::transportId(normalizedTransport);
     if (m_transport == normalized) {
         return;
     }
     m_transport = normalized;
     emit transportChanged();
-    if (m_transport == QStringLiteral("tls") && m_portText.trimmed() == QStringLiteral("1883")) {
-        setPortText(QStringLiteral("8883"));
-    } else if (m_transport == QStringLiteral("tcp") && m_portText.trimmed() == QStringLiteral("8883")) {
-        setPortText(QStringLiteral("1883"));
+    bool portOk = false;
+    const int previousPort = m_portText.trimmed().toInt(&portOk);
+    if (portOk && SessionConfig::isDefaultPort(previousPort)) {
+        setPortText(QString::number(SessionConfig::defaultPort(normalizedTransport)));
     }
+}
+
+void SessionEditorViewModel::setTransportIndex(int index)
+{
+    setTransport(SessionConfig::transportId(SessionConfig::transportAt(index)));
+}
+
+void SessionEditorViewModel::setWebSocketPath(const QString &webSocketPath)
+{
+    if (m_webSocketPath == webSocketPath) {
+        return;
+    }
+    m_webSocketPath = webSocketPath;
+    emit webSocketPathChanged();
 }
 
 void SessionEditorViewModel::setProtocolVersion(int protocolVersion)
@@ -403,6 +455,109 @@ void SessionEditorViewModel::setAuthenticationData(const QString &authentication
     emit authenticationDataChanged();
 }
 
+void SessionEditorViewModel::setUserPropertiesText(const QString &text)
+{
+    if (m_userPropertiesText == text) return;
+    m_userPropertiesText = text;
+    emit userPropertiesTextChanged();
+}
+
+void SessionEditorViewModel::setWillEnabled(bool enabled)
+{
+    if (m_willEnabled == enabled) return;
+    m_willEnabled = enabled;
+    emit willEnabledChanged();
+}
+
+void SessionEditorViewModel::setWillTopic(const QString &topic)
+{
+    if (m_willTopic == topic) return;
+    m_willTopic = topic;
+    setValidationError(QString());
+    emit willTopicChanged();
+}
+
+void SessionEditorViewModel::setWillPayload(const QString &payload)
+{
+    if (m_willPayload == payload) return;
+    m_willPayload = payload;
+    emit willPayloadChanged();
+}
+
+void SessionEditorViewModel::setWillPayloadFormat(int format)
+{
+    const int normalized = (std::max)(0, format);
+    if (m_willPayloadFormat == normalized) return;
+    m_willPayloadFormat = normalized;
+    emit willPayloadFormatChanged();
+}
+
+void SessionEditorViewModel::setWillQos(int qos)
+{
+    const int normalized = SessionConfig::sanitizeQos(qos);
+    if (m_willQos == normalized) return;
+    m_willQos = normalized;
+    emit willQosChanged();
+}
+
+void SessionEditorViewModel::setWillRetain(bool retain)
+{
+    if (m_willRetain == retain) return;
+    m_willRetain = retain;
+    emit willRetainChanged();
+}
+
+void SessionEditorViewModel::setWillDelayText(const QString &text)
+{
+    if (m_willDelayText == text) return;
+    m_willDelayText = text;
+    setValidationError(QString());
+    emit willDelayTextChanged();
+}
+
+void SessionEditorViewModel::setWillPayloadUtf8(bool enabled)
+{
+    if (m_willPayloadUtf8 == enabled) return;
+    m_willPayloadUtf8 = enabled;
+    emit willPayloadUtf8Changed();
+}
+
+void SessionEditorViewModel::setWillExpiryText(const QString &text)
+{
+    if (m_willExpiryText == text) return;
+    m_willExpiryText = text;
+    setValidationError(QString());
+    emit willExpiryTextChanged();
+}
+
+void SessionEditorViewModel::setWillContentType(const QString &contentType)
+{
+    if (m_willContentType == contentType) return;
+    m_willContentType = contentType;
+    emit willContentTypeChanged();
+}
+
+void SessionEditorViewModel::setWillResponseTopic(const QString &topic)
+{
+    if (m_willResponseTopic == topic) return;
+    m_willResponseTopic = topic;
+    emit willResponseTopicChanged();
+}
+
+void SessionEditorViewModel::setWillCorrelationDataBase64(const QString &data)
+{
+    if (m_willCorrelationDataBase64 == data) return;
+    m_willCorrelationDataBase64 = data;
+    emit willCorrelationDataBase64Changed();
+}
+
+void SessionEditorViewModel::setWillUserPropertiesText(const QString &text)
+{
+    if (m_willUserPropertiesText == text) return;
+    m_willUserPropertiesText = text;
+    emit willUserPropertiesTextChanged();
+}
+
 void SessionEditorViewModel::openForCreate(const SessionConnectionConfig &config)
 {
     setEditMode(false);
@@ -428,6 +583,7 @@ void SessionEditorViewModel::loadConfig(const SessionConnectionConfig &config)
     setPortText(QString::number(config.port));
     setConnectTimeoutText(QString::number(config.connectTimeoutSeconds));
     setTransport(config.transport);
+    setWebSocketPath(config.webSocketPath);
     setProtocolVersion(config.protocolVersion);
     setSslSecure(config.sslSecure);
     setAlpn(config.alpn);
@@ -454,6 +610,26 @@ void SessionEditorViewModel::loadConfig(const SessionConnectionConfig &config)
     setRequestProblemInformation(config.requestProblemInformation);
     setAuthenticationMethod(config.authenticationMethod);
     setAuthenticationData(config.authenticationData);
+    setUserPropertiesText(mqttUserPropertiesToText(config.userProperties));
+    setWillEnabled(config.lastWill.enabled);
+    setWillTopic(config.lastWill.topic);
+    setWillPayload(config.lastWill.payload);
+    setWillPayloadFormat(config.lastWill.payloadFormat);
+    setWillQos(config.lastWill.qos);
+    setWillRetain(config.lastWill.retain);
+    setWillDelayText(config.lastWill.properties.delayInterval > 0
+            ? QString::number(config.lastWill.properties.delayInterval)
+            : QString());
+    setWillPayloadUtf8(
+        config.lastWill.properties.payloadFormatIndicator == MqttPayloadFormatIndicator::Utf8);
+    setWillExpiryText(config.lastWill.properties.messageExpiryInterval
+            ? QString::number(*config.lastWill.properties.messageExpiryInterval)
+            : QString());
+    setWillContentType(config.lastWill.properties.contentType);
+    setWillResponseTopic(config.lastWill.properties.responseTopic);
+    setWillCorrelationDataBase64(
+        QString::fromLatin1(config.lastWill.properties.correlationData.toBase64()));
+    setWillUserPropertiesText(mqttUserPropertiesToText(config.lastWill.properties.userProperties));
     setValidationError(QString());
 }
 
@@ -465,6 +641,7 @@ SessionConnectionConfig SessionEditorViewModel::collectedConfig() const
     config.port = m_portText.trimmed().toInt();
     config.connectTimeoutSeconds = m_connectTimeoutText.trimmed().toInt();
     config.transport = m_transport;
+    config.webSocketPath = SessionConfig::sanitizeWebSocketPath(m_webSocketPath);
     config.protocolVersion = m_protocolVersion;
     config.sslSecure = m_sslSecure;
     config.alpn = m_alpn;
@@ -486,6 +663,26 @@ SessionConnectionConfig SessionEditorViewModel::collectedConfig() const
     config.requestProblemInformation = m_requestProblemInformation;
     config.authenticationMethod = m_authenticationMethod;
     config.authenticationData = m_authenticationData;
+    config.userProperties = mqttUserPropertiesFromText(m_userPropertiesText);
+    config.lastWill.enabled = m_willEnabled;
+    config.lastWill.topic = m_willTopic.trimmed();
+    config.lastWill.payload = m_willPayload;
+    config.lastWill.payloadFormat = m_willPayloadFormat;
+    config.lastWill.qos = m_willQos;
+    config.lastWill.retain = m_willRetain;
+    config.lastWill.properties.delayInterval = SessionConfig::sanitizeOptionalUInt32(m_willDelayText);
+    if (m_willPayloadUtf8) {
+        config.lastWill.properties.payloadFormatIndicator = MqttPayloadFormatIndicator::Utf8;
+    }
+    if (!m_willExpiryText.trimmed().isEmpty()) {
+        config.lastWill.properties.messageExpiryInterval = SessionConfig::sanitizeOptionalUInt32(
+            m_willExpiryText);
+    }
+    config.lastWill.properties.contentType = m_willContentType.trimmed();
+    config.lastWill.properties.responseTopic = m_willResponseTopic.trimmed();
+    config.lastWill.properties.correlationData = QByteArray::fromBase64(
+        m_willCorrelationDataBase64.trimmed().toLatin1());
+    config.lastWill.properties.userProperties = mqttUserPropertiesFromText(m_willUserPropertiesText);
     return config;
 }
 
@@ -499,8 +696,32 @@ bool SessionEditorViewModel::validate()
         setValidationError(QStringLiteral("Server address is required."));
         return false;
     }
+    if (m_willEnabled && m_willTopic.trimmed().isEmpty()) {
+        setValidationError(QStringLiteral("Last Will topic is required."));
+        return false;
+    }
+    if (m_willEnabled && !QMqttTopicName(m_willTopic.trimmed()).isValid()) {
+        setValidationError(QStringLiteral("Last Will topic is invalid."));
+        return false;
+    }
+    if (m_protocolVersion == 5
+        && !m_willResponseTopic.trimmed().isEmpty()
+        && !QMqttTopicName(m_willResponseTopic.trimmed()).isValid()) {
+        setValidationError(QStringLiteral("Last Will response topic is invalid."));
+        return false;
+    }
 
-    const QStringList checks {
+    if (m_protocolVersion == 5 && !m_willCorrelationDataBase64.trimmed().isEmpty()) {
+        const QByteArray decoded = QByteArray::fromBase64(
+            m_willCorrelationDataBase64.trimmed().toLatin1(),
+            QByteArray::AbortOnBase64DecodingErrors);
+        if (decoded.isNull()) {
+            setValidationError(QStringLiteral("Last Will correlation data must be valid Base64."));
+            return false;
+        }
+    }
+
+    QStringList checks {
         integerValidationError(m_portText, QStringLiteral("Port"), 1, 65535, true),
         integerValidationError(m_connectTimeoutText, QStringLiteral("Connection timeout"), 1, 300, true),
         integerValidationError(m_keepAliveText, QStringLiteral("Keep Alive"), 5, 1200, true),
@@ -509,6 +730,20 @@ bool SessionEditorViewModel::validate()
         integerValidationError(m_maximumPacketSizeText, QStringLiteral("Maximum packet size"), 1, 4294967295ULL, false),
         integerValidationError(m_topicAliasMaximumText, QStringLiteral("Topic alias maximum"), 1, 65535, false),
     };
+    if (m_protocolVersion == 5) {
+        checks.append(integerValidationError(
+            m_willDelayText,
+            QStringLiteral("Last Will delay interval"),
+            0,
+            4294967295ULL,
+            false));
+        checks.append(integerValidationError(
+            m_willExpiryText,
+            QStringLiteral("Last Will expiry interval"),
+            0,
+            4294967295ULL,
+            false));
+    }
     for (const QString &message : checks) {
         if (!message.isEmpty()) {
             setValidationError(message);

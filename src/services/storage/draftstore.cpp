@@ -17,7 +17,8 @@
 #include <QMqttTopicName>
 
 namespace {
-constexpr int kSchemaVersion = 2;
+constexpr int kSchemaVersion = 3;
+constexpr int kMinimumReadableSchemaVersion = 2;
 constexpr qsizetype kMaxNameLength = 80;
 constexpr qsizetype kMaxDescriptionLength = 500;
 constexpr qsizetype kMaxPayloadBytes = 16 * 1024 * 1024;
@@ -135,7 +136,8 @@ DraftStore::LoadResult parseDocument(const QByteArray &content)
         result.errorMessage = QStringLiteral("Draft library version %1 requires a newer application.").arg(version);
         return result;
     }
-    if (version != kSchemaVersion || !root.value(QStringLiteral("drafts")).isArray()) {
+    if (version < kMinimumReadableSchemaVersion
+        || !root.value(QStringLiteral("drafts")).isArray()) {
         result.state = DraftStore::LoadState::Corrupt;
         result.errorMessage = QStringLiteral("Unsupported or incomplete draft library schema.");
         return result;
@@ -160,6 +162,13 @@ DraftStore::LoadResult parseDocument(const QByteArray &content)
         draft.formatId = row.value(QStringLiteral("format")).toString();
         draft.qos = row.value(QStringLiteral("qos")).toInt(-1);
         draft.retain = row.value(QStringLiteral("retain")).toBool(false);
+        if (version >= 3) {
+            const auto properties = mqttPublishPropertiesFromBase64Cbor(
+                row.value(QStringLiteral("propertiesCborBase64")).toString());
+            if (properties) {
+                draft.properties = *properties;
+            }
+        }
         draft.createdAt = row.value(QStringLiteral("createdAt")).toString();
         draft.updatedAt = row.value(QStringLiteral("updatedAt")).toString();
         draft.lastUsedAt = row.value(QStringLiteral("lastUsedAt")).toString();
@@ -192,6 +201,9 @@ QByteArray serializeDrafts(const QVector<PublishDraft> &drafts)
         row.insert(QStringLiteral("format"), draft.formatId);
         row.insert(QStringLiteral("qos"), draft.qos);
         row.insert(QStringLiteral("retain"), draft.retain);
+        row.insert(
+            QStringLiteral("propertiesCborBase64"),
+            mqttPublishPropertiesToBase64Cbor(draft.properties));
         row.insert(QStringLiteral("createdAt"), draft.createdAt);
         row.insert(QStringLiteral("updatedAt"), draft.updatedAt);
         row.insert(QStringLiteral("lastUsedAt"), draft.lastUsedAt);

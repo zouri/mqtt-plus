@@ -62,8 +62,15 @@ public:
         const QByteArray &payloadBytes,
         int format,
         int qos = -1,
-        bool retain = false);
-    void queueIncomingMessage(const QString &sessionId, const QString &topic, const QByteArray &payloadBytes);
+        bool retain = false,
+        const MqttPublishProperties &properties = {});
+    void queueIncomingMessage(
+        const QString &sessionId,
+        const QString &topic,
+        const QByteArray &payloadBytes,
+        int qos = -1,
+        bool retain = false,
+        const MqttPublishProperties &properties = {});
     QString messagePayloadForReuse(
         qint64 messageId,
         const QString &fallbackPayload,

@@ -11,6 +11,7 @@ struct SessionState {
     QString id;
     QString name;
     QString transport = QStringLiteral("tcp");
+    QString webSocketPath = QStringLiteral("/mqtt");
     int protocolVersion = 5;
     bool sslSecure = true;
     QString alpn;
@@ -27,6 +28,8 @@ struct SessionState {
     bool requestProblemInformation = false;
     QString authenticationMethod;
     QString authenticationData;
+    MqttUserProperties userProperties;
+    MqttLastWillConfig lastWill;
     bool outputPaused = false;
     MessageCapturePolicy capturePolicy;
     QVector<SubscriptionEntry> subscriptions;

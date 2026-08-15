@@ -39,6 +39,7 @@ class HistoryStoreTest : public QObject
 
 private slots:
     void writesRawPayloadWithProcessorSchema();
+    void migratesPreviousMessageSchemaWithoutDataLoss();
     void resetsOnlyMessageTableWhenSchemaIsStale();
     void roundTripsProcessorIdentityAndResult();
     void loadMessagesExcludePayloadBytes();
@@ -75,6 +76,10 @@ void HistoryStoreTest::writesRawPayloadWithProcessorSchema()
     record.payloadPreview = QStringLiteral("raw preview");
     record.payloadSize = payload.size();
     record.payloadHash = QStringLiteral("hash");
+    record.publishProperties.contentType = QStringLiteral("application/octet-stream");
+    record.publishProperties.subscriptionIdentifiers = {7, 9};
+    record.publishProperties.userProperties.append(
+        {QStringLiteral("trace-id"), QStringLiteral("test-trace")});
     const qint64 reservedId = appendMessage(store, record);
 
     QVERIFY(reservedId > 0);
@@ -91,6 +96,49 @@ void HistoryStoreTest::writesRawPayloadWithProcessorSchema()
     const auto loaded = store.loadMessage(reservedId);
     QVERIFY(loaded);
     QCOMPARE(loaded->processorResultCbor, record.processorResultCbor);
+    QCOMPARE(loaded->publishProperties, record.publishProperties);
+}
+
+void HistoryStoreTest::migratesPreviousMessageSchemaWithoutDataLoss()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    const QString sessionId = QStringLiteral("legacy-session");
+    {
+        HistoryStore store(dataDir.path());
+        QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+        MessageRecord record;
+        record.sessionId = sessionId;
+        record.timestamp = QStringLiteral("2026-08-15T10:00:00.000Z");
+        record.topic = QStringLiteral("legacy/topic");
+        record.payloadBytes = QByteArrayLiteral("kept");
+        record.payloadPreview = QStringLiteral("kept");
+        record.payloadSize = 4;
+        QVERIFY(appendMessage(store, record) > 0);
+    }
+
+    const QString connectionName = QStringLiteral("legacy-history-%1")
+                                       .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dataDir.filePath(QStringLiteral("history.db")));
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral(
+                     "ALTER TABLE mqtt_messages DROP COLUMN publish_properties_cbor")),
+            qPrintable(query.lastError().text()));
+        QVERIFY2(query.exec(QStringLiteral("PRAGMA user_version = 2")),
+            qPrintable(query.lastError().text()));
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    HistoryStore migrated(dataDir.path());
+    QVERIFY2(migrated.isReady(), qPrintable(migrated.lastError()));
+    const QVector<MessageRecord> rows = migrated.loadMessages(sessionId, 10);
+    QCOMPARE(rows.size(), 1);
+    QCOMPARE(rows.first().topic, QStringLiteral("legacy/topic"));
+    QVERIFY(rows.first().publishProperties.isEmpty());
 }
 
 void HistoryStoreTest::resetsOnlyMessageTableWhenSchemaIsStale()

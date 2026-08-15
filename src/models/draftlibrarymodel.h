@@ -23,6 +23,7 @@ public:
         FormatNameRole,
         QosRole,
         RetainRole,
+        PropertiesCborBase64Role,
         CreatedAtRole,
         UpdatedAtRole,
         LastUsedAtRole,

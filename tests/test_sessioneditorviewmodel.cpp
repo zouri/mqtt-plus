@@ -11,6 +11,7 @@ private slots:
     void validatesRequiredFields();
     void validatesIntegerRanges();
     void collectsSanitizedConfig();
+    void selectsTransportByIndex();
     void collectsAdvancedConfig();
 };
 
@@ -47,6 +48,12 @@ void SessionEditorViewModelTest::validatesRequiredFields()
 
     QVERIFY(!editor.validate());
     QCOMPARE(editor.validationError(), QStringLiteral("Server address is required."));
+
+    editor.setHost(QStringLiteral("broker.example.test"));
+    editor.setWillEnabled(true);
+    editor.setWillTopic(QStringLiteral("clients/+"));
+    QVERIFY(!editor.validate());
+    QCOMPARE(editor.validationError(), QStringLiteral("Last Will topic is invalid."));
 }
 
 void SessionEditorViewModelTest::validatesIntegerRanges()
@@ -95,6 +102,23 @@ void SessionEditorViewModelTest::collectsSanitizedConfig()
     QCOMPARE(config.clientId, QStringLiteral("client-a"));
 }
 
+void SessionEditorViewModelTest::selectsTransportByIndex()
+{
+    SessionEditorViewModel editor;
+    QCOMPARE(editor.transportSchemes().size(), 4);
+
+    editor.setTransportIndex(2);
+    QCOMPARE(editor.transport(), QStringLiteral("ws"));
+    QCOMPARE(editor.transportIndex(), 2);
+    QCOMPARE(editor.portText(), QStringLiteral("8083"));
+    QVERIFY(editor.webSocketTransport());
+
+    editor.setPortText(QStringLiteral("9001"));
+    editor.setTransportIndex(3);
+    QCOMPARE(editor.transport(), QStringLiteral("wss"));
+    QCOMPARE(editor.portText(), QStringLiteral("9001"));
+}
+
 void SessionEditorViewModelTest::collectsAdvancedConfig()
 {
     SessionEditorViewModel editor;
@@ -118,6 +142,17 @@ void SessionEditorViewModelTest::collectsAdvancedConfig()
     editor.setRequestProblemInformation(true);
     editor.setAuthenticationMethod(QStringLiteral("token"));
     editor.setAuthenticationData(QStringLiteral("data"));
+    editor.setTransport(QStringLiteral("wss"));
+    editor.setWebSocketPath(QStringLiteral("mqtt/v5"));
+    editor.setUserPropertiesText(QStringLiteral("client=desktop\nregion=cn"));
+    editor.setWillEnabled(true);
+    editor.setWillTopic(QStringLiteral("clients/offline"));
+    editor.setWillPayload(QStringLiteral("offline"));
+    editor.setWillQos(1);
+    editor.setWillRetain(true);
+    editor.setWillDelayText(QStringLiteral("10"));
+    editor.setWillContentType(QStringLiteral("text/plain"));
+    editor.setWillUserPropertiesText(QStringLiteral("reason=disconnect"));
 
     const SessionConnectionConfig config = editor.collectedConfig();
 
@@ -139,6 +174,16 @@ void SessionEditorViewModelTest::collectsAdvancedConfig()
     QCOMPARE(config.requestProblemInformation, true);
     QCOMPARE(config.authenticationMethod, QStringLiteral("token"));
     QCOMPARE(config.authenticationData, QStringLiteral("data"));
+    QCOMPARE(config.transport, QStringLiteral("wss"));
+    QCOMPARE(config.webSocketPath, QStringLiteral("/mqtt/v5"));
+    QCOMPARE(config.userProperties.size(), 2);
+    QVERIFY(config.lastWill.enabled);
+    QCOMPARE(config.lastWill.topic, QStringLiteral("clients/offline"));
+    QCOMPARE(config.lastWill.qos, 1);
+    QVERIFY(config.lastWill.retain);
+    QCOMPARE(config.lastWill.properties.delayInterval, quint32(10));
+    QCOMPARE(config.lastWill.properties.contentType, QStringLiteral("text/plain"));
+    QCOMPARE(config.lastWill.properties.userProperties.size(), 1);
 }
 
 QTEST_MAIN(SessionEditorViewModelTest)

@@ -134,6 +134,73 @@ QStringList stringListFromJson(const QJsonValue &value)
     return values;
 }
 
+QJsonArray userPropertiesToJson(const MqttUserProperties &properties)
+{
+    return QJsonArray::fromVariantList(mqttUserPropertiesToVariantList(properties));
+}
+
+MqttUserProperties userPropertiesFromJson(const QJsonValue &value)
+{
+    return mqttUserPropertiesFromVariantList(value.toArray().toVariantList());
+}
+
+QJsonObject lastWillToJson(const MqttLastWillConfig &will)
+{
+    return {
+        {QStringLiteral("enabled"), will.enabled},
+        {QStringLiteral("topic"), will.topic},
+        {QStringLiteral("payload"), will.payload},
+        {QStringLiteral("payloadFormat"), will.payloadFormat},
+        {QStringLiteral("qos"), will.qos},
+        {QStringLiteral("retain"), will.retain},
+        {QStringLiteral("delayInterval"), static_cast<double>(will.properties.delayInterval)},
+        {QStringLiteral("payloadFormatIndicatorSet"), will.properties.payloadFormatIndicator.has_value()},
+        {QStringLiteral("payloadFormatUtf8"),
+         will.properties.payloadFormatIndicator == MqttPayloadFormatIndicator::Utf8},
+        {QStringLiteral("messageExpiryIntervalSet"), will.properties.messageExpiryInterval.has_value()},
+        {QStringLiteral("messageExpiryInterval"),
+         static_cast<double>(will.properties.messageExpiryInterval.value_or(0))},
+        {QStringLiteral("contentType"), will.properties.contentType},
+        {QStringLiteral("responseTopic"), will.properties.responseTopic},
+        {QStringLiteral("correlationDataBase64"), QString::fromLatin1(will.properties.correlationData.toBase64())},
+        {QStringLiteral("userProperties"), userPropertiesToJson(will.properties.userProperties)},
+    };
+}
+
+MqttLastWillConfig lastWillFromJson(const QJsonObject &object)
+{
+    MqttLastWillConfig will;
+    will.enabled = object.value(QStringLiteral("enabled")).toBool(false);
+    will.topic = object.value(QStringLiteral("topic")).toString();
+    will.payload = object.value(QStringLiteral("payload")).toString();
+    will.payloadFormat = boundedInt(object.value(QStringLiteral("payloadFormat")), 0, 0, 5);
+    will.qos = boundedInt(object.value(QStringLiteral("qos")), 0, 0, 2);
+    will.retain = object.value(QStringLiteral("retain")).toBool(false);
+    will.properties.delayInterval = optionalUInt32(object.value(QStringLiteral("delayInterval")));
+    const bool payloadFormatIndicatorSet = object.contains(
+            QStringLiteral("payloadFormatIndicatorSet"))
+        ? object.value(QStringLiteral("payloadFormatIndicatorSet")).toBool(false)
+        : object.value(QStringLiteral("payloadFormatUtf8")).toBool(false);
+    if (payloadFormatIndicatorSet) {
+        will.properties.payloadFormatIndicator = object.value(
+                                                        QStringLiteral("payloadFormatUtf8"))
+                                                        .toBool(false)
+            ? MqttPayloadFormatIndicator::Utf8
+            : MqttPayloadFormatIndicator::Unspecified;
+    }
+    if (object.value(QStringLiteral("messageExpiryIntervalSet")).toBool(false)) {
+        will.properties.messageExpiryInterval = optionalUInt32(
+            object.value(QStringLiteral("messageExpiryInterval")));
+    }
+    will.properties.contentType = object.value(QStringLiteral("contentType")).toString();
+    will.properties.responseTopic = object.value(QStringLiteral("responseTopic")).toString();
+    will.properties.correlationData = QByteArray::fromBase64(
+        object.value(QStringLiteral("correlationDataBase64")).toString().toLatin1());
+    will.properties.userProperties = userPropertiesFromJson(
+        object.value(QStringLiteral("userProperties")));
+    return will;
+}
+
 QJsonObject serializeSubscription(const ConfigurationTransfer::SubscriptionData &subscription)
 {
     return {
@@ -143,6 +210,9 @@ QJsonObject serializeSubscription(const ConfigurationTransfer::SubscriptionData 
         {QStringLiteral("format"), subscription.format},
         {QStringLiteral("color"), subscription.color},
         {QStringLiteral("paused"), subscription.paused},
+        {QStringLiteral("noLocal"), subscription.options.noLocal},
+        {QStringLiteral("subscriptionIdentifier"), static_cast<double>(subscription.options.subscriptionIdentifier)},
+        {QStringLiteral("userProperties"), userPropertiesToJson(subscription.options.userProperties)},
     };
 }
 
@@ -176,6 +246,7 @@ QJsonObject serializeSession(const ConfigurationTransfer::SessionData &session)
         {QStringLiteral("host"), session.host},
         {QStringLiteral("port"), session.port},
         {QStringLiteral("transport"), session.transport},
+        {QStringLiteral("webSocketPath"), session.webSocketPath},
         {QStringLiteral("protocolVersion"), session.protocolVersion},
         {QStringLiteral("sslSecure"), session.sslSecure},
         {QStringLiteral("alpn"), session.alpn},
@@ -194,6 +265,8 @@ QJsonObject serializeSession(const ConfigurationTransfer::SessionData &session)
         {QStringLiteral("requestProblemInformation"), session.requestProblemInformation},
         {QStringLiteral("authenticationMethod"), session.authenticationMethod},
         {QStringLiteral("authenticationData"), session.authenticationData},
+        {QStringLiteral("userProperties"), userPropertiesToJson(session.userProperties)},
+        {QStringLiteral("lastWill"), lastWillToJson(session.lastWill)},
         {QStringLiteral("outputPaused"), session.outputPaused},
         {QStringLiteral("captureIncoming"), session.capturePolicy.captureIncoming},
         {QStringLiteral("captureOutgoing"), session.capturePolicy.captureOutgoing},
@@ -220,6 +293,11 @@ ConfigurationTransfer::SubscriptionData parseNativeSubscription(const QJsonObjec
     subscription.format = boundedInt(object.value(QStringLiteral("format")), 0, 0, 5);
     subscription.color = object.value(QStringLiteral("color")).toString().trimmed();
     subscription.paused = object.value(QStringLiteral("paused")).toBool(false);
+    subscription.options.noLocal = object.value(QStringLiteral("noLocal")).toBool(false);
+    subscription.options.subscriptionIdentifier = SessionConfig::sanitizeSubscriptionIdentifier(
+        object.value(QStringLiteral("subscriptionIdentifier")).toVariant());
+    subscription.options.userProperties = userPropertiesFromJson(
+        object.value(QStringLiteral("userProperties")));
     return subscription;
 }
 
@@ -245,7 +323,6 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
     int skippedConnections = 0;
     int skippedSubscriptions = 0;
     int autoReconnectConnections = 0;
-    int ignoredWillConnections = 0;
     int ignoredMessages = 0;
     int advancedSubscriptionCount = 0;
     int nonPemAssetCount = 0;
@@ -260,15 +337,12 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
         }
 
         const QString protocol = object.value(QStringLiteral("protocol")).toString().trimmed().toLower();
-        QString transport;
-        if (protocol == QStringLiteral("mqtt")) {
-            transport = QStringLiteral("tcp");
-        } else if (protocol == QStringLiteral("mqtts")) {
-            transport = QStringLiteral("tls");
-        } else {
+        const auto parsedTransport = SessionConfig::transportFromScheme(protocol);
+        if (!parsedTransport) {
             ++skippedConnections;
             continue;
         }
+        const QString transport = SessionConfig::transportId(*parsedTransport);
 
         const QString mqttVersion = object.value(QStringLiteral("mqttVersion")).toVariant().toString().trimmed();
         int protocolVersion = 0;
@@ -295,10 +369,12 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
             continue;
         }
         session.transport = transport;
+        session.webSocketPath = SessionConfig::sanitizeWebSocketPath(
+            object.value(QStringLiteral("path")));
         session.protocolVersion = protocolVersion;
         session.port = boundedInt(
             object.value(QStringLiteral("port")),
-            transport == QStringLiteral("tls") ? 8883 : 1883,
+            SessionConfig::sanitizePort(QVariant(), transport),
             1,
             65535);
         session.sslSecure = object.value(QStringLiteral("rejectUnauthorized")).isBool()
@@ -354,6 +430,42 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
                                          object,
                                          QStringLiteral("authenticationData"))
                                          .toString();
+        session.userProperties = userPropertiesFromJson(
+            object.value(QStringLiteral("userProperties")));
+        const QJsonObject mqttxWill = object.value(QStringLiteral("will")).toObject();
+        if (mqttxWillHasValues(mqttxWill)) {
+            session.lastWill.enabled = true;
+            session.lastWill.topic = mqttxWill.value(QStringLiteral("lastWillTopic")).toString();
+            session.lastWill.payload = mqttxWill.value(QStringLiteral("lastWillPayload")).toString();
+            session.lastWill.qos = boundedInt(
+                mqttxWill.value(QStringLiteral("lastWillQos")), 0, 0, 2);
+            session.lastWill.retain = mqttxWill.value(
+                QStringLiteral("lastWillRetain")).toBool(false);
+            session.lastWill.properties.delayInterval = optionalUInt32(
+                mqttxWill.value(QStringLiteral("willDelayInterval")));
+            const QJsonValue payloadFormatIndicator = mqttxWill.value(
+                QStringLiteral("payloadFormatIndicator"));
+            if (!payloadFormatIndicator.isUndefined() && !payloadFormatIndicator.isNull()) {
+                const bool payloadFormatUtf8 = payloadFormatIndicator.isBool()
+                    ? payloadFormatIndicator.toBool()
+                    : payloadFormatIndicator.toInt() == 1;
+                session.lastWill.properties.payloadFormatIndicator = payloadFormatUtf8
+                    ? MqttPayloadFormatIndicator::Utf8
+                    : MqttPayloadFormatIndicator::Unspecified;
+            }
+            if (mqttxWill.contains(QStringLiteral("messageExpiryInterval"))) {
+                session.lastWill.properties.messageExpiryInterval = optionalUInt32(
+                    mqttxWill.value(QStringLiteral("messageExpiryInterval")));
+            }
+            session.lastWill.properties.contentType = mqttxWill.value(
+                QStringLiteral("contentType")).toString();
+            session.lastWill.properties.responseTopic = mqttxWill.value(
+                QStringLiteral("responseTopic")).toString();
+            session.lastWill.properties.correlationData = QByteArray::fromBase64(
+                mqttxWill.value(QStringLiteral("correlationData")).toString().toLatin1());
+            session.lastWill.properties.userProperties = userPropertiesFromJson(
+                mqttxWill.value(QStringLiteral("userProperties")));
+        }
 
         if (!session.password.isEmpty()) {
             ++result.sensitiveFieldCount;
@@ -387,14 +499,14 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
                 SessionConfig::kMaximumQos);
             subscription.color = row.value(QStringLiteral("color")).toString().trimmed();
             subscription.paused = row.value(QStringLiteral("disabled")).toBool(false);
-            const QJsonValue subscriptionIdentifier =
-                row.value(QStringLiteral("subscriptionIdentifier"));
-            if (row.value(QStringLiteral("nl")).toBool(false)
-                || row.value(QStringLiteral("rap")).toBool(false)
+            subscription.options.noLocal = row.value(QStringLiteral("nl")).toBool(false);
+            subscription.options.subscriptionIdentifier = SessionConfig::sanitizeSubscriptionIdentifier(
+                row.value(QStringLiteral("subscriptionIdentifier")).toVariant());
+            subscription.options.userProperties = userPropertiesFromJson(
+                row.value(QStringLiteral("userProperties")));
+            if (row.value(QStringLiteral("rap")).toBool(false)
                 || boundedInt(row.value(QStringLiteral("rh")), 0, 0, 2) != 0
-                || jsonCollectionHasValues(row.value(QStringLiteral("userProperties")))
-                || (!subscriptionIdentifier.isUndefined()
-                    && !subscriptionIdentifier.isNull())) {
+                ) {
                 ++advancedSubscriptionCount;
             }
             session.subscriptions.append(subscription);
@@ -404,15 +516,7 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
             || boundedInt(object.value(QStringLiteral("reconnectPeriod")), 0, 0, 3600000) > 0) {
             ++autoReconnectConnections;
         }
-        if (mqttxWillHasValues(object.value(QStringLiteral("will")).toObject())) {
-            ++ignoredWillConnections;
-        }
         ignoredMessages += object.value(QStringLiteral("messages")).toArray().size();
-        if (jsonCollectionHasValues(object.value(QStringLiteral("userProperties")))) {
-            result.warnings.append(text(QT_TRANSLATE_NOOP(
-                "ConfigurationAdapters",
-                "MQTT 5 connection user properties are not supported and will be ignored.")));
-        }
         result.bundle.sessions.append(std::move(session));
     }
 
@@ -442,13 +546,6 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
                      "ConfigurationAdapters",
                      "Automatic reconnect settings from %1 connections are not supported."))
                 .arg(autoReconnectConnections));
-    }
-    if (ignoredWillConnections > 0) {
-        result.warnings.append(
-            text(QT_TRANSLATE_NOOP(
-                     "ConfigurationAdapters",
-                     "Last-will settings from %1 connections are not supported."))
-                .arg(ignoredWillConnections));
     }
     if (ignoredMessages > 0) {
         result.warnings.append(
@@ -508,7 +605,7 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
             "This configuration export requires a newer application version."));
         return result;
     }
-    if (version != kSchemaVersion) {
+    if (version < 2) {
         result.errorMessage = text(QT_TRANSLATE_NOOP(
             "ConfigurationAdapters",
             "The configuration export version is not supported."));
@@ -555,13 +652,14 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
             ++skippedSessions;
             continue;
         }
-        session.transport = object.value(QStringLiteral("transport")).toString() == QStringLiteral("tls")
-            ? QStringLiteral("tls")
-            : QStringLiteral("tcp");
+        session.transport = SessionConfig::sanitizeTransport(
+            object.value(QStringLiteral("transport")));
+        session.webSocketPath = SessionConfig::sanitizeWebSocketPath(
+            object.value(QStringLiteral("webSocketPath")));
         session.protocolVersion = object.value(QStringLiteral("protocolVersion")).toInt(5) == 4 ? 4 : 5;
         session.port = boundedInt(
             object.value(QStringLiteral("port")),
-            session.transport == QStringLiteral("tls") ? 8883 : 1883,
+            SessionConfig::sanitizePort(QVariant(), session.transport),
             1,
             65535);
         session.sslSecure = object.value(QStringLiteral("sslSecure")).toBool(true);
@@ -594,6 +692,12 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
         session.requestProblemInformation = object.value(QStringLiteral("requestProblemInformation")).toBool(false);
         session.authenticationMethod = object.value(QStringLiteral("authenticationMethod")).toString().trimmed();
         session.authenticationData = object.value(QStringLiteral("authenticationData")).toString();
+        if (version >= 3) {
+            session.userProperties = userPropertiesFromJson(
+                object.value(QStringLiteral("userProperties")));
+            session.lastWill = lastWillFromJson(
+                object.value(QStringLiteral("lastWill")).toObject());
+        }
         session.outputPaused = object.value(QStringLiteral("outputPaused")).toBool(false);
         session.capturePolicy.captureIncoming = object.value(
                                                           QStringLiteral("captureIncoming"))
@@ -650,6 +754,13 @@ ConfigurationTransfer::ParseResult parse(const QByteArray &content)
         draft.formatId = object.value(QStringLiteral("format")).toString();
         draft.qos = object.value(QStringLiteral("qos")).toInt(-1);
         draft.retain = object.value(QStringLiteral("retain")).toBool(false);
+        if (version >= 3) {
+            const auto properties = mqttPublishPropertiesFromBase64Cbor(
+                object.value(QStringLiteral("propertiesCborBase64")).toString());
+            if (properties) {
+                draft.properties = *properties;
+            }
+        }
         draft.createdAt = object.value(QStringLiteral("createdAt")).toString();
         draft.updatedAt = object.value(QStringLiteral("updatedAt")).toString();
         draft.lastUsedAt = object.value(QStringLiteral("lastUsedAt")).toString();
@@ -699,6 +810,8 @@ ConfigurationTransfer::SerializeResult serialize(
             {QStringLiteral("format"), draft.formatId},
             {QStringLiteral("qos"), draft.qos},
             {QStringLiteral("retain"), draft.retain},
+            {QStringLiteral("propertiesCborBase64"),
+             mqttPublishPropertiesToBase64Cbor(draft.properties)},
             {QStringLiteral("createdAt"), draft.createdAt},
             {QStringLiteral("updatedAt"), draft.updatedAt},
             {QStringLiteral("lastUsedAt"), draft.lastUsedAt},

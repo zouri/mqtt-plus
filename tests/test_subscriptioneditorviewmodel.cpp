@@ -91,11 +91,21 @@ void SubscriptionEditorViewModelTest::validatesAndCollectsCurrentSubmission()
     editor.setQos(2);
     editor.setFormat(2);
     editor.setProcessorId(QStringLiteral("processor-1"));
+    editor.setNoLocal(true);
+    editor.setSubscriptionIdentifierText(QStringLiteral("42"));
+    editor.setUserPropertiesText(QStringLiteral("scope=temperature"));
 
     QVERIFY(editor.canSubmit());
     const SubscriptionEditorSubmission submission = editor.submission();
     QCOMPARE(submission.topic, QStringLiteral("sensors/+/temp"));
     QCOMPARE(submission.processor.processorId, QStringLiteral("processor-1"));
+    QVERIFY(submission.options.noLocal);
+    QCOMPARE(submission.options.subscriptionIdentifier, quint32(42));
+    QCOMPARE(submission.options.userProperties.size(), 1);
+
+    editor.setSubscriptionIdentifierText(QStringLiteral("268435456"));
+    QVERIFY(!editor.canSubmit());
+    editor.setSubscriptionIdentifierText(QStringLiteral("42"));
 
     editor.setQos(3);
     QCOMPARE(editor.qos(), 2);

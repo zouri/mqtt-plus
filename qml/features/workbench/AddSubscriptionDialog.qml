@@ -98,6 +98,41 @@ AppDialog {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            AppCheckBox {
+                ui: root.ui
+                Layout.fillWidth: true
+                text: qsTr("No Local")
+                checked: root.editor.noLocal
+                onToggled: root.editor.noLocal = checked
+            }
+
+            AppTextField {
+                ui: root.ui
+                Layout.fillWidth: true
+                inputMethodHints: Qt.ImhDigitsOnly
+                placeholderText: qsTr("Subscription ID")
+                text: root.editor.subscriptionIdentifierText
+                onTextEdited: root.editor.subscriptionIdentifierText = text
+            }
+        }
+
+        AppTextArea {
+            ui: root.ui
+            Layout.fillWidth: true
+            Layout.preferredHeight: 66
+            placeholderText: qsTr("MQTT 5 user properties: name=value")
+            text: root.editor.userPropertiesText
+            onTextChanged: {
+                if (root.editor.userPropertiesText !== text) {
+                    root.editor.userPropertiesText = text
+                }
+            }
+        }
+
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 8

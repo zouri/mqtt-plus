@@ -248,6 +248,29 @@ Item {
                 }
 
                 ColumnLayout {
+                    visible: String(control.details.mqttPropertiesText || "").length > 0
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    spacing: 6
+
+                    Label {
+                        text: qsTr("MQTT 5 properties")
+                        color: control.ui.textMuted
+                        font.pixelSize: 11
+                    }
+
+                    AppTextArea {
+                        ui: control.ui
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(132, Math.max(54, implicitHeight))
+                        readOnly: true
+                        text: String(control.details.mqttPropertiesText || "")
+                        wrapMode: TextEdit.Wrap
+                    }
+                }
+
+                ColumnLayout {
                     Layout.fillWidth: true
                     Layout.leftMargin: 14
                     Layout.rightMargin: 14

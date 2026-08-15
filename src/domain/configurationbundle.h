@@ -18,6 +18,7 @@ struct SubscriptionData {
     int format = 0;
     QString color;
     bool paused = false;
+    MqttSubscriptionOptions options;
 };
 
 struct SessionData {
@@ -26,6 +27,7 @@ struct SessionData {
     QString host;
     int port = 1883;
     QString transport = QStringLiteral("tcp");
+    QString webSocketPath = QStringLiteral("/mqtt");
     int protocolVersion = 5;
     bool sslSecure = true;
     QString alpn;
@@ -47,6 +49,8 @@ struct SessionData {
     bool requestProblemInformation = false;
     QString authenticationMethod;
     QString authenticationData;
+    MqttUserProperties userProperties;
+    MqttLastWillConfig lastWill;
     bool outputPaused = false;
     MessageCapturePolicy capturePolicy;
     QVector<SubscriptionData> subscriptions;
