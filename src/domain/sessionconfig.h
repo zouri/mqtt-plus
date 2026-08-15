@@ -73,6 +73,8 @@ std::optional<Transport> transportFromScheme(const QString &scheme);
 Transport transportAt(int index);
 QString transportId(Transport transport);
 QString transportScheme(Transport transport);
+QString transportLabel(Transport transport);
+QString transportLabel(const QString &transport);
 QStringList transportSchemes();
 int transportIndex(Transport transport);
 int defaultPort(Transport transport);

@@ -153,6 +153,22 @@ QString transportScheme(Transport transport)
     return QStringLiteral("mqtt");
 }
 
+QString transportLabel(Transport transport)
+{
+    switch (transport) {
+    case Transport::Tcp: return QStringLiteral("TCP");
+    case Transport::Tls: return QStringLiteral("TLS");
+    case Transport::WebSocket: return QStringLiteral("WebSocket");
+    case Transport::SecureWebSocket: return QStringLiteral("Secure WebSocket");
+    }
+    return QStringLiteral("TCP");
+}
+
+QString transportLabel(const QString &transport)
+{
+    return transportLabel(transportFromValue(transport));
+}
+
 QStringList transportSchemes()
 {
     return {

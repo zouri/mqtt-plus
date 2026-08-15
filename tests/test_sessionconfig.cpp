@@ -95,6 +95,12 @@ void SessionConfigTest::describesTransports()
     QCOMPARE(SessionConfig::defaultPort(Transport::WebSocket), 8083);
     QVERIFY(SessionConfig::isSecure(Transport::SecureWebSocket));
     QVERIFY(SessionConfig::usesWebSocket(Transport::WebSocket));
+    QCOMPARE(SessionConfig::transportLabel(Transport::Tcp), QStringLiteral("TCP"));
+    QCOMPARE(SessionConfig::transportLabel(Transport::Tls), QStringLiteral("TLS"));
+    QCOMPARE(SessionConfig::transportLabel(Transport::WebSocket), QStringLiteral("WebSocket"));
+    QCOMPARE(SessionConfig::transportLabel(Transport::SecureWebSocket), QStringLiteral("Secure WebSocket"));
+    QCOMPARE(SessionConfig::transportLabel(QStringLiteral("wss")), QStringLiteral("Secure WebSocket"));
+    QCOMPARE(SessionConfig::transportLabel(QStringLiteral("unknown")), QStringLiteral("TCP"));
 }
 
 void SessionConfigTest::defaultConfigContainsExpectedBaseline()
