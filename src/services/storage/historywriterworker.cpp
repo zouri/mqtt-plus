@@ -4,6 +4,7 @@
 #include "services/storage/historystore.h"
 
 #include <QDeadlineTimer>
+#include <QDebug>
 #include <QHash>
 #include <QMetaObject>
 #include <QMutexLocker>
@@ -311,6 +312,13 @@ void HistoryWriterWorker::start()
     m_flushTimer = new QTimer(this);
     m_flushTimer->setSingleShot(true);
     connect(m_flushTimer, &QTimer::timeout, this, &HistoryWriterWorker::flushBatch);
+    // Reclaim free pages asynchronously: start() itself runs via a blocking
+    // queued invocation while the calling thread is blocked, so a startup
+    // VACUUM must not run inline. It is deferred to the worker thread's event
+    // loop, keeping the GUI thread responsive even for legacy oversized
+    // databases. If the store is not ready yet, ensureStore() will schedule it
+    // after the first successful retry.
+    m_startupReclaimPending = true;
     if (!ensureStore()) {
         scheduleRetry(m_store ? m_store->lastError() : QString());
     }
@@ -334,6 +342,7 @@ void HistoryWriterWorker::shutdown()
         m_started = false;
         m_wakePending = false;
         m_dropNotificationPending = false;
+        m_startupReclaimPending = false;
     }
     if (m_flushTimer) {
         m_flushTimer->stop();
@@ -686,6 +695,21 @@ void HistoryWriterWorker::scheduleNextFlush()
     }
 }
 
+void HistoryWriterWorker::scheduleStartupReclaim()
+{
+    QTimer::singleShot(0, this, [this]() {
+        if (!m_store) {
+            return;
+        }
+        if (!m_store->reclaimFreePages()) {
+            qWarning().noquote()
+                << "Cannot reclaim free pages in message history on startup:"
+                << m_store->lastError();
+            m_store->clearLastError();
+        }
+    });
+}
+
 bool HistoryWriterWorker::ensureStore()
 {
     if (!m_store || !m_store->isReady()) {
@@ -693,6 +717,11 @@ bool HistoryWriterWorker::ensureStore()
         if (!m_store->isReady()) {
             return false;
         }
+    }
+
+    if (m_startupReclaimPending) {
+        m_startupReclaimPending = false;
+        scheduleStartupReclaim();
     }
 
     {

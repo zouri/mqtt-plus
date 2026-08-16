@@ -32,6 +32,7 @@ public:
 
     bool isReady() const;
     QString lastError() const;
+    void clearLastError();
     QString dataPath() const;
     QString journalMode() const;
     int busyTimeoutMs() const;
@@ -64,6 +65,7 @@ public:
     bool clearAllHistory();
     void pruneMessages(const QString &sessionId, int keepCount);
     void pruneLogs(const QString &sessionId, int keepCount);
+    bool reclaimFreePages();
 
 private:
     bool initialize(const QString &dataPath, int busyTimeoutMs);

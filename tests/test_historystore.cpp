@@ -50,6 +50,10 @@ private slots:
     void backfillsTotalMessageCountForExistingHistory();
     void clearMessagesRollsBackWhenTotalDeleteFails();
     void clearAllHistoryRollsBackWhenLogDeleteFails();
+    void autoVacuumEnabledIncrementally();
+    void pruneReclaimsFreePages();
+    void clearAllHistoryReclaimsFreePages();
+    void smallPruneAvoidsFullRewrite();
 };
 
 void HistoryStoreTest::writesRawPayloadWithProcessorSchema()
@@ -561,6 +565,182 @@ void HistoryStoreTest::roundTripsCanonicalOutgoingMessage()
     QCOMPARE(loaded->retain, true);
     QCOMPARE(loaded->retainKnown, true);
     QCOMPARE(loaded->payloadBytes, record.payloadBytes);
+}
+
+namespace {
+struct PageStats {
+    qint64 pageCount = 0;
+    qint64 freePageCount = 0;
+};
+
+PageStats pageStats(const QString &dbPath)
+{
+    PageStats stats;
+    const QString connectionName =
+        QStringLiteral("page-stats-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dbPath);
+        if (!db.open()) {
+            return stats;
+        }
+        QSqlQuery query(db);
+        if (query.exec(QStringLiteral("PRAGMA page_count")) && query.next()) {
+            stats.pageCount = query.value(0).toLongLong();
+        }
+        if (query.exec(QStringLiteral("PRAGMA freelist_count")) && query.next()) {
+            stats.freePageCount = query.value(0).toLongLong();
+        }
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+    return stats;
+}
+
+QVector<MessageRecord> payloadRecords(const QString &sessionId, int count, const QByteArray &payload)
+{
+    QVector<MessageRecord> records;
+    records.reserve(count);
+    for (int index = 0; index < count; ++index) {
+        MessageRecord record;
+        record.sessionId = sessionId;
+        record.timestamp = QStringLiteral("2026-08-15T10:%1:%2.000")
+                               .arg(index / 60, 2, 10, QLatin1Char('0'))
+                               .arg(index % 60, 2, 10, QLatin1Char('0'));
+        record.topic = QStringLiteral("devices/%1").arg(index);
+        record.payloadBytes = payload;
+        record.payloadSize = payload.size();
+        record.payloadState = QStringLiteral("full");
+        records.append(record);
+    }
+    return records;
+}
+} // namespace
+
+void HistoryStoreTest::autoVacuumEnabledIncrementally()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    const QString sessionId = QStringLiteral("vacuum-session");
+
+    // In WAL mode the INCREMENTAL auto-vacuum mode is deferred until the first
+    // full VACUUM. A prune that frees a large fraction triggers that VACUUM and
+    // activates the mode.
+    const QByteArray payload(2048, 'v');
+    QVERIFY(appendMessages(store, payloadRecords(sessionId, 80, payload)));
+    store.pruneMessages(sessionId, 5);
+    QVERIFY2(store.lastError().isEmpty(), qPrintable(store.lastError()));
+
+    const QString dbPath = dataDir.filePath(QStringLiteral("history.db"));
+    const QString connectionName =
+        QStringLiteral("auto-vacuum-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    int mode = 0;
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        db.setDatabaseName(dbPath);
+        QVERIFY2(db.open(), qPrintable(db.lastError().text()));
+        QSqlQuery query(db);
+        QVERIFY2(query.exec(QStringLiteral("PRAGMA auto_vacuum")), qPrintable(query.lastError().text()));
+        QVERIFY(query.next());
+        mode = query.value(0).toInt();
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+    QCOMPARE(mode, 2); // 2 == INCREMENTAL
+}
+
+void HistoryStoreTest::pruneReclaimsFreePages()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    const QString sessionId = QStringLiteral("prune-session");
+
+    const QByteArray payload(2048, 'x');
+    QVERIFY(appendMessages(store, payloadRecords(sessionId, 80, payload)));
+
+    const QString dbPath = dataDir.filePath(QStringLiteral("history.db"));
+    const PageStats before = pageStats(dbPath);
+    QVERIFY(before.pageCount > 0);
+    QVERIFY(before.freePageCount == 0);
+
+    store.pruneMessages(sessionId, 5);
+    QVERIFY2(store.lastError().isEmpty(), qPrintable(store.lastError()));
+    QCOMPARE(store.loadMessages(sessionId, 10).size(), 5);
+
+    const PageStats after = pageStats(dbPath);
+    QCOMPARE(after.freePageCount, qint64(0));
+    QVERIFY2(after.pageCount < before.pageCount,
+        qPrintable(QStringLiteral("page_count did not shrink: %1 -> %2")
+                       .arg(before.pageCount)
+                       .arg(after.pageCount)));
+}
+
+void HistoryStoreTest::clearAllHistoryReclaimsFreePages()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    const QString sessionId = QStringLiteral("clear-session");
+
+    const QByteArray payload(2048, 'y');
+    QVERIFY(appendMessages(store, payloadRecords(sessionId, 60, payload)));
+
+    const QString dbPath = dataDir.filePath(QStringLiteral("history.db"));
+    const PageStats before = pageStats(dbPath);
+    QVERIFY(before.pageCount > 0);
+
+    QVERIFY(store.clearAllHistory());
+    QVERIFY2(store.lastError().isEmpty(), qPrintable(store.lastError()));
+    QCOMPARE(store.loadMessages(sessionId, 10).size(), 0);
+
+    const PageStats after = pageStats(dbPath);
+    QCOMPARE(after.freePageCount, qint64(0));
+    QVERIFY2(after.pageCount < before.pageCount,
+        qPrintable(QStringLiteral("page_count did not shrink: %1 -> %2")
+                       .arg(before.pageCount)
+                       .arg(after.pageCount)));
+}
+
+void HistoryStoreTest::smallPruneAvoidsFullRewrite()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+    const QString sessionId = QStringLiteral("small-prune-session");
+
+    const QByteArray payload(2048, 'z');
+
+    // A large prune triggers the full VACUUM that reclaims its free pages and
+    // activates the deferred INCREMENTAL auto-vacuum mode.
+    QVERIFY(appendMessages(store, payloadRecords(sessionId, 80, payload)));
+    store.pruneMessages(sessionId, 5);
+    QVERIFY2(store.lastError().isEmpty(), qPrintable(store.lastError()));
+
+    // A subsequent small prune stays below the full-vacuum threshold and must
+    // not rewrite the whole database: the free pages remain a small fraction.
+    QVERIFY(appendMessages(store, payloadRecords(sessionId, 40, payload)));
+    const QString dbPath = dataDir.filePath(QStringLiteral("history.db"));
+    const PageStats before = pageStats(dbPath);
+    QVERIFY(before.freePageCount == 0);
+
+    store.pruneMessages(sessionId, 38);
+    QVERIFY2(store.lastError().isEmpty(), qPrintable(store.lastError()));
+    QCOMPARE(store.loadMessages(sessionId, 40).size(), 38);
+
+    const PageStats after = pageStats(dbPath);
+    QCOMPARE(after.pageCount, before.pageCount);
+    QVERIFY2(after.freePageCount * 4 < after.pageCount,
+        qPrintable(QStringLiteral("free pages grew past 25%%: %1 of %2")
+                       .arg(after.freePageCount)
+                       .arg(after.pageCount)));
 }
 
 QTEST_MAIN(HistoryStoreTest)

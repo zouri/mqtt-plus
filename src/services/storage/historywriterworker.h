@@ -104,6 +104,7 @@ private:
     void scheduleRetry(const QString &error);
     void scheduleNextFlush();
     bool ensureStore();
+    void scheduleStartupReclaim();
 
     const QString m_dataPath;
     const HistoryWriterLimits m_limits;
@@ -124,6 +125,7 @@ private:
     bool m_drainRequested = false;
     bool m_storageDegraded = false;
     bool m_captureQueueSaturated = false;
+    bool m_startupReclaimPending = false;
     int m_retryDelayMs = 0;
     QTimer *m_flushTimer = nullptr;
     std::unique_ptr<HistoryStore> m_store;
