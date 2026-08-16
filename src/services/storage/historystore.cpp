@@ -1,6 +1,7 @@
 #include "historystore.h"
 
 #include <QDir>
+#include <QDebug>
 #include <QCborParserError>
 #include <QCborValue>
 #include <QHash>
@@ -14,6 +15,9 @@
 
 namespace {
 constexpr int kHistorySchemaVersion = 3;
+
+constexpr qint64 kFullVacuumFreeBytesThreshold = 128LL * 1024 * 1024;
+constexpr int kFullVacuumFreePageRatioPercent = 25;
 
 QString nonNullString(const QString &value)
 {
@@ -251,6 +255,11 @@ bool HistoryStore::isReady() const
 QString HistoryStore::lastError() const
 {
     return m_lastError;
+}
+
+void HistoryStore::clearLastError()
+{
+    m_lastError.clear();
 }
 
 QString HistoryStore::dataPath() const
@@ -852,6 +861,11 @@ bool HistoryStore::executeDeletes(const QStringList &statements, const QString &
     }
 
     m_lastError.clear();
+    if (!reclaimFreePages()) {
+        qWarning().noquote()
+            << "Cannot reclaim free pages after clearing history:" << m_lastError;
+        m_lastError.clear();
+    }
     return true;
 }
 
@@ -877,6 +891,13 @@ void HistoryStore::pruneMessages(const QString &sessionId, int keepCount)
     query.addBindValue(keepCount);
     if (!query.exec()) {
         m_lastError = query.lastError().text();
+        return;
+    }
+    m_lastError.clear();
+    if (!reclaimFreePages()) {
+        qWarning().noquote()
+            << "Cannot reclaim free pages after pruning message history:" << m_lastError;
+        m_lastError.clear();
     }
 }
 
@@ -902,7 +923,74 @@ void HistoryStore::pruneLogs(const QString &sessionId, int keepCount)
     query.addBindValue(keepCount);
     if (!query.exec()) {
         m_lastError = query.lastError().text();
+        return;
     }
+    m_lastError.clear();
+    if (!reclaimFreePages()) {
+        qWarning().noquote()
+            << "Cannot reclaim free pages after pruning history:" << m_lastError;
+        m_lastError.clear();
+    }
+}
+
+bool HistoryStore::reclaimFreePages()
+{
+    if (!isReady()) {
+        if (m_lastError.isEmpty()) {
+            m_lastError = QStringLiteral("History database is not open.");
+        }
+        return false;
+    }
+
+    QSqlQuery query(m_db);
+
+    qint64 pageSize = 4096;
+    if (!query.exec(QStringLiteral("PRAGMA page_size")) || !query.next()) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    pageSize = query.value(0).toLongLong();
+
+    qint64 pageCount = 0;
+    if (!query.exec(QStringLiteral("PRAGMA page_count")) || !query.next()) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    pageCount = query.value(0).toLongLong();
+
+    qint64 freePageCount = 0;
+    if (!query.exec(QStringLiteral("PRAGMA freelist_count")) || !query.next()) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    freePageCount = query.value(0).toLongLong();
+
+    if (freePageCount <= 0) {
+        m_lastError.clear();
+        return true;
+    }
+
+    // A full VACUUM is the only reliable reclamation mechanism: under WAL mode
+    // the Qt QSQLITE driver only partially applies PRAGMA incremental_vacuum
+    // (observed: 7 of 7 free pages reclaimed on the command line, 1 of 7 via
+    // Qt), while VACUUM reliably truncates the file and also activates the
+    // deferred INCREMENTAL auto-vacuum mode.
+    const qint64 freeBytes = freePageCount * pageSize;
+    const qint64 totalBytes = pageCount * pageSize;
+    const bool needsFullVacuum = freeBytes >= kFullVacuumFreeBytesThreshold
+        || (totalBytes > 0 && freeBytes * 100 / totalBytes >= kFullVacuumFreePageRatioPercent);
+    if (!needsFullVacuum) {
+        m_lastError.clear();
+        return true;
+    }
+
+    if (!query.exec(QStringLiteral("VACUUM"))) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    m_lastError.clear();
+    return true;
 }
 
 bool HistoryStore::initialize(const QString &dataPath, int busyTimeoutMs)
@@ -951,6 +1039,14 @@ bool HistoryStore::initialize(const QString &dataPath, int busyTimeoutMs)
     }
 
     if (!resetIncompatibleMessageTable(m_db, m_lastError)) {
+        return false;
+    }
+
+    // Set auto-vacuum after any incompatible-schema reset so a freshly rebuilt
+    // database starts with INCREMENTAL mode. On an existing database this is a
+    // deferred setting that takes effect at the next full VACUUM.
+    if (!query.exec(QStringLiteral("PRAGMA auto_vacuum = INCREMENTAL"))) {
+        m_lastError = query.lastError().text();
         return false;
     }
 
