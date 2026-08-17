@@ -115,7 +115,8 @@ signals:
 private:
     enum class Stream { Message, Log };
 
-    struct VisibleStreamState {
+    struct VisibleStreamState
+    {
         QVector<EventRow> messageRows;
         QVector<EventRow> logRows;
         qint64 oldestLoadedMessageId = 0;

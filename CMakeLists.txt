@@ -630,6 +630,7 @@ if(BUILD_TESTING)
         tests/test_updatecontroller.cpp
         src/services/update/updateservice.h
         src/usecases/updatecontroller.cpp
+        src/viewmodels/updateviewmodel.cpp
     )
 
     add_executable(test_recenttrafficwindow

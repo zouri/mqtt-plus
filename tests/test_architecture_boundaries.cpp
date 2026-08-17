@@ -13,6 +13,7 @@ class ArchitectureBoundariesTest : public QObject
 private slots:
     void domainDoesNotDependOnOuterProjectLayers();
     void usecasesDoNotDependOnApplicationLayer();
+    void updateControllerDoesNotExposeQmlApi();
     void messageHistoryWritesUseDedicatedWorker();
     void messageAdmissionChecksMetadataBeforePayloadWork();
     void processorCallersUseEngineSeamOnly();
@@ -107,6 +108,26 @@ void ArchitectureBoundariesTest::usecasesDoNotDependOnApplicationLayer()
         QVERIFY2(!source.contains(QStringLiteral("#include \"app/")),
             qPrintable(QStringLiteral("%1 must not depend on application-layer headers").arg(path)));
     }
+}
+
+void ArchitectureBoundariesTest::updateControllerDoesNotExposeQmlApi()
+{
+    QString controllerHeader;
+    QString viewModelHeader;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/usecases/updatecontroller.h"),
+        controllerHeader));
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/viewmodels/updateviewmodel.h"),
+        viewModelHeader));
+
+    QVERIFY2(!controllerHeader.contains(QStringLiteral("Q_PROPERTY")),
+        "UpdateController must keep QML-facing state in UpdateViewModel");
+    QVERIFY2(!controllerHeader.contains(QStringLiteral("Q_INVOKABLE")),
+        "UpdateController must not expose QML commands directly");
+    QVERIFY2(viewModelHeader.contains(QStringLiteral("Q_PROPERTY"))
+            && viewModelHeader.contains(QStringLiteral("Q_INVOKABLE")),
+        "UpdateViewModel must expose the update QML interface");
 }
 
 void ArchitectureBoundariesTest::messageHistoryWritesUseDedicatedWorker()

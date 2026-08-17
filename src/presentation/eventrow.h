@@ -5,7 +5,8 @@
 #include <QVariant>
 #include <QVariantMap>
 
-struct EventRow {
+struct EventRow
+{
     QString kind;
     QString timestamp;
     QString timestampRaw;
