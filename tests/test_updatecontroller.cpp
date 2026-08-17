@@ -1,5 +1,6 @@
 #include "services/update/updateservice.h"
 #include "usecases/updatecontroller.h"
+#include "viewmodels/updateviewmodel.h"
 
 #include <QtTest/QtTest>
 
@@ -46,7 +47,7 @@ private slots:
     void manualChecksIgnoreAutomaticThrottle();
     void exposesAvailableReleaseAndOpensIt();
     void doesNotOfferCurrentOrInvalidRelease();
-    void exposesQmlFacingStatusAndManualCheck();
+    void updateViewModelExposesQmlFacingStatusAndManualCheck();
 };
 
 void UpdateControllerTest::failedAutomaticChecksAreThrottled()
@@ -129,31 +130,32 @@ void UpdateControllerTest::doesNotOfferCurrentOrInvalidRelease()
     QVERIFY(!controller.updateAvailable());
 }
 
-void UpdateControllerTest::exposesQmlFacingStatusAndManualCheck()
+void UpdateControllerTest::updateViewModelExposesQmlFacingStatusAndManualCheck()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     QSettings settings(directory.filePath(QStringLiteral("settings.ini")), QSettings::IniFormat);
     FakeUpdateService service;
     UpdateController controller(settings, service, QStringLiteral("0.1.0"));
-    QSignalSpy stateSpy(&controller, &UpdateController::stateChanged);
+    UpdateViewModel viewModel(controller);
+    QSignalSpy stateSpy(&viewModel, &UpdateViewModel::updateStateChanged);
 
     QCOMPARE(
-        controller.statusMessage(),
+        viewModel.statusMessage(),
         QStringLiteral("Updates are provided through GitHub Releases."));
 
-    controller.checkForUpdates();
+    viewModel.checkForUpdates();
     QCOMPARE(service.fetchCount, 1);
-    QVERIFY(controller.busy());
-    QCOMPARE(controller.statusMessage(), QStringLiteral("Checking GitHub Releases..."));
+    QVERIFY(viewModel.busy());
+    QCOMPARE(viewModel.statusMessage(), QStringLiteral("Checking GitHub Releases..."));
 
     service.succeed(UpdateRelease {
         .version = QStringLiteral("0.2.0"),
         .releasePageUrl = QUrl(QStringLiteral("https://example.com/release")),
     });
-    QCOMPARE(controller.statusMessage(), QStringLiteral("Version 0.2.0 is available."));
+    QCOMPARE(viewModel.statusMessage(), QStringLiteral("Version 0.2.0 is available."));
 
-    controller.retranslate();
+    viewModel.retranslate();
     QCOMPARE(stateSpy.count(), 3);
 }
 

@@ -3473,39 +3473,39 @@
     </message>
 </context>
 <context>
-    <name>UpdateController</name>
+    <name>UpdateViewModel</name>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="53"/>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="100"/>
         <source>Updates are provided through GitHub Releases.</source>
         <translation>软件更新通过 GitHub Releases 提供。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="57"/>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="104"/>
         <source>Checking GitHub Releases...</source>
         <translation>正在检查 GitHub Releases...</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="61"/>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="108"/>
         <source>Version %1 is available.</source>
         <translation>版本 %1 已可用。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="66"/>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="115"/>
         <source>You are using the latest version.</source>
         <translation>你正在使用最新版本。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="70"/>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="120"/>
         <source>No published releases were found.</source>
         <translation>未找到已发布的版本。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="74"/>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="124"/>
         <source>Could not check for updates. Check your network connection and try again.</source>
         <translation>无法检查更新。请检查网络连接后重试。</translation>
     </message>
     <message>
-        <location filename="../src/usecases/updatecontroller.cpp" line="78"/>
+        <location filename="../src/viewmodels/updateviewmodel.cpp" line="129"/>
         <source>GitHub returned release information that this version cannot read.</source>
         <translation>GitHub 返回了当前版本无法读取的发布信息。</translation>
     </message>

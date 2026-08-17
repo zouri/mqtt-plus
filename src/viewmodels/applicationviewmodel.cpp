@@ -39,7 +39,7 @@ ApplicationViewModel::ApplicationViewModel(
           sessionService.sessions(),
           settings,
           this)
-    , m_updates(&updateController)
+    , m_updates(updateController, this)
     , m_processors(
           processorLibrary,
           processors,
@@ -136,7 +136,7 @@ NotificationCenterModel *ApplicationViewModel::notifications()
     return m_notifications;
 }
 
-UpdateController *ApplicationViewModel::updates()
+UpdateViewModel *ApplicationViewModel::updates()
 {
-    return m_updates;
+    return &m_updates;
 }

@@ -96,7 +96,7 @@ Application::Application()
         m_viewModel.settings(),
         &SettingsViewModel::languageChanged,
         m_viewModel.updates(),
-        &UpdateController::retranslate);
+        &UpdateViewModel::retranslate);
 
     QObject::connect(
         m_viewModel.configurationTransfer(),
