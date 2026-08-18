@@ -1,7 +1,7 @@
 #include "messagefiltermodel.h"
 
+#include "domain/mqtttopicfilter.h"
 #include "models/eventstreammodel.h"
-#include "services/payload/payloadcodec.h"
 
 MessageFilterModel::MessageFilterModel(QObject *parent)
     : QSortFilterProxyModel(parent)
@@ -192,7 +192,7 @@ bool MessageFilterModel::rowMatches(
     if (!m_selectedTopics.isEmpty()) {
         bool matched = false;
         for (const QString &filter : m_selectedTopics) {
-            if (PayloadCodec::topicFilterMatches(filter, topic)) {
+            if (MqttTopicFilter::matches(filter, topic)) {
                 matched = true;
                 break;
             }

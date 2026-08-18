@@ -1,9 +1,10 @@
 #include "messageadmissionworker.h"
 
+#include "domain/mqtttopicfilter.h"
 #include "presentation/eventrenderer.h"
+#include "services/messaging/messagepayloadplan.h"
 #include "services/payload/payloadcodec.h"
 
-#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDeadlineTimer>
 #include <QMetaObject>
@@ -15,21 +16,6 @@
 #include <utility>
 
 namespace {
-constexpr qint64 kPayloadPreviewBytes = 64 * 1024;
-constexpr qint64 kPressurePayloadPreviewBytes = 4 * 1024;
-constexpr qint64 kHardPayloadLimitBytes = 16 * 1024 * 1024;
-
-struct PayloadStoragePlan {
-    QByteArray storedBytes;
-    QString preview;
-    QString state = QStringLiteral("full");
-    QString hash;
-    qint64 originalSize = 0;
-    bool allowFullProcessing = true;
-    bool shouldReport = false;
-    QString reportMessage;
-};
-
 struct SubscriptionMatch {
     const MessageAdmissionSubscription *displaySubscription = nullptr;
     QString alias;
@@ -37,87 +23,6 @@ struct SubscriptionMatch {
     int payloadFormat = -1;
     QStringList activeTopics;
 };
-
-bool requiresBackgroundParse(PayloadFormat format)
-{
-    return format == PayloadFormat::Json
-        || format == PayloadFormat::Cbor
-        || format == PayloadFormat::MsgPack;
-}
-
-QString formatByteCount(qint64 bytes)
-{
-    if (bytes >= 1024 * 1024) {
-        return QStringLiteral("%1 MiB").arg(QString::number(bytes / 1024.0 / 1024.0, 'f', 1));
-    }
-    if (bytes >= 1024) {
-        return QStringLiteral("%1 KiB").arg(QString::number(bytes / 1024.0, 'f', 1));
-    }
-    return QStringLiteral("%1 bytes").arg(bytes);
-}
-
-bool looksBinary(const QByteArray &bytes, qsizetype sampleLimit)
-{
-    if (bytes.isEmpty()) {
-        return false;
-    }
-
-    const qsizetype sampleSize = (std::min)(bytes.size(), sampleLimit);
-    qsizetype suspicious = 0;
-    for (qsizetype i = 0; i < sampleSize; ++i) {
-        const uchar ch = static_cast<uchar>(bytes.at(i));
-        if (ch == 0 || (ch < 0x20 && ch != '\n' && ch != '\r' && ch != '\t')) {
-            ++suspicious;
-        }
-    }
-    return suspicious > 0 || suspicious * 100 > sampleSize * 15;
-}
-
-PayloadStoragePlan makePayloadStoragePlan(
-    const QString &topic,
-    const QByteArray &payloadBytes,
-    int configuredLimit,
-    bool compactPreview)
-{
-    PayloadStoragePlan plan;
-    plan.originalSize = payloadBytes.size();
-    const qint64 maxBytes = configuredLimit > 0 ? configuredLimit : kHardPayloadLimitBytes;
-    const qint64 previewLimit = compactPreview ? kPressurePayloadPreviewBytes : kPayloadPreviewBytes;
-    const bool binary = looksBinary(payloadBytes, compactPreview ? qsizetype(1024) : qsizetype(4096));
-    const QByteArray previewBytes = payloadBytes.left((std::min)(payloadBytes.size(), qsizetype(previewLimit)));
-    if (binary) {
-        const QByteArray hexBytes = payloadBytes.left((std::min)(payloadBytes.size(), qsizetype(64)));
-        plan.preview = QString::fromLatin1(hexBytes.toHex(' ').toUpper());
-    } else {
-        plan.preview = QString::fromUtf8(previewBytes);
-    }
-
-    if (plan.originalSize > maxBytes) {
-        plan.state = QStringLiteral("skipped");
-        plan.allowFullProcessing = false;
-        plan.hash = QString::fromLatin1(
-            QCryptographicHash::hash(payloadBytes, QCryptographicHash::Sha256).toHex());
-        plan.shouldReport = true;
-        plan.reportMessage = QStringLiteral(
-            "Payload skipped on %1: %2 exceeds the configured limit of %3. SHA-256: %4")
-                                 .arg(topic, formatByteCount(plan.originalSize), formatByteCount(maxBytes), plan.hash);
-        return plan;
-    }
-
-    plan.storedBytes = payloadBytes;
-    if (binary) {
-        plan.state = QStringLiteral("raw_only");
-        plan.shouldReport = true;
-        plan.reportMessage = QStringLiteral("Payload stored as raw bytes on %1: %2.")
-                                 .arg(topic, formatByteCount(plan.originalSize));
-    } else if (plan.originalSize > kPayloadPreviewBytes) {
-        plan.state = QStringLiteral("truncated");
-        plan.shouldReport = true;
-        plan.reportMessage = QStringLiteral("Payload truncated for display on %1: showing %2 of %3.")
-                                 .arg(topic, formatByteCount(kPayloadPreviewBytes), formatByteCount(plan.originalSize));
-    }
-    return plan;
-}
 
 SubscriptionMatch matchSubscriptions(
     const QVector<MessageAdmissionSubscription> &subscriptions,
@@ -132,14 +37,14 @@ SubscriptionMatch matchSubscriptions(
     QString bestColorFilter;
 
     for (const MessageAdmissionSubscription &subscription : subscriptions) {
-        if (!PayloadCodec::topicFilterMatches(subscription.topic, topic)) {
+        if (!MqttTopicFilter::matches(subscription.topic, topic)) {
             continue;
         }
         if (!subscription.paused) {
             match.activeTopics.append(subscription.topic);
         }
 
-        const int score = PayloadCodec::topicSpecificityScore(subscription.topic);
+        const int score = MqttTopicFilter::specificityScore(subscription.topic);
         if (score > bestDisplayScore
             || (score == bestDisplayScore
                 && (bestDisplayFilter.isEmpty() || subscription.topic < bestDisplayFilter))) {
@@ -330,7 +235,7 @@ PreparedIncomingMessage MessageAdmissionWorker::prepare(
     result.captured = true;
     const SubscriptionMatch match = matchSubscriptions(task.context->subscriptions, task.topic);
     result.activeSubscriptionTopics = match.activeTopics;
-    const PayloadStoragePlan payloadPlan = makePayloadStoragePlan(
+    const MessagePayload::Plan payloadPlan = MessagePayload::planStorage(
         task.topic,
         task.payloadBytes,
         task.context->maxPayloadBytes,
@@ -386,7 +291,8 @@ PreparedIncomingMessage MessageAdmissionWorker::prepare(
         }
     }
 
-    result.parsingRequired = requiresBackgroundParse(PayloadCodec::formatFromInt(payloadFormat))
+    result.parsingRequired = MessagePayload::requiresBackgroundParse(
+                                 PayloadCodec::formatFromInt(payloadFormat))
         || processorReference;
     if (!result.parsingRequired) {
         record.displayState = messageParseStateName(MessageParseState::NotRequired);

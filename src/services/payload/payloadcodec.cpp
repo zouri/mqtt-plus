@@ -1,5 +1,7 @@
 #include "payloadcodec.h"
 
+#include "domain/mqtttopicfilter.h"
+
 #include <QByteArrayView>
 #include <QCborValue>
 #include <QJsonArray>
@@ -877,54 +879,6 @@ QString PayloadCodec::decodeForDisplay(
     }
 }
 
-bool PayloadCodec::topicFilterMatches(const QString &filter, const QString &topic)
-{
-    if (filter.isEmpty()) {
-        return false;
-    }
-    if (filter == topic) {
-        return true;
-    }
-
-    const QStringList f = filter.split('/');
-    const QStringList t = topic.split('/');
-
-    int fi = 0;
-    int ti = 0;
-    while (fi < f.size() && ti < t.size()) {
-        const QString &token = f.at(fi);
-        if (token == QStringLiteral("#")) {
-            return fi == f.size() - 1;
-        }
-        if (token != QStringLiteral("+") && token != t.at(ti)) {
-            return false;
-        }
-        ++fi;
-        ++ti;
-    }
-
-    if (fi == f.size() && ti == t.size()) {
-        return true;
-    }
-    if (fi == f.size() - 1 && f.at(fi) == QStringLiteral("#")) {
-        return true;
-    }
-    return false;
-}
-
-int PayloadCodec::topicSpecificityScore(const QString &filter)
-{
-    int score = filter.count('/');
-    for (const auto character : filter) {
-        if (character != QLatin1Char('#')
-                && character != QLatin1Char('+')
-                && character != QLatin1Char('/')) {
-            ++score;
-        }
-    }
-    return score;
-}
-
 PayloadFormat PayloadCodec::resolveTopicFormat(
     const QHash<QString, int> &topicFormats,
     const QString &topic)
@@ -941,10 +895,10 @@ PayloadFormat PayloadCodec::resolveTopicFormat(
     int bestScore = -1;
     for (auto it = topicFormats.constBegin(); it != topicFormats.constEnd(); ++it) {
         const QString &filter = it.key();
-        if (!topicFilterMatches(filter, topic)) {
+        if (!MqttTopicFilter::matches(filter, topic)) {
             continue;
         }
-        const int score = topicSpecificityScore(filter);
+        const int score = MqttTopicFilter::specificityScore(filter);
         if (score > bestScore || (score == bestScore && (bestFilter.isEmpty() || filter < bestFilter))) {
             bestScore = score;
             bestFilter = filter;

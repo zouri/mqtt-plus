@@ -14,8 +14,6 @@ private slots:
     void rejectInvalidStructuredPayloads();
     void encodeBinaryTextFormats();
     void decodeDisplayFormats();
-    void matchTopicFilters();
-    void scoreTopicSpecificity();
     void resolveMostSpecificTopicFormat();
 };
 
@@ -118,22 +116,6 @@ void PayloadCodecTest::decodeDisplayFormats()
 
     QCOMPARE(PayloadCodec::decodeForDisplay(PayloadFormat::Base64, QByteArray("hello"), error), QStringLiteral("aGVsbG8="));
     QCOMPARE(PayloadCodec::decodeForDisplay(PayloadFormat::Hex, QByteArray("hello"), error), QStringLiteral("68 65 6C 6C 6F"));
-}
-
-void PayloadCodecTest::matchTopicFilters()
-{
-    QVERIFY(PayloadCodec::topicFilterMatches(QStringLiteral("devices/+/temp"), QStringLiteral("devices/a/temp")));
-    QVERIFY(!PayloadCodec::topicFilterMatches(QStringLiteral("devices/+/temp"), QStringLiteral("devices/a/humidity")));
-    QVERIFY(PayloadCodec::topicFilterMatches(QStringLiteral("devices/#"), QStringLiteral("devices/a/temp")));
-    QVERIFY(!PayloadCodec::topicFilterMatches(QStringLiteral("devices/#/temp"), QStringLiteral("devices/a/temp")));
-    QVERIFY(!PayloadCodec::topicFilterMatches(QString(), QStringLiteral("devices/a/temp")));
-}
-
-void PayloadCodecTest::scoreTopicSpecificity()
-{
-    QCOMPARE(PayloadCodec::topicSpecificityScore(QStringLiteral("devices/#")), 8);
-    QCOMPARE(PayloadCodec::topicSpecificityScore(QStringLiteral("devices/+/temp")), 13);
-    QCOMPARE(PayloadCodec::topicSpecificityScore(QStringLiteral("devices/a/temp")), 14);
 }
 
 void PayloadCodecTest::resolveMostSpecificTopicFormat()

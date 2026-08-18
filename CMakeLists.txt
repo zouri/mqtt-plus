@@ -266,6 +266,21 @@ if(NOT TARGET Qt6::Mqtt)
     set_target_properties(mqtt_plus_qtmqtt PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
 
+set(MQTT_PLUS_DOMAIN_SOURCES
+    src/domain/messagecapturepolicy.cpp
+    src/domain/mqttproperties.cpp
+    src/domain/mqtttopicfilter.cpp
+    src/domain/sessionconfig.cpp
+)
+
+add_library(mqtt_plus_domain STATIC ${MQTT_PLUS_DOMAIN_SOURCES})
+add_library(MqttPlus::Domain ALIAS mqtt_plus_domain)
+target_include_directories(mqtt_plus_domain
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+target_link_libraries(mqtt_plus_domain PUBLIC Qt6::Core)
+
 file(
     GLOB_RECURSE MQTT_PLUS_APP_SOURCES
     CONFIGURE_DEPENDS
@@ -274,24 +289,57 @@ file(
     "src/*.h"
 )
 list(SORT MQTT_PLUS_APP_SOURCES)
+set(MQTT_PLUS_APP_ONLY_SOURCES
+    src/app/appicon.cpp
+    src/app/appicon.h
+    src/app/main.cpp
+    src/app/messagestreamprofiledriver.cpp
+    src/app/messagestreamprofiledriver.h
+    src/app/windowgeometrymanager.cpp
+    src/app/windowgeometrymanager.h
+    src/presentation/codesyntaxhighlighter.cpp
+    src/presentation/codesyntaxhighlighter.h
+)
 set(MQTT_PLUS_APP_LIBRARY_SOURCES ${MQTT_PLUS_APP_SOURCES})
 list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES
-    "src/app/appicon.cpp"
-    "src/app/appicon.h"
-    "src/app/main.cpp"
-    "src/app/messagestreamprofiledriver.cpp"
-    "src/app/messagestreamprofiledriver.h"
-    "src/app/windowgeometrymanager.cpp"
-    "src/app/windowgeometrymanager.h"
+    ${MQTT_PLUS_APP_ONLY_SOURCES}
+    ${MQTT_PLUS_DOMAIN_SOURCES}
+)
+
+add_library(mqtt_plus_core STATIC ${MQTT_PLUS_APP_LIBRARY_SOURCES})
+add_library(MqttPlus::Core ALIAS mqtt_plus_core)
+target_include_directories(mqtt_plus_core
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/presentation"
+)
+target_link_libraries(mqtt_plus_core
+    PUBLIC
+        MqttPlus::Domain
+        Qt6::Core
+        Qt6::Concurrent
+        Qt6::Gui
+        Qt6::Network
+        Qt6::Mqtt
+        Qt6::Qml
+        Qt6::Quick
+        Qt6::QuickControls2
+        Qt6::Sql
+        Qt6::Svg
+        Qt6::WebSockets
+        KF6SyntaxHighlighting
+        MqttPlus::Lua
 )
 
 qt_add_executable(mqtt_plus_app
-    ${MQTT_PLUS_APP_SOURCES}
+    ${MQTT_PLUS_APP_ONLY_SOURCES}
 )
 
 qt_add_translations(mqtt_plus_app
     SOURCE_TARGETS
         mqtt_plus_app
+        mqtt_plus_core
     TS_FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/i18n/mqtt_plus_zh_CN.ts"
     LUPDATE_OPTIONS
@@ -343,6 +391,7 @@ target_compile_definitions(mqtt_plus_app
 
 target_link_libraries(mqtt_plus_app
     PRIVATE
+        MqttPlus::Core
         Qt6::Core
         Qt6::Concurrent
         Qt6::Gui
@@ -502,6 +551,7 @@ if(BUILD_TESTING)
         )
         target_link_libraries(${target}
             PRIVATE
+                MqttPlus::Domain
                 Qt6::Core
                 Qt6::Concurrent
                 Qt6::Gui
@@ -518,6 +568,11 @@ if(BUILD_TESTING)
                 MqttPlus::Lua
         )
         add_test(NAME ${target} COMMAND ${target})
+    endfunction()
+
+    function(add_mqtt_plus_core_test target)
+        add_mqtt_plus_qt_test(${target} ${ARGN})
+        target_link_libraries(${target} PRIVATE MqttPlus::Core)
     endfunction()
 
     add_executable(test_appicon
@@ -544,7 +599,6 @@ if(BUILD_TESTING)
 
     add_executable(test_sessionconfig
         tests/test_sessionconfig.cpp
-        src/domain/sessionconfig.cpp
     )
     target_include_directories(test_sessionconfig
         PRIVATE
@@ -552,6 +606,7 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_sessionconfig
         PRIVATE
+            MqttPlus::Domain
             Qt6::Core
             Qt6::Test
     )
@@ -559,15 +614,12 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_configurationadapters
         tests/test_configurationadapters.cpp
-        src/domain/mqttproperties.cpp
-        src/domain/sessionconfig.cpp
         src/services/configuration/configurationadapters.cpp
         src/services/mqtt/qtmqttpropertycodec.cpp
     )
 
-    add_mqtt_plus_qt_test(test_configurationtransferservice
+    add_mqtt_plus_core_test(test_configurationtransferservice
         tests/test_configurationtransferservice.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
     add_executable(test_payloadcodec
@@ -580,6 +632,7 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_payloadcodec
         PRIVATE
+            MqttPlus::Domain
             Qt6::Core
             Qt6::Test
     )
@@ -587,14 +640,12 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_draftstore
         tests/test_draftstore.cpp
-        src/domain/mqttproperties.cpp
         src/services/payload/payloadcodec.cpp
         src/services/storage/draftstore.cpp
     )
 
     add_mqtt_plus_qt_test(test_draftlibraryservice
         tests/test_draftlibraryservice.cpp
-        src/domain/mqttproperties.cpp
         src/services/apputils.cpp
         src/services/payload/payloadcodec.cpp
         src/services/storage/draftstore.cpp
@@ -603,14 +654,12 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_drafteditorviewmodel
         tests/test_drafteditorviewmodel.cpp
-        src/domain/sessionconfig.cpp
         src/services/payload/payloadcodec.cpp
         src/viewmodels/drafteditorviewmodel.cpp
     )
 
     add_mqtt_plus_qt_test(test_draftmodels
         tests/test_draftmodels.cpp
-        src/domain/mqttproperties.cpp
         src/models/draftfiltermodel.cpp
         src/models/draftlibrarymodel.cpp
         src/services/payload/payloadcodec.cpp
@@ -649,8 +698,6 @@ if(BUILD_TESTING)
 
     add_executable(test_messagecapturepolicy
         tests/test_messagecapturepolicy.cpp
-        src/services/messaging/messagecapturepolicy.cpp
-        src/services/payload/payloadcodec.cpp
     )
     target_include_directories(test_messagecapturepolicy
         PRIVATE
@@ -658,10 +705,41 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_messagecapturepolicy
         PRIVATE
+            MqttPlus::Domain
             Qt6::Core
             Qt6::Test
     )
     add_test(NAME messagecapturepolicy COMMAND test_messagecapturepolicy)
+
+    add_executable(test_messagepayloadplan
+        tests/test_messagepayloadplan.cpp
+        src/services/messaging/messagepayloadplan.cpp
+    )
+    target_include_directories(test_messagepayloadplan
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_messagepayloadplan
+        PRIVATE
+            Qt6::Core
+            Qt6::Test
+    )
+    add_test(NAME messagepayloadplan COMMAND test_messagepayloadplan)
+
+    add_executable(test_mqtttopicfilter
+        tests/test_mqtttopicfilter.cpp
+    )
+    target_include_directories(test_mqtttopicfilter
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
+    target_link_libraries(test_mqtttopicfilter
+        PRIVATE
+            MqttPlus::Domain
+            Qt6::Core
+            Qt6::Test
+    )
+    add_test(NAME mqtttopicfilter COMMAND test_mqtttopicfilter)
 
     add_mqtt_plus_qt_test(test_processorlibrary_persistence
         tests/test_processorlibrary_persistence.cpp
@@ -702,33 +780,26 @@ if(BUILD_TESTING)
 
     add_mqtt_plus_qt_test(test_sessioneditorviewmodel
         tests/test_sessioneditorviewmodel.cpp
-        src/domain/mqttproperties.cpp
-        src/domain/sessionconfig.cpp
         src/viewmodels/sessioneditorviewmodel.cpp
     )
 
-    add_mqtt_plus_qt_test(test_sessionimport
+    add_mqtt_plus_core_test(test_sessionimport
         tests/test_sessionimport.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
     add_mqtt_plus_qt_test(test_subscriptioneditorviewmodel
         tests/test_subscriptioneditorviewmodel.cpp
-        src/domain/mqttproperties.cpp
-        src/domain/sessionconfig.cpp
         src/viewmodels/subscriptioneditorviewmodel.cpp
     )
 
     add_mqtt_plus_qt_test(test_sessionlistmodel
         tests/test_sessionlistmodel.cpp
-        src/domain/sessionconfig.cpp
         src/models/sessionlistmodel.cpp
         src/services/apputils.cpp
     )
 
-    add_mqtt_plus_qt_test(test_connectionerrortext
+    add_mqtt_plus_core_test(test_connectionerrortext
         tests/test_connectionerrortext.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
     add_mqtt_plus_qt_test(test_eventstreammodel
@@ -740,23 +811,19 @@ if(BUILD_TESTING)
         tests/test_messagefiltermodel.cpp
         src/models/eventstreammodel.cpp
         src/models/messagefiltermodel.cpp
-        src/services/payload/payloadcodec.cpp
     )
 
-    add_mqtt_plus_qt_test(test_eventhistoryservice
+    add_mqtt_plus_core_test(test_eventhistoryservice
         tests/test_eventhistoryservice.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
     add_mqtt_plus_qt_test(test_historystore
         tests/test_historystore.cpp
-        src/domain/mqttproperties.cpp
         src/services/storage/historystore.cpp
     )
 
     add_mqtt_plus_qt_test(test_historywriterworker
         tests/test_historywriterworker.cpp
-        src/domain/mqttproperties.cpp
         src/services/payload/payloadcodec.cpp
         src/services/storage/historystore.cpp
         src/services/storage/historywriterworker.cpp
@@ -774,19 +841,16 @@ if(BUILD_TESTING)
         src/services/processors/runtimes/luaruntimeadapter.cpp
     )
 
-    add_mqtt_plus_qt_test(test_subscriptionlistmodel
+    add_mqtt_plus_core_test(test_subscriptionlistmodel
         tests/test_subscriptionlistmodel.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
-    add_mqtt_plus_qt_test(test_subscriptionservice
+    add_mqtt_plus_core_test(test_subscriptionservice
         tests/test_subscriptionservice.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
-    add_mqtt_plus_qt_test(test_processorsviewmodel
+    add_mqtt_plus_core_test(test_processorsviewmodel
         tests/test_processorsviewmodel.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
     add_mqtt_plus_qt_test(test_codesyntaxhighlighter
@@ -794,9 +858,8 @@ if(BUILD_TESTING)
         src/presentation/codesyntaxhighlighter.cpp
     )
 
-    add_mqtt_plus_qt_test(test_settingsviewmodel
+    add_mqtt_plus_core_test(test_settingsviewmodel
         tests/test_settingsviewmodel.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
     add_mqtt_plus_qt_test(test_windowgeometrymanager
@@ -805,14 +868,12 @@ if(BUILD_TESTING)
         src/usecases/preferencescontroller.cpp
     )
 
-    add_mqtt_plus_qt_test(test_logsviewmodel
+    add_mqtt_plus_core_test(test_logsviewmodel
         tests/test_logsviewmodel.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
-    add_mqtt_plus_qt_test(test_workbenchviewmodel
+    add_mqtt_plus_core_test(test_workbenchviewmodel
         tests/test_workbenchviewmodel.cpp
-        ${MQTT_PLUS_APP_LIBRARY_SOURCES}
     )
 
     add_mqtt_plus_qt_test(test_architecture_boundaries

@@ -20,7 +20,9 @@ private slots:
     void messagePipelineUsesResolvedProcessorSnapshots();
     void messageQmlUsesTypedObjectProperties();
     void alwaysExpandedMessagesDoNotTruncatePayloadText();
-    void qmlUsesApplicationViewModelRootOnly();
+    void qmlUsesSingleApplicationRoot();
+    void applicationViewModelExportsApprovedQmlInterfaces();
+    void qmlElementTypesRemainOnApplicationTarget();
     void messageProfilerUsesIsolatedApplicationData();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
     void processorLibraryUiUsesProcessorContracts();
@@ -31,7 +33,7 @@ private slots:
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
     void messageWorkspaceSeparatesDisplayAndCaptureFilters();
-    void workbenchViewModelDoesNotExposeLegacyCommands();
+    void workbenchViewModelDoesNotDuplicateWorkflowCommands();
     void workbenchViewModelDoesNotExposeUnusedRawModels();
     void workbenchViewModelDoesNotForwardNonWorkbenchSignals();
     void featureViewModelsDoNotDependOnApplicationLayer();
@@ -188,12 +190,18 @@ void ArchitectureBoundariesTest::messageAdmissionChecksMetadataBeforePayloadWork
     const int capturePolicyIndex = prepareSource.indexOf(
         QStringLiteral("capturePolicy.accepts"));
     const int payloadPlanIndex = prepareSource.indexOf(
-        QStringLiteral("makePayloadStoragePlan"));
+        QStringLiteral("MessagePayload::planStorage"));
     QVERIFY2(capturePolicyIndex >= 0 && capturePolicyIndex < payloadPlanIndex,
         "Capture policy must reject by topic and direction before payload preview, hashing, or DTO work");
 
     QString eventHistorySource;
     QVERIFY(readSourceFile(QStringLiteral("src/usecases/eventhistoryservice.cpp"), eventHistorySource));
+    QVERIFY2(eventHistorySource.contains(QStringLiteral("MessagePayload::planStorage")),
+        "Incoming and outgoing capture must share the payload planning module");
+    QVERIFY2(!eventHistorySource.contains(QStringLiteral("QCryptographicHash"))
+            && !admissionWorkerSource.contains(QStringLiteral("QCryptographicHash")),
+        "Payload preview, hashing, and limit rules must stay inside MessagePayload");
+
     const int incomingIndex = eventHistorySource.indexOf(
         QStringLiteral("void EventHistoryService::applyPreparedIncomingMessages"));
     const int outgoingIndex = eventHistorySource.indexOf(
@@ -362,49 +370,87 @@ void ArchitectureBoundariesTest::alwaysExpandedMessagesDoNotTruncatePayloadText(
         "Always-expanded rows must consume cached expanded model content");
 }
 
-void ArchitectureBoundariesTest::qmlUsesApplicationViewModelRootOnly()
+void ArchitectureBoundariesTest::qmlUsesSingleApplicationRoot()
 {
-    const QStringList forbiddenRootDependencies {
-        QStringLiteral("appController"),
-        QStringLiteral("AppFacade"),
-        QStringLiteral("SessionService"),
-        QStringLiteral("MqttSessionService"),
-        QStringLiteral("SubscriptionService"),
-        QStringLiteral("EventHistoryService"),
-        QStringLiteral("HistoryStore"),
-        QStringLiteral("QSettings"),
-    };
-
-    const QString qmlRoot = QStringLiteral(MQTT_PLUS_SOURCE_DIR) + QStringLiteral("/qml");
-    QDirIterator qmlFiles(
-        qmlRoot,
-        {QStringLiteral("*.qml")},
-        QDir::Files,
-        QDirIterator::Subdirectories);
-    while (qmlFiles.hasNext()) {
-        const QString path = qmlFiles.next();
-        QFile file(path);
-        QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text),
-            qPrintable(QStringLiteral("Cannot read %1").arg(path)));
-        const QString source = QString::fromUtf8(file.readAll());
-        for (const QString &token : forbiddenRootDependencies) {
-            QVERIFY2(!source.contains(token),
-                qPrintable(QStringLiteral("%1 must use QML-facing ViewModels instead of %2")
-                               .arg(path, token)));
-        }
-    }
-
     QString qmlMain;
     QVERIFY(readSourceFile(QStringLiteral("qml/Main.qml"), qmlMain));
     QVERIFY2(qmlMain.contains(QStringLiteral("required property var app")),
         "Main.qml must expose the ApplicationViewModel through the `app` root property");
+    QVERIFY2(!qmlMain.contains(QStringLiteral("required property var appController")),
+        "Main.qml must not expose the legacy application controller root");
 
     QString mainSource;
     QVERIFY(readSourceFile(QStringLiteral("src/app/main.cpp"), mainSource));
-    QVERIFY2(mainSource.contains(QStringLiteral("\"app\"")),
+    const int initialPropertiesStart = mainSource.indexOf(
+        QStringLiteral("engine.setInitialProperties({"));
+    const int initialPropertiesEnd = mainSource.indexOf(
+        QStringLiteral("});"),
+        initialPropertiesStart);
+    QVERIFY(initialPropertiesStart >= 0);
+    QVERIFY(initialPropertiesEnd > initialPropertiesStart);
+    const QString initialProperties = mainSource.mid(
+        initialPropertiesStart,
+        initialPropertiesEnd - initialPropertiesStart);
+    QVERIFY2(initialProperties.contains(QStringLiteral("{QStringLiteral(\"app\")")),
         "main.cpp must inject ApplicationViewModel as the QML `app` root property");
+    QCOMPARE(initialProperties.count(QStringLiteral("QStringLiteral(")), 1);
     QVERIFY2(!mainSource.contains(QStringLiteral("appController")),
         "main.cpp must not inject the legacy appController root property");
+}
+
+void ArchitectureBoundariesTest::applicationViewModelExportsApprovedQmlInterfaces()
+{
+    QString source;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/viewmodels/applicationviewmodel.h"),
+        source));
+
+    const QStringList approvedProperties {
+        QStringLiteral("Q_PROPERTY(WorkbenchViewModel* workbench"),
+        QStringLiteral("Q_PROPERTY(DraftsViewModel* drafts"),
+        QStringLiteral("Q_PROPERTY(LogsViewModel* logs"),
+        QStringLiteral("Q_PROPERTY(ProcessorsViewModel* processors"),
+        QStringLiteral("Q_PROPERTY(SettingsViewModel* settings"),
+        QStringLiteral("Q_PROPERTY(ConfigurationTransferService* configurationTransfer"),
+        QStringLiteral("Q_PROPERTY(PreferencesController* preferences"),
+        QStringLiteral("Q_PROPERTY(EventHistoryService* eventHistory"),
+        QStringLiteral("Q_PROPERTY(SessionService* sessionService"),
+        QStringLiteral("Q_PROPERTY(SubscriptionService* subscriptionService"),
+        QStringLiteral("Q_PROPERTY(NotificationCenterModel* notifications"),
+        QStringLiteral("Q_PROPERTY(UpdateViewModel* updates"),
+    };
+    for (const QString &property : approvedProperties) {
+        QVERIFY2(source.contains(property),
+            qPrintable(QStringLiteral("ApplicationViewModel is missing approved QML export %1")
+                           .arg(property)));
+    }
+    QCOMPARE(source.count(QStringLiteral("Q_PROPERTY(")), approvedProperties.size());
+    QVERIFY2(!source.contains(QStringLiteral("Q_PROPERTY(UpdateController*")),
+        "UpdateController must stay behind UpdateViewModel");
+}
+
+void ArchitectureBoundariesTest::qmlElementTypesRemainOnApplicationTarget()
+{
+    QString cmakeSource;
+    QVERIFY(readSourceFile(QStringLiteral("CMakeLists.txt"), cmakeSource));
+
+    const int appOnlySourcesStart = cmakeSource.indexOf(
+        QStringLiteral("set(MQTT_PLUS_APP_ONLY_SOURCES"));
+    const int appOnlySourcesEnd = cmakeSource.indexOf(
+        QLatin1Char(')'),
+        appOnlySourcesStart);
+    QVERIFY(appOnlySourcesStart >= 0);
+    QVERIFY(appOnlySourcesEnd > appOnlySourcesStart);
+    const QString appOnlySources = cmakeSource.mid(
+        appOnlySourcesStart,
+        appOnlySourcesEnd - appOnlySourcesStart);
+    QVERIFY2(appOnlySources.contains(QStringLiteral("src/presentation/codesyntaxhighlighter.cpp"))
+            && appOnlySources.contains(QStringLiteral("src/presentation/codesyntaxhighlighter.h")),
+        "QML_ELEMENT types must remain on the target passed to qt_add_qml_module");
+    QVERIFY2(cmakeSource.contains(QStringLiteral(
+                 "qt_add_executable(mqtt_plus_app\n"
+                 "    ${MQTT_PLUS_APP_ONLY_SOURCES}")),
+        "Application-only QML types must be compiled into the executable target");
 }
 
 void ArchitectureBoundariesTest::messageProfilerUsesIsolatedApplicationData()
@@ -424,10 +470,28 @@ void ArchitectureBoundariesTest::messageProfilerUsesIsolatedApplicationData()
 
     QString cmakeSource;
     QVERIFY(readSourceFile(QStringLiteral("CMakeLists.txt"), cmakeSource));
-    QVERIFY2(cmakeSource.contains(QStringLiteral("\"src/app/messagestreamprofiledriver.cpp\"")),
+    const int appOnlySourcesStart = cmakeSource.indexOf(
+        QStringLiteral("set(MQTT_PLUS_APP_ONLY_SOURCES"));
+    const int appOnlySourcesEnd = cmakeSource.indexOf(
+        QLatin1Char(')'),
+        appOnlySourcesStart);
+    QVERIFY(appOnlySourcesStart >= 0);
+    QVERIFY(appOnlySourcesEnd > appOnlySourcesStart);
+    const QString appOnlySources = cmakeSource.mid(
+        appOnlySourcesStart,
+        appOnlySourcesEnd - appOnlySourcesStart);
+    QVERIFY2(appOnlySources.contains(QStringLiteral("src/app/messagestreamprofiledriver.cpp")),
         "The application-only profiling driver must be excluded from shared test sources");
-    QVERIFY2(cmakeSource.contains(QStringLiteral("\"src/app/messagestreamprofiledriver.h\"")),
+    QVERIFY2(appOnlySources.contains(QStringLiteral("src/app/messagestreamprofiledriver.h")),
         "The profiling driver header must be excluded from shared test sources");
+    QVERIFY2(cmakeSource.contains(QStringLiteral(
+                 "list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES\n"
+                 "    ${MQTT_PLUS_APP_ONLY_SOURCES}")),
+        "Application-only sources must be removed before building the shared core library");
+    QVERIFY2(cmakeSource.contains(QStringLiteral(
+                 "qt_add_executable(mqtt_plus_app\n"
+                 "    ${MQTT_PLUS_APP_ONLY_SOURCES}")),
+        "Application-only sources must be compiled only into the executable target");
     QVERIFY2(cmakeSource.contains(QStringLiteral("$<$<CONFIG:Debug>:QT_QML_DEBUG>")),
         "The profiling driver must be enabled by the repository debug preset");
 }
@@ -738,7 +802,7 @@ void ArchitectureBoundariesTest::messageWorkspaceSeparatesDisplayAndCaptureFilte
         "Degraded capture must identify raw-only storage to the user");
 }
 
-void ArchitectureBoundariesTest::workbenchViewModelDoesNotExposeLegacyCommands()
+void ArchitectureBoundariesTest::workbenchViewModelDoesNotDuplicateWorkflowCommands()
 {
     QString source;
     QVERIFY(readSourceFile(QStringLiteral("src/viewmodels/workbenchviewmodel.h"), source));
@@ -765,7 +829,7 @@ void ArchitectureBoundariesTest::workbenchViewModelDoesNotExposeLegacyCommands()
 
     for (const QString &token : forbiddenInvokables) {
         QVERIFY2(!source.contains(token),
-            qPrintable(QStringLiteral("WorkbenchViewModel must expose intent commands instead of %1").arg(token)));
+            qPrintable(QStringLiteral("WorkbenchViewModel must not duplicate workflow command %1").arg(token)));
     }
 }
 
