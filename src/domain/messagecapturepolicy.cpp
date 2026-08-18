@@ -1,7 +1,7 @@
 #include "domain/messagecapturepolicy.h"
 
 #include "domain/messagerecord.h"
-#include "services/payload/payloadcodec.h"
+#include "domain/mqtttopicfilter.h"
 
 #include <algorithm>
 
@@ -26,7 +26,7 @@ bool matchesAny(const QStringList &filters, const QString &topic)
         filters.cbegin(),
         filters.cend(),
         [&topic](const QString &filter) {
-            return PayloadCodec::topicFilterMatches(filter, topic);
+            return MqttTopicFilter::matches(filter, topic);
         });
 }
 } // namespace

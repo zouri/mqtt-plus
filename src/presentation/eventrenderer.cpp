@@ -1,5 +1,6 @@
 #include "eventrenderer.h"
 
+#include "domain/mqtttopicfilter.h"
 #include "services/apputils.h"
 #include "services/payload/payloadcodec.h"
 
@@ -25,11 +26,11 @@ QString resolveTopicValue(const QHash<QString, QString> &values, const QString &
     QString bestFilter;
     int bestScore = -1;
     for (auto it = values.cbegin(); it != values.cend(); ++it) {
-        if (it.value().isEmpty() || !PayloadCodec::topicFilterMatches(it.key(), topic)) {
+        if (it.value().isEmpty() || !MqttTopicFilter::matches(it.key(), topic)) {
             continue;
         }
 
-        const int score = PayloadCodec::topicSpecificityScore(it.key());
+        const int score = MqttTopicFilter::specificityScore(it.key());
         if (score > bestScore
             || (score == bestScore && (bestFilter.isEmpty() || it.key() < bestFilter))) {
             bestScore = score;
