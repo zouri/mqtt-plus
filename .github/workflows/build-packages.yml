@@ -28,7 +28,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: ${{ runner.os != 'Windows' && 'qttasktree' || '' }}
+          modules: ${{ runner.os != 'Windows' && 'qtwebsockets qttasktree' || 'qtwebsockets' }}
           aqtsource: ${{ runner.os == 'Windows' && 'git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b' || '' }}
           cache: true
 
@@ -83,7 +83,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: ${{ runner.os != 'Windows' && 'qttasktree' || '' }}
+          modules: ${{ runner.os != 'Windows' && 'qtwebsockets qttasktree' || 'qtwebsockets' }}
           aqtsource: ${{ runner.os == 'Windows' && 'git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b' || '' }}
           cache: true
 
