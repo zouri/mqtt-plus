@@ -17,6 +17,7 @@ class PreferencesController : public QObject
     Q_PROPERTY(int subscriptionPaneWidth READ subscriptionPaneWidth NOTIFY workbenchLayoutChanged)
     Q_PROPERTY(int publishComposerHeight READ publishComposerHeight NOTIFY workbenchLayoutChanged)
     Q_PROPERTY(bool connectionPaneCollapsed READ connectionPaneCollapsed NOTIFY workbenchLayoutChanged)
+    Q_PROPERTY(QString workbenchContextPane READ workbenchContextPane WRITE setWorkbenchContextPane NOTIFY workbenchContextPaneChanged)
 
 public:
     explicit PreferencesController(QSettings *settings, QObject *parent = nullptr);
@@ -36,6 +37,7 @@ public:
     int subscriptionPaneWidth() const;
     int publishComposerHeight() const;
     bool connectionPaneCollapsed() const;
+    QString workbenchContextPane() const;
     QVariantMap portableSettings() const;
     bool applyPortableSettings(const QVariantMap &settings, QString &errorMessage);
     void setWindowState(const QSize &size, bool maximized);
@@ -55,6 +57,7 @@ public slots:
         int subscriptionPaneWidth,
         int publishComposerHeight,
         bool connectionPaneCollapsed);
+    void setWorkbenchContextPane(const QString &pane);
 
 signals:
     void messageRetentionLimitChanged();
@@ -68,6 +71,7 @@ signals:
     void clearMessagesOnExitChanged();
     void clearLogsOnExitChanged();
     void workbenchLayoutChanged();
+    void workbenchContextPaneChanged();
 
 private:
     void syncValue(const QString &key, const QVariant &value);
@@ -88,4 +92,5 @@ private:
     int m_subscriptionPaneWidth = 320;
     int m_publishComposerHeight = 168;
     bool m_connectionPaneCollapsed = false;
+    QString m_workbenchContextPane = QStringLiteral("topics");
 };

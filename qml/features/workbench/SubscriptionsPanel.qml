@@ -21,7 +21,6 @@ AppPanel {
     readonly property int matchingSubscriptionCount: control.subscriptionModel ? control.subscriptionModel.count : 0
     readonly property var sessionStatus: control.viewModel ? control.viewModel.sessionStatus : ({})
     readonly property bool connected: control.sessionStatus.state === "connected"
-    readonly property bool allSubscriptionsPaused: control.viewModel.allSubscriptionsPaused
     showTopBorder: false
     showRightBorder: false
     showBottomBorder: false
@@ -169,102 +168,6 @@ AppPanel {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 46
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
-            spacing: 8
-
-            AppTextField {
-                id: filterTopicField
-
-                ui: control.ui
-                Layout.fillWidth: true
-                Layout.preferredHeight: 28
-                leftPadding: 34
-                placeholderText: qsTr("Filter topics...")
-                text: control.subscriptionModel ? control.subscriptionModel.filterText : ""
-                onTextEdited: {
-                    if (control.subscriptionModel) {
-                        control.subscriptionModel.filterText = text;
-                    }
-                }
-
-                AppIconButton {
-                    ui: control.ui
-                    anchors.left: parent.left
-                    anchors.leftMargin: 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    implicitWidth: 24
-                    implicitHeight: 24
-                    iconSource: control.ui.materialIcon("search")
-                    iconSize: 15
-                    restBg: "transparent"
-                    hoverBg: "transparent"
-                    pressedBg: "transparent"
-                    outlineColor: "transparent"
-                    symbolColor: control.ui.textMuted
-                    enabled: false
-                    Accessible.ignored: true
-                }
-
-                background: Rectangle {
-                    radius: 8
-                    color: control.ui.themePalette.innerPanelBg
-                    border.color: filterTopicField.activeFocus
-                                  ? control.ui.themePalette.selectedBorder
-                                  : (filterTopicField.hovered
-                                     ? control.ui.themePalette.panelBorder
-                                     : control.ui.themePalette.fieldBorder)
-
-                    Behavior on border.color {
-                        enabled: control.ui.animationsEnabled
-
-                        ColorAnimation {
-                            duration: control.ui.motionMicroDuration
-                            easing.type: control.ui.motionEnterEasing
-                        }
-                    }
-                }
-            }
-
-            AppIconButton {
-                ui: control.ui
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                iconSource: control.ui.materialIcon(control.allSubscriptionsPaused ? "play" : "pause")
-                iconSize: 14
-                cornerRadius: 7
-                restBg: control.allSubscriptionsPaused ? control.ui.themePalette.selectedBg : "transparent"
-                hoverBg: control.ui.themePalette.rowHover
-                outlineColor: control.allSubscriptionsPaused ? control.ui.themePalette.selectedBorder : "transparent"
-                symbolColor: control.allSubscriptionsPaused ? control.ui.themePalette.infoText : control.ui.textMuted
-                accessibleName: control.allSubscriptionsPaused ? qsTr("Resume all topics") : qsTr("Pause all topics")
-                toolTipText: accessibleName
-                toolTipPosition: AppToolTip.Position.Bottom
-                onClicked: control.subscriptionService.setAllCurrentSubscriptionsPaused(!control.allSubscriptionsPaused)
-            }
-
-            AppIconButton {
-                ui: control.ui
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                iconSource: control.ui.materialIcon("plus")
-                iconSize: 16
-                cornerRadius: 7
-                restBg: control.ui.themePalette.itemBg
-                hoverBg: control.ui.themePalette.rowHover
-                outlineColor: control.ui.themePalette.fieldBorder
-                symbolColor: control.ui.textMuted
-                accessibleName: qsTr("Add topic")
-                toolTipText: qsTr("Add subscription")
-                toolTipPosition: AppToolTip.Position.Bottom
-                onClicked: control.subscriptionCreateRequested()
-            }
-
-        }
-
         Rectangle {
             visible: control.matchingSubscriptionCount === 0
             Layout.fillWidth: true
@@ -316,6 +219,7 @@ AppPanel {
                     onClicked: control.subscriptionCreateRequested()
                 }
             }
+
         }
 
         ListView {

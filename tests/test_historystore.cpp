@@ -3,11 +3,14 @@
 
 #include <QtTest/QtTest>
 
+#include <QDateTime>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QUuid>
+
+#include <utility>
 
 namespace {
 qint64 appendMessage(HistoryStore &store, MessageRecord record)
@@ -44,6 +47,8 @@ private slots:
     void roundTripsProcessorIdentityAndResult();
     void loadMessagesExcludePayloadBytes();
     void loadsMessageByExplicitId();
+    void loadsLatestIncomingTopicObservations();
+    void loadsBoundedHighCardinalityTopicSnapshot();
     void roundTripsCanonicalOutgoingMessage();
     void countsPersistedMessagesPerSession();
     void keepsTotalMessageCountAcrossPruneAndReopen();
@@ -349,6 +354,98 @@ void HistoryStoreTest::loadsMessageByExplicitId()
     QCOMPARE(loaded->topic, record.topic);
     QCOMPARE(loaded->payloadBytes, record.payloadBytes);
     QCOMPARE(store.loadMessagePayloadBytes(id), record.payloadBytes);
+}
+
+void HistoryStoreTest::loadsLatestIncomingTopicObservations()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+
+    MessageRecord first;
+    first.sessionId = QStringLiteral("session-1");
+    first.timestamp = QStringLiteral("2026-08-19T10:00:00.000Z");
+    first.direction = MessageDirection::Incoming;
+    first.topic = QStringLiteral("sensors/temp");
+    first.payloadPreview = QStringLiteral("old temperature");
+
+    MessageRecord outgoing = first;
+    outgoing.direction = MessageDirection::Outgoing;
+    outgoing.topic = QStringLiteral("commands/restart");
+    outgoing.payloadPreview = QStringLiteral("restart");
+
+    MessageRecord latestTemperature = first;
+    latestTemperature.timestamp = QStringLiteral("2026-08-19T10:00:02.000Z");
+    latestTemperature.payloadPreview = QStringLiteral("new temperature");
+
+    MessageRecord humidity = first;
+    humidity.timestamp = QStringLiteral("2026-08-19T10:00:03.000Z");
+    humidity.topic = QStringLiteral("sensors/humidity");
+    humidity.payloadPreview = QStringLiteral("humidity");
+
+    MessageRecord otherSession = humidity;
+    otherSession.sessionId = QStringLiteral("session-2");
+    otherSession.topic = QStringLiteral("other/topic");
+
+    QVERIFY(appendMessages(store, {
+        first,
+        outgoing,
+        latestTemperature,
+        humidity,
+        otherSession,
+    }));
+
+    const QVector<TopicObservation> topics = store.loadLatestIncomingTopics(
+        QStringLiteral("session-1"),
+        10);
+    QCOMPARE(topics.size(), 2);
+    QCOMPARE(topics.at(0).topic, QStringLiteral("sensors/temp"));
+    QCOMPARE(topics.at(0).payloadPreview, QStringLiteral("new temperature"));
+    QCOMPARE(
+        topics.at(0).observedAtMs,
+        QDateTime::fromString(
+            latestTemperature.timestamp,
+            Qt::ISODateWithMs).toMSecsSinceEpoch());
+    QCOMPARE(topics.at(1).topic, QStringLiteral("sensors/humidity"));
+
+    const QVector<TopicObservation> limited = store.loadLatestIncomingTopics(
+        QStringLiteral("session-1"),
+        1);
+    QCOMPARE(limited.size(), 1);
+    QCOMPARE(limited.first().topic, QStringLiteral("sensors/humidity"));
+    QVERIFY(store.loadLatestIncomingTopics(QStringLiteral("session-2"), 10).first().topic
+        == QStringLiteral("other/topic"));
+}
+
+void HistoryStoreTest::loadsBoundedHighCardinalityTopicSnapshot()
+{
+    QTemporaryDir dataDir;
+    QVERIFY(dataDir.isValid());
+
+    HistoryStore store(dataDir.path());
+    QVERIFY2(store.isReady(), qPrintable(store.lastError()));
+
+    QVector<MessageRecord> records;
+    records.reserve(10'001);
+    for (int topic = 0; topic < 10'001; ++topic) {
+        MessageRecord record;
+        record.sessionId = QStringLiteral("session-1");
+        record.timestamp = QStringLiteral("2026-08-19T10:00:00.000Z");
+        record.direction = MessageDirection::Incoming;
+        record.topic = QStringLiteral("devices/%1").arg(topic);
+        record.payloadPreview = QString::number(topic);
+        records.append(std::move(record));
+    }
+    QVERIFY(appendMessages(store, std::move(records)));
+
+    const QVector<TopicObservation> topics = store.loadLatestIncomingTopics(
+        QStringLiteral("session-1"),
+        10'001);
+    QCOMPARE(topics.size(), 10'001);
+    QCOMPARE(topics.first().topic, QStringLiteral("devices/0"));
+    QCOMPARE(topics.last().topic, QStringLiteral("devices/10000"));
 }
 
 void HistoryStoreTest::countsPersistedMessagesPerSession()

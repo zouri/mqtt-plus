@@ -11,6 +11,7 @@
 #include "models/processorlibrarymodel.h"
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
+#include "models/topictreemodel.h"
 #include "viewmodels/publishcomposerviewmodel.h"
 #include "viewmodels/sessioneditorviewmodel.h"
 #include "viewmodels/subscriptioneditorviewmodel.h"
@@ -28,6 +29,7 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(SessionListModel* sessions READ sessions CONSTANT)
     Q_PROPERTY(SubscriptionFilterModel* filteredSubscriptions READ filteredSubscriptions CONSTANT)
     Q_PROPERTY(SubscriptionFilterModel* messageFilterSubscriptions READ messageFilterSubscriptions CONSTANT)
+    Q_PROPERTY(TopicTreeModel* topicTree READ topicTree CONSTANT)
     Q_PROPERTY(EventStreamModel* messages READ messages CONSTANT)
     Q_PROPERTY(MessageFilterModel* filteredMessages READ filteredMessages CONSTANT)
     Q_PROPERTY(PublishComposerViewModel* publisher READ publisher CONSTANT)
@@ -60,6 +62,7 @@ public:
         SessionListModel &sessionsModel,
         SubscriptionFilterModel &filteredSubscriptionsModel,
         SubscriptionFilterModel &messageFilterSubscriptionsModel,
+        TopicTreeModel &topicTreeModel,
         EventStreamModel &messagesModel,
         MessageFilterModel &filteredMessagesModel,
         ProcessorLibraryModel &processorsModel,
@@ -68,6 +71,7 @@ public:
     SessionListModel *sessions() const;
     SubscriptionFilterModel *filteredSubscriptions() const;
     SubscriptionFilterModel *messageFilterSubscriptions() const;
+    TopicTreeModel *topicTree() const;
     EventStreamModel *messages() const;
     MessageFilterModel *filteredMessages() const;
     PublishComposerViewModel *publisher();
@@ -97,7 +101,7 @@ public:
     Q_INVOKABLE void requestSessionDuplicate(int index);
     Q_INVOKABLE void requestSessionDelete(int index);
     Q_INVOKABLE void toggleCurrentSessionConnection();
-    Q_INVOKABLE void openSubscriptionEditorForCreate();
+    Q_INVOKABLE void openSubscriptionEditorForCreate(const QString &topic = {});
     Q_INVOKABLE bool openSubscriptionEditorForEdit(int filteredIndex);
     Q_INVOKABLE bool submitSubscriptionEditor();
     Q_INVOKABLE void requestSubscriptionDelete(const QString &topic, const QString &displayName);
@@ -172,6 +176,7 @@ private:
     SessionListModel &m_sessionsModel;
     SubscriptionFilterModel &m_filteredSubscriptionsModel;
     SubscriptionFilterModel &m_messageFilterSubscriptionsModel;
+    TopicTreeModel &m_topicTreeModel;
     EventStreamModel &m_messagesModel;
     MessageFilterModel &m_filteredMessagesModel;
     ProcessorLibraryModel &m_processorsModel;

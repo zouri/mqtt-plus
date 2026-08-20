@@ -126,6 +126,7 @@ void SettingsOptionsViewModelTest::exposesDefaultSettingIndexes()
     QCOMPARE(deps.preferencesController.subscriptionPaneWidth(), 320);
     QCOMPARE(deps.preferencesController.publishComposerHeight(), 168);
     QCOMPARE(deps.preferencesController.connectionPaneCollapsed(), false);
+    QCOMPARE(deps.preferencesController.workbenchContextPane(), QStringLiteral("topics"));
 }
 
 void SettingsOptionsViewModelTest::readsSettings()
@@ -304,6 +305,7 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     deps.preferencesController.setAutoFollowFps(60);
     deps.preferencesController.setWindowState(QSize(1600, 900), true);
     deps.preferencesController.setWorkbenchLayout(410, 230, true);
+    deps.preferencesController.setWorkbenchContextPane(QStringLiteral("subscriptions"));
     deps.eventHistoryService.clearAllMessages();
     deps.eventHistoryService.clearAllLogs();
     deps.eventHistoryService.clearAllHistory();
@@ -330,8 +332,12 @@ void SettingsOptionsViewModelTest::writesSettingsAndClearsHistory()
     QCOMPARE(deps.preferencesController.subscriptionPaneWidth(), 410);
     QCOMPARE(deps.preferencesController.publishComposerHeight(), 230);
     QCOMPARE(deps.preferencesController.connectionPaneCollapsed(), true);
+    QCOMPARE(deps.preferencesController.workbenchContextPane(), QStringLiteral("subscriptions"));
     QCOMPARE(deps.settings.value(QStringLiteral("workspace/subscriptionPaneWidth")).toInt(), 410);
     QCOMPARE(deps.settings.value(QStringLiteral("workspace/publishComposerHeight")).toInt(), 230);
+    QCOMPARE(
+        deps.settings.value(QStringLiteral("workspace/contextPane")).toString(),
+        QStringLiteral("subscriptions"));
     QVERIFY(!deps.settings.contains(QStringLiteral("workspace/subscriptionPaneCollapsed")));
     QCOMPARE(session.runtime.totalMessageCount, 0);
     QCOMPARE(session.runtime.viewedMessageCount, 0);

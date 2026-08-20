@@ -23,6 +23,7 @@ class SubscriptionEditorViewModelTest : public QObject
 
 private slots:
     void opensForCreateWithDefaults();
+    void opensForCreateWithInitialTopic();
     void opensForEditWithExistingProcessorBinding();
     void preservesUnavailableBindingWhenOptionsRefresh();
     void validatesAndCollectsCurrentSubmission();
@@ -42,6 +43,16 @@ void SubscriptionEditorViewModelTest::opensForCreateWithDefaults()
     QCOMPARE(editor.format(), 0);
     QVERIFY(editor.processorId().isEmpty());
     QVERIFY(!editor.canSubmit());
+}
+
+void SubscriptionEditorViewModelTest::opensForCreateWithInitialTopic()
+{
+    SubscriptionEditorViewModel editor;
+    editor.openForCreate(QStringLiteral("sensors/room/#"));
+
+    QVERIFY(!editor.editMode());
+    QCOMPARE(editor.topic(), QStringLiteral("sensors/room/#"));
+    QVERIFY(editor.canSubmit());
 }
 
 void SubscriptionEditorViewModelTest::opensForEditWithExistingProcessorBinding()

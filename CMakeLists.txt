@@ -813,6 +813,11 @@ if(BUILD_TESTING)
         src/models/messagefiltermodel.cpp
     )
 
+    add_mqtt_plus_qt_test(test_topictreemodel
+        tests/test_topictreemodel.cpp
+        src/models/topictreemodel.cpp
+    )
+
     add_mqtt_plus_core_test(test_eventhistoryservice
         tests/test_eventhistoryservice.cpp
     )

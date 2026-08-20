@@ -50,6 +50,7 @@ public:
         SessionListModel &sessions,
         SubscriptionFilterModel &filteredSubscriptions,
         SubscriptionFilterModel &messageFilterSubscriptions,
+        TopicTreeModel &topicTree,
         EventStreamModel &messages,
         MessageFilterModel &filteredMessages,
         EventStreamModel &logs,

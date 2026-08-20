@@ -22,7 +22,6 @@ ComboBox {
 
     delegate: ItemDelegate {
         id: comboDelegate
-        required property var modelData
         required property int index
         width: ListView.view ? ListView.view.width : control.width
         implicitHeight: 34
@@ -32,7 +31,7 @@ ComboBox {
         topPadding: 0
         bottomPadding: 0
         contentItem: Label {
-            text: comboDelegate.modelData
+            text: control.textAt(comboDelegate.index)
             color: comboDelegate.enabled ? control.ui.textStrong : control.ui.themePalette.fieldPlaceholder
             font.pixelSize: control.ui.compactFontSize
             verticalAlignment: Text.AlignVCenter

@@ -8,6 +8,7 @@
 #include "models/sessionlistmodel.h"
 #include "models/subscriptionfiltermodel.h"
 #include "models/subscriptionlistmodel.h"
+#include "models/topictreemodel.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
 #include "services/parsing/messageparseworker.h"
@@ -40,6 +41,11 @@ private:
     void reportStorageError(const QString &message);
     void refreshSubscriptionsModel();
     void refreshSessionModels();
+    void refreshTopicTreeModel();
+    void queueTopicObservations(
+        const QString &sessionId,
+        const QVector<TopicObservation> &observations);
+    void flushTopicObservations();
     void applyMessageRetentionLimit();
     void applyExitCleanup();
 
@@ -58,6 +64,7 @@ private:
     SubscriptionListModel m_subscriptionsModel;
     SubscriptionFilterModel m_filteredSubscriptionsModel;
     SubscriptionFilterModel m_messageFilterSubscriptionsModel;
+    TopicTreeModel m_topicTreeModel;
     EventStreamModel m_messagesModel;
     MessageFilterModel m_filteredMessagesModel;
     EventStreamModel m_logsModel;
@@ -67,9 +74,12 @@ private:
     GitHubUpdateService m_updateService;
     UpdateController m_updateController;
     QTimer m_subscriptionFpsTimer;
+    QTimer m_topicTreeUpdateTimer;
     EventHistoryService m_eventHistoryService;
     SubscriptionService m_subscriptionService;
     MqttSessionService m_mqttService;
     QTimer m_sessionActivityTimer;
+    QString m_pendingTopicSessionId;
+    QVector<TopicObservation> m_pendingTopicObservations;
     ApplicationViewModel m_viewModel;
 };

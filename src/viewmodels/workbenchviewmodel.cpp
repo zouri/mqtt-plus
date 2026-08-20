@@ -41,6 +41,7 @@ WorkbenchViewModel::WorkbenchViewModel(
     SessionListModel &sessionsModel,
     SubscriptionFilterModel &filteredSubscriptionsModel,
     SubscriptionFilterModel &messageFilterSubscriptionsModel,
+    TopicTreeModel &topicTreeModel,
     EventStreamModel &messagesModel,
     MessageFilterModel &filteredMessagesModel,
     ProcessorLibraryModel &processorsModel,
@@ -53,6 +54,7 @@ WorkbenchViewModel::WorkbenchViewModel(
     , m_sessionsModel(sessionsModel)
     , m_filteredSubscriptionsModel(filteredSubscriptionsModel)
     , m_messageFilterSubscriptionsModel(messageFilterSubscriptionsModel)
+    , m_topicTreeModel(topicTreeModel)
     , m_messagesModel(messagesModel)
     , m_filteredMessagesModel(filteredMessagesModel)
     , m_processorsModel(processorsModel)
@@ -210,6 +212,7 @@ WorkbenchViewModel::WorkbenchViewModel(
 SessionListModel *WorkbenchViewModel::sessions() const { return &m_sessionsModel; }
 SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return &m_filteredSubscriptionsModel; }
 SubscriptionFilterModel *WorkbenchViewModel::messageFilterSubscriptions() const { return &m_messageFilterSubscriptionsModel; }
+TopicTreeModel *WorkbenchViewModel::topicTree() const { return &m_topicTreeModel; }
 EventStreamModel *WorkbenchViewModel::messages() const { return &m_messagesModel; }
 MessageFilterModel *WorkbenchViewModel::filteredMessages() const { return &m_filteredMessagesModel; }
 PublishComposerViewModel *WorkbenchViewModel::publisher() { return &m_publisher; }
@@ -558,10 +561,10 @@ void WorkbenchViewModel::refreshSubscriptionEditorProcessorOptions()
     m_subscriptionEditor.setProcessorOptions(options);
 }
 
-void WorkbenchViewModel::openSubscriptionEditorForCreate()
+void WorkbenchViewModel::openSubscriptionEditorForCreate(const QString &topic)
 {
     refreshSubscriptionEditorProcessorOptions();
-    m_subscriptionEditor.openForCreate();
+    m_subscriptionEditor.openForCreate(topic);
 }
 
 bool WorkbenchViewModel::openSubscriptionEditorForEdit(int filteredIndex)

@@ -5,6 +5,7 @@
 #include "domain/messageparsing.h"
 #include "presentation/eventrow.h"
 #include "domain/messagecapturepolicy.h"
+#include "domain/topicobservation.h"
 
 #include <QHash>
 #include <QObject>
@@ -107,6 +108,9 @@ signals:
     void totalMessageCountChanged();
     void logStreamChanged();
     void messageRowsAppended(const QVector<EventRow> &rows);
+    void incomingTopicsObserved(
+        const QString &sessionId,
+        const QVector<TopicObservation> &observations);
     void messageParseResultChanged(qint64 historyId);
     void logAppended(const EventRow &row);
     void subscriptionActivityChanged();

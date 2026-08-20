@@ -70,6 +70,13 @@ QString sanitizeCleanupMode(const QString &value)
     }
     return QStringLiteral("never");
 }
+
+QString sanitizeWorkbenchContextPane(const QString &value)
+{
+    return value == QStringLiteral("subscriptions")
+        ? QStringLiteral("subscriptions")
+        : QStringLiteral("topics");
+}
 }
 
 PreferencesController::PreferencesController(QSettings *settings, QObject *parent)
@@ -117,6 +124,10 @@ PreferencesController::PreferencesController(QSettings *settings, QObject *paren
         m_publishComposerHeight);
     m_connectionPaneCollapsed =
         m_settings->value(QStringLiteral("workspace/connectionPaneCollapsed"), m_connectionPaneCollapsed).toBool();
+    m_workbenchContextPane = sanitizeWorkbenchContextPane(
+        m_settings->value(
+            QStringLiteral("workspace/contextPane"),
+            m_workbenchContextPane).toString());
 }
 
 int PreferencesController::messageRetentionLimit() const
@@ -192,6 +203,11 @@ int PreferencesController::publishComposerHeight() const
 bool PreferencesController::connectionPaneCollapsed() const
 {
     return m_connectionPaneCollapsed;
+}
+
+QString PreferencesController::workbenchContextPane() const
+{
+    return m_workbenchContextPane;
 }
 
 QVariantMap PreferencesController::portableSettings() const
@@ -414,6 +430,18 @@ void PreferencesController::setWorkbenchLayout(
         m_settings->sync();
     }
     emit workbenchLayoutChanged();
+}
+
+void PreferencesController::setWorkbenchContextPane(const QString &pane)
+{
+    const QString sanitized = sanitizeWorkbenchContextPane(pane);
+    if (sanitized == m_workbenchContextPane) {
+        return;
+    }
+
+    m_workbenchContextPane = sanitized;
+    syncValue(QStringLiteral("workspace/contextPane"), m_workbenchContextPane);
+    emit workbenchContextPaneChanged();
 }
 
 void PreferencesController::syncValue(const QString &key, const QVariant &value)

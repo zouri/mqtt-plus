@@ -11,8 +11,8 @@ AppDialog {
 
     required property var viewModel
     readonly property var editor: root.viewModel.subscriptionEditor
-    function openForCreate() {
-        root.viewModel.openSubscriptionEditorForCreate()
+    function openForCreate(initialTopic) {
+        root.viewModel.openSubscriptionEditorForCreate(initialTopic || "")
         open()
     }
 

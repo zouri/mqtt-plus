@@ -181,6 +181,19 @@ void EventHistoryServiceTest::queuedIncomingMessagesArePreparedAndAppliedAsBatch
     QSignalSpy activitySpy(
         &fixture.service,
         &EventHistoryService::subscriptionActivityChanged);
+    QVector<TopicObservation> observedTopics;
+    int observedBatchCount = 0;
+    connect(
+        &fixture.service,
+        &EventHistoryService::incomingTopicsObserved,
+        this,
+        [&observedTopics, &observedBatchCount](
+            const QString &sessionId,
+            const QVector<TopicObservation> &observations) {
+            QCOMPARE(sessionId, QStringLiteral("session-1"));
+            observedTopics = observations;
+            ++observedBatchCount;
+        });
 
     fixture.service.queueIncomingMessage(
         fixture.session.id,
@@ -201,6 +214,11 @@ void EventHistoryServiceTest::queuedIncomingMessagesArePreparedAndAppliedAsBatch
     QCOMPARE(fixture.historyStore.totalMessageCount(fixture.session.id), 3);
     QCOMPARE(totalSpy.count(), 1);
     QCOMPARE(activitySpy.count(), 1);
+    QCOMPARE(observedBatchCount, 1);
+    QCOMPARE(observedTopics.size(), 3);
+    QCOMPARE(observedTopics.at(0).topic, QStringLiteral("devices/one"));
+    QVERIFY(observedTopics.at(0).historyId > 0);
+    QVERIFY(observedTopics.at(0).observedAtMs > 0);
 }
 
 void EventHistoryServiceTest::structuredParseResultPersistsAfterRawCapture()
@@ -472,6 +490,12 @@ void EventHistoryServiceTest::parserDrainTimeoutStillFlushesWriter()
 void EventHistoryServiceTest::capturePolicyFiltersBeforePayloadPlanning()
 {
     Fixture fixture;
+    int observedBatchCount = 0;
+    connect(
+        &fixture.service,
+        &EventHistoryService::incomingTopicsObserved,
+        this,
+        [&observedBatchCount]() { ++observedBatchCount; });
     fixture.addSubscription(QStringLiteral("devices/#"), static_cast<int>(PayloadFormat::Json));
     MessageCapturePolicy policy;
     policy.includeTopicFilters = {QStringLiteral("alerts/#")};
@@ -487,6 +511,7 @@ void EventHistoryServiceTest::capturePolicyFiltersBeforePayloadPlanning()
     QCOMPARE(fixture.service.messageParserBacklog(), 0);
     QCOMPARE(fixture.session.runtime.totalMessageCount, qint64(0));
     QCOMPARE(fixture.messages.count(), 0);
+    QCOMPARE(observedBatchCount, 0);
     QVERIFY(fixture.session.subscriptions.constFirst().recentMessages.isEmpty());
     QCOMPARE(
         fixture.session.runtime.recentReceivedTraffic.eventCount(
@@ -977,6 +1002,16 @@ void EventHistoryServiceTest::pausedIncomingRowsPersistUnavailableProcessorBindi
     QVERIFY2(fixture.historyStore.isReady(), qPrintable(fixture.historyStore.lastError()));
     fixture.session.outputPaused = true;
     fixture.preferences.setMaxIncomingPayloadBytes(1);
+    QVector<TopicObservation> observedTopics;
+    connect(
+        &fixture.service,
+        &EventHistoryService::incomingTopicsObserved,
+        this,
+        [&observedTopics](
+            const QString &,
+            const QVector<TopicObservation> &observations) {
+            observedTopics = observations;
+        });
 
     SubscriptionEntry entry;
     entry.topic = QStringLiteral("devices/paused");
@@ -992,6 +1027,8 @@ void EventHistoryServiceTest::pausedIncomingRowsPersistUnavailableProcessorBindi
     fixture.service.flushPendingMessageHistory();
 
     QCOMPARE(fixture.messages.count(), 0);
+    QCOMPARE(observedTopics.size(), 1);
+    QCOMPARE(observedTopics.first().topic, QStringLiteral("devices/paused"));
     QCOMPARE(fixture.session.runtime.totalMessageCount, 1);
 
     const QVector<MessageRecord> rows = fixture.historyStore.loadMessages(fixture.session.id, 10);

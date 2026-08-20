@@ -11,6 +11,7 @@
 
 #include "domain/messagerecord.h"
 #include "domain/messageparsing.h"
+#include "domain/topicobservation.h"
 
 struct HistoryWriteResult
 {
@@ -52,6 +53,9 @@ public:
     QVector<MessageRecord> loadMessagesBefore(
         const QString &sessionId,
         qint64 beforeId,
+        int limit) const;
+    QVector<TopicObservation> loadLatestIncomingTopics(
+        const QString &sessionId,
         int limit) const;
     std::optional<MessageRecord> loadMessage(qint64 messageId) const;
     QByteArray loadMessagePayloadBytes(qint64 messageId) const;
