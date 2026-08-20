@@ -7,12 +7,27 @@
 #include <QDebug>
 #include <QStringList>
 
+#include <utility>
+
 using namespace AppUtils;
 
 namespace {
+constexpr int kMaximumLoadedTopicCount = 10'000;
+
 QString appText(const char *source)
 {
     return QCoreApplication::translate("Application", source);
+}
+
+TopicObservation topicObservationFromMessage(const MessageRecord &message)
+{
+    const QDateTime observedAt = QDateTime::fromString(message.timestamp, Qt::ISODateWithMs);
+    return {
+        .topic = message.topic,
+        .historyId = message.id,
+        .observedAtMs = observedAt.isValid() ? observedAt.toMSecsSinceEpoch() : 0,
+        .payloadPreview = message.payloadPreview,
+    };
 }
 }
 
@@ -34,6 +49,7 @@ Application::Application()
     , m_subscriptionsModel(&m_owner)
     , m_filteredSubscriptionsModel(&m_owner)
     , m_messageFilterSubscriptionsModel(&m_owner)
+    , m_topicTreeModel(&m_owner)
     , m_messagesModel(&m_owner)
     , m_filteredMessagesModel(&m_owner)
     , m_logsModel(&m_owner)
@@ -49,6 +65,7 @@ Application::Application()
           QCoreApplication::applicationVersion(),
           &m_owner)
     , m_subscriptionFpsTimer(&m_owner)
+    , m_topicTreeUpdateTimer(&m_owner)
     , m_eventHistoryService(
           m_sessionService,
           m_historyStore,
@@ -82,6 +99,7 @@ Application::Application()
           m_sessionsModel,
           m_filteredSubscriptionsModel,
           m_messageFilterSubscriptionsModel,
+          m_topicTreeModel,
           m_messagesModel,
           m_filteredMessagesModel,
           m_logsModel,
@@ -161,6 +179,27 @@ Application::Application()
             refreshSubscriptionsModel();
             m_subscriptionFpsTimer.start();
         });
+    m_topicTreeUpdateTimer.setInterval(100);
+    m_topicTreeUpdateTimer.setSingleShot(true);
+    QObject::connect(
+        &m_eventHistoryService,
+        &EventHistoryService::incomingTopicsObserved,
+        &m_owner,
+        [this](
+            const QString &sessionId,
+            const QVector<TopicObservation> &observations) {
+            queueTopicObservations(sessionId, observations);
+        });
+    QObject::connect(
+        &m_topicTreeUpdateTimer,
+        &QTimer::timeout,
+        &m_owner,
+        [this]() { flushTopicObservations(); });
+    QObject::connect(
+        &m_eventHistoryService,
+        &EventHistoryService::messageStreamChanged,
+        &m_owner,
+        [this]() { refreshTopicTreeModel(); });
 
     QObject::connect(
         &m_sessionService,
@@ -209,6 +248,7 @@ Application::Application()
         &m_subscriptionsModel,
         [this]() {
             refreshSessionModels();
+            refreshTopicTreeModel();
 
             if (m_subscriptionService.currentSessionHasActiveSubscriptionFps(
                     QDateTime::currentMSecsSinceEpoch())) {
@@ -496,6 +536,57 @@ void Application::refreshSessionModels()
 {
     m_sessionsModel.setSessions(m_sessionService.sessions());
     refreshSubscriptionsModel();
+}
+
+void Application::refreshTopicTreeModel()
+{
+    m_topicTreeUpdateTimer.stop();
+    m_pendingTopicSessionId.clear();
+    m_pendingTopicObservations.clear();
+
+    const SessionState *session = m_sessionService.currentSession();
+    if (!session) {
+        m_topicTreeModel.clear();
+        return;
+    }
+
+    QVector<TopicObservation> observations = m_historyStore.loadLatestIncomingTopics(
+        session->id,
+        kMaximumLoadedTopicCount + 1);
+    const QVector<MessageRecord> pendingMessages = m_historyWriter->pendingMessages(session->id);
+    for (const MessageRecord &message : pendingMessages) {
+        if (message.direction == MessageDirection::Incoming && message.id > 0) {
+            observations.append(topicObservationFromMessage(message));
+        }
+    }
+    m_topicTreeModel.resetTopics(session->id, observations);
+}
+
+void Application::queueTopicObservations(
+    const QString &sessionId,
+    const QVector<TopicObservation> &observations)
+{
+    const SessionState *current = m_sessionService.currentSession();
+    if (!current || current->id != sessionId || observations.isEmpty()) {
+        return;
+    }
+    if (!m_pendingTopicSessionId.isEmpty() && m_pendingTopicSessionId != sessionId) {
+        m_pendingTopicObservations.clear();
+    }
+    m_pendingTopicSessionId = sessionId;
+    m_pendingTopicObservations.append(observations);
+    if (!m_topicTreeUpdateTimer.isActive()) {
+        m_topicTreeUpdateTimer.start();
+    }
+}
+
+void Application::flushTopicObservations()
+{
+    const QString sessionId = std::exchange(m_pendingTopicSessionId, {});
+    QVector<TopicObservation> observations = std::exchange(
+        m_pendingTopicObservations,
+        {});
+    m_topicTreeModel.observeTopics(sessionId, observations);
 }
 
 void Application::applyMessageRetentionLimit()

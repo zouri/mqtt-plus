@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QCborParserError>
 #include <QCborValue>
+#include <QDateTime>
 #include <QHash>
 #include <QSet>
 #include <QSqlError>
@@ -651,6 +652,49 @@ QVector<MessageRecord> HistoryStore::loadMessagesBefore(
         result.append(messageRecordFromQuery(query, sessionId));
     }
 
+    return result;
+}
+
+QVector<TopicObservation> HistoryStore::loadLatestIncomingTopics(
+    const QString &sessionId,
+    int limit) const
+{
+    QVector<TopicObservation> result;
+    if (!isReady() || sessionId.isEmpty() || limit <= 0) {
+        return result;
+    }
+
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral(
+        "WITH latest_topics AS ("
+        "    SELECT topic, MAX(id) AS latest_id "
+        "    FROM mqtt_messages "
+        "    WHERE session_id = ? AND direction = 'incoming' "
+        "    GROUP BY topic "
+        "    ORDER BY latest_id DESC "
+        "    LIMIT ?"
+        ") "
+        "SELECT messages.topic, messages.id, messages.timestamp, messages.payload_preview "
+        "FROM latest_topics "
+        "JOIN mqtt_messages AS messages ON messages.id = latest_topics.latest_id "
+        "ORDER BY messages.id ASC"));
+    query.addBindValue(sessionId);
+    query.addBindValue(limit);
+    if (!query.exec()) {
+        return result;
+    }
+
+    while (query.next()) {
+        const QDateTime observedAt = QDateTime::fromString(
+            query.value(2).toString(),
+            Qt::ISODateWithMs);
+        result.append({
+            .topic = query.value(0).toString(),
+            .historyId = query.value(1).toLongLong(),
+            .observedAtMs = observedAt.isValid() ? observedAt.toMSecsSinceEpoch() : 0,
+            .payloadPreview = query.value(3).toString(),
+        });
+    }
     return result;
 }
 

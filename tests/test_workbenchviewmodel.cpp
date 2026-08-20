@@ -5,6 +5,7 @@
 #include "models/draftlibrarymodel.h"
 #include "models/processorlibrarymodel.h"
 #include "models/subscriptionlistmodel.h"
+#include "models/topictreemodel.h"
 #include "domain/messagecapturepolicy.h"
 #include "services/storage/historystore.h"
 #include "services/storage/historywriterworker.h"
@@ -89,6 +90,7 @@ struct WorkbenchFixture
               sessionsModel,
               filteredSubscriptionsModel,
               messageFilterSubscriptionsModel,
+              topicTreeModel,
               messagesModel,
               filteredMessagesModel,
               processorsModel)
@@ -116,6 +118,7 @@ struct WorkbenchFixture
     SubscriptionListModel subscriptionsModel;
     SubscriptionFilterModel filteredSubscriptionsModel;
     SubscriptionFilterModel messageFilterSubscriptionsModel;
+    TopicTreeModel topicTreeModel;
     EventStreamModel messagesModel;
     EventStreamModel logsModel;
     MessageFilterModel filteredMessagesModel;
@@ -145,6 +148,7 @@ private slots:
     void rollsBackSessionEditWhenSettingsWriteFails();
     void exposesSessionEditor();
     void exposesSubscriptionEditor();
+    void exposesTopicTree();
     void preparesSubscriptionEditorForCreate();
     void addsBatchSubscriptions();
     void rejectsInvalidSubscriptionEditorIndex();
@@ -432,6 +436,12 @@ void WorkbenchViewModelTest::exposesSubscriptionEditor()
     QCOMPARE(viewModel.subscriptionEditor()->topic(), QStringLiteral("devices/+/temp"));
 }
 
+void WorkbenchViewModelTest::exposesTopicTree()
+{
+    WorkbenchFixture fixture;
+    QCOMPARE(fixture.viewModel.topicTree(), &fixture.topicTreeModel);
+}
+
 void WorkbenchViewModelTest::preparesSubscriptionEditorForCreate()
 {
     WorkbenchFixture fixture;
@@ -444,6 +454,10 @@ void WorkbenchViewModelTest::preparesSubscriptionEditorForCreate()
     QVERIFY(!viewModel.subscriptionEditor()->editMode());
     QVERIFY(viewModel.subscriptionEditor()->topic().isEmpty());
     QVERIFY(viewModel.subscriptionEditor()->alias().isEmpty());
+
+    viewModel.openSubscriptionEditorForCreate(QStringLiteral("sensors/room/#"));
+    QCOMPARE(viewModel.subscriptionEditor()->topic(), QStringLiteral("sensors/room/#"));
+    QVERIFY(viewModel.subscriptionEditor()->canSubmit());
 }
 
 void WorkbenchViewModelTest::addsBatchSubscriptions()

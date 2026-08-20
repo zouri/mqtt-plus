@@ -193,11 +193,11 @@ void SubscriptionEditorViewModel::setUserPropertiesText(const QString &text)
     emit optionsChanged();
 }
 
-void SubscriptionEditorViewModel::openForCreate()
+void SubscriptionEditorViewModel::openForCreate(const QString &initialTopic)
 {
     setEditMode(false);
     setEditTopic({});
-    setTopic({});
+    setTopic(initialTopic);
     setAlias({});
     setQos(0);
     setFormat(0);

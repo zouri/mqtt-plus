@@ -783,6 +783,7 @@ void EventHistoryService::applyPreparedIncomingMessages()
     const QString currentSessionId = currentSession ? currentSession->id : QString();
     bool totalCountChanged = false;
     bool currentSubscriptionActivityChanged = false;
+    QHash<QString, QVector<TopicObservation>> topicObservations;
     for (PreparedIncomingMessage &message : prepared) {
         auto *session = m_sessionService.sessionById(message.sessionId);
         if (!session) {
@@ -823,6 +824,12 @@ void EventHistoryService::applyPreparedIncomingMessages()
         message.record.id = historyId;
         message.sequence = sequence;
         m_nextMessageSequence.insert(message.sessionId, sequence);
+        topicObservations[message.sessionId].append({
+            .topic = message.record.topic,
+            .historyId = historyId,
+            .observedAtMs = message.receivedAtMs,
+            .payloadPreview = message.record.payloadPreview,
+        });
         if (message.parsingSkippedForPressure) {
             recordPressureSkippedParse();
         }
@@ -844,6 +851,10 @@ void EventHistoryService::applyPreparedIncomingMessages()
         if (auto *session = m_sessionService.sessionById(currentSessionId)) {
             appendRenderedMessageRows(*session, currentVisibleRows);
         }
+    }
+
+    for (auto it = topicObservations.cbegin(); it != topicObservations.cend(); ++it) {
+        emit incomingTopicsObserved(it.key(), it.value());
     }
 
     for (const PreparedIncomingMessage &message : std::as_const(prepared)) {

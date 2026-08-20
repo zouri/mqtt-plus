@@ -34,15 +34,6 @@ Item {
     readonly property bool connecting: root.status.state === "connecting"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
     readonly property bool compactHeader: root.width <= 520
-    readonly property var messageTopicFilterState: root.viewModel.messageTopicFilterState
-    readonly property int selectedTopicCount: Number(root.messageTopicFilterState.selectedCount || 0)
-    readonly property int selectedTopicsPausedCount: Number(root.messageTopicFilterState.pausedCount || 0)
-    readonly property string filterSummaryText: root.messageFilterSummary()
-    readonly property string receiveStateText: root.selectedTopicsPausedCount <= 0
-                                               ? ""
-                                               : (root.selectedTopicCount > 1
-                                                  ? qsTr("%1 selected Topics are paused").arg(root.selectedTopicsPausedCount)
-                                                  : qsTr("Receiving is paused"))
     readonly property int subscriptionCount: root.viewModel.messageFilterSubscriptions
                                              ? root.viewModel.messageFilterSubscriptions.count
                                              : 0
@@ -120,23 +111,6 @@ Item {
         eventList.shouldFollowOutput = false
         eventList.unreadCount += Math.max(1, count)
     }
-
-    // qmllint disable missing-property
-    function messageFilterSummary() {
-        const parts = [];
-        if (root.selectedTopicCount === 1) {
-            parts.push(String(root.messageTopicFilterState.singleTopicLabel || ""));
-        } else if (root.selectedTopicCount > 1) {
-            parts.push(qsTr("%1 Topics").arg(root.selectedTopicCount));
-        }
-        if (root.streamModel.direction === "incoming") {
-            parts.push(qsTr("Received"));
-        } else if (root.streamModel.direction === "outgoing") {
-            parts.push(qsTr("Sent"));
-        }
-        return parts.length > 0 ? parts.join(" · ") : qsTr("Filter");
-    }
-    // qmllint enable missing-property
 
     function clearMessageSelection() {
         root.selectedHistoryId = "";
@@ -435,58 +409,6 @@ Item {
                     }
                 }
 
-                Button {
-                    id: messageFilterButton
-
-                    visible: root.showOutputControls
-                    // qmllint disable missing-property
-                    readonly property bool scopedFilterActive: root.selectedTopicCount > 0
-                                                                || root.streamModel.direction !== "all"
-                    // qmllint enable missing-property
-                    Layout.preferredWidth: root.compactHeader
-                                           ? 32
-                                           : Math.min(156, Math.max(68, implicitContentWidth + 18))
-                    Layout.preferredHeight: 30
-                    leftPadding: root.compactHeader ? 0 : 8
-                    rightPadding: root.compactHeader ? 0 : 8
-                    spacing: root.compactHeader ? 0 : 6
-                    text: root.filterSummaryText
-                    display: root.compactHeader ? AbstractButton.IconOnly : AbstractButton.TextBesideIcon
-                    icon.source: root.ui.materialIcon("filter")
-                    icon.width: 14
-                    icon.height: 14
-                    icon.color: messageFilterButton.scopedFilterActive
-                                ? root.ui.themePalette.infoText
-                                : root.ui.textMuted
-                    font.pixelSize: 11
-                    palette.buttonText: messageFilterButton.scopedFilterActive
-                                        ? root.ui.themePalette.infoText
-                                        : root.ui.textStrong
-                    Accessible.name: qsTr("Message filters: %1").arg(root.filterSummaryText)
-
-                    background: Rectangle {
-                        radius: 8
-                        color: messageFilterButton.scopedFilterActive
-                               ? root.ui.themePalette.selectedBg
-                               : (messageFilterButton.hovered
-                                  ? root.ui.themePalette.rowHover
-                                  : root.ui.themePalette.itemBg)
-                        border.color: messageFilterButton.scopedFilterActive
-                                      ? root.ui.themePalette.selectedBorder
-                                      : root.ui.themePalette.panelBorder
-                        border.width: 1
-                    }
-
-                    AppToolTip {
-                        ui: root.ui
-                        text: qsTr("Message filters")
-                        position: AppToolTip.Position.Bottom
-                        active: messageFilterButton.hovered
-                    }
-
-                    onClicked: messageFilterPopover.open()
-                }
-
                 AppIconButton {
                     id: followModeButton
 
@@ -541,21 +463,10 @@ Item {
                 }
             }
 
-            MessageFilterPopover {
-                id: messageFilterPopover
-
-                ui: root.ui
-                filterModel: root.streamModel
-                subscriptionsModel: root.viewModel.messageFilterSubscriptions
-                viewModel: root.viewModel
-                receiveStateText: root.receiveStateText
-                x: Math.max(8, parent.width - width - 110)
-                y: parent.height - 2
-            }
-
             ListModel {
                 id: streamActions
 
+                ListElement { actionId: "capture-settings" }
                 ListElement { actionId: "clear-messages" }
             }
 
@@ -565,14 +476,27 @@ Item {
                 ui: root.ui
                 accessibleName: qsTr("More message actions")
                 model: streamActions
-                actionText: actionId => actionId === "clear-messages" ? qsTr("Clear message history") : ""
-                actionIcon: actionId => actionId === "clear-messages" ? root.ui.materialIcon("delete") : ""
+                actionText: actionId => {
+                    if (actionId === "capture-settings") {
+                        return qsTr("Capture settings");
+                    }
+                    return actionId === "clear-messages" ? qsTr("Clear message history") : "";
+                }
+                actionIcon: actionId => actionId === "capture-settings"
+                                        ? root.ui.materialIcon("filter")
+                                        : (actionId === "clear-messages"
+                                           ? root.ui.materialIcon("delete")
+                                           : "")
                 actionDanger: actionId => actionId === "clear-messages"
+                actionSeparatorBefore: actionId => actionId === "clear-messages"
                 onTriggered: actionId => {
-                    if (actionId !== "clear-messages") {
+                    if (actionId === "capture-settings") {
+                        captureSettingsDialog.openForCurrentSession();
                         return;
                     }
-                    clearMessagesDialog.open();
+                    if (actionId === "clear-messages") {
+                        clearMessagesDialog.open();
+                    }
                 }
             }
         }
@@ -1261,6 +1185,13 @@ Item {
         }
     }
 
+
+    MessageCaptureDialog {
+        id: captureSettingsDialog
+
+        ui: root.ui
+        viewModel: root.viewModel
+    }
 
     AppDialog {
         id: clearMessagesDialog

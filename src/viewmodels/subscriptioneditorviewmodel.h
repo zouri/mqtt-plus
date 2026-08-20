@@ -74,7 +74,7 @@ public:
     void setSubscriptionIdentifierText(const QString &text);
     void setUserPropertiesText(const QString &text);
 
-    void openForCreate();
+    void openForCreate(const QString &initialTopic = {});
     void openForEdit(const SubscriptionEntry &subscription);
     void setProcessorOptions(const QVariantList &processors);
     SubscriptionEditorSubmission submission() const;

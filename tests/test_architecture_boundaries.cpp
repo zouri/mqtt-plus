@@ -33,6 +33,8 @@ private slots:
     void workbenchViewsDoNotUseDialogBridgeObjects();
     void workbenchViewsUseIntentCommands();
     void messageWorkspaceSeparatesDisplayAndCaptureFilters();
+    void comboBoxDelegatesHonorTextRole();
+    void topicTreeUsesQmlFacingModel();
     void workbenchViewModelDoesNotDuplicateWorkflowCommands();
     void workbenchViewModelDoesNotExposeUnusedRawModels();
     void workbenchViewModelDoesNotForwardNonWorkbenchSignals();
@@ -779,27 +781,116 @@ void ArchitectureBoundariesTest::workbenchViewsUseIntentCommands()
 
 void ArchitectureBoundariesTest::messageWorkspaceSeparatesDisplayAndCaptureFilters()
 {
-    QString filterSource;
+    QString captureSource;
     QVERIFY(readSourceFile(
-        QStringLiteral("qml/features/workbench/MessageFilterPopover.qml"),
-        filterSource));
-    QVERIFY2(filterSource.contains(QStringLiteral("qsTr(\"Display filter\")")),
-        "The message filter popover must label presentation-only filtering explicitly");
-    QVERIFY2(filterSource.contains(QStringLiteral("qsTr(\"Capture filter\")")),
-        "The message filter popover must label capture filtering explicitly");
-    QVERIFY2(filterSource.contains(QStringLiteral("setCurrentMessageCapturePolicy")),
+        QStringLiteral("qml/features/workbench/MessageCaptureDialog.qml"),
+        captureSource));
+    QVERIFY2(captureSource.contains(QStringLiteral("qsTr(\"Capture settings\")")),
+        "Capture filtering must use a separately labelled dialog");
+    QVERIFY2(captureSource.contains(QStringLiteral("setCurrentMessageCapturePolicy")),
         "Capture policy changes must go through a WorkbenchViewModel intent command");
-    QVERIFY2(!filterSource.contains(QStringLiteral("eventHistory.")),
+    QVERIFY2(!captureSource.contains(QStringLiteral("eventHistory.")),
         "QML must not mutate EventHistoryService capture policy directly");
+
+    QString eventStreamSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/workbench/EventStreamView.qml"),
+        eventStreamSource));
+    QVERIFY2(eventStreamSource.contains(QStringLiteral("actionId: \"capture-settings\"")),
+        "Message actions must expose capture settings separately from display filters");
+    QVERIFY2(!eventStreamSource.contains(QStringLiteral("MessageFilterPopover {")),
+        "The message header must not retain a display filter popover");
+
+    QString subscriptionsSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"),
+        subscriptionsSource));
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("AppTextField {")),
+        "Subscriptions must use the shared context Topic filter field");
+
+    QString topicTreeSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/topics/TopicTreePanel.qml"),
+        topicTreeSource));
+    QVERIFY2(!topicTreeSource.contains(QStringLiteral("AppTextField {")),
+        "The Topic tree must use the shared context Topic filter field");
 
     QString workbenchSource;
     QVERIFY(readSourceFile(
         QStringLiteral("qml/features/workbench/WorkbenchView.qml"),
         workbenchSource));
+    QVERIFY2(workbenchSource.contains(QStringLiteral("id: contextTopicFilterField")),
+        "Topics and subscriptions must share one Topic filter field");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("filteredMessages.selectedTopics")),
+        "Typing in the shared field must directly update visible message Topic filters");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("topicTree.searchText"))
+            && workbenchSource.contains(QStringLiteral("filteredSubscriptions.filterText")),
+        "The shared Topic filter must narrow both context lists");
     QVERIFY2(workbenchSource.contains(QStringLiteral("id: pressureStatusButton")),
         "The workbench status bar must expose bounded-pipeline pressure state");
     QVERIFY2(workbenchSource.contains(QStringLiteral("qsTr(\"Raw only\")")),
         "Degraded capture must identify raw-only storage to the user");
+}
+
+void ArchitectureBoundariesTest::comboBoxDelegatesHonorTextRole()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppComboBox.qml"), source));
+    QVERIFY2(source.contains(QStringLiteral("control.textAt(comboDelegate.index)")),
+        "AppComboBox delegates must resolve display text through ComboBox::textAt so textRole works with QAbstractItemModel models");
+    QVERIFY2(!source.contains(QStringLiteral("text: comboDelegate.modelData")),
+        "AppComboBox must not stringify QML model wrapper objects in its popup");
+}
+
+void ArchitectureBoundariesTest::topicTreeUsesQmlFacingModel()
+{
+    QString viewModelHeader;
+    QVERIFY(readSourceFile(
+        QStringLiteral("src/viewmodels/workbenchviewmodel.h"),
+        viewModelHeader));
+    QVERIFY2(viewModelHeader.contains(
+                 QStringLiteral("Q_PROPERTY(TopicTreeModel* topicTree")),
+        "WorkbenchViewModel must expose the topic tree through its QML-facing model");
+
+    QString topicPanelSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/topics/TopicTreePanel.qml"),
+        topicPanelSource));
+    QVERIFY2(topicPanelSource.contains(
+                 QStringLiteral("control.viewModel.topicTree")),
+        "TopicTreePanel must consume the QML-facing topic tree model");
+    const QStringList forbiddenDependencies {
+        QStringLiteral("eventHistory"),
+        QStringLiteral("sessionService"),
+        QStringLiteral("subscriptionService"),
+    };
+    for (const QString &dependency : forbiddenDependencies) {
+        QVERIFY2(!topicPanelSource.contains(dependency),
+            qPrintable(QStringLiteral("TopicTreePanel must not access %1 directly")
+                .arg(dependency)));
+    }
+
+    QString workbenchSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/features/workbench/WorkbenchView.qml"),
+        workbenchSource));
+    QVERIFY2(workbenchSource.contains(QStringLiteral("import \"../topics\"")),
+        "The workbench must import the Topics feature");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("SubscriptionsPanel {")),
+        "The workbench context pane must retain subscriptions");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("TopicTreePanel {")),
+        "The workbench context pane must expose the topic tree");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("id: contextPaneTabs")),
+        "The workbench must switch Topics and Subscriptions with tabs");
+
+    QString mainSource;
+    QVERIFY(readSourceFile(
+        QStringLiteral("qml/Main.qml"),
+        mainSource));
+    QVERIFY2(!mainSource.contains(QStringLiteral("currentAppView === \"topics\"")),
+        "Topics must not remain a separate application page");
+    QVERIFY2(!mainSource.contains(QStringLiteral("TopicView")),
+        "The application root must not host a duplicate Topics page");
 }
 
 void ArchitectureBoundariesTest::workbenchViewModelDoesNotDuplicateWorkflowCommands()

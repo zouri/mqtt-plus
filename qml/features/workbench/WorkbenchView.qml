@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import "../../components"
+import "../topics"
 
 Item {
     id: root
@@ -45,6 +46,9 @@ Item {
     property int pendingSessionEditorIndex: -1
     property string pendingSubscriptionDialogMode: ""
     property int pendingSubscriptionIndex: -1
+    property string pendingSubscriptionTopic: ""
+    readonly property int contextPaneIndex: root.preferences.workbenchContextPane === "subscriptions" ? 1 : 0
+    readonly property bool allSubscriptionsPaused: root.viewModel.allSubscriptionsPaused
     readonly property double incomingByteRate: root.viewModel.incomingByteRate
     readonly property double outgoingByteRate: root.viewModel.outgoingByteRate
     readonly property var messagePressure: root.viewModel.messagePressure
@@ -69,6 +73,35 @@ Item {
         return collapsed
                 ? root.collapsedConnectionPaneWidth
                 : root.effectiveExpandedConnectionPaneWidth;
+    }
+
+    function applyContextTopicFilters(text, normalizeField) {
+        const filters = text.split(",")
+            .map(filter => filter.trim())
+            .filter(filter => filter.length > 0);
+        root.viewModel.filteredMessages.selectedTopics = Array.from(new Set(filters));
+        root.updateContextListSearch(text);
+        if (normalizeField) {
+            root.syncContextTopicFilterField(true);
+        }
+    }
+
+    function updateContextListSearch(text) {
+        const firstFilter = text.split(",")[0].trim();
+        const wildcardIndex = firstFilter.search(/[#+]/);
+        const literalPrefix = wildcardIndex >= 0
+                              ? firstFilter.slice(0, wildcardIndex)
+                              : firstFilter;
+        const searchText = literalPrefix.replace(/\/$/, "");
+        root.viewModel.topicTree.searchText = searchText;
+        root.viewModel.filteredSubscriptions.filterText = searchText;
+    }
+
+    function syncContextTopicFilterField(force) {
+        if (force || !contextTopicFilterField.activeFocus) {
+            contextTopicFilterField.text = root.viewModel.filteredMessages.selectedTopics.join(", ");
+            root.updateContextListSearch(contextTopicFilterField.text);
+        }
     }
 
     function settleConnectionPaneWidth() {
@@ -303,18 +336,20 @@ Item {
         }
 
         if (root.pendingSubscriptionDialogMode === "create") {
-            addSubscriptionDialogLoader.openForCreate();
+            addSubscriptionDialogLoader.openForCreate(root.pendingSubscriptionTopic);
         } else if (root.pendingSubscriptionDialogMode === "edit") {
             addSubscriptionDialogLoader.openForEdit(root.pendingSubscriptionIndex);
         }
 
         root.pendingSubscriptionDialogMode = "";
         root.pendingSubscriptionIndex = -1;
+        root.pendingSubscriptionTopic = "";
     }
 
-    function openSubscriptionDialogForCreate() {
+    function openSubscriptionDialogForCreate(initialTopic) {
         root.pendingSubscriptionDialogMode = "create";
         root.pendingSubscriptionIndex = -1;
+        root.pendingSubscriptionTopic = String(initialTopic || "");
         addSubscriptionDialogLoader.active = true;
         root.openPendingSubscriptionDialog();
     }
@@ -359,6 +394,14 @@ Item {
         interval: 250
         repeat: false
         onTriggered: root.persistLayout()
+    }
+
+    Connections {
+        target: root.viewModel.filteredMessages
+
+        function onSelectedTopicsChanged() {
+            root.syncContextTopicFilterField(false);
+        }
     }
 
     Timer {
@@ -488,16 +531,228 @@ Item {
                     onConnectionConnectRequested: root.collapseConnectionPaneOnConnect = root.autoCollapseConnectionListOnConnect
                 }
 
-                SubscriptionsPanel {
-                    id: subscriptionsPanel
-                    ui: root.ui
-                    active: root.active
-                    viewModel: root.viewModel
-                    subscriptionService: root.subscriptionService
-                    onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
-                    onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
-                    onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
-                    onAddMessageTopicFilter: topic => root.viewModel.addMessageTopicFilter(topic)
+                TabBar {
+                    id: contextPaneTabs
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 38
+                    spacing: 0
+
+                    Binding {
+                        target: contextPaneTabs
+                        property: "currentIndex"
+                        value: root.contextPaneIndex
+                    }
+
+                    onCurrentIndexChanged: {
+                        const pane = currentIndex === 1 ? "subscriptions" : "topics";
+                        if (root.preferences.workbenchContextPane !== pane) {
+                            root.preferences.setWorkbenchContextPane(pane);
+                        }
+                    }
+
+                    background: Rectangle {
+                        color: root.ui.themePalette.innerPanelBg
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: 1
+                            color: root.ui.themePalette.separator
+                            Accessible.ignored: true
+                        }
+                    }
+
+                    TabButton {
+                        id: topicsTab
+
+                        width: contextPaneTabs.width / 2
+                        text: qsTr("Topics")
+                        Accessible.name: text
+
+                        contentItem: Label {
+                            text: topicsTab.text
+                            color: topicsTab.checked ? root.ui.textStrong : root.ui.textMuted
+                            font.pixelSize: 11
+                            font.bold: topicsTab.checked
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        background: Item {
+                            Rectangle {
+                                anchors.fill: parent
+                                color: topicsTab.hovered && !topicsTab.checked
+                                       ? root.ui.themePalette.rowHover
+                                       : "transparent"
+                            }
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                height: 2
+                                visible: topicsTab.checked
+                                color: root.ui.themePalette.infoText
+                            }
+                        }
+                    }
+
+                    TabButton {
+                        id: subscriptionsTab
+
+                        width: contextPaneTabs.width / 2
+                        text: qsTr("Subscriptions")
+                        Accessible.name: text
+
+                        contentItem: Label {
+                            text: subscriptionsTab.text
+                            color: subscriptionsTab.checked ? root.ui.textStrong : root.ui.textMuted
+                            font.pixelSize: 11
+                            font.bold: subscriptionsTab.checked
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        background: Item {
+                            Rectangle {
+                                anchors.fill: parent
+                                color: subscriptionsTab.hovered && !subscriptionsTab.checked
+                                       ? root.ui.themePalette.rowHover
+                                       : "transparent"
+                            }
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                height: 2
+                                visible: subscriptionsTab.checked
+                                color: root.ui.themePalette.infoText
+                            }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 46
+                    Layout.leftMargin: 12
+                    Layout.rightMargin: 12
+                    spacing: 8
+
+                    AppTextField {
+                        id: contextTopicFilterField
+
+                        ui: root.ui
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 28
+                        leftPadding: 34
+                        placeholderText: qsTr("Filter messages by Topic, e.g. sensors/#")
+                        Accessible.name: qsTr("Message Topic filters")
+                        onTextEdited: root.applyContextTopicFilters(text, false)
+                        onEditingFinished: root.applyContextTopicFilters(text, true)
+                        Component.onCompleted: root.syncContextTopicFilterField(true)
+
+                        AppIconButton {
+                            ui: root.ui
+                            anchors.left: parent.left
+                            anchors.leftMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            implicitWidth: 24
+                            implicitHeight: 24
+                            iconSource: root.ui.materialIcon("filter")
+                            iconSize: 14
+                            restBg: "transparent"
+                            hoverBg: "transparent"
+                            pressedBg: "transparent"
+                            outlineColor: "transparent"
+                            symbolColor: root.viewModel.filteredMessages.selectedTopics.length > 0
+                                         ? root.ui.themePalette.infoText
+                                         : root.ui.textMuted
+                            enabled: false
+                            Accessible.ignored: true
+                        }
+
+                        background: Rectangle {
+                            radius: 8
+                            color: root.ui.themePalette.innerPanelBg
+                            border.color: contextTopicFilterField.activeFocus
+                                          || root.viewModel.filteredMessages.selectedTopics.length > 0
+                                          ? root.ui.themePalette.selectedBorder
+                                          : (contextTopicFilterField.hovered
+                                             ? root.ui.themePalette.panelBorder
+                                             : root.ui.themePalette.fieldBorder)
+                        }
+                    }
+
+                    AppIconButton {
+                        ui: root.ui
+                        visible: contextPaneTabs.currentIndex === 1
+                        Layout.preferredWidth: visible ? 28 : 0
+                        Layout.preferredHeight: 28
+                        iconSource: root.ui.materialIcon(root.allSubscriptionsPaused ? "play" : "pause")
+                        iconSize: 14
+                        cornerRadius: 7
+                        restBg: root.allSubscriptionsPaused ? root.ui.themePalette.selectedBg : "transparent"
+                        hoverBg: root.ui.themePalette.rowHover
+                        outlineColor: root.allSubscriptionsPaused ? root.ui.themePalette.selectedBorder : "transparent"
+                        symbolColor: root.allSubscriptionsPaused ? root.ui.themePalette.infoText : root.ui.textMuted
+                        accessibleName: root.allSubscriptionsPaused ? qsTr("Resume all topics") : qsTr("Pause all topics")
+                        toolTipText: accessibleName
+                        toolTipPosition: AppToolTip.Position.Bottom
+                        onClicked: root.subscriptionService.setAllCurrentSubscriptionsPaused(
+                                       !root.allSubscriptionsPaused)
+                    }
+
+                    AppIconButton {
+                        ui: root.ui
+                        visible: contextPaneTabs.currentIndex === 1
+                        Layout.preferredWidth: visible ? 28 : 0
+                        Layout.preferredHeight: 28
+                        iconSource: root.ui.materialIcon("plus")
+                        iconSize: 16
+                        cornerRadius: 7
+                        restBg: root.ui.themePalette.itemBg
+                        hoverBg: root.ui.themePalette.rowHover
+                        outlineColor: root.ui.themePalette.fieldBorder
+                        symbolColor: root.ui.textMuted
+                        accessibleName: qsTr("Add topic")
+                        toolTipText: qsTr("Add subscription")
+                        toolTipPosition: AppToolTip.Position.Bottom
+                        onClicked: root.openSubscriptionDialogForCreate()
+                    }
+                }
+
+                StackLayout {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    currentIndex: contextPaneTabs.currentIndex
+
+                    TopicTreePanel {
+                        ui: root.ui
+                        active: root.active && contextPaneTabs.currentIndex === 0
+                        viewModel: root.viewModel
+                        onSubscriptionCreateRequested: topic => root.openSubscriptionDialogForCreate(topic)
+                        onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
+                    }
+
+                    SubscriptionsPanel {
+                        id: subscriptionsPanel
+                        ui: root.ui
+                        active: root.active && contextPaneTabs.currentIndex === 1
+                        viewModel: root.viewModel
+                        subscriptionService: root.subscriptionService
+                        onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
+                        onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
+                        onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
+                        onAddMessageTopicFilter: topic => root.viewModel.addMessageTopicFilter(topic)
+                    }
                 }
             }
         }
@@ -919,10 +1174,10 @@ Item {
             }
         }
 
-        function openForCreate() {
+        function openForCreate(initialTopic) {
             if (status === Loader.Ready) {
                 // qmllint disable missing-property
-                item.openForCreate();
+                item.openForCreate(initialTopic || "");
                 // qmllint enable missing-property
             }
         }
