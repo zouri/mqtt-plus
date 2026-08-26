@@ -18,7 +18,6 @@ AppPanel {
     property bool contextHasChildren: false
 
     signal subscriptionCreateRequested(string topic)
-    signal replaceMessageTopicFilter(string topic)
 
     showTopBorder: false
     showRightBorder: false
@@ -60,8 +59,6 @@ AppPanel {
     ListModel {
         id: topicContextActions
 
-        ListElement { actionId: "filter" }
-        ListElement { actionId: "filter-subtree" }
         ListElement { actionId: "subscribe" }
         ListElement { actionId: "subscribe-subtree" }
         ListElement { actionId: "copy" }
@@ -74,12 +71,6 @@ AppPanel {
         accessibleName: qsTr("Topic actions")
         model: topicContextActions
         actionText: actionId => {
-            if (actionId === "filter") {
-                return qsTr("Filter this topic");
-            }
-            if (actionId === "filter-subtree") {
-                return qsTr("Filter this subtree");
-            }
             if (actionId === "subscribe") {
                 return qsTr("Subscribe to topic");
             }
@@ -89,31 +80,24 @@ AppPanel {
             return qsTr("Copy topic");
         }
         actionIcon: actionId => {
-            if (actionId === "filter" || actionId === "filter-subtree") {
-                return control.ui.materialIcon("filter");
-            }
             if (actionId === "subscribe" || actionId === "subscribe-subtree") {
                 return control.ui.materialIcon("plus");
             }
             return control.ui.materialIcon("content-copy");
         }
         actionEnabled: actionId => {
-            if (actionId === "filter" || actionId === "subscribe") {
+            if (actionId === "subscribe") {
                 return control.contextIsTopic;
             }
-            if (actionId === "filter-subtree" || actionId === "subscribe-subtree") {
+            if (actionId === "subscribe-subtree") {
                 return control.contextHasChildren;
             }
             return control.contextTopic.length > 0;
         }
-        actionSeparatorBefore: actionId => actionId === "subscribe" || actionId === "copy"
+        actionSeparatorBefore: actionId => actionId === "copy"
 
         onTriggered: actionId => {
-            if (actionId === "filter") {
-                control.replaceMessageTopicFilter(control.contextTopic);
-            } else if (actionId === "filter-subtree") {
-                control.replaceMessageTopicFilter(control.subtreeFilter(control.contextTopic));
-            } else if (actionId === "subscribe") {
+            if (actionId === "subscribe") {
                 control.subscriptionCreateRequested(control.contextTopic);
             } else if (actionId === "subscribe-subtree") {
                 control.subscriptionCreateRequested(control.subtreeFilter(control.contextTopic));
@@ -150,15 +134,9 @@ AppPanel {
                 anchors.centerIn: parent
                 ui: control.ui
                 iconSource: control.ui.materialIcon("topic")
-                title: control.topicModel && control.topicModel.searchText.length > 0
-                       ? qsTr("No matching topics")
-                       : qsTr("No observed topics")
-                description: control.topicModel && control.topicModel.searchText.length > 0
-                             ? qsTr("Adjust the search to find another topic.")
-                             : qsTr("Subscribe to # or another wildcard to discover topics from incoming messages.")
-                actionLabel: control.topicModel && control.topicModel.searchText.length > 0
-                             ? ""
-                             : qsTr("Subscribe to #")
+                title: qsTr("No observed topics")
+                description: qsTr("Subscribe to # or another wildcard to discover topics from incoming messages.")
+                actionLabel: qsTr("Subscribe to #")
                 actionButton.icon.source: control.ui.materialIcon("plus")
                 actionButton.icon.color: topicEmptyState.actionButton.contentColor
                 onActionTriggered: control.subscriptionCreateRequested("#")
@@ -202,44 +180,30 @@ AppPanel {
                 readonly property bool recentlyActive: topicDelegate.subtreeLastSeenMs > 0
                                                        && control.nowMs >= topicDelegate.subtreeLastSeenMs
                                                        && control.nowMs - topicDelegate.subtreeLastSeenMs < 2000
-                readonly property string exactFilter: topicDelegate.fullTopic
-                readonly property string branchFilter: control.subtreeFilter(topicDelegate.fullTopic)
-                readonly property bool filtersMessages: (topicDelegate.isTopic
-                                                         && control.viewModel.filteredMessages.selectedTopics.indexOf(
-                                                             topicDelegate.exactFilter) >= 0)
-                                                        || (topicDelegate.hasChildren
-                                                            && control.viewModel.filteredMessages.selectedTopics.indexOf(
-                                                                topicDelegate.branchFilter) >= 0)
-
                 width: ListView.view.width
                 implicitHeight: topicDelegate.latestPayloadPreview.length > 0 ? 46 : 34
                 radius: 7
-                color: topicDelegate.filtersMessages
-                       ? control.ui.themePalette.selectedBg
-                       : (topicRowHover.hovered
-                          ? control.ui.themePalette.rowHover
-                          : "transparent")
-                border.color: topicDelegate.filtersMessages
-                              ? control.ui.themePalette.selectedBorder
-                              : "transparent"
-                border.width: topicDelegate.filtersMessages ? 1 : 0
+                color: topicRowHover.hovered
+                       ? control.ui.themePalette.rowHover
+                       : "transparent"
+                border.color: "transparent"
+                border.width: 0
                 activeFocusOnTab: true
                 Accessible.role: Accessible.TreeItem
                 Accessible.name: topicDelegate.fullTopic
                 Accessible.description: topicDelegate.latestPayloadPreview
 
                 function primaryAction() {
-                    if (topicDelegate.isTopic) {
-                        control.replaceMessageTopicFilter(topicDelegate.exactFilter);
-                    } else if (topicDelegate.hasChildren) {
+                    if (topicDelegate.hasChildren) {
                         control.topicModel.toggleExpanded(topicDelegate.index);
+                        return true;
                     }
+                    return false;
                 }
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
-                        topicDelegate.primaryAction();
-                        event.accepted = true;
+                        event.accepted = topicDelegate.primaryAction();
                     } else if (event.key === Qt.Key_Right && topicDelegate.hasChildren && !topicDelegate.expanded) {
                         control.topicModel.toggleExpanded(topicDelegate.index);
                         event.accepted = true;

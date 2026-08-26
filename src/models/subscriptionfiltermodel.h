@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QRegularExpression>
 #include <QSortFilterProxyModel>
 #include <QString>
 #include <QVariantMap>
@@ -46,5 +47,6 @@ private:
     bool textAcceptsRow(const QModelIndex &sourceIndex) const;
 
     QString m_filterText;
+    QRegularExpression m_filterExpression;
     QString m_filterMode = QStringLiteral("all");
 };

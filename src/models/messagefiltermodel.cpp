@@ -30,11 +30,6 @@ QString MessageFilterModel::filterText() const
     return m_filterText;
 }
 
-QStringList MessageFilterModel::selectedTopics() const
-{
-    return m_selectedTopics;
-}
-
 QString MessageFilterModel::direction() const
 {
     return m_direction;
@@ -42,7 +37,7 @@ QString MessageFilterModel::direction() const
 
 bool MessageFilterModel::filterActive() const
 {
-    return !m_filterText.isEmpty() || !m_selectedTopics.isEmpty() || m_direction != QStringLiteral("all");
+    return !m_filterText.isEmpty() || m_direction != QStringLiteral("all");
 }
 
 int MessageFilterModel::count() const
@@ -76,24 +71,6 @@ void MessageFilterModel::setFilterText(const QString &filterText)
     m_filterText = normalized;
     invalidateRows(wasActive);
     emit filterTextChanged();
-}
-
-void MessageFilterModel::setSelectedTopics(const QStringList &selectedTopics)
-{
-    const bool wasActive = filterActive();
-    QStringList normalized;
-    for (const QString &topic : selectedTopics) {
-        const QString trimmed = topic.trimmed();
-        if (!trimmed.isEmpty() && !normalized.contains(trimmed)) {
-            normalized.append(trimmed);
-        }
-    }
-    if (m_selectedTopics == normalized) {
-        return;
-    }
-    m_selectedTopics = normalized;
-    invalidateRows(wasActive);
-    emit selectedTopicsChanged();
 }
 
 void MessageFilterModel::setDirection(const QString &direction)
@@ -189,21 +166,14 @@ bool MessageFilterModel::rowMatches(
         return false;
     }
 
-    if (!m_selectedTopics.isEmpty()) {
-        bool matched = false;
-        for (const QString &filter : m_selectedTopics) {
-            if (MqttTopicFilter::matches(filter, topic)) {
-                matched = true;
-                break;
-            }
-        }
-        if (!matched) {
-            return false;
-        }
-    }
-
     if (m_filterText.isEmpty()) {
         return true;
+    }
+
+    const QString topicPrefix = QStringLiteral("topic:");
+    if (m_filterText.startsWith(topicPrefix, Qt::CaseInsensitive)) {
+        const QString topicFilter = m_filterText.mid(topicPrefix.size()).trimmed();
+        return !topicFilter.isEmpty() && MqttTopicFilter::matches(topicFilter, topic);
     }
 
     return alias.contains(m_filterText, Qt::CaseInsensitive)

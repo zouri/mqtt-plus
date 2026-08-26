@@ -49,7 +49,6 @@ public:
         HistoryStore &historyStore,
         SessionListModel &sessions,
         SubscriptionFilterModel &filteredSubscriptions,
-        SubscriptionFilterModel &messageFilterSubscriptions,
         TopicTreeModel &topicTree,
         EventStreamModel &messages,
         MessageFilterModel &filteredMessages,

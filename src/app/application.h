@@ -63,7 +63,6 @@ private:
     SessionListModel m_sessionsModel;
     SubscriptionListModel m_subscriptionsModel;
     SubscriptionFilterModel m_filteredSubscriptionsModel;
-    SubscriptionFilterModel m_messageFilterSubscriptionsModel;
     TopicTreeModel m_topicTreeModel;
     EventStreamModel m_messagesModel;
     MessageFilterModel m_filteredMessagesModel;

@@ -9,7 +9,8 @@ class MessageFilterModelTest : public QObject
     Q_OBJECT
 
 private slots:
-    void filtersTextTopicsAndDirection();
+    void filtersTextAndDirection();
+    void filtersTopicQueriesWithMqttWildcards();
     void hidesDividersOnlyWhileFiltering();
     void reportsVisibleAndTotalMessageCounts();
     void sourceChangesNotifyOnceAndDisconnectOldSource();
@@ -36,7 +37,7 @@ EventRow messageRow(
 }
 }
 
-void MessageFilterModelTest::filtersTextTopicsAndDirection()
+void MessageFilterModelTest::filtersTextAndDirection()
 {
     EventStreamModel source;
     source.setRows({
@@ -51,13 +52,27 @@ void MessageFilterModelTest::filtersTextTopicsAndDirection()
     QCOMPARE(proxy.rowAt(0).value(QStringLiteral("topic")).toString(), QStringLiteral("home/kitchen/temp"));
 
     proxy.setFilterText({});
-    proxy.setSelectedTopics({QStringLiteral("home/+/temp")});
-    QCOMPARE(proxy.count(), 1);
-
-    proxy.setSelectedTopics({});
     proxy.setDirection(QStringLiteral("outgoing"));
     QCOMPARE(proxy.count(), 1);
     QCOMPARE(proxy.rowAt(0).value(QStringLiteral("direction")).toString(), QStringLiteral("outgoing"));
+}
+
+void MessageFilterModelTest::filtersTopicQueriesWithMqttWildcards()
+{
+    EventStreamModel source;
+    source.setRows({
+        messageRow(QStringLiteral("home/kitchen/temp"), {}, {}, QStringLiteral("incoming")),
+        messageRow(QStringLiteral("home/bedroom/temp"), {}, {}, QStringLiteral("incoming")),
+        messageRow(QStringLiteral("home/kitchen/humidity"), {}, QStringLiteral("home/+/temp"), QStringLiteral("incoming")),
+    });
+
+    MessageFilterModel proxy;
+    proxy.setSourceModel(&source);
+    proxy.setFilterText(QStringLiteral("topic:home/+/temp"));
+
+    QCOMPARE(proxy.count(), 2);
+    QCOMPARE(proxy.rowAt(0).value(QStringLiteral("topic")).toString(), QStringLiteral("home/kitchen/temp"));
+    QCOMPARE(proxy.rowAt(1).value(QStringLiteral("topic")).toString(), QStringLiteral("home/bedroom/temp"));
 }
 
 void MessageFilterModelTest::hidesDividersOnlyWhileFiltering()
@@ -179,7 +194,7 @@ void MessageFilterModelTest::rowAtUsesPublicRoles()
 void MessageFilterModelTest::countsRowsAcceptedByCurrentFilter()
 {
     MessageFilterModel proxy;
-    proxy.setSelectedTopics({QStringLiteral("home/+/temp")});
+    proxy.setFilterText(QStringLiteral("Kitchen"));
     proxy.setDirection(QStringLiteral("incoming"));
 
     QCOMPARE(
@@ -222,7 +237,7 @@ void MessageFilterModelTest::findsHistoryIdInFilteredRows()
 
     MessageFilterModel proxy;
     proxy.setSourceModel(&source);
-    proxy.setSelectedTopics({QStringLiteral("home/+/temp")});
+    proxy.setFilterText(QStringLiteral("Kitchen"));
 
     QCOMPARE(proxy.indexOfHistoryId(QStringLiteral("41")), 0);
     QCOMPARE(proxy.indexOfHistoryId(QStringLiteral("42")), -1);

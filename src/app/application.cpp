@@ -48,7 +48,6 @@ Application::Application()
     , m_sessionsModel(&m_owner)
     , m_subscriptionsModel(&m_owner)
     , m_filteredSubscriptionsModel(&m_owner)
-    , m_messageFilterSubscriptionsModel(&m_owner)
     , m_topicTreeModel(&m_owner)
     , m_messagesModel(&m_owner)
     , m_filteredMessagesModel(&m_owner)
@@ -98,7 +97,6 @@ Application::Application()
           m_historyStore,
           m_sessionsModel,
           m_filteredSubscriptionsModel,
-          m_messageFilterSubscriptionsModel,
           m_topicTreeModel,
           m_messagesModel,
           m_filteredMessagesModel,
@@ -155,7 +153,6 @@ Application::Application()
     m_sessionService.setMessageParser(m_messageParser);
 
     m_filteredSubscriptionsModel.setSourceModel(&m_subscriptionsModel);
-    m_messageFilterSubscriptionsModel.setSourceModel(&m_subscriptionsModel);
     m_filteredMessagesModel.setSourceModel(&m_messagesModel);
 
     QObject::connect(

@@ -89,7 +89,6 @@ struct WorkbenchFixture
               eventHistoryService,
               sessionsModel,
               filteredSubscriptionsModel,
-              messageFilterSubscriptionsModel,
               topicTreeModel,
               messagesModel,
               filteredMessagesModel,
@@ -102,7 +101,6 @@ struct WorkbenchFixture
         sessionsModel.setSessions(sessionService.sessions());
         subscriptionsModel.setSubscriptions(QString(), {}, &processorLibrary);
         filteredSubscriptionsModel.setSourceModel(&subscriptionsModel);
-        messageFilterSubscriptionsModel.setSourceModel(&subscriptionsModel);
         filteredMessagesModel.setSourceModel(&messagesModel);
     }
 
@@ -117,7 +115,6 @@ struct WorkbenchFixture
     SessionListModel sessionsModel;
     SubscriptionListModel subscriptionsModel;
     SubscriptionFilterModel filteredSubscriptionsModel;
-    SubscriptionFilterModel messageFilterSubscriptionsModel;
     TopicTreeModel topicTreeModel;
     EventStreamModel messagesModel;
     EventStreamModel logsModel;
@@ -165,10 +162,11 @@ private slots:
     void coalescesDisplayTotalMessageCountUpdates();
     void exposesConnectionTimingAndAggregateRates();
     void ownsSubscriptionFilterState();
+    void subscriptionFilterSupportsRegularExpressions();
     void ownsPendingSubscriptionDeleteState();
     void handlesIntentCommandsWithoutCurrentSession();
-    void ownsMessageFilterState();
-    void exposesUnfilteredSubscriptionsAndSelectedTopicState();
+    void ownsMessageSearchState();
+    void keepsSubscriptionListFilterOutOfUnfilteredModel();
 };
 
 void WorkbenchViewModelTest::exposesDefaultPublishDraft()
@@ -725,7 +723,7 @@ void WorkbenchViewModelTest::forwardsMessageBatchNotifications()
     WorkbenchViewModel &viewModel = fixture.viewModel;
     QSignalSpy appendSpy(&viewModel, &WorkbenchViewModel::messageStreamRowsAppended);
 
-    fixture.filteredMessagesModel.setSelectedTopics({QStringLiteral("visible/#")});
+    fixture.filteredMessagesModel.setFilterText(QStringLiteral("topic:visible/#"));
     emit fixture.eventHistoryService.messageRowsAppended(QVector<EventRow> {
         EventRow {
             .kind = QStringLiteral("message"),
@@ -896,6 +894,49 @@ void WorkbenchViewModelTest::ownsSubscriptionFilterState()
     QCOMPARE(filterSpy.size(), 2);
 }
 
+void WorkbenchViewModelTest::subscriptionFilterSupportsRegularExpressions()
+{
+    WorkbenchFixture fixture;
+    SubscriptionEntry temperature;
+    temperature.topic = QStringLiteral("devices/temp");
+    temperature.alias = QStringLiteral("Temperature sensor");
+    SubscriptionEntry humidity;
+    humidity.topic = QStringLiteral("devices/humidity");
+    humidity.alias = QStringLiteral("Humidity sensor");
+    humidity.format = 1;
+    SubscriptionEntry light;
+    light.topic = QStringLiteral("lights/kitchen");
+    light.alias = QStringLiteral("Ceiling Light");
+    SubscriptionEntry bracketed;
+    bracketed.topic = QStringLiteral("metrics/[raw]");
+    SubscriptionEntry cbor;
+    cbor.topic = QStringLiteral("sensors/binary");
+    cbor.format = 4;
+    fixture.subscriptionsModel.setSubscriptions(
+        QStringLiteral("session-1"),
+        {temperature, humidity, light, bracketed, cbor},
+        &fixture.processorLibrary);
+    SubscriptionFilterModel &filter = fixture.filteredSubscriptionsModel;
+
+    filter.setFilterText(QStringLiteral("^devices/(temp|humidity)$"));
+    QCOMPARE(filter.rowCount(), 2);
+    QCOMPARE(filter.rowAt(0).value(QStringLiteral("topic")).toString(), temperature.topic);
+    QCOMPARE(filter.rowAt(1).value(QStringLiteral("topic")).toString(), humidity.topic);
+
+    filter.setFilterText(QStringLiteral("TEMPERATURE|LIGHT"));
+    QCOMPARE(filter.rowCount(), 2);
+
+    filter.setFilterText(QStringLiteral("JSON|CBOR"));
+    QCOMPARE(filter.rowCount(), 2);
+
+    filter.setFilterText(QStringLiteral("["));
+    QCOMPARE(filter.rowCount(), 1);
+    QCOMPARE(filter.rowAt(0).value(QStringLiteral("topic")).toString(), bracketed.topic);
+
+    filter.setFilterText(QStringLiteral("devices"));
+    QCOMPARE(filter.rowCount(), 2);
+}
+
 void WorkbenchViewModelTest::ownsPendingSubscriptionDeleteState()
 {
     WorkbenchFixture fixture;
@@ -922,30 +963,20 @@ void WorkbenchViewModelTest::ownsPendingSubscriptionDeleteState()
     QCOMPARE(pendingSpy.size(), 4);
 }
 
-void WorkbenchViewModelTest::ownsMessageFilterState()
+void WorkbenchViewModelTest::ownsMessageSearchState()
 {
     WorkbenchFixture fixture;
     WorkbenchViewModel &viewModel = fixture.viewModel;
-
-    viewModel.setMessageTopicFilter(QStringLiteral("sensors/+/temperature"));
-    QCOMPARE(
-        viewModel.filteredMessages()->selectedTopics(),
-        QStringList {QStringLiteral("sensors/+/temperature")});
-
-    viewModel.addMessageTopicFilter(QStringLiteral("home/light/set"));
-    viewModel.addMessageTopicFilter(QStringLiteral("home/light/set"));
-    QCOMPARE(viewModel.filteredMessages()->selectedTopics().size(), 2);
 
     viewModel.setMessageSearchText(QStringLiteral("temperature"));
     QCOMPARE(viewModel.filteredMessages()->filterText(), QStringLiteral("temperature"));
 
     viewModel.clearMessageFilters();
-    QVERIFY(viewModel.filteredMessages()->selectedTopics().isEmpty());
     QVERIFY(viewModel.filteredMessages()->filterText().isEmpty());
     QCOMPARE(viewModel.filteredMessages()->direction(), QStringLiteral("all"));
 }
 
-void WorkbenchViewModelTest::exposesUnfilteredSubscriptionsAndSelectedTopicState()
+void WorkbenchViewModelTest::keepsSubscriptionListFilterOutOfUnfilteredModel()
 {
     SessionState session;
     SubscriptionEntry power;
@@ -967,35 +998,10 @@ void WorkbenchViewModelTest::exposesUnfilteredSubscriptionsAndSelectedTopicState
         &fixture.processorLibrary);
     fixture.filteredSubscriptionsModel.setSourceModel(&subscriptions);
     fixture.filteredSubscriptionsModel.setFilterText(QStringLiteral("Light"));
-    fixture.messageFilterSubscriptionsModel.setSourceModel(&subscriptions);
     WorkbenchViewModel &viewModel = fixture.viewModel;
 
-    QCOMPARE(viewModel.messageFilterSubscriptions()->count(), 2);
+    QCOMPARE(subscriptions.rowCount(), 2);
     QCOMPARE(viewModel.filteredSubscriptions()->count(), 1);
-
-    viewModel.setMessageTopicFilter(QStringLiteral("sensors/+/power"));
-    const QVariantMap oneTopic = viewModel.messageTopicFilterState();
-    QCOMPARE(oneTopic.value(QStringLiteral("selectedCount")).toInt(), 1);
-    QCOMPARE(oneTopic.value(QStringLiteral("pausedCount")).toInt(), 1);
-    QCOMPARE(oneTopic.value(QStringLiteral("singleTopicLabel")).toString(), QStringLiteral("Power"));
-
-    viewModel.addMessageTopicFilter(QStringLiteral("home/light/set"));
-    const QVariantMap twoTopics = viewModel.messageTopicFilterState();
-    QCOMPARE(twoTopics.value(QStringLiteral("selectedCount")).toInt(), 2);
-    QCOMPARE(twoTopics.value(QStringLiteral("pausedCount")).toInt(), 1);
-    QVERIFY(twoTopics.value(QStringLiteral("singleTopicLabel")).toString().isEmpty());
-
-    QSignalSpy stateSpy(&viewModel, &WorkbenchViewModel::messageTopicFilterStateChanged);
-    session.subscriptions[0].paused = false;
-    subscriptions.setSubscriptions(
-        session.id,
-        session.subscriptions,
-        &fixture.processorLibrary);
-
-    QCOMPARE(stateSpy.count(), 1);
-    QCOMPARE(
-        viewModel.messageTopicFilterState().value(QStringLiteral("pausedCount")).toInt(),
-        0);
 }
 
 void WorkbenchViewModelTest::handlesIntentCommandsWithoutCurrentSession()

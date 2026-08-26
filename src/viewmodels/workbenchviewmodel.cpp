@@ -40,7 +40,6 @@ WorkbenchViewModel::WorkbenchViewModel(
     EventHistoryService &eventHistoryService,
     SessionListModel &sessionsModel,
     SubscriptionFilterModel &filteredSubscriptionsModel,
-    SubscriptionFilterModel &messageFilterSubscriptionsModel,
     TopicTreeModel &topicTreeModel,
     EventStreamModel &messagesModel,
     MessageFilterModel &filteredMessagesModel,
@@ -53,7 +52,6 @@ WorkbenchViewModel::WorkbenchViewModel(
     , m_eventHistoryService(eventHistoryService)
     , m_sessionsModel(sessionsModel)
     , m_filteredSubscriptionsModel(filteredSubscriptionsModel)
-    , m_messageFilterSubscriptionsModel(messageFilterSubscriptionsModel)
     , m_topicTreeModel(topicTreeModel)
     , m_messagesModel(messagesModel)
     , m_filteredMessagesModel(filteredMessagesModel)
@@ -184,26 +182,6 @@ WorkbenchViewModel::WorkbenchViewModel(
             &SubscriptionService::subscriptionsChanged,
             this,
             &WorkbenchViewModel::subscriptionsStateChanged);
-    connect(&m_messageFilterSubscriptionsModel,
-            &QAbstractItemModel::modelReset,
-            this,
-            &WorkbenchViewModel::messageTopicFilterStateChanged);
-    connect(&m_messageFilterSubscriptionsModel,
-            &QAbstractItemModel::dataChanged,
-            this,
-            &WorkbenchViewModel::messageTopicFilterStateChanged);
-    connect(&m_messageFilterSubscriptionsModel,
-            &QAbstractItemModel::rowsInserted,
-            this,
-            &WorkbenchViewModel::messageTopicFilterStateChanged);
-    connect(&m_messageFilterSubscriptionsModel,
-            &QAbstractItemModel::rowsRemoved,
-            this,
-            &WorkbenchViewModel::messageTopicFilterStateChanged);
-    connect(&m_filteredMessagesModel,
-            &MessageFilterModel::selectedTopicsChanged,
-            this,
-            &WorkbenchViewModel::messageTopicFilterStateChanged);
     m_displayTotalMessageCount = totalMessageCount();
     refreshTrafficRates();
     refreshSubscriptionEditorProcessorOptions();
@@ -211,7 +189,6 @@ WorkbenchViewModel::WorkbenchViewModel(
 
 SessionListModel *WorkbenchViewModel::sessions() const { return &m_sessionsModel; }
 SubscriptionFilterModel *WorkbenchViewModel::filteredSubscriptions() const { return &m_filteredSubscriptionsModel; }
-SubscriptionFilterModel *WorkbenchViewModel::messageFilterSubscriptions() const { return &m_messageFilterSubscriptionsModel; }
 TopicTreeModel *WorkbenchViewModel::topicTree() const { return &m_topicTreeModel; }
 EventStreamModel *WorkbenchViewModel::messages() const { return &m_messagesModel; }
 MessageFilterModel *WorkbenchViewModel::filteredMessages() const { return &m_filteredMessagesModel; }
@@ -320,37 +297,6 @@ bool WorkbenchViewModel::allSubscriptionsPaused() const
         session->subscriptions.cbegin(),
         session->subscriptions.cend(),
         [](const SubscriptionEntry &entry) { return entry.paused; });
-}
-
-QVariantMap WorkbenchViewModel::messageTopicFilterState() const
-{
-    const QStringList selectedTopics = m_filteredMessagesModel.selectedTopics();
-    int pausedCount = 0;
-    QString singleTopicLabel;
-
-    for (const QString &selectedTopic : selectedTopics) {
-        QString displayName = selectedTopic;
-        bool paused = false;
-        for (int row = 0; row < m_messageFilterSubscriptionsModel.rowCount(); ++row) {
-            const QVariantMap subscription = m_messageFilterSubscriptionsModel.rowAt(row);
-            if (subscription.value(QStringLiteral("topic")).toString() != selectedTopic) {
-                continue;
-            }
-            displayName = subscription.value(QStringLiteral("displayName")).toString();
-            paused = subscription.value(QStringLiteral("paused")).toBool();
-            break;
-        }
-        pausedCount += paused ? 1 : 0;
-        if (selectedTopics.size() == 1) {
-            singleTopicLabel = displayName;
-        }
-    }
-
-    return {
-        {QStringLiteral("selectedCount"), selectedTopics.size()},
-        {QStringLiteral("pausedCount"), pausedCount},
-        {QStringLiteral("singleTopicLabel"), singleTopicLabel},
-    };
 }
 
 QVariantMap WorkbenchViewModel::messagePressure() const
@@ -698,35 +644,14 @@ void WorkbenchViewModel::useMessageAsDraft(
         format);
 }
 
-void WorkbenchViewModel::setMessageTopicFilter(const QString &topic)
-{
-    const QString trimmed = topic.trimmed();
-    m_filteredMessagesModel.setSelectedTopics(
-        trimmed.isEmpty() ? QStringList {} : QStringList {trimmed});
-}
-
 void WorkbenchViewModel::setMessageSearchText(const QString &text)
 {
     m_filteredMessagesModel.setFilterText(text);
 }
 
-void WorkbenchViewModel::addMessageTopicFilter(const QString &topic)
-{
-    const QString trimmed = topic.trimmed();
-    if (trimmed.isEmpty()) {
-        return;
-    }
-    QStringList topics = m_filteredMessagesModel.selectedTopics();
-    if (!topics.contains(trimmed)) {
-        topics.append(trimmed);
-        m_filteredMessagesModel.setSelectedTopics(topics);
-    }
-}
-
 void WorkbenchViewModel::clearMessageFilters()
 {
     m_filteredMessagesModel.setFilterText({});
-    m_filteredMessagesModel.setSelectedTopics({});
     m_filteredMessagesModel.setDirection(QStringLiteral("all"));
 }
 

@@ -28,7 +28,6 @@ class WorkbenchViewModel : public QObject
     Q_OBJECT
     Q_PROPERTY(SessionListModel* sessions READ sessions CONSTANT)
     Q_PROPERTY(SubscriptionFilterModel* filteredSubscriptions READ filteredSubscriptions CONSTANT)
-    Q_PROPERTY(SubscriptionFilterModel* messageFilterSubscriptions READ messageFilterSubscriptions CONSTANT)
     Q_PROPERTY(TopicTreeModel* topicTree READ topicTree CONSTANT)
     Q_PROPERTY(EventStreamModel* messages READ messages CONSTANT)
     Q_PROPERTY(MessageFilterModel* filteredMessages READ filteredMessages CONSTANT)
@@ -43,7 +42,6 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(QString pendingSubscriptionDeleteTopic READ pendingSubscriptionDeleteTopic NOTIFY pendingSubscriptionDeleteChanged)
     Q_PROPERTY(QString pendingSubscriptionDeleteDisplayName READ pendingSubscriptionDeleteDisplayName NOTIFY pendingSubscriptionDeleteChanged)
     Q_PROPERTY(bool allSubscriptionsPaused READ allSubscriptionsPaused NOTIFY subscriptionsStateChanged)
-    Q_PROPERTY(QVariantMap messageTopicFilterState READ messageTopicFilterState NOTIFY messageTopicFilterStateChanged)
     Q_PROPERTY(qint64 totalMessageCount READ totalMessageCount NOTIFY totalMessageCountChanged)
     Q_PROPERTY(qint64 displayTotalMessageCount READ displayTotalMessageCount NOTIFY displayTotalMessageCountChanged)
     Q_PROPERTY(qint64 incomingByteRate READ incomingByteRate NOTIFY trafficRatesChanged)
@@ -61,7 +59,6 @@ public:
         EventHistoryService &eventHistoryService,
         SessionListModel &sessionsModel,
         SubscriptionFilterModel &filteredSubscriptionsModel,
-        SubscriptionFilterModel &messageFilterSubscriptionsModel,
         TopicTreeModel &topicTreeModel,
         EventStreamModel &messagesModel,
         MessageFilterModel &filteredMessagesModel,
@@ -70,7 +67,6 @@ public:
 
     SessionListModel *sessions() const;
     SubscriptionFilterModel *filteredSubscriptions() const;
-    SubscriptionFilterModel *messageFilterSubscriptions() const;
     TopicTreeModel *topicTree() const;
     EventStreamModel *messages() const;
     MessageFilterModel *filteredMessages() const;
@@ -85,7 +81,6 @@ public:
     QString pendingSubscriptionDeleteTopic() const;
     QString pendingSubscriptionDeleteDisplayName() const;
     bool allSubscriptionsPaused() const;
-    QVariantMap messageTopicFilterState() const;
     qint64 totalMessageCount() const;
     qint64 displayTotalMessageCount() const;
     qint64 incomingByteRate() const;
@@ -124,9 +119,7 @@ public:
         const QString &payload,
         const QString &testPayload,
         int format);
-    Q_INVOKABLE void setMessageTopicFilter(const QString &topic);
     Q_INVOKABLE void setMessageSearchText(const QString &text);
-    Q_INVOKABLE void addMessageTopicFilter(const QString &topic);
     Q_INVOKABLE void clearMessageFilters();
     Q_INVOKABLE bool setCurrentMessageCapturePolicy(
         bool captureIncoming,
@@ -153,7 +146,6 @@ signals:
     void pendingSubscriptionDeleteChanged();
     void subscriptionDeleteRequested(const QString &topic, const QString &displayName);
     void subscriptionsStateChanged();
-    void messageTopicFilterStateChanged();
     void messagePressureChanged();
     void messageCapturePolicyChanged();
 
@@ -175,7 +167,6 @@ private:
     EventHistoryService &m_eventHistoryService;
     SessionListModel &m_sessionsModel;
     SubscriptionFilterModel &m_filteredSubscriptionsModel;
-    SubscriptionFilterModel &m_messageFilterSubscriptionsModel;
     TopicTreeModel &m_topicTreeModel;
     EventStreamModel &m_messagesModel;
     MessageFilterModel &m_filteredMessagesModel;

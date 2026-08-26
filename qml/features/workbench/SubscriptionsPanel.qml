@@ -32,18 +32,13 @@ AppPanel {
 
     signal subscriptionCreateRequested
     signal subscriptionEditRequested(int index)
-    signal replaceMessageTopicFilter(string topic)
-    signal addMessageTopicFilter(string topic)
 
     function subscriptionActionLabel(actionId) {
         if (actionId === "edit") {
             return qsTr("Edit");
         }
-        if (actionId === "filter") {
-            return qsTr("Filter this Topic");
-        }
-        if (actionId === "add-filter") {
-            return qsTr("Add Topic to filter");
+        if (actionId === "only") {
+            return qsTr("Enable only this subscription");
         }
         if (actionId === "copy") {
             return qsTr("Copy Topic");
@@ -55,8 +50,8 @@ AppPanel {
     }
 
     function subscriptionActionIcon(actionId) {
-        if (actionId === "filter" || actionId === "add-filter") {
-            return control.ui.materialIcon("filter");
+        if (actionId === "only") {
+            return control.ui.materialIcon("check");
         }
         if (actionId === "copy") {
             return control.ui.materialIcon("content-copy");
@@ -109,10 +104,7 @@ AppPanel {
         id: subscriptionContextActions
 
         ListElement {
-            actionId: "filter"
-        }
-        ListElement {
-            actionId: "add-filter"
+            actionId: "only"
         }
         ListElement {
             actionId: "copy"
@@ -137,10 +129,9 @@ AppPanel {
         actionSeparatorBefore: actionId => actionId === "edit"
 
         onTriggered: actionId => {
-            if (actionId === "filter") {
-                control.replaceMessageTopicFilter(control.subscriptionContextTopic);
-            } else if (actionId === "add-filter") {
-                control.addMessageTopicFilter(control.subscriptionContextTopic);
+            if (actionId === "only") {
+                control.subscriptionService.setOnlyCurrentSubscriptionActive(
+                            control.subscriptionContextTopic);
             } else if (actionId === "copy") {
                 control.viewModel.copyMessageTopic(control.subscriptionContextTopic);
             } else if (actionId === "edit") {
@@ -261,7 +252,6 @@ AppPanel {
                                                              5,
                                                              subscriptionDelegate.rateHistoryPeak * 1.15)
                 readonly property bool hasRateHistory: subscriptionDelegate.rateHistoryPeak > 0
-                readonly property bool filtersMessages: control.viewModel.filteredMessages.selectedTopics.indexOf(subscriptionDelegate.topic) >= 0
                 readonly property string rateText: qsTr("%1/s").arg(subscriptionDelegate.topicFps > 0
                                                                      ? Number(subscriptionDelegate.topicFps).toFixed(1)
                                                                      : "0")
@@ -281,32 +271,26 @@ AppPanel {
                 implicitHeight: subscriptionDelegate.hasError ? 60 : 46
                 radius: 7
                 color: subscriptionDelegate.subscriptionActive
-                       ? (subscriptionDelegate.filtersMessages
-                          ? control.ui.themePalette.selectedBg
-                          : control.ui.themePalette.innerPanelBg)
+                       ? control.ui.themePalette.innerPanelBg
                        : (subscriptionRowHover.hovered ? control.ui.themePalette.rowHover : "transparent")
                 border.color: subscriptionDelegate.hasError
                               ? control.ui.themePalette.errorText
-                              : (subscriptionDelegate.filtersMessages
-                                 ? control.ui.themePalette.selectedBorder
                               : (subscriptionDelegate.subscriptionActive
                                  ? control.ui.themePalette.panelBorder
-                                 : "transparent"))
+                                 : "transparent")
                 border.width: subscriptionDelegate.hasError
                               ? 1
                               : (subscriptionDelegate.subscriptionActive ? 1 : 0)
-                Accessible.role: Accessible.ListItem
+                Accessible.role: Accessible.CheckBox
                 Accessible.name: subscriptionDelegate.displayName
                 Accessible.description: subscriptionDelegate.accessibleDescription
+                Accessible.checked: subscriptionDelegate.subscriptionActive
                 activeFocusOnTab: true
 
-                function toggleMessageFilter() {
-                    const selectedTopics = control.viewModel.filteredMessages.selectedTopics;
-                    if (selectedTopics.length === 1 && selectedTopics[0] === subscriptionDelegate.topic) {
-                        control.replaceMessageTopicFilter("");
-                    } else {
-                        control.replaceMessageTopicFilter(subscriptionDelegate.topic);
-                    }
+                function toggleSubscriptionPaused() {
+                    control.subscriptionService.setCurrentSubscriptionPaused(
+                                subscriptionDelegate.topic,
+                                !subscriptionDelegate.paused);
                 }
 
                 function openSubscriptionContextMenuAt(localX, localY) {
@@ -329,7 +313,7 @@ AppPanel {
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
-                        subscriptionDelegate.toggleMessageFilter();
+                        subscriptionDelegate.toggleSubscriptionPaused();
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
                         subscriptionDelegate.openSubscriptionActionsMenu(subscriptionDelegate);
@@ -344,7 +328,7 @@ AppPanel {
                         if (mouse.button === Qt.LeftButton) {
                             subscriptionList.currentIndex = subscriptionDelegate.index;
                             subscriptionDelegate.forceActiveFocus();
-                            subscriptionDelegate.toggleMessageFilter();
+                            subscriptionDelegate.toggleSubscriptionPaused();
                         } else if (mouse.button === Qt.RightButton) {
                             subscriptionDelegate.openSubscriptionContextMenuAt(mouse.x, mouse.y);
                         }
@@ -353,6 +337,7 @@ AppPanel {
 
                 HoverHandler {
                     id: subscriptionRowHover
+                    cursorShape: Qt.PointingHandCursor
                 }
 
                 AppToolTip {
@@ -519,38 +504,6 @@ AppPanel {
                                                    0.9)
                                         Accessible.ignored: true
                                     }
-                                }
-                            }
-
-                            AppIconButton {
-                                id: subscriptionPauseButton
-                                ui: control.ui
-                                Layout.preferredWidth: 24
-                                Layout.preferredHeight: 24
-                                iconSource: control.ui.materialIcon(subscriptionDelegate.paused ? "play" : "pause")
-                                iconSize: 13
-                                cornerRadius: 6
-                                restBg: subscriptionDelegate.paused ? control.ui.themePalette.selectedBg : "transparent"
-                                hoverBg: subscriptionDelegate.paused ? control.ui.themePalette.buttonPrimaryHoverBg : "transparent"
-                                pressedBg: subscriptionDelegate.paused ? control.ui.themePalette.buttonPrimaryPressedBg : "transparent"
-                                outlineColor: "transparent"
-                                symbolColor: subscriptionDelegate.paused
-                                             ? (subscriptionPauseButton.hovered || subscriptionPauseButton.down
-                                                ? control.ui.themePalette.buttonPrimaryText
-                                                : control.ui.themePalette.infoText)
-                                             : (subscriptionPauseButton.hovered || subscriptionPauseButton.forceActive
-                                                ? control.ui.themePalette.infoText
-                                                : control.ui.textMuted)
-
-                                forceActive: control.subscriptionActionVisualKey === visualKey
-                                readonly property string visualKey: `${subscriptionDelegate.topic}::pause`
-                                accessibleName: subscriptionDelegate.paused ? qsTr("Resume topic") : qsTr("Pause topic")
-                                toolTipText: subscriptionPauseButton.accessibleName
-
-                                onClicked: {
-                                    control.subscriptionActionVisualKey = visualKey;
-                                    subscriptionActionVisualResetTimer.restart();
-                                    control.subscriptionService.setCurrentSubscriptionPaused(subscriptionDelegate.topic, !subscriptionDelegate.paused);
                                 }
                             }
 

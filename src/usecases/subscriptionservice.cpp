@@ -336,6 +336,66 @@ void SubscriptionService::setCurrentSubscriptionPaused(const QString &topic, boo
     emit subscriptionsChanged();
 }
 
+void SubscriptionService::setOnlyCurrentSubscriptionActive(const QString &topic)
+{
+    auto *session = m_sessionService.currentSession();
+    if (!session) {
+        return;
+    }
+
+    SubscriptionEntry *selected = subscriptionByTopic(session, topic.trimmed());
+    if (!selected) {
+        return;
+    }
+
+    auto *client = session->runtime.client;
+    const bool connected = client && client->state() == QMqttClient::Connected;
+    bool changed = false;
+
+    if (selected->paused) {
+        changed = true;
+        selected->paused = false;
+        selected->recentMessages.clear();
+        selected->lastError.clear();
+        if (selected->runtimeSubscription) {
+            selected->runtimeSubscription->unsubscribe();
+            selected->runtimeSubscription.clear();
+        }
+        if (connected) {
+            ensureSubscriptionActive(*session, *selected, false);
+        } else {
+            selected->runtimeState = QStringLiteral("saved");
+        }
+    }
+
+    for (auto &entry : session->subscriptions) {
+        if (&entry == selected || entry.paused) {
+            continue;
+        }
+
+        changed = true;
+        entry.paused = true;
+        entry.recentMessages.clear();
+        entry.runtimeState = QStringLiteral("paused");
+        if (entry.runtimeSubscription) {
+            entry.runtimeSubscription->unsubscribe();
+        } else if (connected) {
+            client->unsubscribe(QMqttTopicFilter(entry.topic));
+        }
+    }
+
+    if (!changed) {
+        return;
+    }
+
+    m_eventHistoryService.appendEvent(
+        *session,
+        QStringLiteral("Subscription"),
+        QStringLiteral("Enabled only %1").arg(selected->topic));
+    m_sessionService.saveSessions();
+    emit subscriptionsChanged();
+}
+
 void SubscriptionService::setAllCurrentSubscriptionsPaused(bool paused)
 {
     auto *session = m_sessionService.currentSession();

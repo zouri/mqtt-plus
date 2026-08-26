@@ -26,6 +26,7 @@ private slots:
     void updateCurrentSubscriptionEditsQosAndFormat();
     void preservesUnresolvedProcessorReferences();
     void upsertsValidatedBatchWithSingleNotification();
+    void enablesOnlySelectedSubscriptionWithSingleSignal();
     void setsAllCurrentSubscriptionsPausedWithSingleSignal();
     void detectsActiveCurrentSubscriptionFps();
     void subscriptionEditInvalidatesRenderContext();
@@ -226,6 +227,41 @@ void SubscriptionServiceTest::setsAllCurrentSubscriptionsPausedWithSingleSignal(
     QVERIFY(currentSession.subscriptions.at(0).recentMessages.isEmpty());
     QVERIFY(currentSession.subscriptions.at(1).recentMessages.isEmpty());
     QCOMPARE(changedSpy.count(), 2);
+}
+
+void SubscriptionServiceTest::enablesOnlySelectedSubscriptionWithSingleSignal()
+{
+    Fixture fixture;
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    session.subscriptions = {
+        SubscriptionEntry {.topic = QStringLiteral("devices/one")},
+        SubscriptionEntry {.topic = QStringLiteral("devices/two"), .paused = true},
+        SubscriptionEntry {.topic = QStringLiteral("devices/three")},
+    };
+    for (auto &entry : session.subscriptions) {
+        entry.recentMessages.add(1);
+    }
+    SessionState &currentSession = fixture.setCurrentSession(std::move(session));
+    QSignalSpy changedSpy(&fixture.service, &SubscriptionService::subscriptionsChanged);
+
+    fixture.service.setOnlyCurrentSubscriptionActive(QStringLiteral(" devices/two "));
+
+    QVERIFY(currentSession.subscriptions.at(0).paused);
+    QVERIFY(!currentSession.subscriptions.at(1).paused);
+    QVERIFY(currentSession.subscriptions.at(2).paused);
+    QCOMPARE(currentSession.subscriptions.at(0).runtimeState, QStringLiteral("paused"));
+    QCOMPARE(currentSession.subscriptions.at(1).runtimeState, QStringLiteral("saved"));
+    QCOMPARE(currentSession.subscriptions.at(2).runtimeState, QStringLiteral("paused"));
+    for (const auto &entry : currentSession.subscriptions) {
+        QVERIFY(entry.recentMessages.isEmpty());
+    }
+    QCOMPARE(changedSpy.count(), 1);
+
+    fixture.service.setOnlyCurrentSubscriptionActive(QStringLiteral("devices/two"));
+    fixture.service.setOnlyCurrentSubscriptionActive(QStringLiteral("devices/missing"));
+    QCOMPARE(changedSpy.count(), 1);
 }
 
 void SubscriptionServiceTest::detectsActiveCurrentSubscriptionFps()

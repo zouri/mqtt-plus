@@ -45,6 +45,14 @@ void SubscriptionFilterModel::setFilterText(const QString &filterText)
     }
 
     m_filterText = trimmedText;
+    constexpr auto options = QRegularExpression::CaseInsensitiveOption
+        | QRegularExpression::UseUnicodePropertiesOption;
+    m_filterExpression = QRegularExpression(m_filterText, options);
+    if (!m_filterExpression.isValid()) {
+        m_filterExpression = QRegularExpression(
+            QRegularExpression::escape(m_filterText),
+            options);
+    }
     beginFilterChange();
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
     emit filterTextChanged();
@@ -154,7 +162,6 @@ bool SubscriptionFilterModel::textAcceptsRow(const QModelIndex &sourceIndex) con
         return true;
     }
 
-    const QString needle = m_filterText.toCaseFolded();
     const QStringList haystack = {
         sourceIndex.data(SubscriptionListModel::TopicRole).toString(),
         sourceIndex.data(SubscriptionListModel::AliasRole).toString(),
@@ -162,7 +169,7 @@ bool SubscriptionFilterModel::textAcceptsRow(const QModelIndex &sourceIndex) con
         sourceIndex.data(SubscriptionListModel::FormatNameRole).toString(),
     };
     for (const QString &value : haystack) {
-        if (value.toCaseFolded().contains(needle)) {
+        if (m_filterExpression.match(value).hasMatch()) {
             return true;
         }
     }

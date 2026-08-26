@@ -805,8 +805,12 @@ void ArchitectureBoundariesTest::messageWorkspaceSeparatesDisplayAndCaptureFilte
     QVERIFY(readSourceFile(
         QStringLiteral("qml/features/workbench/SubscriptionsPanel.qml"),
         subscriptionsSource));
-    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("AppTextField {")),
-        "Subscriptions must use the shared context Topic filter field");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("setCurrentSubscriptionPaused")),
+        "Clicking a subscription must toggle its broker subscription state");
+    QVERIFY2(subscriptionsSource.contains(QStringLiteral("setOnlyCurrentSubscriptionActive")),
+        "Subscription actions must support enabling only one subscription");
+    QVERIFY2(!subscriptionsSource.contains(QStringLiteral("filteredMessages")),
+        "Subscription rows must not mutate message display filters");
 
     QString topicTreeSource;
     QVERIFY(readSourceFile(
@@ -819,13 +823,13 @@ void ArchitectureBoundariesTest::messageWorkspaceSeparatesDisplayAndCaptureFilte
     QVERIFY(readSourceFile(
         QStringLiteral("qml/features/workbench/WorkbenchView.qml"),
         workbenchSource));
-    QVERIFY2(workbenchSource.contains(QStringLiteral("id: contextTopicFilterField")),
-        "Topics and subscriptions must share one Topic filter field");
-    QVERIFY2(workbenchSource.contains(QStringLiteral("filteredMessages.selectedTopics")),
-        "Typing in the shared field must directly update visible message Topic filters");
-    QVERIFY2(workbenchSource.contains(QStringLiteral("topicTree.searchText"))
-            && workbenchSource.contains(QStringLiteral("filteredSubscriptions.filterText")),
-        "The shared Topic filter must narrow both context lists");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("id: subscriptionFilterField")),
+        "The workbench must expose a subscription-list filter field");
+    QVERIFY2(workbenchSource.contains(QStringLiteral("filteredSubscriptions.filterText")),
+        "The subscription field must narrow the subscription list");
+    QVERIFY2(!workbenchSource.contains(QStringLiteral("filteredMessages.selectedTopics"))
+            && !workbenchSource.contains(QStringLiteral("topicTree.searchText")),
+        "The subscription field must not change message or Topic-tree filters");
     QVERIFY2(workbenchSource.contains(QStringLiteral("id: pressureStatusButton")),
         "The workbench status bar must expose bounded-pipeline pressure state");
     QVERIFY2(workbenchSource.contains(QStringLiteral("qsTr(\"Raw only\")")),

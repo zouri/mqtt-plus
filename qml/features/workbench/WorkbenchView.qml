@@ -75,35 +75,6 @@ Item {
                 : root.effectiveExpandedConnectionPaneWidth;
     }
 
-    function applyContextTopicFilters(text, normalizeField) {
-        const filters = text.split(",")
-            .map(filter => filter.trim())
-            .filter(filter => filter.length > 0);
-        root.viewModel.filteredMessages.selectedTopics = Array.from(new Set(filters));
-        root.updateContextListSearch(text);
-        if (normalizeField) {
-            root.syncContextTopicFilterField(true);
-        }
-    }
-
-    function updateContextListSearch(text) {
-        const firstFilter = text.split(",")[0].trim();
-        const wildcardIndex = firstFilter.search(/[#+]/);
-        const literalPrefix = wildcardIndex >= 0
-                              ? firstFilter.slice(0, wildcardIndex)
-                              : firstFilter;
-        const searchText = literalPrefix.replace(/\/$/, "");
-        root.viewModel.topicTree.searchText = searchText;
-        root.viewModel.filteredSubscriptions.filterText = searchText;
-    }
-
-    function syncContextTopicFilterField(force) {
-        if (force || !contextTopicFilterField.activeFocus) {
-            contextTopicFilterField.text = root.viewModel.filteredMessages.selectedTopics.join(", ");
-            root.updateContextListSearch(contextTopicFilterField.text);
-        }
-    }
-
     function settleConnectionPaneWidth() {
         connectionPaneAnimation.stop();
         root.connectionPaneWidth = root.connectionPaneTargetWidth(root.connectionPaneCollapsed);
@@ -396,14 +367,6 @@ Item {
         onTriggered: root.persistLayout()
     }
 
-    Connections {
-        target: root.viewModel.filteredMessages
-
-        function onSelectedTopicsChanged() {
-            root.syncContextTopicFilterField(false);
-        }
-    }
-
     Timer {
         interval: 1000
         repeat: true
@@ -640,24 +603,24 @@ Item {
                 }
 
                 RowLayout {
+                    visible: contextPaneTabs.currentIndex === 1
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 46
+                    Layout.preferredHeight: visible ? 46 : 0
                     Layout.leftMargin: 12
                     Layout.rightMargin: 12
                     spacing: 8
 
                     AppTextField {
-                        id: contextTopicFilterField
+                        id: subscriptionFilterField
 
                         ui: root.ui
                         Layout.fillWidth: true
                         Layout.preferredHeight: 28
                         leftPadding: 34
-                        placeholderText: qsTr("Filter messages by Topic, e.g. sensors/#")
-                        Accessible.name: qsTr("Message Topic filters")
-                        onTextEdited: root.applyContextTopicFilters(text, false)
-                        onEditingFinished: root.applyContextTopicFilters(text, true)
-                        Component.onCompleted: root.syncContextTopicFilterField(true)
+                        placeholderText: qsTr("Filter subscriptions (regex)")
+                        Accessible.name: qsTr("Subscription filter")
+                        text: root.viewModel.filteredSubscriptions.filterText
+                        onTextEdited: root.viewModel.filteredSubscriptions.filterText = text
 
                         AppIconButton {
                             ui: root.ui
@@ -666,13 +629,13 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             implicitWidth: 24
                             implicitHeight: 24
-                            iconSource: root.ui.materialIcon("filter")
+                            iconSource: root.ui.materialIcon("search")
                             iconSize: 14
                             restBg: "transparent"
                             hoverBg: "transparent"
                             pressedBg: "transparent"
                             outlineColor: "transparent"
-                            symbolColor: root.viewModel.filteredMessages.selectedTopics.length > 0
+                            symbolColor: root.viewModel.filteredSubscriptions.hasFilter
                                          ? root.ui.themePalette.infoText
                                          : root.ui.textMuted
                             enabled: false
@@ -682,10 +645,10 @@ Item {
                         background: Rectangle {
                             radius: 8
                             color: root.ui.themePalette.innerPanelBg
-                            border.color: contextTopicFilterField.activeFocus
-                                          || root.viewModel.filteredMessages.selectedTopics.length > 0
+                            border.color: subscriptionFilterField.activeFocus
+                                          || root.viewModel.filteredSubscriptions.hasFilter
                                           ? root.ui.themePalette.selectedBorder
-                                          : (contextTopicFilterField.hovered
+                                          : (subscriptionFilterField.hovered
                                              ? root.ui.themePalette.panelBorder
                                              : root.ui.themePalette.fieldBorder)
                         }
@@ -693,8 +656,7 @@ Item {
 
                     AppIconButton {
                         ui: root.ui
-                        visible: contextPaneTabs.currentIndex === 1
-                        Layout.preferredWidth: visible ? 28 : 0
+                        Layout.preferredWidth: 28
                         Layout.preferredHeight: 28
                         iconSource: root.ui.materialIcon(root.allSubscriptionsPaused ? "play" : "pause")
                         iconSize: 14
@@ -703,7 +665,7 @@ Item {
                         hoverBg: root.ui.themePalette.rowHover
                         outlineColor: root.allSubscriptionsPaused ? root.ui.themePalette.selectedBorder : "transparent"
                         symbolColor: root.allSubscriptionsPaused ? root.ui.themePalette.infoText : root.ui.textMuted
-                        accessibleName: root.allSubscriptionsPaused ? qsTr("Resume all topics") : qsTr("Pause all topics")
+                        accessibleName: root.allSubscriptionsPaused ? qsTr("Resume all subscriptions") : qsTr("Pause all subscriptions")
                         toolTipText: accessibleName
                         toolTipPosition: AppToolTip.Position.Bottom
                         onClicked: root.subscriptionService.setAllCurrentSubscriptionsPaused(
@@ -712,8 +674,7 @@ Item {
 
                     AppIconButton {
                         ui: root.ui
-                        visible: contextPaneTabs.currentIndex === 1
-                        Layout.preferredWidth: visible ? 28 : 0
+                        Layout.preferredWidth: 28
                         Layout.preferredHeight: 28
                         iconSource: root.ui.materialIcon("plus")
                         iconSize: 16
@@ -739,7 +700,6 @@ Item {
                         active: root.active && contextPaneTabs.currentIndex === 0
                         viewModel: root.viewModel
                         onSubscriptionCreateRequested: topic => root.openSubscriptionDialogForCreate(topic)
-                        onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
                     }
 
                     SubscriptionsPanel {
@@ -750,8 +710,6 @@ Item {
                         subscriptionService: root.subscriptionService
                         onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
                         onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
-                        onReplaceMessageTopicFilter: topic => root.viewModel.setMessageTopicFilter(topic)
-                        onAddMessageTopicFilter: topic => root.viewModel.addMessageTopicFilter(topic)
                     }
                 }
             }
