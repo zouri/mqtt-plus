@@ -18,7 +18,6 @@ Item {
     property real revealProgress: 0.0
     readonly property bool motionEnabled: control.ui.animationsEnabled
     readonly property int payloadTextMaximumHeight: 220
-    readonly property int parsedTextMaximumHeight: 180
 
     signal closeRequested
     signal draftUsed
@@ -366,6 +365,16 @@ Item {
                 }
 
                 ColumnLayout {
+                    id: parsedResultSection
+
+                    readonly property real maximumTextHeight: Math.max(
+                        40,
+                        inspectorScroll.availableHeight
+                        - parsedResultSection.y
+                        - parsedResultLabel.implicitHeight
+                        - parsedResultSection.spacing
+                        - 8)
+
                     visible: String(control.details.parsedPayload || "").length > 0
                     Layout.fillWidth: true
                     Layout.leftMargin: 14
@@ -373,6 +382,8 @@ Item {
                     spacing: 6
 
                     Label {
+                        id: parsedResultLabel
+
                         text: qsTr("Parsed result")
                         color: control.ui.textMuted
                         font.pixelSize: 11
@@ -381,7 +392,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.min(
-                                                    control.parsedTextMaximumHeight,
+                                                    parsedResultSection.maximumTextHeight,
                                                     Math.max(40, parsedResultText.contentHeight + 20))
                         radius: control.ui.radiusSm
                         color: control.ui.themePalette.innerPanelBg
@@ -421,48 +432,54 @@ Item {
                         }
                     }
                 }
+            }
+        }
 
-                Flow {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 14
-                    Layout.rightMargin: 14
-                    spacing: 7
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: control.ui.themePalette.separator
+        }
 
-                    InspectorActionButton {
-                        ui: control.ui
-                        visible: String(control.details.parsedPayload || "").length > 0
-                        text: qsTr("Copy parsed result")
-                        onClicked: control.viewModel.copyMessagePayload("0", String(control.details.parsedPayload), "", Number(control.details.testFormat || 0))
-                    }
+        Flow {
+            Layout.fillWidth: true
+            Layout.leftMargin: 14
+            Layout.rightMargin: 14
+            Layout.topMargin: 10
+            Layout.bottomMargin: 10
+            spacing: 7
 
-                    InspectorActionButton {
-                        ui: control.ui
-                        text: qsTr("Copy Payload")
-                        onClicked: control.viewModel.copyMessagePayload("0", control.displayedPayload, "", 0)
-                    }
+            InspectorActionButton {
+                ui: control.ui
+                visible: String(control.details.parsedPayload || "").length > 0
+                text: qsTr("Copy parsed result")
+                onClicked: control.viewModel.copyMessagePayload("0", String(control.details.parsedPayload), "", Number(control.details.testFormat || 0))
+            }
 
-                    InspectorActionButton {
-                        ui: control.ui
-                        text: qsTr("Copy Topic")
-                        onClicked: control.viewModel.copyMessageTopic(String(control.details.topic || ""))
-                    }
+            InspectorActionButton {
+                ui: control.ui
+                text: qsTr("Copy Payload")
+                onClicked: control.viewModel.copyMessagePayload("0", control.displayedPayload, "", 0)
+            }
 
-                    InspectorActionButton {
-                        ui: control.ui
-                        text: qsTr("Use as draft")
-                        onClicked: {
-                            control.viewModel.useMessageAsDraft(
-                                control.historyId,
-                                String(control.details.topic || ""),
-                                String(control.details.fullPayload || ""),
-                                String(control.details.testPayload || ""),
-                                Number(control.details.testFormat || 0));
-                            control.draftUsed();
-                        }
-                    }
+            InspectorActionButton {
+                ui: control.ui
+                text: qsTr("Copy Topic")
+                onClicked: control.viewModel.copyMessageTopic(String(control.details.topic || ""))
+            }
+
+            InspectorActionButton {
+                ui: control.ui
+                text: qsTr("Use as draft")
+                onClicked: {
+                    control.viewModel.useMessageAsDraft(
+                        control.historyId,
+                        String(control.details.topic || ""),
+                        String(control.details.fullPayload || ""),
+                        String(control.details.testPayload || ""),
+                        Number(control.details.testFormat || 0));
+                    control.draftUsed();
                 }
-
-                Item { Layout.preferredHeight: 8 }
             }
         }
     }
