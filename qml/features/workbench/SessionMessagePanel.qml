@@ -54,6 +54,14 @@ AppPanel {
         eventStreamView.clearMessageSelection();
     }
 
+    onInspectorOpenedChanged: {
+        if (root.inspectorOpened) {
+            messageInspectorPopup.open();
+        } else {
+            messageInspectorPopup.close();
+        }
+    }
+
     Connections {
         target: root.viewModel
 
@@ -146,21 +154,46 @@ AppPanel {
         }
     }
 
-    MessageInspector {
-        id: messageInspector
+    Popup {
+        id: messageInspectorPopup
 
-        ui: root.ui
-        viewModel: root.viewModel
-        historyId: root.selectedMessageHistoryId
-        opened: root.inspectorOpened
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        z: 10
-        onCloseRequested: root.closeInspector()
-        onDraftUsed: {
-            publishComposer.revealDraftEditor();
-            root.closeInspector();
+        parent: root
+        x: root.width - width
+        y: 0
+        width: Math.min(400, root.width * 0.88)
+        height: root.height
+        padding: 0
+        modal: false
+        dim: false
+        closePolicy: Popup.CloseOnPressOutside
+        background: Item {}
+        exit: Transition {
+            PauseAnimation {
+                duration: root.ui.animationsEnabled
+                          ? root.ui.motionPanelDuration
+                          : 0
+            }
+        }
+        onAboutToHide: {
+            if (root.inspectorOpened) {
+                root.closeInspector();
+            }
+        }
+
+        contentItem: MessageInspector {
+            id: messageInspector
+
+            ui: root.ui
+            viewModel: root.viewModel
+            historyId: root.selectedMessageHistoryId
+            opened: root.inspectorOpened
+            width: messageInspectorPopup.availableWidth
+            height: messageInspectorPopup.availableHeight
+            onCloseRequested: root.closeInspector()
+            onDraftUsed: {
+                publishComposer.revealDraftEditor();
+                root.closeInspector();
+            }
         }
     }
 }
