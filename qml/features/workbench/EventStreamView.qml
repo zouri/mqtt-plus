@@ -743,7 +743,7 @@ Item {
                         id: messageRow
                         visible: !eventDelegate.isDivider
                         width: parent.width
-                        implicitHeight: Math.max(64, rowBody.implicitHeight + 16)
+                        implicitHeight: Math.max(64, messageContent.implicitHeight + 16)
                         radius: 7
                         color: eventDelegate.historyId === root.selectedHistoryId
                                ? root.ui.themePalette.selectedBg
@@ -811,6 +811,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.leftMargin: 10
                             anchors.rightMargin: 10
+                            height: messageRow.height - 16
                             spacing: 10
 
                             Rectangle {
@@ -846,6 +847,8 @@ Item {
                             }
 
                             ColumnLayout {
+                                id: messageContent
+
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
                                 spacing: 3
