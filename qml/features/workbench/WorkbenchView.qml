@@ -47,6 +47,8 @@ Item {
     property string pendingSubscriptionDialogMode: ""
     property int pendingSubscriptionIndex: -1
     property string pendingSubscriptionTopic: ""
+    property string selectedExplorerTopic: ""
+    property string selectedExplorerHistoryId: ""
     readonly property int contextPaneIndex: root.preferences.workbenchContextPane === "subscriptions" ? 1 : 0
     readonly property bool allSubscriptionsPaused: root.viewModel.allSubscriptionsPaused
     readonly property double incomingByteRate: root.viewModel.incomingByteRate
@@ -402,6 +404,7 @@ Item {
 
         function onCurrentSessionIndexChanged() {
             root.collapseConnectionPaneOnConnect = false;
+            topicTreePanel.clearSelection();
         }
 
         function onMessagePressureChanged() {
@@ -696,10 +699,20 @@ Item {
                     currentIndex: contextPaneTabs.currentIndex
 
                     TopicTreePanel {
+                        id: topicTreePanel
+
                         ui: root.ui
                         active: root.active && contextPaneTabs.currentIndex === 0
                         viewModel: root.viewModel
                         onSubscriptionCreateRequested: topic => root.openSubscriptionDialogForCreate(topic)
+                        onTopicSelected: (topic, historyId) => {
+                            root.selectedExplorerTopic = topic;
+                            root.selectedExplorerHistoryId = historyId;
+                        }
+                        onTopicSelectionCleared: {
+                            root.selectedExplorerTopic = "";
+                            root.selectedExplorerHistoryId = "";
+                        }
                     }
 
                     SubscriptionsPanel {
@@ -729,6 +742,9 @@ Item {
             fontFamily: root.fontFamily
             messagePayloadDisplayMode: root.settingsViewModel.messagePayloadDisplayModeIndex
             autoFollowFps: root.preferences.autoFollowFps
+            topicExplorerMode: !root.subscriptionPaneAutoHidden && contextPaneTabs.currentIndex === 0
+            selectedTopic: root.selectedExplorerTopic
+            selectedTopicHistoryId: root.selectedExplorerHistoryId
             composerHeight: root.preferences.publishComposerHeight
             onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
             onDraftsManageRequested: root.draftsManageRequested()

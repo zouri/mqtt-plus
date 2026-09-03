@@ -19,6 +19,9 @@ AppPanel {
     required property string fontFamily
     required property int messagePayloadDisplayMode
     required property int autoFollowFps
+    property bool topicExplorerMode: false
+    property string selectedTopic: ""
+    property string selectedTopicHistoryId: ""
     property string selectedMessageHistoryId: ""
     property string inspectorSessionId: ""
     property bool inspectorOpened: false
@@ -59,6 +62,12 @@ AppPanel {
             messageInspectorPopup.open();
         } else {
             messageInspectorPopup.close();
+        }
+    }
+
+    onTopicExplorerModeChanged: {
+        if (root.topicExplorerMode) {
+            root.closeInspector();
         }
     }
 
@@ -111,35 +120,72 @@ AppPanel {
             }
         }
 
-        EventStreamView {
-            id: eventStreamView
-            ui: root.ui
-            active: root.active
-            viewModel: root.viewModel
-            publisher: root.publisher
-            eventHistory: root.eventHistory
-            sessionService: root.sessionService
-            streamModel: root.viewModel.filteredMessages
-            session: root.session
-            status: root.status
-            fontFamily: root.fontFamily
-            payloadDisplayMode: root.messagePayloadDisplayMode
-            autoFollowFps: root.autoFollowFps
-            title: qsTr("Messages")
-            showOutputControls: true
-            bottomVisualOverflow: 6
+        StackLayout {
+            id: primaryContent
+
+            currentIndex: root.topicExplorerMode ? 1 : 0
             SplitView.fillWidth: true
             SplitView.fillHeight: true
-            onPublishDraftRevealRequested: {
-                publishComposer.revealDraftEditor();
+
+            EventStreamView {
+                id: eventStreamView
+                ui: root.ui
+                active: root.active && !root.topicExplorerMode
+                viewModel: root.viewModel
+                publisher: root.publisher
+                eventHistory: root.eventHistory
+                sessionService: root.sessionService
+                streamModel: root.viewModel.filteredMessages
+                session: root.session
+                status: root.status
+                fontFamily: root.fontFamily
+                payloadDisplayMode: root.messagePayloadDisplayMode
+                autoFollowFps: root.autoFollowFps
+                title: qsTr("Messages")
+                showOutputControls: true
+                bottomVisualOverflow: 6
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                onPublishDraftRevealRequested: {
+                    publishComposer.revealDraftEditor();
+                }
+                onMessageSelected: historyId => {
+                    root.selectedMessageHistoryId = historyId;
+                    root.inspectorSessionId = String(root.session.id || "");
+                    root.inspectorOpened = true;
+                }
+                onMessagesCleared: root.closeInspector()
+                onSubscriptionCreateRequested: root.subscriptionCreateRequested()
             }
-            onMessageSelected: historyId => {
-                root.selectedMessageHistoryId = historyId;
-                root.inspectorSessionId = String(root.session.id || "");
-                root.inspectorOpened = true;
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                AppEmptyState {
+                    anchors.centerIn: parent
+                    visible: root.selectedTopicHistoryId.length === 0
+                    ui: root.ui
+                    iconSource: root.ui.materialIcon("topic")
+                    title: root.selectedTopic.length > 0
+                           ? qsTr("No message for this topic")
+                           : qsTr("Select a topic")
+                    description: root.selectedTopic.length > 0
+                                 ? qsTr("A message will appear here when the topic receives a value.")
+                                 : qsTr("Choose a topic in the tree to inspect its latest message.")
+                }
+
+                MessageInspector {
+                    anchors.fill: parent
+                    visible: root.selectedTopicHistoryId.length > 0
+                    ui: root.ui
+                    viewModel: root.viewModel
+                    historyId: root.selectedTopicHistoryId
+                    opened: root.selectedTopicHistoryId.length > 0
+                    embedded: true
+                    onDraftUsed: publishComposer.revealDraftEditor()
+                }
             }
-            onMessagesCleared: root.closeInspector()
-            onSubscriptionCreateRequested: root.subscriptionCreateRequested()
         }
 
         PublishComposer {

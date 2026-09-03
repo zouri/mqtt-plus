@@ -49,6 +49,8 @@ QVariant TopicTreeModel::data(const QModelIndex &index, int role) const
         return QString::number(node.exactLatestHistoryId);
     case SubtreeLastSeenMsRole:
         return node.subtreeLastSeenMs;
+    case SubtreeLatestHistoryIdRole:
+        return QString::number(node.subtreeLatestHistoryId);
     default:
         return {};
     }
@@ -67,6 +69,7 @@ QHash<int, QByteArray> TopicTreeModel::roleNames() const
         {LatestPayloadPreviewRole, "latestPayloadPreview"},
         {LatestHistoryIdRole, "latestHistoryId"},
         {SubtreeLastSeenMsRole, "subtreeLastSeenMs"},
+        {SubtreeLatestHistoryIdRole, "subtreeLatestHistoryId"},
     };
     return roles;
 }
@@ -98,6 +101,25 @@ QVariantMap TopicTreeModel::rowAt(int row) const
         return {};
     }
     return rowToMap(m_visibleRows.at(row));
+}
+
+QString TopicTreeModel::latestHistoryIdForTopic(const QString &topic) const
+{
+    int nodeIndex = 0;
+    const QStringList segments = topic.split('/', Qt::KeepEmptyParts);
+    for (const QString &segment : segments) {
+        const auto child = m_nodes.at(nodeIndex).children.constFind(segment);
+        if (child == m_nodes.at(nodeIndex).children.cend()) {
+            return {};
+        }
+        nodeIndex = child.value();
+    }
+
+    const Node &node = m_nodes.at(nodeIndex);
+    const qint64 historyId = node.isTopic
+        ? node.exactLatestHistoryId
+        : node.subtreeLatestHistoryId;
+    return historyId > 0 ? QString::number(historyId) : QString {};
 }
 
 void TopicTreeModel::toggleExpanded(int row)
@@ -190,6 +212,7 @@ void TopicTreeModel::observeTopics(
             LatestPayloadPreviewRole,
             LatestHistoryIdRole,
             SubtreeLastSeenMsRole,
+            SubtreeLatestHistoryIdRole,
         };
         for (int row = 0; row < m_visibleRows.size(); ++row) {
             if (result.updatedNodes.contains(m_visibleRows.at(row).nodeIndex)) {
@@ -479,5 +502,6 @@ QVariantMap TopicTreeModel::rowToMap(const VisibleRow &visibleRow) const
         {QStringLiteral("latestPayloadPreview"), node.exactPayloadPreview},
         {QStringLiteral("latestHistoryId"), QString::number(node.exactLatestHistoryId)},
         {QStringLiteral("subtreeLastSeenMs"), node.subtreeLastSeenMs},
+        {QStringLiteral("subtreeLatestHistoryId"), QString::number(node.subtreeLatestHistoryId)},
     };
 }

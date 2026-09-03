@@ -66,6 +66,7 @@ void TopicTreeModelTest::buildsHierarchyAndPreservesMqttLevels()
     const int roomRow = rowForTopic(model, QStringLiteral("sensors/room"));
     QVERIFY(roomRow >= 0);
     QCOMPARE(model.rowAt(roomRow).value(QStringLiteral("depth")).toInt(), 1);
+    QCOMPARE(model.latestHistoryIdForTopic(QStringLiteral("sensors/room")), QStringLiteral("3"));
     model.toggleExpanded(roomRow);
     QVERIFY(rowForTopic(model, QStringLiteral("sensors/room/temp")) >= 0);
     QVERIFY(rowForTopic(model, QStringLiteral("sensors/room/humidity")) >= 0);
@@ -128,6 +129,10 @@ void TopicTreeModelTest::keepsExactValuesSeparateFromSubtreeActivity()
     QCOMPARE(model.rowAt(sensorsRow).value(QStringLiteral("lastSeenMs")).toLongLong(), qint64(100));
     QCOMPARE(model.rowAt(sensorsRow).value(QStringLiteral("latestPayloadPreview")).toString(), QStringLiteral("parent"));
     QCOMPARE(model.rowAt(sensorsRow).value(QStringLiteral("subtreeLastSeenMs")).toLongLong(), qint64(300));
+    QCOMPARE(model.rowAt(sensorsRow).value(QStringLiteral("subtreeLatestHistoryId")).toString(), QStringLiteral("3"));
+    QCOMPARE(model.latestHistoryIdForTopic(QStringLiteral("sensors")), QStringLiteral("1"));
+    QCOMPARE(model.latestHistoryIdForTopic(QStringLiteral("sensors/temp")), QStringLiteral("2"));
+    QCOMPARE(model.latestHistoryIdForTopic(QStringLiteral("missing")), QString {});
 
     model.observeTopics(QStringLiteral("session-1"), {
         observation(QStringLiteral("sensors/temp"), 1, 50, QStringLiteral("stale")),
@@ -143,6 +148,7 @@ void TopicTreeModelTest::keepsExactValuesSeparateFromSubtreeActivity()
     QCOMPARE(model.rowAt(sensorsRow).value(QStringLiteral("lastSeenMs")).toLongLong(), qint64(100));
     QCOMPARE(model.rowAt(sensorsRow).value(QStringLiteral("latestPayloadPreview")).toString(), QStringLiteral("parent"));
     QCOMPARE(model.rowAt(sensorsRow).value(QStringLiteral("subtreeLastSeenMs")).toLongLong(), qint64(400));
+    QCOMPARE(model.rowAt(sensorsRow).value(QStringLiteral("subtreeLatestHistoryId")).toString(), QStringLiteral("4"));
 }
 
 void TopicTreeModelTest::isolatesSessions()

@@ -31,6 +31,7 @@ public:
         LatestPayloadPreviewRole,
         LatestHistoryIdRole,
         SubtreeLastSeenMsRole,
+        SubtreeLatestHistoryIdRole,
     };
     Q_ENUM(Role)
 
@@ -46,6 +47,7 @@ public:
     bool truncated() const;
 
     Q_INVOKABLE QVariantMap rowAt(int row) const;
+    Q_INVOKABLE QString latestHistoryIdForTopic(const QString &topic) const;
     Q_INVOKABLE void toggleExpanded(int row);
 
     void resetTopics(

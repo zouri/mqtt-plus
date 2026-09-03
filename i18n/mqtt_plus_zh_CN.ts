@@ -1058,28 +1058,28 @@
         <translation>%1 消息，%2，%3</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="997"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="998"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1000"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1001"/>
         <source>Use as publish draft</source>
         <translation>用作发布草稿</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1218"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1221"/>
         <source>Clear message history?</source>
         <translation>清空消息历史？</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1227"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1230"/>
         <source>This permanently removes all saved messages for the current connection.</source>
         <translation>这将永久删除当前连接保存的全部消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1243"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1246"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1250"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1253"/>
         <source>Clear</source>
         <translation>清空</translation>
     </message>
@@ -1104,25 +1104,25 @@
         <translation>%1 B</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="983"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="984"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="986"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="987"/>
         <source>Copy topic</source>
         <translation>复制主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="965"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="966"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="968"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="969"/>
         <source>Copy payload</source>
         <translation>复制 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1057"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1060"/>
         <source>Scroll to latest, %1 unread</source>
         <translation>滚动到最新，%1 条未读</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1058"/>
-        <location filename="../qml/features/workbench/EventStreamView.qml" line="1158"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1061"/>
+        <location filename="../qml/features/workbench/EventStreamView.qml" line="1161"/>
         <source>Scroll to latest</source>
         <translation>滚动到最新</translation>
     </message>
@@ -1287,159 +1287,164 @@
 <context>
     <name>MessageInspector</name>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="53"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="55"/>
         <source>Message inspector</source>
         <translation>消息检查器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="174"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="177"/>
         <source>Message Viewer</source>
         <translation>消息查看器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="191"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="195"/>
         <source>Close message inspector</source>
         <translation>关闭消息检查器</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="376"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="392"/>
         <source>Parsed result</source>
         <translation>解析结果</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="286"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="290"/>
         <source>Payload preview</source>
         <translation>Payload 预览</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="287"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="291"/>
         <source>Payload</source>
         <translation>Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="104"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="106"/>
         <source>Select a message to inspect</source>
         <translation>选择一条消息以查看详情</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="350"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="354"/>
         <source>The full payload was not stored. Hash: %1</source>
         <translation>完整 Payload 未存储。哈希：%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="351"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="355"/>
         <source>Unavailable</source>
         <translation>不可用</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="225"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="229"/>
         <source>Alias</source>
         <translation>别名</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="226"/>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="229"/>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="232"/>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="235"/>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="238"/>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="241"/>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="244"/>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="247"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="177"/>
+        <source>Latest message</source>
+        <translation>最新消息</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="230"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="233"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="236"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="239"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="242"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="245"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="248"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="251"/>
         <source>-</source>
         <translation>-</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="228"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="232"/>
         <source>Topic</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="231"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="235"/>
         <source>Direction</source>
         <translation>方向</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="232"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="236"/>
         <source>Sent</source>
         <translation>已发送</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="232"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="236"/>
         <source>Received</source>
         <translation>已接收</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="234"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="238"/>
         <source>Time</source>
         <translation>时间</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="237"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="241"/>
         <source>QoS</source>
         <translation>QoS</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="240"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="244"/>
         <source>Format</source>
         <translation>格式</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="243"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="247"/>
         <source>Size</source>
         <translation>大小</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="244"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="248"/>
         <source>%1 B</source>
         <translation>%1 B</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="246"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="250"/>
         <source>Retain</source>
         <translation>保留</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="247"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="251"/>
         <source>Yes</source>
         <translation>是</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="247"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="251"/>
         <source>No</source>
         <translation>否</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="258"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="262"/>
         <source>MQTT 5 properties</source>
         <translation>MQTT 5 属性</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="299"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="303"/>
         <source>Payload display format</source>
         <translation>Payload 显示格式</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="362"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="366"/>
         <source>Parser error: %1</source>
         <translation>解析错误：%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="434"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="460"/>
         <source>Copy parsed result</source>
         <translation>复制解析结果</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="440"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="466"/>
         <source>Copy Payload</source>
         <translation>复制 Payload</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="446"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="472"/>
         <source>Copy Topic</source>
         <translation>复制主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/MessageInspector.qml" line="452"/>
+        <location filename="../qml/features/workbench/MessageInspector.qml" line="478"/>
         <source>Use as draft</source>
         <translation>用作草稿</translation>
     </message>
@@ -2447,9 +2452,29 @@
 <context>
     <name>SessionMessagePanel</name>
     <message>
-        <location filename="../qml/features/workbench/SessionMessagePanel.qml" line="120"/>
+        <location filename="../qml/features/workbench/SessionMessagePanel.qml" line="144"/>
         <source>Messages</source>
         <translation>消息</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionMessagePanel.qml" line="171"/>
+        <source>No message for this topic</source>
+        <translation>此主题暂无消息</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionMessagePanel.qml" line="172"/>
+        <source>Select a topic</source>
+        <translation>选择一个主题</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionMessagePanel.qml" line="174"/>
+        <source>A message will appear here when the topic receives a value.</source>
+        <translation>主题收到消息后将显示在这里。</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/workbench/SessionMessagePanel.qml" line="175"/>
+        <source>Choose a topic in the tree to inspect its latest message.</source>
+        <translation>从主题树中选择一个主题，查看其最新消息。</translation>
     </message>
 </context>
 <context>
@@ -3372,65 +3397,70 @@
 <context>
     <name>TopicTreePanel</name>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="27"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="31"/>
         <source>Topics</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="71"/>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="327"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="93"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="369"/>
         <source>Topic actions</source>
         <translation>主题操作</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="75"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="97"/>
         <source>Subscribe to topic</source>
         <translation>订阅此主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="78"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="100"/>
         <source>Subscribe to subtree</source>
         <translation>订阅此分支</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="80"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="102"/>
         <source>Copy topic</source>
         <translation>复制主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="120"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="142"/>
         <source>Topic discovery is limited to 10,000 topics.</source>
         <translation>主题发现最多保留 10,000 个主题。</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="137"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="159"/>
         <source>No observed topics</source>
         <translation>尚未发现主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="138"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="160"/>
         <source>Subscribe to # or another wildcard to discover topics from incoming messages.</source>
         <translation>订阅 # 或其他通配符，从接收的消息中发现主题。</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="139"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="161"/>
         <source>Subscribe to #</source>
         <translation>订阅 #</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="179"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="202"/>
         <source>(empty level)</source>
         <translation>（空层级）</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="266"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="303"/>
         <source>Collapse topic</source>
         <translation>折叠主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/topics/TopicTreePanel.qml" line="266"/>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="303"/>
         <source>Expand topic</source>
         <translation>展开主题</translation>
+    </message>
+    <message>
+        <location filename="../qml/features/topics/TopicTreePanel.qml" line="341"/>
+        <source> = %1</source>
+        <translation> = %1</translation>
     </message>
 </context>
 <context>
@@ -3474,223 +3504,223 @@
 <context>
     <name>WorkbenchView</name>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="62"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="64"/>
         <source>%1:%2</source>
         <translation>%1:%2</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="138"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="140"/>
         <source>%1K</source>
         <translation>%1K</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="140"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="142"/>
         <source>%1M</source>
         <translation>%1M</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="146"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="148"/>
         <source>%1s</source>
         <translation>%1 秒</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="150"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="152"/>
         <source>%1m</source>
         <translation>%1 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="153"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="155"/>
         <source>%1h %2m</source>
         <translation>%1 小时 %2 分钟</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="160"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="162"/>
         <source>/s</source>
         <translation>/s</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="163"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="165"/>
         <source>%1 B/s</source>
         <translation>%1 B/s</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="167"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="169"/>
         <source>%1 KB/s</source>
         <translation>%1 KB/s</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="171"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="173"/>
         <source>%1 MB/s</source>
         <translation>%1 MB/s</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="174"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="176"/>
         <source>%1 GB/s</source>
         <translation>%1 GB/s</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="181"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="183"/>
         <source>%1 B</source>
         <translation>%1 B</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="184"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="186"/>
         <source>%1 KiB</source>
         <translation>%1 KiB</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="186"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="188"/>
         <source>%1 MiB</source>
         <translation>%1 MiB</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="191"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="193"/>
         <source>Dropping</source>
         <translation>正在丢弃</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="194"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="196"/>
         <source>Raw only</source>
         <translation>仅保存原始消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="197"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="199"/>
         <source>High load</source>
         <translation>高负载</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="199"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="201"/>
         <source>Storage error</source>
         <translation>存储错误</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="204"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="206"/>
         <source>The storage queue is full. Some messages are being dropped.</source>
         <translation>存储队列已满，部分消息正在被丢弃。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="207"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="209"/>
         <source>Only raw messages are being saved until the queues recover.</source>
         <translation>队列恢复前仅保存原始消息。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="209"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="211"/>
         <source>Message storage reported an error.</source>
         <translation>消息存储发生错误。</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="229"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="231"/>
         <source>Connected · %1</source>
         <translation>已连接 · %1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="234"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="236"/>
         <source>Connecting · %1 left</source>
         <translation>连接中 · 剩余 %1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="534"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="537"/>
         <source>Topics</source>
         <translation>主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="571"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="574"/>
         <source>Subscriptions</source>
         <translation>订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="620"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="623"/>
         <source>Filter subscriptions (regex)</source>
         <translation>筛选订阅（正则表达式）</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="621"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="624"/>
         <source>Subscription filter</source>
         <translation>订阅筛选</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="668"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="671"/>
         <source>Resume all subscriptions</source>
         <translation>恢复全部订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="668"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="671"/>
         <source>Pause all subscriptions</source>
         <translation>暂停全部订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="686"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="689"/>
         <source>Add topic</source>
         <translation>添加主题</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="687"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="690"/>
         <source>Add subscription</source>
         <translation>添加订阅</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="775"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="791"/>
         <source>No session</source>
         <translation>无会话</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="829"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="845"/>
         <source>↓</source>
         <translation>↓</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="862"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="878"/>
         <source>↑</source>
         <translation>↑</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="893"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="909"/>
         <source>Message processing status: %1</source>
         <translation>消息处理状态：%1</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="935"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="951"/>
         <source>%1 messages</source>
         <translation>%1 条消息</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="968"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="984"/>
         <source>Message processing</source>
         <translation>消息处理</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1006"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1022"/>
         <source>Writer queue</source>
         <translation>写入队列</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1012"/>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1031"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1028"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1047"/>
         <source>%1 messages · %2</source>
         <translation>%1 条消息 · %2</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1025"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1041"/>
         <source>Parser queue</source>
         <translation>解析队列</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1044"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1060"/>
         <source>Dropped</source>
         <translation>已丢弃</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1050"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1066"/>
         <source>%1 raw · %2 parse · %3 results</source>
         <translation>%1 条原始消息 · %2 个解析任务 · %3 个解析结果</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1064"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1080"/>
         <source>Work shed</source>
         <translation>已削减工作</translation>
     </message>
     <message>
-        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1070"/>
+        <location filename="../qml/features/workbench/WorkbenchView.qml" line="1086"/>
         <source>%1 capture · %2 parse</source>
         <translation>%1 条采集过滤 · %2 次跳过解析</translation>
     </message>

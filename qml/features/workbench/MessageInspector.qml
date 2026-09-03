@@ -15,6 +15,7 @@ Item {
     property int payloadViewFormat: 0
     property string displayedPayload: ""
     property bool opened: false
+    property bool embedded: false
     property real revealProgress: 0.0
     readonly property bool motionEnabled: control.ui.animationsEnabled
     readonly property int payloadTextMaximumHeight: 220
@@ -41,18 +42,20 @@ Item {
         }
     }
 
-    width: Math.min(400, parent ? parent.width * 0.88 : 400)
+    width: control.embedded
+           ? (parent ? parent.width : 400)
+           : Math.min(400, parent ? parent.width * 0.88 : 400)
     transform: Translate {
-        x: (1.0 - control.revealProgress) * control.width
+        x: control.embedded ? 0 : (1.0 - control.revealProgress) * control.width
     }
-    visible: control.opened || control.revealProgress > 0.0
-    enabled: control.opened
+    visible: control.embedded || control.opened || control.revealProgress > 0.0
+    enabled: control.embedded || control.opened
     Accessible.role: Accessible.Pane
-    Accessible.ignored: !control.opened
+    Accessible.ignored: !control.embedded && !control.opened
     Accessible.name: qsTr("Message inspector")
 
     onHistoryIdChanged: {
-        control.reloadDetails();
+        control.reloadDetails(true);
     }
 
     onOpenedChanged: {
@@ -72,15 +75,18 @@ Item {
 
         function onMessageDetailsChanged(changedHistoryId) {
             if (control.opened && changedHistoryId === control.historyId) {
-                control.reloadDetails();
+                control.reloadDetails(false);
             }
         }
     }
 
-    function reloadDetails() {
+    function reloadDetails(resetPayloadFormat) {
         control.details = control.historyId.length > 0
                           ? control.viewModel.messageDetails(control.historyId)
                           : ({});
+        if (resetPayloadFormat) {
+            control.payloadViewFormat = Number(control.details.testFormat || 0);
+        }
         control.refreshDisplayedPayload();
     }
 
@@ -111,9 +117,19 @@ Item {
             control.payloadViewFormat);
     }
 
+    function useAsDraft() {
+        control.viewModel.useMessageAsDraft(
+            control.historyId,
+            String(control.details.topic || ""),
+            String(control.details.fullPayload || ""),
+            String(control.details.testPayload || ""),
+            Number(control.details.testFormat || 0));
+        control.draftUsed();
+    }
+
     Shortcut {
         sequences: [StandardKey.Cancel]
-        enabled: control.opened
+        enabled: control.opened && !control.embedded
         onActivated: control.closeRequested()
     }
 
@@ -132,6 +148,7 @@ Item {
         anchors.right: inspectorSurface.left
         anchors.bottom: parent.bottom
         width: 10
+        visible: !control.embedded
         color: "transparent"
         gradient: Gradient {
             orientation: Gradient.Horizontal
@@ -154,7 +171,10 @@ Item {
 
         anchors.fill: parent
         color: control.ui.themePalette.panelBg
-        border.color: control.ui.themePalette.panelBorder
+        border.color: control.embedded
+                      ? "transparent"
+                      : control.ui.themePalette.panelBorder
+        border.width: control.embedded ? 0 : 1
     }
 
     ColumnLayout {
@@ -170,16 +190,26 @@ Item {
 
             Label {
                 Layout.fillWidth: true
-                text: qsTr("Message Viewer")
+                text: control.embedded ? qsTr("Latest message") : qsTr("Message Viewer")
                 color: control.ui.textStrong
                 font.pixelSize: 13
                 font.bold: true
+            }
+
+            InspectorActionButton {
+                ui: control.ui
+                Layout.preferredHeight: 28
+                text: qsTr("Use as draft")
+                icon.source: control.ui.materialIcon("edit")
+                icon.color: contentColor
+                onClicked: control.useAsDraft()
             }
 
             AppIconButton {
                 id: closeInspectorButton
 
                 ui: control.ui
+                visible: !control.embedded
                 iconSource: control.ui.materialIcon("xmark")
                 iconSize: 15
                 implicitWidth: 28
@@ -225,7 +255,49 @@ Item {
                     Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.alias || qsTr("-")); color: String(control.details.alias || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; elide: Label.ElideRight; font.pixelSize: 11 }
                     Rectangle { id: metadataSeparator1; Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Topic"); color: control.ui.textMuted; font.pixelSize: 11 }
-                    Label { Layout.fillWidth: true; Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: String(control.details.topic || qsTr("-")); color: String(control.details.topic || "").length > 0 ? control.ui.textStrong : control.ui.textMuted; elide: Label.ElideRight; font.pixelSize: 11 }
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 28
+
+                        HoverHandler {
+                            id: topicValueHover
+                        }
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.right: topicCopyButton.left
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: String(control.details.topic || qsTr("-"))
+                            color: String(control.details.topic || "").length > 0
+                                   ? control.ui.textStrong
+                                   : control.ui.textMuted
+                            elide: Label.ElideRight
+                            font.pixelSize: 11
+                        }
+
+                        AppIconButton {
+                            id: topicCopyButton
+
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            ui: control.ui
+                            implicitWidth: 24
+                            implicitHeight: 24
+                            opacity: topicValueHover.hovered || topicCopyButton.hovered || topicCopyButton.activeFocus ? 1 : 0
+                            iconSource: control.ui.materialIcon("content-copy")
+                            iconSize: 13
+                            cornerRadius: 5
+                            restBg: control.ui.themePalette.itemBg
+                            hoverBg: control.ui.themePalette.rowHover
+                            outlineColor: control.ui.themePalette.fieldBorder
+                            symbolColor: control.ui.textMuted
+                            accessibleName: qsTr("Copy Topic")
+                            toolTipText: accessibleName
+                            onClicked: control.viewModel.copyMessageTopic(
+                                           String(control.details.topic || ""))
+                        }
+                    }
                     Rectangle { Layout.columnSpan: 2; Layout.fillWidth: true; Layout.preferredHeight: 1; color: control.ui.themePalette.separator }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: qsTr("Direction"); color: control.ui.textMuted; font.pixelSize: 11 }
                     Label { Layout.preferredHeight: 28; verticalAlignment: Text.AlignVCenter; text: control.details.direction === "outgoing" ? qsTr("Sent") : (control.details.direction === "incoming" ? qsTr("Received") : qsTr("-")); color: control.details.direction === "outgoing" || control.details.direction === "incoming" ? control.ui.textStrong : control.ui.textMuted; font.pixelSize: 11 }
@@ -301,6 +373,8 @@ Item {
                     }
 
                     Rectangle {
+                        id: payloadTextFrame
+
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.min(
                                                     control.payloadTextMaximumHeight,
@@ -309,6 +383,10 @@ Item {
                         color: control.ui.themePalette.innerPanelBg
                         border.color: control.ui.themePalette.fieldBorder
                         border.width: 1
+
+                        HoverHandler {
+                            id: payloadTextHover
+                        }
 
                         ScrollView {
                             id: payloadScroll
@@ -325,7 +403,7 @@ Item {
 
                                 width: payloadScroll.availableWidth
                                 leftPadding: 10
-                                rightPadding: 10
+                                rightPadding: 40
                                 topPadding: 10
                                 bottomPadding: 10
                                 text: control.displayedPayload
@@ -340,6 +418,30 @@ Item {
                                     editor: payloadBodyText
                                 }
                             }
+                        }
+
+                        AppIconButton {
+                            id: payloadCopyButton
+
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.margins: 6
+                            z: 2
+                            ui: control.ui
+                            implicitWidth: 26
+                            implicitHeight: 26
+                            opacity: payloadTextHover.hovered || payloadCopyButton.hovered || payloadCopyButton.activeFocus ? 1 : 0
+                            iconSource: control.ui.materialIcon("content-copy")
+                            iconSize: 14
+                            cornerRadius: 5
+                            restBg: control.ui.themePalette.itemBg
+                            hoverBg: control.ui.themePalette.rowHover
+                            outlineColor: control.ui.themePalette.fieldBorder
+                            symbolColor: control.ui.textMuted
+                            accessibleName: qsTr("Copy Payload")
+                            toolTipText: accessibleName
+                            onClicked: control.viewModel.copyMessagePayload(
+                                           "0", control.displayedPayload, "", 0)
                         }
                     }
 
@@ -390,6 +492,8 @@ Item {
                     }
 
                     Rectangle {
+                        id: parsedResultFrame
+
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.min(
                                                     parsedResultSection.maximumTextHeight,
@@ -398,6 +502,10 @@ Item {
                         color: control.ui.themePalette.innerPanelBg
                         border.color: control.ui.themePalette.fieldBorder
                         border.width: 1
+
+                        HoverHandler {
+                            id: parsedResultHover
+                        }
 
                         ScrollView {
                             id: parsedResultScroll
@@ -414,7 +522,7 @@ Item {
 
                                 width: parsedResultScroll.availableWidth
                                 leftPadding: 10
-                                rightPadding: 10
+                                rightPadding: 40
                                 topPadding: 10
                                 bottomPadding: 10
                                 text: String(control.details.parsedPayload || "")
@@ -430,57 +538,37 @@ Item {
                                 }
                             }
                         }
+
+                        AppIconButton {
+                            id: parsedResultCopyButton
+
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.margins: 6
+                            z: 2
+                            ui: control.ui
+                            implicitWidth: 26
+                            implicitHeight: 26
+                            opacity: parsedResultHover.hovered || parsedResultCopyButton.hovered || parsedResultCopyButton.activeFocus ? 1 : 0
+                            iconSource: control.ui.materialIcon("content-copy")
+                            iconSize: 14
+                            cornerRadius: 5
+                            restBg: control.ui.themePalette.itemBg
+                            hoverBg: control.ui.themePalette.rowHover
+                            outlineColor: control.ui.themePalette.fieldBorder
+                            symbolColor: control.ui.textMuted
+                            accessibleName: qsTr("Copy parsed result")
+                            toolTipText: accessibleName
+                            onClicked: control.viewModel.copyMessagePayload(
+                                           "0",
+                                           String(control.details.parsedPayload),
+                                           "",
+                                           Number(control.details.testFormat || 0))
+                        }
                     }
                 }
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: control.ui.themePalette.separator
-        }
-
-        Flow {
-            Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 14
-            Layout.topMargin: 10
-            Layout.bottomMargin: 10
-            spacing: 7
-
-            InspectorActionButton {
-                ui: control.ui
-                visible: String(control.details.parsedPayload || "").length > 0
-                text: qsTr("Copy parsed result")
-                onClicked: control.viewModel.copyMessagePayload("0", String(control.details.parsedPayload), "", Number(control.details.testFormat || 0))
-            }
-
-            InspectorActionButton {
-                ui: control.ui
-                text: qsTr("Copy Payload")
-                onClicked: control.viewModel.copyMessagePayload("0", control.displayedPayload, "", 0)
-            }
-
-            InspectorActionButton {
-                ui: control.ui
-                text: qsTr("Copy Topic")
-                onClicked: control.viewModel.copyMessageTopic(String(control.details.topic || ""))
-            }
-
-            InspectorActionButton {
-                ui: control.ui
-                text: qsTr("Use as draft")
-                onClicked: {
-                    control.viewModel.useMessageAsDraft(
-                        control.historyId,
-                        String(control.details.topic || ""),
-                        String(control.details.fullPayload || ""),
-                        String(control.details.testPayload || ""),
-                        Number(control.details.testFormat || 0));
-                    control.draftUsed();
-                }
-            }
-        }
     }
 }

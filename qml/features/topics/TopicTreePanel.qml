@@ -16,8 +16,12 @@ AppPanel {
     property string contextTopic: ""
     property bool contextIsTopic: false
     property bool contextHasChildren: false
+    property string selectedTopic: ""
+    property string selectedHistoryId: ""
 
     signal subscriptionCreateRequested(string topic)
+    signal topicSelected(string topic, string historyId)
+    signal topicSelectionCleared
 
     showTopBorder: false
     showRightBorder: false
@@ -31,6 +35,24 @@ AppPanel {
 
     function subtreeFilter(topic) {
         return topic.length > 0 ? `${topic}/#` : "/#";
+    }
+
+    function normalizedHistoryId(historyId) {
+        const value = String(historyId || "");
+        return value === "0" ? "" : value;
+    }
+
+    function selectTopic(topic, historyId) {
+        control.selectedTopic = topic;
+        control.selectedHistoryId = control.normalizedHistoryId(historyId);
+        control.topicSelected(control.selectedTopic, control.selectedHistoryId);
+    }
+
+    function clearSelection() {
+        control.selectedTopic = "";
+        control.selectedHistoryId = "";
+        topicList.currentIndex = -1;
+        control.topicSelectionCleared();
     }
 
     function prepareContextMenu(topic, isTopic, hasChildren) {
@@ -53,7 +75,17 @@ AppPanel {
         interval: 1000
         repeat: true
         running: control.active && control.visible
-        onTriggered: control.nowMs = Date.now()
+        onTriggered: {
+            control.nowMs = Date.now();
+            if (control.selectedTopic.length === 0) {
+                return;
+            }
+            const latestHistoryId = control.topicModel.latestHistoryIdForTopic(
+                                        control.selectedTopic);
+            if (latestHistoryId !== control.selectedHistoryId) {
+                control.selectTopic(control.selectedTopic, latestHistoryId);
+            }
+        }
     }
 
     ListModel {
@@ -173,32 +205,51 @@ AppPanel {
                 required property double subtreeLastSeenMs
                 required property string latestPayloadPreview
                 required property string latestHistoryId
+                required property string subtreeLatestHistoryId
 
                 readonly property string displaySegment: topicDelegate.segment.length > 0
                                                          ? topicDelegate.segment
                                                          : qsTr("(empty level)")
+                readonly property string displayPayloadPreview: topicDelegate.latestPayloadPreview
+                                                                   .replace(/[\r\n\t]+/g, " ")
+                                                                   .replace(/ {2,}/g, " ")
+                                                                   .trim()
+                readonly property string displayedHistoryId: control.normalizedHistoryId(
+                                                                  topicDelegate.isTopic
+                                                                  ? topicDelegate.latestHistoryId
+                                                                  : topicDelegate.subtreeLatestHistoryId)
+                readonly property bool selected: control.selectedTopic === topicDelegate.fullTopic
                 readonly property bool recentlyActive: topicDelegate.subtreeLastSeenMs > 0
                                                        && control.nowMs >= topicDelegate.subtreeLastSeenMs
                                                        && control.nowMs - topicDelegate.subtreeLastSeenMs < 2000
                 width: ListView.view.width
-                implicitHeight: topicDelegate.latestPayloadPreview.length > 0 ? 46 : 34
-                radius: 7
-                color: topicRowHover.hovered
-                       ? control.ui.themePalette.rowHover
-                       : "transparent"
-                border.color: "transparent"
-                border.width: 0
+                implicitHeight: 32
+                radius: control.ui.radiusSm
+                color: topicDelegate.selected
+                       ? control.ui.themePalette.selectedBg
+                       : (topicRowHover.hovered
+                          ? control.ui.themePalette.rowHover
+                          : "transparent")
+                border.color: topicDelegate.selected
+                              ? control.ui.themePalette.selectedBorder
+                              : "transparent"
+                border.width: topicDelegate.selected ? 1 : 0
                 activeFocusOnTab: true
                 Accessible.role: Accessible.TreeItem
                 Accessible.name: topicDelegate.fullTopic
-                Accessible.description: topicDelegate.latestPayloadPreview
+                Accessible.description: topicDelegate.displayPayloadPreview
+
+                onDisplayedHistoryIdChanged: {
+                    if (topicDelegate.selected) {
+                        control.selectTopic(topicDelegate.fullTopic,
+                                            topicDelegate.displayedHistoryId);
+                    }
+                }
 
                 function primaryAction() {
-                    if (topicDelegate.hasChildren) {
-                        control.topicModel.toggleExpanded(topicDelegate.index);
-                        return true;
-                    }
-                    return false;
+                    control.selectTopic(topicDelegate.fullTopic,
+                                        topicDelegate.displayedHistoryId);
+                    return true;
                 }
 
                 Keys.onPressed: event => {
@@ -284,27 +335,37 @@ AppPanel {
                         Accessible.ignored: true
                     }
 
-                    ColumnLayout {
+                    RowLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
-                        spacing: 1
+                        spacing: 0
 
                         Label {
-                            Layout.fillWidth: true
+                            Layout.maximumWidth: Math.max(72, parent.width * 0.55)
                             text: topicDelegate.displaySegment
                             color: control.ui.textStrong
                             font.pixelSize: 12
                             font.bold: topicDelegate.depth === 0
+                            maximumLineCount: 1
+                            wrapMode: Text.NoWrap
                             elide: Label.ElideRight
                         }
 
                         Label {
-                            visible: topicDelegate.latestPayloadPreview.length > 0
+                            visible: topicDelegate.displayPayloadPreview.length > 0
                             Layout.fillWidth: true
-                            text: topicDelegate.latestPayloadPreview
+                            Layout.minimumWidth: 0
+                            text: qsTr(" = %1").arg(topicDelegate.displayPayloadPreview)
                             color: control.ui.themePalette.textSubtle
-                            font.pixelSize: 10
+                            font.pixelSize: 11
+                            maximumLineCount: 1
+                            wrapMode: Text.NoWrap
                             elide: Label.ElideRight
+                        }
+
+                        Item {
+                            visible: topicDelegate.displayPayloadPreview.length === 0
+                            Layout.fillWidth: true
                         }
                     }
 
