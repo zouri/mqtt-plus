@@ -19,6 +19,7 @@ private slots:
     void processorCallersUseEngineSeamOnly();
     void messagePipelineUsesResolvedProcessorSnapshots();
     void messageQmlUsesTypedObjectProperties();
+    void messageAutoFollowAlwaysReanchorsAfterWindowRotation();
     void alwaysExpandedMessagesDoNotTruncatePayloadText();
     void qmlUsesSingleApplicationRoot();
     void applicationViewModelExportsApprovedQmlInterfaces();
@@ -353,6 +354,27 @@ void ArchitectureBoundariesTest::messageQmlUsesTypedObjectProperties()
         "EventStreamView should not narrow qint64 history ids to a 32-bit QML int");
     QVERIFY2(source.contains(QStringLiteral("required property string historyId")),
         "EventStreamView should carry history ids across the QML boundary without 32-bit narrowing");
+}
+
+void ArchitectureBoundariesTest::messageAutoFollowAlwaysReanchorsAfterWindowRotation()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+
+    const int scrollFunctionStart = source.indexOf(QStringLiteral("function scrollToBottom()"));
+    const int nextFunctionStart = source.indexOf(
+        QStringLiteral("function refreshFollowState("),
+        scrollFunctionStart);
+    QVERIFY(scrollFunctionStart >= 0);
+    QVERIFY(nextFunctionStart > scrollFunctionStart);
+
+    const QString scrollFunction = source.mid(
+        scrollFunctionStart,
+        nextFunctionStart - scrollFunctionStart);
+    QVERIFY2(scrollFunction.contains(QStringLiteral("positionViewAtEnd()")),
+        "Auto-follow must explicitly reanchor the view after appending rows");
+    QVERIFY2(!scrollFunction.contains(QStringLiteral("atYEnd")),
+        "A saturated fixed-size window can report atYEnd while rotating rows, so it must not skip reanchoring");
 }
 
 void ArchitectureBoundariesTest::alwaysExpandedMessagesDoNotTruncatePayloadText()

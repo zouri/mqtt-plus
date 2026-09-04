@@ -538,7 +538,8 @@ Item {
                     root.followMode = "smart"
                     if (count <= 0) {
                         contentY = originY
-                    } else if (!atYEnd) {
+                    } else {
+                        // The bounded model rotates rows without changing count.
                         positionViewAtEnd()
                     }
                     Qt.callLater(function() {
