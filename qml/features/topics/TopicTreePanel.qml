@@ -12,7 +12,6 @@ AppPanel {
     required property bool active
 
     readonly property var topicModel: control.viewModel ? control.viewModel.topicTree : null
-    property double nowMs: Date.now()
     property string contextTopic: ""
     property bool contextIsTopic: false
     property bool contextHasChildren: false
@@ -76,7 +75,6 @@ AppPanel {
         repeat: true
         running: control.active && control.visible
         onTriggered: {
-            control.nowMs = Date.now();
             if (control.selectedTopic.length === 0) {
                 return;
             }
@@ -219,9 +217,7 @@ AppPanel {
                                                                   ? topicDelegate.latestHistoryId
                                                                   : topicDelegate.subtreeLatestHistoryId)
                 readonly property bool selected: control.selectedTopic === topicDelegate.fullTopic
-                readonly property bool recentlyActive: topicDelegate.subtreeLastSeenMs > 0
-                                                       && control.nowMs >= topicDelegate.subtreeLastSeenMs
-                                                       && control.nowMs - topicDelegate.subtreeLastSeenMs < 2000
+                property bool activityLedOn: false
                 width: ListView.view.width
                 implicitHeight: 32
                 radius: control.ui.radiusSm
@@ -244,6 +240,34 @@ AppPanel {
                         control.selectTopic(topicDelegate.fullTopic,
                                             topicDelegate.displayedHistoryId);
                     }
+                }
+
+                onSubtreeLastSeenMsChanged: {
+                    const activityAgeMs = Date.now() - topicDelegate.subtreeLastSeenMs;
+                    if (topicDelegate.subtreeLastSeenMs <= 0
+                            || activityAgeMs < -250
+                            || activityAgeMs > 500) {
+                        return;
+                    }
+                    topicDelegate.activityLedOn = true;
+                    activityLedTimer.restart();
+                }
+
+                ListView.onPooled: {
+                    activityLedTimer.stop();
+                    topicDelegate.activityLedOn = false;
+                }
+
+                ListView.onReused: {
+                    activityLedTimer.stop();
+                    topicDelegate.activityLedOn = false;
+                }
+
+                Timer {
+                    id: activityLedTimer
+
+                    interval: 140
+                    onTriggered: topicDelegate.activityLedOn = false
                 }
 
                 function primaryAction() {
@@ -329,7 +353,7 @@ AppPanel {
                         Layout.preferredWidth: 6
                         Layout.preferredHeight: 6
                         radius: 3
-                        color: topicDelegate.recentlyActive
+                        color: topicDelegate.activityLedOn
                                ? control.ui.stateColor("connected")
                                : control.ui.withAlpha(control.ui.textMuted, 0.35)
                         Accessible.ignored: true

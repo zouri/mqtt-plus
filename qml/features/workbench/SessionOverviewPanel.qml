@@ -16,7 +16,7 @@ AppPanel {
     signal connectionConnectRequested
 
     readonly property string statusState: control.status.state || "idle"
-    readonly property bool canDisconnect: control.statusState === "connected" || control.statusState === "connecting" || control.statusState === "disconnecting"
+    readonly property bool canDisconnect: control.statusState === "connected" || control.statusState === "connecting"
     readonly property bool hasError: Boolean(control.status.hasError)
     readonly property string effectiveState: control.hasError ? "error" : control.statusState
     readonly property color statusDotColor: control.ui.stateColor(control.effectiveState)
@@ -25,8 +25,18 @@ AppPanel {
                                                     : control.ui.statusLabel(control.statusState)
     readonly property string endpointText: `${control.session.host || "-"}:${control.session.port || "-"}`
     readonly property string clientIdText: qsTr("Client ID %1").arg(control.session.clientId || "-")
-    readonly property string connectionActionText: control.statusState === "connected" ? qsTr("Disconnect") : (control.statusState === "connecting" ? qsTr("Connecting...") : (control.hasError ? qsTr("Retry") : qsTr("Connect")))
-    readonly property url connectionActionIcon: control.statusState === "connecting" ? control.ui.materialIcon("xmark") : (control.canDisconnect ? control.ui.materialIcon("plug-off") : control.ui.materialIcon("plug"))
+    readonly property string connectionActionText: control.statusState === "connected"
+                                                   ? qsTr("Disconnect")
+                                                   : (control.statusState === "connecting"
+                                                      ? qsTr("Cancel")
+                                                      : (control.statusState === "disconnecting"
+                                                         ? qsTr("Disconnecting...")
+                                                         : (control.hasError ? qsTr("Retry") : qsTr("Connect"))))
+    readonly property url connectionActionIcon: control.statusState === "connecting"
+                                                ? control.ui.materialIcon("xmark")
+                                                : (control.statusState === "disconnecting" || control.statusState === "connected"
+                                                   ? control.ui.materialIcon("plug-off")
+                                                   : control.ui.materialIcon("plug"))
 
     showTopBorder: false
     showLeftBorder: false
@@ -98,16 +108,24 @@ AppPanel {
                 onClicked: control.sessionEditRequested(control.viewModel.currentSessionIndex)
             }
 
-            AppIconButton {
+            AppButton {
+                id: connectionActionButton
+
                 ui: control.ui
-                iconSource: control.connectionActionIcon
-                iconSize: 16
-                implicitWidth: 30
-                implicitHeight: 30
-                cornerRadius: 15
+                Layout.preferredWidth: connectionActionButton.implicitWidth
+                Layout.preferredHeight: 30
+                minimumWidth: 92
+                leftPadding: 10
+                rightPadding: 10
+                spacing: 6
+                text: control.connectionActionText
+                icon.source: control.connectionActionIcon
+                icon.width: 16
+                icon.height: 16
+                enabled: control.statusState !== "disconnecting"
                 primary: !control.canDisconnect
                 danger: control.canDisconnect
-                accessibleName: control.connectionActionText
+                outlined: control.statusState === "connecting"
                 toolTipText: control.connectionActionText
 
                 onClicked: {
