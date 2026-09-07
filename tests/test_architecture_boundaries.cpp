@@ -471,10 +471,15 @@ void ArchitectureBoundariesTest::qmlElementTypesRemainOnApplicationTarget()
     QVERIFY2(appOnlySources.contains(QStringLiteral("src/presentation/codesyntaxhighlighter.cpp"))
             && appOnlySources.contains(QStringLiteral("src/presentation/codesyntaxhighlighter.h")),
         "QML_ELEMENT types must remain on the target passed to qt_add_qml_module");
-    QVERIFY2(cmakeSource.contains(QStringLiteral(
-                 "qt_add_executable(mqtt_plus_app\n"
-                 "    ${MQTT_PLUS_APP_ONLY_SOURCES}")),
+    QVERIFY(cmakeSource.contains(QStringLiteral("add_subdirectory(qml)")));
+    QString appCmakeSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/CMakeLists.txt"), appCmakeSource));
+    QVERIFY(appCmakeSource.contains(QStringLiteral("set(app_sources ${MQTT_PLUS_APP_ONLY_SOURCES})")));
+    QVERIFY2(appCmakeSource.contains(QStringLiteral(
+                 "qt_add_executable(mqtt_plus_app MANUAL_FINALIZATION ${app_sources})")),
         "Application-only QML types must be compiled into the executable target");
+    QVERIFY(appCmakeSource.contains(QStringLiteral("qt_add_qml_module(mqtt_plus_app")));
+    QVERIFY(!appCmakeSource.contains(QStringLiteral("NO_IMPORT_SCAN")));
 }
 
 void ArchitectureBoundariesTest::messageProfilerUsesIsolatedApplicationData()
@@ -512,11 +517,12 @@ void ArchitectureBoundariesTest::messageProfilerUsesIsolatedApplicationData()
                  "list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES\n"
                  "    ${MQTT_PLUS_APP_ONLY_SOURCES}")),
         "Application-only sources must be removed before building the shared core library");
-    QVERIFY2(cmakeSource.contains(QStringLiteral(
-                 "qt_add_executable(mqtt_plus_app\n"
-                 "    ${MQTT_PLUS_APP_ONLY_SOURCES}")),
+    QString appCmakeSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/CMakeLists.txt"), appCmakeSource));
+    QVERIFY2(appCmakeSource.contains(QStringLiteral(
+                 "qt_add_executable(mqtt_plus_app MANUAL_FINALIZATION ${app_sources})")),
         "Application-only sources must be compiled only into the executable target");
-    QVERIFY2(cmakeSource.contains(QStringLiteral("$<$<CONFIG:Debug>:QT_QML_DEBUG>")),
+    QVERIFY2(appCmakeSource.contains(QStringLiteral("$<$<CONFIG:Debug>:QT_QML_DEBUG>")),
         "The profiling driver must be enabled by the repository debug preset");
 }
 

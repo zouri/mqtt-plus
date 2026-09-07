@@ -41,7 +41,6 @@ public:
 
     Q_INVOKABLE void setFilterText(const QString &text);
     Q_INVOKABLE void ensureEditorSelection();
-    Q_INVOKABLE bool selectFilteredDraftAt(int index);
     Q_INVOKABLE bool selectDraftById(const QString &id);
     Q_INVOKABLE void newDraft();
     Q_INVOKABLE void discardEditorChanges();
@@ -53,7 +52,6 @@ public:
 signals:
     void libraryStateChanged();
     void editorSaveSucceeded();
-    void editorDeleteSucceeded();
 
 private:
     static QVariantMap draftMap(const PublishDraft &draft);

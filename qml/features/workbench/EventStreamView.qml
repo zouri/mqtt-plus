@@ -33,7 +33,6 @@ Item {
     readonly property bool connected: root.status.state === "connected"
     readonly property bool connecting: root.status.state === "connecting"
     readonly property color surfaceBg: root.ui.themePalette.panelBg
-    readonly property bool compactHeader: root.width <= 520
     readonly property int subscriptionCount: Number(root.session.subscriptionCount || 0)
     // qmllint disable missing-property
     readonly property bool streamEmpty: root.streamModel.count === 0

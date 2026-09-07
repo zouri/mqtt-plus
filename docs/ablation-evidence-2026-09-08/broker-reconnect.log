@@ -1,0 +1,47 @@
+1788847080: Received SUBSCRIBE from mqttplus-ablation-qa
+1788847080: 	ablation/20260908/# (QoS 0)
+1788847080: mqttplus-ablation-qa 0 ablation/20260908/#
+1788847080: Sending SUBACK to mqttplus-ablation-qa
+1788847086: Received PINGREQ from mqttplus-ablation-qa
+1788847086: Sending PINGRESP to mqttplus-ablation-qa
+1788847110: New connection from 127.0.0.1:56733 on port 18884.
+1788847110: New client connected from 127.0.0.1:56733 as auto-22357662-E4DE-0EDC-EB83-8A42CBCFC38C (p4, c1, k60).
+1788847110: No will message specified.
+1788847110: Sending CONNACK to auto-22357662-E4DE-0EDC-EB83-8A42CBCFC38C (0, 0)
+1788847110: Received PUBLISH from auto-22357662-E4DE-0EDC-EB83-8A42CBCFC38C (d0, q1, r0, m1, 'ablation/20260908/resumed', ... (21 bytes))
+1788847110: Sending PUBLISH to mqttplus-ablation-qa (d0, q0, r0, m0, 'ablation/20260908/resumed', ... (21 bytes))
+1788847110: Sending PUBACK to auto-22357662-E4DE-0EDC-EB83-8A42CBCFC38C (m1, rc0)
+1788847110: Client auto-22357662-E4DE-0EDC-EB83-8A42CBCFC38C [127.0.0.1:56733] disconnected: connection closed by client.
+1788847110: Client auto-22357662-E4DE-0EDC-EB83-8A42CBCFC38C [127.0.0.1:56733] disconnected: connection closed by client.
+1788847116: Received PINGREQ from mqttplus-ablation-qa
+1788847116: Sending PINGRESP to mqttplus-ablation-qa
+1788847146: Received DISCONNECT from mqttplus-ablation-qa
+1788847146: Client mqttplus-ablation-qa [127.0.0.1:53724] disconnected.
+1788849127: New connection from 127.0.0.1:61641 on port 18884.
+1788849127: New client connected from 127.0.0.1:61641 as mqttplus-ablation-qa (p5, c1, k30).
+1788849127: No will message specified.
+1788849127: Sending CONNACK to mqttplus-ablation-qa (0, 0)
+1788849127: Received SUBSCRIBE from mqttplus-ablation-qa
+1788849127: 	ablation/20260908/# (QoS 0)
+1788849127: mqttplus-ablation-qa 0 ablation/20260908/#
+1788849127: Sending SUBACK to mqttplus-ablation-qa
+1788849156: Received PINGREQ from mqttplus-ablation-qa
+1788849156: Sending PINGRESP to mqttplus-ablation-qa
+1788849165: New connection from 127.0.0.1:61820 on port 18884.
+1788849165: New client connected from 127.0.0.1:61820 as auto-37D81D12-3B8F-155D-01EF-3E04A7A9E2E7 (p5, c1, k60).
+1788849165: No will message specified.
+1788849165: Sending CONNACK to auto-37D81D12-3B8F-155D-01EF-3E04A7A9E2E7 (0, 0)
+1788849165: Received PUBLISH from auto-37D81D12-3B8F-155D-01EF-3E04A7A9E2E7 (d0, q1, r0, m1, 'ablation/20260908/release', ... (24 bytes))
+1788849165: Sending PUBLISH to mqttplus-ablation-qa (d0, q0, r0, m0, 'ablation/20260908/release', ... (24 bytes))
+1788849165: Sending PUBACK to auto-37D81D12-3B8F-155D-01EF-3E04A7A9E2E7 (m1, rc0)
+1788849165: Client auto-37D81D12-3B8F-155D-01EF-3E04A7A9E2E7 [127.0.0.1:61820] disconnected: connection closed by client.
+1788849165: Client auto-37D81D12-3B8F-155D-01EF-3E04A7A9E2E7 [127.0.0.1:61820] disconnected: connection closed by client.
+1788849186: Received PINGREQ from mqttplus-ablation-qa
+1788849186: Sending PINGRESP to mqttplus-ablation-qa
+1788849216: Received PINGREQ from mqttplus-ablation-qa
+1788849216: Sending PINGRESP to mqttplus-ablation-qa
+1788849246: Received PINGREQ from mqttplus-ablation-qa
+1788849246: Sending PINGRESP to mqttplus-ablation-qa
+1788849255: Received DISCONNECT from mqttplus-ablation-qa
+1788849255: Client mqttplus-ablation-qa [127.0.0.1:61641] disconnected.
+1788849277: mosquitto version 2.1.2 terminating

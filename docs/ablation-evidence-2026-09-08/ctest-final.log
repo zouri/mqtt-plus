@@ -1,0 +1,89 @@
+Test project build/qt6.11-debug
+      Start  1: appicon
+ 1/42 Test  #1: appicon .............................   Passed    0.23 sec
+      Start  2: sessionconfig
+ 2/42 Test  #2: sessionconfig .......................   Passed    0.02 sec
+      Start  3: test_configurationadapters
+ 3/42 Test  #3: test_configurationadapters ..........   Passed    0.07 sec
+      Start  4: test_configurationtransferservice
+ 4/42 Test  #4: test_configurationtransferservice ...   Passed    0.54 sec
+      Start  5: payloadcodec
+ 5/42 Test  #5: payloadcodec ........................   Passed    0.03 sec
+      Start  6: test_draftstore
+ 6/42 Test  #6: test_draftstore .....................   Passed    0.16 sec
+      Start  7: test_draftlibraryservice
+ 7/42 Test  #7: test_draftlibraryservice ............   Passed    0.83 sec
+      Start  8: test_drafteditorviewmodel
+ 8/42 Test  #8: test_drafteditorviewmodel ...........   Passed    0.13 sec
+      Start  9: test_draftmodels
+ 9/42 Test  #9: test_draftmodels ....................   Passed    0.10 sec
+      Start 10: test_notificationcentermodel
+10/42 Test #10: test_notificationcentermodel ........   Passed    0.66 sec
+      Start 11: test_githubreleaseparser
+11/42 Test #11: test_githubreleaseparser ............   Passed    0.12 sec
+      Start 12: test_updatecontroller
+12/42 Test #12: test_updatecontroller ...............   Passed    0.11 sec
+      Start 13: recenttrafficwindow
+13/42 Test #13: recenttrafficwindow .................   Passed    0.02 sec
+      Start 14: messagecapturepolicy
+14/42 Test #14: messagecapturepolicy ................   Passed    0.02 sec
+      Start 15: messagepayloadplan
+15/42 Test #15: messagepayloadplan ..................   Passed    0.02 sec
+      Start 16: mqtttopicfilter
+16/42 Test #16: mqtttopicfilter .....................   Passed    0.02 sec
+      Start 17: test_processorlibrary_persistence
+17/42 Test #17: test_processorlibrary_persistence ...   Passed    0.06 sec
+      Start 18: test_processorlibrary
+18/42 Test #18: test_processorlibrary ...............   Passed    0.06 sec
+      Start 19: test_messageprocessorengine
+19/42 Test #19: test_messageprocessorengine .........   Passed    0.04 sec
+      Start 20: test_luaruntimeadapter
+20/42 Test #20: test_luaruntimeadapter ..............   Passed    0.05 sec
+      Start 21: test_javascriptruntimeadapter
+21/42 Test #21: test_javascriptruntimeadapter .......   Passed    0.10 sec
+      Start 22: test_sessioneditorviewmodel
+22/42 Test #22: test_sessioneditorviewmodel .........   Passed    0.12 sec
+      Start 23: test_sessionimport
+23/42 Test #23: test_sessionimport ..................   Passed    0.10 sec
+      Start 24: test_subscriptioneditorviewmodel
+24/42 Test #24: test_subscriptioneditorviewmodel ....   Passed    0.13 sec
+      Start 25: test_sessionlistmodel
+25/42 Test #25: test_sessionlistmodel ...............   Passed    0.12 sec
+      Start 26: test_connectionerrortext
+26/42 Test #26: test_connectionerrortext ............   Passed    0.13 sec
+      Start 27: test_eventstreammodel
+27/42 Test #27: test_eventstreammodel ...............   Passed    0.12 sec
+      Start 28: test_messagefiltermodel
+28/42 Test #28: test_messagefiltermodel .............   Passed    0.12 sec
+      Start 29: test_topictreemodel
+29/42 Test #29: test_topictreemodel .................   Passed    0.48 sec
+      Start 30: test_eventhistoryservice
+30/42 Test #30: test_eventhistoryservice ............   Passed    1.98 sec
+      Start 31: test_historystore
+31/42 Test #31: test_historystore ...................   Passed    0.31 sec
+      Start 32: test_historywriterworker
+32/42 Test #32: test_historywriterworker ............   Passed    0.37 sec
+      Start 33: test_messageparseworker
+33/42 Test #33: test_messageparseworker .............   Passed    0.25 sec
+      Start 34: test_subscriptionlistmodel
+34/42 Test #34: test_subscriptionlistmodel ..........   Passed    0.13 sec
+      Start 35: test_subscriptionservice
+35/42 Test #35: test_subscriptionservice ............   Passed    0.25 sec
+      Start 36: test_processorsviewmodel
+36/42 Test #36: test_processorsviewmodel ............   Passed    0.17 sec
+      Start 37: test_codesyntaxhighlighter
+37/42 Test #37: test_codesyntaxhighlighter ..........   Passed    2.87 sec
+      Start 38: test_settingsviewmodel
+38/42 Test #38: test_settingsviewmodel ..............   Passed    0.52 sec
+      Start 39: test_windowgeometrymanager
+39/42 Test #39: test_windowgeometrymanager ..........   Passed    0.04 sec
+      Start 40: test_logsviewmodel
+40/42 Test #40: test_logsviewmodel ..................   Passed    0.16 sec
+      Start 41: test_workbenchviewmodel
+41/42 Test #41: test_workbenchviewmodel .............   Passed    0.85 sec
+      Start 42: test_architecture_boundaries
+42/42 Test #42: test_architecture_boundaries ........   Passed    0.14 sec
+
+100% tests passed out of 42
+
+Total Test time (real) =  12.74 sec

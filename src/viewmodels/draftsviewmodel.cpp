@@ -59,14 +59,6 @@ void DraftsViewModel::ensureEditorSelection()
     }
 }
 
-bool DraftsViewModel::selectFilteredDraftAt(int index)
-{
-    const QVariantMap row = m_filteredDrafts.rowAt(index);
-    if (row.isEmpty()) return false;
-    m_editor.loadDraft(row);
-    return true;
-}
-
 bool DraftsViewModel::selectDraftById(const QString &id)
 {
     const PublishDraft *draft = m_draftService.draftById(id);
@@ -164,6 +156,5 @@ void DraftsViewModel::handleOperationSucceeded(const QString &operation, const Q
         m_pendingDeleteId.clear();
         m_editor.newDraft();
         ensureEditorSelection();
-        emit editorDeleteSucceeded();
     }
 }

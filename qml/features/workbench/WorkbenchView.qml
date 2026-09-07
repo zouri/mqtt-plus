@@ -27,7 +27,6 @@ Item {
     readonly property int connectionPaneVisualCollapseWidth: 84
     readonly property int expandedConnectionPaneWidth: 208
     readonly property int compactConnectionPaneWidth: 188
-    readonly property color connectionPaneEdgeColor: root.ui.themePalette.panelBorder
     readonly property bool compactPaneWidths: root.width <= 1208
     readonly property bool connectionPaneAutoHidden: root.width <= 988
     readonly property bool subscriptionPaneAutoHidden: root.width <= 708

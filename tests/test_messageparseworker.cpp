@@ -117,6 +117,15 @@ void MessageParseWorkerTest::rejectsTasksAtCountAndByteLimits()
         makeTask(4, QStringLiteral("session-1"), 4, QByteArray(512, 'x'))));
     QCOMPARE(byteLimitedWorker.pendingTaskCount(), 0);
     QCOMPARE(byteLimitedWorker.droppedTaskCount(), 1);
+
+    QSignalSpy stateSpy(&byteLimitedWorker, &MessageParseWorker::queueStateChanged);
+    byteLimitedWorker.start();
+    QTRY_VERIFY(!stateSpy.isEmpty());
+    stateSpy.clear();
+    QVERIFY(!byteLimitedWorker.enqueueTask(
+        makeTask(5, QStringLiteral("session-1"), 5, QByteArray(512, 'x'))));
+    QTRY_VERIFY(!stateSpy.isEmpty());
+    QCOMPARE(byteLimitedWorker.droppedTaskCount(), 2);
 }
 
 void MessageParseWorkerTest::reportsQueuePressureAndRecovers()

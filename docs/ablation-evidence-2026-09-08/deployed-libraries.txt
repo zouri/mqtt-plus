@@ -1,0 +1,4 @@
+dyld[52939]: <36F46B08-D279-383E-A935-9151069D0B1B> /private/tmp/mqtts-ablation-qa/MQTTPlusReleaseQA.app/Contents/Frameworks/QtQml.framework/Versions/A/QtQml
+dyld[52939]: <443C9E16-7128-336A-BE65-29E95F6E9852> /private/tmp/mqtts-ablation-qa/MQTTPlusReleaseQA.app/Contents/Frameworks/QtGui.framework/Versions/A/QtGui
+dyld[52939]: <EBEA1591-A251-3C70-86C0-C3D0B7901B4B> /private/tmp/mqtts-ablation-qa/MQTTPlusReleaseQA.app/Contents/Frameworks/QtCore.framework/Versions/A/QtCore
+dyld[52939]: <2FBC0599-A0E8-3FE3-9E18-89ACEA0AE6DA> /private/tmp/mqtts-ablation-qa/MQTTPlusReleaseQA.app/Contents/PlugIns/platforms/libqcocoa.dylib

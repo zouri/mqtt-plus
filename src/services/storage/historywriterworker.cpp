@@ -513,16 +513,10 @@ void HistoryWriterWorker::flushBatch()
 
 void HistoryWriterWorker::notifyDropped()
 {
-    qint64 droppedMessages = 0;
-    qint64 droppedParseResults = 0;
     {
         QMutexLocker locker(&m_mutex);
         m_dropNotificationPending = false;
-        droppedMessages = m_droppedMessages;
-        droppedParseResults = m_droppedParseResults;
     }
-    emit messagesDropped(droppedMessages);
-    emit parseResultsDropped(droppedParseResults);
     emit queueStateChanged();
 }
 

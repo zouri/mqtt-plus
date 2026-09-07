@@ -70,8 +70,6 @@ signals:
     void queueStateChanged();
     void storageErrorChanged(const QString &error);
     void messagesPersisted(const QStringList &sessionIds, int messageCount);
-    void messagesDropped(qint64 totalDropped);
-    void parseResultsDropped(qint64 totalDropped);
     void expandedMessageLoaded(qint64 messageId, const QString &payload, const QString &state);
 
 public slots:

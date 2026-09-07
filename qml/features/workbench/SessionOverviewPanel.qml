@@ -24,7 +24,6 @@ AppPanel {
                                                     ? qsTr("%1: %2").arg(control.ui.statusLabel(control.statusState)).arg(control.status.lastError)
                                                     : control.ui.statusLabel(control.statusState)
     readonly property string endpointText: `${control.session.host || "-"}:${control.session.port || "-"}`
-    readonly property string clientIdText: qsTr("Client ID %1").arg(control.session.clientId || "-")
     readonly property string connectionActionText: control.statusState === "connected"
                                                    ? qsTr("Disconnect")
                                                    : (control.statusState === "connecting"

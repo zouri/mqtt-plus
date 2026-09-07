@@ -210,13 +210,10 @@ void MessageParseWorker::processBatch()
 
 void MessageParseWorker::notifyDropped()
 {
-    qint64 dropped = 0;
     {
         QMutexLocker locker(&m_mutex);
         m_dropNotificationPending = false;
-        dropped = m_droppedTasks;
     }
-    emit tasksDropped(dropped);
     emit queueStateChanged();
 }
 

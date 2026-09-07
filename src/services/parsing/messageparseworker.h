@@ -49,7 +49,6 @@ public:
 signals:
     void parseCompleted(const ParseOutcome &result);
     void queueStateChanged();
-    void tasksDropped(qint64 totalDropped);
 
 public slots:
     void start();

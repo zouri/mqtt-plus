@@ -111,6 +111,15 @@ void HistoryWriterWorkerTest::rejectsMessagesAtCountAndByteLimits()
     QCOMPARE(byteLimitedWriter.droppedParseResultCount(), 0);
     QCOMPARE(byteLimitedWriter.pressureState(), HistoryWriterWorker::PressureState::Normal);
 
+    QSignalSpy stateSpy(&byteLimitedWriter, &HistoryWriterWorker::queueStateChanged);
+    byteLimitedWriter.start();
+    QTRY_VERIFY(!stateSpy.isEmpty());
+    stateSpy.clear();
+    QCOMPARE(byteLimitedWriter.enqueueMessage(
+        makeRecord(QStringLiteral("session-1"), QStringLiteral("oversized"), QByteArray(512, 'x'))), 0);
+    QTRY_VERIFY(!stateSpy.isEmpty());
+    QCOMPARE(byteLimitedWriter.droppedMessageCount(), 2);
+
     HistoryWriterLimits parseResultLimits = limits;
     parseResultLimits.maxMessages = 1;
     parseResultLimits.maxBytes = 4096;

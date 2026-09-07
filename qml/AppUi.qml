@@ -27,18 +27,13 @@ QtObject {
     readonly property int motionExitEasing: Easing.InCubic
 
     // ---- Design tokens: spacing scale (4pt base) ----
-    readonly property int spaceXs: 4
     readonly property int spaceSm: 8
     readonly property int spaceMd: 12
-    readonly property int spaceLg: 16
-    readonly property int spaceXl: 24
-    readonly property int space2xl: 32
 
     // ---- Design tokens: radius scale ----
     readonly property int radiusSm: 6
     readonly property int radiusMd: 8
     readonly property int radiusLg: 10
-    readonly property int radiusPill: 999
 
     // ---- Design tokens: typography scale ----
     readonly property int textXs: 10
@@ -47,7 +42,6 @@ QtObject {
     readonly property int textLg: 14
     readonly property int textXl: 16
     readonly property int text2xl: 18
-    readonly property int text3xl: 22
 
     readonly property int materialTheme: root.isDarkTheme ? Material.Dark : Material.Light
     readonly property var themeColors: ({
@@ -186,31 +180,12 @@ QtObject {
             "failed": root.isDarkTheme ? "#ff8793" : "#d83931"
         })
 
-    readonly property var themeModeMetaByMode: ({
-            "system": {
-                "label": qsTr("System"),
-                "next": "light"
-            },
-            "light": {
-                "label": qsTr("Light"),
-                "next": "dark"
-            },
-            "dark": {
-                "label": qsTr("Dark"),
-                "next": "system"
-            }
-        })
-
     function stateColor(state) {
         return root.stateColors[state] || (root.isDarkTheme ? "#7f8b95" : "#6f757e");
     }
 
     function materialIcon(name) {
         return Qt.resolvedUrl(`../resources/${name}.svg`);
-    }
-
-    function themeModeMeta(mode) {
-        return root.themeModeMetaByMode[mode] || root.themeModeMetaByMode.system;
     }
 
     function statusLabel(state) {

@@ -185,21 +185,6 @@
 <context>
     <name>AppUi</name>
     <message>
-        <location filename="../qml/AppUi.qml" line="191"/>
-        <source>System</source>
-        <translation>跟随系统</translation>
-    </message>
-    <message>
-        <location filename="../qml/AppUi.qml" line="195"/>
-        <source>Light</source>
-        <translation>浅色</translation>
-    </message>
-    <message>
-        <location filename="../qml/AppUi.qml" line="199"/>
-        <source>Dark</source>
-        <translation>深色</translation>
-    </message>
-    <message>
         <location filename="../qml/AppUi.qml" line="219"/>
         <source>Connected</source>
         <translation>已连接</translation>
@@ -2493,11 +2478,6 @@
         <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="24"/>
         <source>%1: %2</source>
         <translation>%1：%2</translation>
-    </message>
-    <message>
-        <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="27"/>
-        <source>Client ID %1</source>
-        <translation>客户端 ID %1</translation>
     </message>
     <message>
         <location filename="../qml/features/workbench/SessionOverviewPanel.qml" line="28"/>
