@@ -1,6 +1,6 @@
 # 瘦身与消融实验审核
 
-日期：2026-09-08。基线：`79d82979f784d6353a12631b8f9c86150f2155fa`。
+日期：2026-09-08。基线：`d2cad315421744fc1be0da5f8421257a82a3af73`。
 
 本文保留初始审核记录；实施结果与补充验收见后文。
 
@@ -154,9 +154,9 @@ rtk proxy codesign --verify --deep --strict /private/tmp/mqtts-ablation-release-
 
 全部通过。部署仍出现既有的 libmimerapi 缺失输出，安装后既有清理逻辑移除了 qsqlmimer，最终 SQLite 驱动可用，真实收发和重启后的历史查询通过。
 
-基线由 `git archive 79d8297` 导出到 `/private/tmp/mqtts-ablation-baseline`，复制同版本 FetchContent 源缓存，使用同一 Qt、Ninja、Release 和 `BUILD_TESTING=OFF` 配置、构建、安装。双方未修改的安装目录均严格验签通过，再用相同的 `ditto -c -k --sequesterRsrc --keepParent` 命令生成 ZIP。
+基线由 `git archive d2cad31` 导出到 `/private/tmp/mqtts-ablation-baseline`，复制同版本 FetchContent 源缓存，使用同一 Qt、Ninja、Release 和 `BUILD_TESTING=OFF` 配置、构建、安装。双方未修改的安装目录均严格验签通过，再用相同的 `ditto -c -k --sequesterRsrc --keepParent` 命令生成 ZIP。
 
-| 指标 | 基线 79d8297 | 当前工作区 | 差值 |
+| 指标 | 基线 d2cad31 | 当前工作区 | 差值 |
 |---|---:|---:|---:|
 | app 可执行文件字节数（含签名） | 7,796,224 | 7,778,672 | −17,552 |
 | 安装目录分配空间（`du -sk`，KiB） | 148,312 | 148,296 | −16 |

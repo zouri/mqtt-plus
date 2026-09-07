@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+If `AGENTS.local.md` exists in the repository root, read it before starting work for local supplemental instructions. Keep that file untracked and do not copy its private contents into public documentation, commit messages, or pull requests.
+
 ## Project Structure & Module Organization
 `src/` contains the C++20 application. Keep domain types in `src/domain/`, orchestration in `src/usecases/`, infrastructure in `src/services/`, Qt models in `src/models/`, QML-facing state in `src/viewmodels/`, and startup/composition in `src/app/`. The Qt Quick UI lives in `qml/`: shared controls belong in `qml/components/`, while page-specific views belong in `qml/features/`. Tests are in `tests/`; translations, icons, and bundled resources are in `i18n/`, `assets/`, and `resources/`. Record significant design choices in `docs/adr/`. Treat `build/` and `dist/` as generated output.
 
@@ -26,3 +28,5 @@ Recent commits favor short, imperative subjects such as `Fix release packaging w
 
 ## Configuration & Security
 Keep local Qt paths in uncommitted `CMakeUserPresets.json` or pass `CMAKE_PREFIX_PATH`. Do not commit broker credentials, generated packages, local settings, or SQLite history databases.
+
+Use `zourima@outlook.com` for public maintainer contact information. Public documentation and logs must use repository-relative paths or environment variables instead of personal absolute paths. Record any redaction in the accompanying evidence documentation. Screenshots must use isolated demo data and pass the checks in `docs/images/README.md`. Keep private session exports and drafts out of Git. If a test needs an ignored file type, add a narrow path exception only after confirming the fixture contains synthetic data and no usable credentials.
