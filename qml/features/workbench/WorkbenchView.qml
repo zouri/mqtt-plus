@@ -452,25 +452,40 @@ Item {
         orientation: Qt.Horizontal
 
         handle: Rectangle {
-            implicitWidth: workbenchSplit.orientation === Qt.Horizontal ? 6 : workbenchSplit.width
-            implicitHeight: workbenchSplit.orientation === Qt.Horizontal ? workbenchSplit.height : 6
-            color: root.ui.themePalette.panelBg
+            implicitWidth: 1
+            implicitHeight: workbenchSplit.height
+            color: root.ui.themePalette.separator
 
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 1
-                color: root.ui.themePalette.separator
-            }
+            MouseArea {
+                id: splitHandleDragArea
 
-            HoverHandler {
-                id: splitHandleHover
+                property real pressX: 0
+                property real pressWidth: 0
+
+                anchors.fill: parent
+                anchors.leftMargin: -4
+                anchors.rightMargin: -4
                 cursorShape: Qt.SplitHCursor
+
+                onPressed: mouse => {
+                    splitHandleDragArea.pressX = splitHandleDragArea.mapToItem(workbenchSplit, mouse.x, mouse.y).x;
+                    splitHandleDragArea.pressWidth = subscriptionPane.width;
+                }
+                onPositionChanged: mouse => {
+                    if (splitHandleDragArea.pressed) {
+                        const delta = splitHandleDragArea.mapToItem(workbenchSplit, mouse.x, mouse.y).x
+                            - splitHandleDragArea.pressX;
+                        subscriptionPane.SplitView.preferredWidth = Math.max(
+                            subscriptionPane.SplitView.minimumWidth,
+                            Math.min(subscriptionPane.SplitView.maximumWidth, splitHandleDragArea.pressWidth + delta));
+                    }
+                }
             }
         }
 
         Rectangle {
+            id: subscriptionPane
+
             visible: !root.subscriptionPaneAutoHidden
             SplitView.preferredWidth: visible ? root.effectiveSubscriptionPaneWidth : 0
             SplitView.minimumWidth: visible ? (root.compactPaneWidths ? 276 : root.subscriptionPaneMinWidth) : 0
