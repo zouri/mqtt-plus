@@ -501,6 +501,7 @@ Item {
 
                     Layout.fillWidth: true
                     Layout.preferredHeight: 38
+                    contentHeight: availableHeight
                     spacing: 0
 
                     Binding {
@@ -529,78 +530,72 @@ Item {
                         }
                     }
 
-                    TabButton {
-                        id: topicsTab
+                    component ContextPaneTab: TabButton {
+                        id: tab
 
-                        width: contextPaneTabs.width / 2
-                        text: qsTr("Topics")
+                        width: contextPaneTabs.availableWidth / contextPaneTabs.count
+                        height: contextPaneTabs.availableHeight
+                        padding: 0
+                        hoverEnabled: true
                         Accessible.name: text
 
                         contentItem: Label {
-                            text: topicsTab.text
-                            color: topicsTab.checked ? root.ui.textStrong : root.ui.textMuted
+                            text: tab.text
+                            color: tab.checked || tab.down
+                                   ? root.ui.themePalette.infoText
+                                   : (tab.hovered || tab.visualFocus ? root.ui.textStrong : root.ui.textMuted)
                             font.pixelSize: 11
-                            font.bold: topicsTab.checked
+                            font.weight: Font.DemiBold
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
+
+                            Behavior on color {
+                                enabled: root.ui.animationsEnabled
+                                ColorAnimation { duration: root.ui.motionMicroDuration }
+                            }
                         }
 
+                        HoverHandler {
+                            cursorShape: Qt.PointingHandCursor
+                        }
                         background: Item {
                             Rectangle {
-                                anchors.fill: parent
-                                color: topicsTab.hovered && !topicsTab.checked
-                                       ? root.ui.themePalette.rowHover
-                                       : "transparent"
+                                anchors.centerIn: parent
+                                width: Math.min(tab.width - 16, Math.max(64, tab.contentItem.implicitWidth + 28))
+                                height: 26
+                                radius: root.ui.radiusSm
+                                color: tab.down
+                                       ? root.ui.themePalette.selectedBg
+                                       : (tab.hovered ? root.ui.themePalette.selectedItemBg : "transparent")
+                                border.width: 1
+                                border.color: tab.visualFocus ? root.ui.themePalette.selectedBorder : "transparent"
+                                Accessible.ignored: true
+
+                                Behavior on color {
+                                    enabled: root.ui.animationsEnabled
+                                    ColorAnimation { duration: root.ui.motionMicroDuration }
+                                }
                             }
 
                             Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
+                                anchors.horizontalCenter: parent.horizontalCenter
                                 anchors.bottom: parent.bottom
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
+                                width: Math.min(tab.width, tab.contentItem.implicitWidth + 16)
                                 height: 2
-                                visible: topicsTab.checked
+                                radius: 1
+                                visible: tab.checked
                                 color: root.ui.themePalette.infoText
+                                Accessible.ignored: true
                             }
                         }
                     }
 
-                    TabButton {
-                        id: subscriptionsTab
+                    ContextPaneTab {
+                        text: qsTr("Topics")
+                    }
 
-                        width: contextPaneTabs.width / 2
+                    ContextPaneTab {
                         text: qsTr("Subscriptions")
-                        Accessible.name: text
-
-                        contentItem: Label {
-                            text: subscriptionsTab.text
-                            color: subscriptionsTab.checked ? root.ui.textStrong : root.ui.textMuted
-                            font.pixelSize: 11
-                            font.bold: subscriptionsTab.checked
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-
-                        background: Item {
-                            Rectangle {
-                                anchors.fill: parent
-                                color: subscriptionsTab.hovered && !subscriptionsTab.checked
-                                       ? root.ui.themePalette.rowHover
-                                       : "transparent"
-                            }
-
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
-                                height: 2
-                                visible: subscriptionsTab.checked
-                                color: root.ui.themePalette.infoText
-                            }
-                        }
                     }
                 }
 
