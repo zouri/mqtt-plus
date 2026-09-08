@@ -181,6 +181,7 @@ AppPanel {
                     ui: root.ui
                     viewModel: root.viewModel
                     historyId: root.selectedTopicHistoryId
+                    payloadFormatContext: root.selectedTopic
                     opened: root.selectedTopicHistoryId.length > 0
                     embedded: true
                     onDraftUsed: publishComposer.revealDraftEditor()

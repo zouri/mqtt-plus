@@ -11,8 +11,12 @@ Item {
     required property AppUi ui
     required property var viewModel
     property string historyId: ""
+    property string payloadFormatContext: control.historyId
     property var details: ({})
-    property int payloadViewFormat: 0
+    property int payloadFormatOverride: -1
+    readonly property int payloadViewFormat: control.payloadFormatOverride >= 0
+                                             ? control.payloadFormatOverride
+                                             : Number(control.details.testFormat || 0)
     property string displayedPayload: ""
     property bool opened: false
     property bool embedded: false
@@ -55,12 +59,14 @@ Item {
     Accessible.name: qsTr("Message inspector")
 
     onHistoryIdChanged: {
-        control.reloadDetails(true);
+        control.reloadDetails();
     }
+
+    onPayloadFormatContextChanged: control.payloadFormatOverride = -1
 
     onOpenedChanged: {
         if (control.opened) {
-            control.payloadViewFormat = Number(control.details.testFormat || 0);
+            control.payloadFormatOverride = -1;
             control.refreshDisplayedPayload();
         }
         control.syncRevealProgress();
@@ -75,18 +81,15 @@ Item {
 
         function onMessageDetailsChanged(changedHistoryId) {
             if (control.opened && changedHistoryId === control.historyId) {
-                control.reloadDetails(false);
+                control.reloadDetails();
             }
         }
     }
 
-    function reloadDetails(resetPayloadFormat) {
+    function reloadDetails() {
         control.details = control.historyId.length > 0
                           ? control.viewModel.messageDetails(control.historyId)
                           : ({});
-        if (resetPayloadFormat) {
-            control.payloadViewFormat = Number(control.details.testFormat || 0);
-        }
         control.refreshDisplayedPayload();
     }
 
@@ -368,7 +371,7 @@ Item {
                             currentIndex: control.payloadViewFormat
                             font.pixelSize: 11
                             Accessible.name: qsTr("Payload display format")
-                            onActivated: index => control.payloadViewFormat = index
+                            onActivated: index => control.payloadFormatOverride = index
                         }
                     }
 
