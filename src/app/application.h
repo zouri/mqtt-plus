@@ -32,7 +32,7 @@
 class Application
 {
 public:
-    Application();
+    explicit Application(QSettings::Format settingsFormat = QSettings::NativeFormat);
     ~Application();
 
     ApplicationViewModel *viewModel();

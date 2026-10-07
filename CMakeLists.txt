@@ -439,6 +439,13 @@ elseif(UNIX)
 endif()
 
 if(BUILD_TESTING)
+    find_package(Perl QUIET)
+    if(PERL_FOUND)
+        add_test(NAME process_tree_cpu
+            COMMAND "${PERL_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/scripts/measure-process-tree-cpu-macos.pl" --self-test)
+    endif()
+
     function(add_mqtt_plus_qt_test target)
         add_executable(${target}
             ${ARGN}

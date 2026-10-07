@@ -1,6 +1,8 @@
 set(app_sources ${MQTT_PLUS_APP_ONLY_SOURCES})
 list(TRANSFORM app_sources PREPEND "${PROJECT_SOURCE_DIR}/")
 
+option(MQTT_PLUS_ENABLE_PROFILING "Enable isolated synthetic workloads without QML debugging" OFF)
+
 qt_add_executable(mqtt_plus_app MANUAL_FINALIZATION ${app_sources})
 set_target_properties(mqtt_plus_app PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
@@ -61,6 +63,7 @@ target_include_directories(mqtt_plus_app
 target_compile_definitions(mqtt_plus_app
     PRIVATE
         $<$<CONFIG:Debug>:QT_QML_DEBUG>
+        $<$<BOOL:${MQTT_PLUS_ENABLE_PROFILING}>:MQTT_PLUS_ENABLE_PROFILING>
         MQTT_PLUS_VERSION="${PROJECT_VERSION}"
 )
 

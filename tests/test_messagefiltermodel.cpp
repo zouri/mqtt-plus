@@ -17,6 +17,7 @@ private slots:
     void rowAtUsesPublicRoles();
     void countsRowsAcceptedByCurrentFilter();
     void findsHistoryIdInFilteredRows();
+    void refiltersWhenPayloadOrDirectionChanges();
 };
 
 namespace {
@@ -241,6 +242,28 @@ void MessageFilterModelTest::findsHistoryIdInFilteredRows()
 
     QCOMPARE(proxy.indexOfHistoryId(QStringLiteral("41")), 0);
     QCOMPARE(proxy.indexOfHistoryId(QStringLiteral("42")), -1);
+}
+
+void MessageFilterModelTest::refiltersWhenPayloadOrDirectionChanges()
+{
+    EventStreamModel source;
+    EventRow row = messageRow(
+        QStringLiteral("devices/one"), {}, QStringLiteral("pending"), QStringLiteral("incoming"));
+    row.historyId = 41;
+    source.setRows({row});
+    MessageFilterModel proxy;
+    proxy.setSourceModel(&source);
+    proxy.setFilterText(QStringLiteral("matched"));
+    QCOMPARE(proxy.count(), 0);
+
+    row.payload = QStringLiteral("matched");
+    QVERIFY(source.updateRowByHistoryId(41, row));
+    QCOMPARE(proxy.count(), 1);
+
+    proxy.setDirection(QStringLiteral("incoming"));
+    row.direction = QStringLiteral("outgoing");
+    QVERIFY(source.updateRowByHistoryId(41, row));
+    QCOMPARE(proxy.count(), 0);
 }
 
 QTEST_MAIN(MessageFilterModelTest)

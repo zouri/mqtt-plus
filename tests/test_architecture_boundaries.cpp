@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <QJSEngine>
 #include <QMap>
 #include <QStringList>
 
@@ -25,6 +26,10 @@ private slots:
     void applicationViewModelExportsApprovedQmlInterfaces();
     void qmlElementTypesRemainOnApplicationTarget();
     void messageProfilerUsesIsolatedApplicationData();
+    void messageProfilerScrollsThroughWindowInput();
+    void messageProfilerGatesForegroundBeforeCpuMeasurement();
+    void messagePayloadNativeFastPathPreservesComplexText();
+    void localBrokerProfilerDoesNotInheritConnectionSecrets();
     void addSubscriptionDialogDoesNotBuildScriptOptions();
     void processorLibraryUiUsesProcessorContracts();
     void subscriptionEditorUsesProcessorBindings();
@@ -375,6 +380,14 @@ void ArchitectureBoundariesTest::messageAutoFollowAlwaysReanchorsAfterWindowRota
         "Auto-follow must explicitly reanchor the view after appending rows");
     QVERIFY2(!scrollFunction.contains(QStringLiteral("atYEnd")),
         "A saturated fixed-size window can report atYEnd while rotating rows, so it must not skip reanchoring");
+    QVERIFY2(scrollFunction.contains(QStringLiteral("forceLayout()")),
+        "Pending row changes must be laid out before positioning the newest row");
+    QVERIFY2(scrollFunction.contains(QStringLiteral("Qt.callLater(finishProgrammaticScroll)")),
+        "Auto-follow should reuse its completion callback");
+    const int timerStart = source.indexOf(QStringLiteral("id: followScrollTimer"));
+    const int scrollCall = source.indexOf(QStringLiteral("eventList.scrollToBottom()"), timerStart);
+    const int queueReset = source.indexOf(QStringLiteral("eventList.followScrollQueued = false"), timerStart);
+    QVERIFY(timerStart >= 0 && scrollCall > timerStart && queueReset > scrollCall);
 }
 
 void ArchitectureBoundariesTest::alwaysExpandedMessagesDoNotTruncatePayloadText()
@@ -482,6 +495,142 @@ void ArchitectureBoundariesTest::qmlElementTypesRemainOnApplicationTarget()
     QVERIFY(!appCmakeSource.contains(QStringLiteral("NO_IMPORT_SCAN")));
 }
 
+void ArchitectureBoundariesTest::localBrokerProfilerDoesNotInheritConnectionSecrets()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/messagestreamprofiledriver.cpp"), source));
+    const int begin = source.indexOf(QStringLiteral("if (m_options.localBrokerPort > 0)"));
+    const int end = source.indexOf(QStringLiteral("m_started = true;"), begin);
+    QVERIFY(begin >= 0 && end > begin);
+    const QString setup = source.mid(begin, end - begin);
+    QVERIFY(setup.contains(QStringLiteral("SessionConnectionConfig config;")));
+    QVERIFY(setup.contains(QStringLiteral("config.host = QStringLiteral(\"127.0.0.1\")")));
+    QVERIFY(!setup.contains(QStringLiteral("sessionConfigAt(")));
+    QVERIFY(setup.contains(QStringLiteral("&QMqttClient::connected")));
+    QVERIFY(setup.contains(QStringLiteral("&QMqttClient::disconnected")));
+    QVERIFY(setup.contains(QStringLiteral("m_brokerStayedConnected = false")));
+    QVERIFY(source.contains(QStringLiteral("m_elapsed.elapsed() >= m_options.observationMs")));
+    QVERIFY(source.contains(QStringLiteral("QMqttSubscription::Subscribed")));
+    const int inputBegin = source.indexOf(QStringLiteral("if (m_options.brokerInput)"),
+        source.indexOf(QStringLiteral("void MessageStreamProfileDriver::injectBatch()")));
+    const int syntheticBegin = source.indexOf(QStringLiteral("} else {"), inputBegin);
+    QVERIFY(inputBegin >= 0 && syntheticBegin > inputBegin);
+    const QString brokerInput = source.mid(inputBegin, syntheticBegin - inputBegin);
+    QVERIFY(brokerInput.contains(QStringLiteral("totalMessageCount()")));
+    QVERIFY(!brokerInput.contains(QStringLiteral("queueIncomingMessage")));
+}
+
+void ArchitectureBoundariesTest::messagePayloadNativeFastPathPreservesComplexText()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("qml/features/workbench/EventStreamView.qml"), source));
+    const QString prefix = QStringLiteral("readonly property bool usesNativeAsciiPayload: ");
+    const int begin = source.indexOf(prefix);
+    QVERIFY(begin >= 0);
+    const int end = source.indexOf(QLatin1Char('\n'), begin);
+    QVERIFY(end > begin);
+    const QString expression = source.mid(begin + prefix.size(), end - begin - prefix.size());
+    QVERIFY(source.contains(QStringLiteral("font.preferShaping: !eventDelegate.usesNativeAsciiPayload")));
+    QVERIFY(source.contains(QStringLiteral("renderType: eventDelegate.usesNativeAsciiPayload ? Text.NativeRendering : Text.QtRendering")));
+
+    const QList<QPair<QString, bool>> payloads {
+        {QString(), true},
+        {QStringLiteral("{\"value\":123,\"status\":\"ffi\"}"), true},
+        {QStringLiteral("first\nsecond\tline"), true},
+        {QStringLiteral("\u4f60\u597d"), false},
+        {QStringLiteral("e\u0301"), false},
+        {QStringLiteral("\u0645\u0631\u062d\u0628\u0627"), false},
+        {QStringLiteral("ASCII \U0001f600"), false},
+    };
+    QJSEngine engine;
+    QJSValue platform = engine.newObject();
+    QJSValue qt = engine.newObject();
+    qt.setProperty(QStringLiteral("platform"), platform);
+    engine.globalObject().setProperty(QStringLiteral("Qt"), qt);
+    QJSValue delegate = engine.newObject();
+    engine.globalObject().setProperty(QStringLiteral("eventDelegate"), delegate);
+    QJSValue root = engine.newObject();
+    engine.globalObject().setProperty(QStringLiteral("root"), root);
+    for (const QString &os : {QStringLiteral("osx"), QStringLiteral("linux"), QStringLiteral("windows")})
+    {
+        platform.setProperty(QStringLiteral("os"), os);
+        for (const int mode : {0, 1, 2})
+        {
+            root.setProperty(QStringLiteral("payloadDisplayMode"), mode);
+            for (const auto &[payload, ascii] : payloads)
+            {
+                delegate.setProperty(QStringLiteral("displayedPayload"), payload);
+                const QJSValue result = engine.evaluate(expression);
+                QVERIFY(!result.isError());
+                QVERIFY(result.isBool());
+                QCOMPARE(result.toBool(), os == QStringLiteral("osx") && mode != 2 && ascii);
+            }
+        }
+    }
+}
+
+void ArchitectureBoundariesTest::messageProfilerScrollsThroughWindowInput()
+{
+    QString source;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/messagestreamprofiledriver.cpp"), source));
+    const int begin = source.indexOf(QStringLiteral("void MessageStreamProfileDriver::scrollOutput()"));
+    const int end = source.indexOf(QStringLiteral("void MessageStreamProfileDriver::recordRenderedFrame()"), begin);
+    QVERIFY(begin >= 0 && end > begin);
+    const QString scroll = source.mid(begin, end - begin);
+    QVERIFY(scroll.contains(QStringLiteral("QWheelEvent event(")));
+    QVERIFY(scroll.contains(QStringLiteral("QCoreApplication::sendEvent(m_window, &event)")));
+    QVERIFY(scroll.contains(QStringLiteral("event.setTimestamp(static_cast<ulong>(m_elapsed.elapsed()))")));
+    QVERIFY(!scroll.contains(QStringLiteral("setProperty(")));
+    QVERIFY(source.contains(QStringLiteral("m_scrollDistance += qAbs(y - m_previousScrollY)")));
+    QVERIFY(source.contains(QStringLiteral("scrollWasManual")));
+    QVERIFY(source.contains(QStringLiteral("scrollMessageVisible")));
+    QString mainSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/main.cpp"), mainSource));
+    QVERIFY(mainSource.contains(QStringLiteral("--profile-scroll-output")));
+    QVERIFY(mainSource.contains(QStringLiteral("request.options.scrollOutput && request.options.pauseOutput")));
+    QVERIFY(mainSource.contains(QStringLiteral("--profile-activate-window")));
+    QVERIFY(source.contains(QStringLiteral("if (m_options.activateWindow)")));
+    QVERIFY(source.contains(QStringLiteral("QTimer::singleShot(3000, this")));
+    QCOMPARE(source.count(QStringLiteral("m_window->requestActivate()")), 1);
+    QVERIFY(source.contains(QStringLiteral("windowLostActivationAfterWarmup")));
+    QVERIFY(mainSource.contains(QStringLiteral("--profile-background-window")));
+    QVERIFY(mainSource.contains(QStringLiteral("profileRequest.requested && profileRequest.options.backgroundWindow")));
+    const int noFocusFlag = mainSource.indexOf(QStringLiteral("window->setFlag(Qt::WindowDoesNotAcceptFocus)"));
+    const int showWindow = mainSource.indexOf(QStringLiteral("windowGeometryManager->restoreAndShow()"));
+    QVERIFY(noFocusFlag >= 0 && showWindow > noFocusFlag);
+    QVERIFY(mainSource.contains(QStringLiteral("request.options.activateWindow && request.options.backgroundWindow")));
+    QVERIFY(mainSource.contains(QStringLiteral("--profile-capture-window")));
+    QVERIFY(source.contains(QStringLiteral("if (m_options.captureWindow)")));
+    QCOMPARE(source.count(QStringLiteral("m_window->grabWindow()")), 1);
+    QVERIFY(source.contains(QStringLiteral("QTemporaryFile file(")));
+    QVERIFY(source.contains(QStringLiteral("file.setAutoRemove(false)")));
+    const int windowCapture = source.indexOf(QStringLiteral("if (m_options.captureWindow)"));
+    QVERIFY(windowCapture > source.indexOf(QStringLiteral("QJsonObject summary {")));
+}
+
+void ArchitectureBoundariesTest::messageProfilerGatesForegroundBeforeCpuMeasurement()
+{
+    QString driver;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/messagestreamprofiledriver.cpp"), driver));
+    const int activation = driver.indexOf(QStringLiteral("if (m_options.activateWindow)"));
+    const int observation = driver.indexOf(QStringLiteral("m_renderedFrames = 0;"), activation);
+    QVERIFY(activation >= 0 && observation > activation);
+    const QString activationBlock = driver.mid(activation, observation - activation);
+    QVERIFY(activationBlock.contains(QStringLiteral("QTimer::singleShot(5000, Qt::PreciseTimer")));
+    QVERIFY(activationBlock.contains(QStringLiteral("PROFILE_MESSAGE_STREAM foregroundReady=")));
+    QVERIFY(activationBlock.contains(QStringLiteral("m_window && m_window->isActive()")));
+    QCOMPARE(driver.count(QStringLiteral("PROFILE_MESSAGE_STREAM foregroundReady=")), 1);
+
+    QString runner;
+    QVERIFY(readSourceFile(QStringLiteral("scripts/benchmark-cpu-macos.sh"), runner));
+    QVERIFY(runner.contains(QStringLiteral("rg -a -F 'foregroundReady='")));
+    QVERIFY(runner.contains(QStringLiteral("PROFILE_MESSAGE_STREAM foregroundReady= true")));
+    const int warmup = runner.indexOf(QStringLiteral("sleep 5\nif [[ $activate_window = 1 ]]; then check_foreground_ready; fi"));
+    const int measurement = runner.indexOf(QStringLiteral("bash \"$script_dir/measure-cpu-macos.sh\""));
+    QVERIFY(warmup >= 0 && measurement > warmup);
+    QVERIFY(runner.contains(QStringLiteral(".windowLostActivationAfterWarmup == false")));
+}
+
 void ArchitectureBoundariesTest::messageProfilerUsesIsolatedApplicationData()
 {
     QString source;
@@ -492,8 +641,16 @@ void ArchitectureBoundariesTest::messageProfilerUsesIsolatedApplicationData()
     const int applicationIndex = source.indexOf(QStringLiteral("Application application"));
     QVERIFY2(testModeIndex >= 0 && applicationIndex > testModeIndex,
         "The profiler driver must redirect application data before constructing Application");
-    QVERIFY2(source.contains(QStringLiteral("#ifdef QT_QML_DEBUG")),
-        "Synthetic message profiling must remain gated behind QML debugging builds");
+    QVERIFY(source.contains(QStringLiteral("applicationSettingsFormat = QSettings::IniFormat")));
+    QVERIFY(source.contains(QStringLiteral("QSettings::setPath(QSettings::IniFormat, QSettings::UserScope")));
+    QVERIFY(source.contains(QStringLiteral("QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope")));
+    QVERIFY(source.contains(QStringLiteral("Application application(applicationSettingsFormat)")));
+    QVERIFY(source.contains(QStringLiteral("std::make_unique<QTemporaryDir>()")));
+    QString applicationSource;
+    QVERIFY(readSourceFile(QStringLiteral("src/app/application.cpp"), applicationSource));
+    QVERIFY(applicationSource.contains(QStringLiteral("m_settings(settingsFormat, QSettings::UserScope")));
+    QVERIFY2(source.contains(QStringLiteral("#if defined(QT_QML_DEBUG) || defined(MQTT_PLUS_ENABLE_PROFILING)")),
+        "Synthetic profiling must require an explicit profiling or QML debugging build");
     QVERIFY2(source.contains(QStringLiteral("--profile-message-stream")),
         "The profiling build must expose an explicit opt-in message stream driver");
 

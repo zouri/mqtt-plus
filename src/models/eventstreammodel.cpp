@@ -269,37 +269,23 @@ bool EventStreamModel::updateRowByHistoryId(qint64 historyId, const EventRow &ro
         }
         const bool wasMessage = m_rows.at(index).kind == QStringLiteral("message");
         const bool isMessage = row.kind == QStringLiteral("message");
+        QList<int> changedRoles;
+        for (int role = KindRole; role <= ExpandedPayloadNeededRole; ++role) {
+            if (roleValue(m_rows.at(index), role) != roleValue(row, role)) {
+                changedRoles.append(role);
+            }
+        }
         m_rows[index] = row;
         if (wasMessage != isMessage) {
             m_messageCount += isMessage ? 1 : -1;
         }
-        emit dataChanged(
-            this->index(index, 0),
-            this->index(index, 0),
-            {KindRole,
-             TimestampRole,
-             TitleRole,
-             PayloadRole,
-             PayloadFormatRole,
-             PayloadSizeRole,
-             TopicRole,
-             TopicColorRole,
-             TestPayloadRole,
-             TestFormatRole,
-             TestFormatNameRole,
-             HistoryIdRole,
-             DirectionRole,
-             AliasRole,
-             QosRole,
-             RetainRole,
-             RetainKnownRole,
-             ParsedPayloadRole,
-             ParseStateRole,
-             PayloadStateRole,
-             PayloadHashRole,
-             ExpandedPayloadRole,
-             ExpandedPayloadStateRole,
-             ExpandedPayloadNeededRole});
+        // An empty role list means every role changed, not that nothing changed.
+        if (!changedRoles.isEmpty()) {
+            emit dataChanged(
+                this->index(index, 0),
+                this->index(index, 0),
+                changedRoles);
+        }
         if (wasMessage != isMessage) {
             emit messageCountChanged();
         }

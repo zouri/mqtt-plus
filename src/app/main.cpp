@@ -11,8 +11,9 @@
 #include "app/appicon.h"
 #include "app/windowgeometrymanager.h"
 
-#ifdef QT_QML_DEBUG
+#if defined(QT_QML_DEBUG) || defined(MQTT_PLUS_ENABLE_PROFILING)
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QStringList>
 #include <QTimer>
 
@@ -30,7 +31,7 @@ QFont applicationFont(const QFont &baseFont, const QString &family)
     return font;
 }
 
-#ifdef QT_QML_DEBUG
+#if defined(QT_QML_DEBUG) || defined(MQTT_PLUS_ENABLE_PROFILING)
 struct MessageStreamProfileRequest
 {
     bool requested = false;
@@ -90,9 +91,15 @@ MessageStreamProfileRequest messageStreamProfileRequest(
         arguments,
         QStringLiteral("--profile-payload-bytes"),
         request.options.payloadBytes);
-    if (!messageCount || !batchSize || !intervalMs || !payloadBytes) {
+    const auto localBrokerPort = positiveOptionValue(
+        arguments, QStringLiteral("--profile-local-broker-port"), 0);
+    const auto observationMs = positiveOptionValue(
+        arguments, QStringLiteral("--profile-observation-ms"), 0);
+    if (!messageCount || !batchSize || !intervalMs || !payloadBytes
+        || !localBrokerPort || *localBrokerPort > 65535
+        || !observationMs || *observationMs > 600000) {
         qCritical().noquote()
-            << "Invalid message stream profiler options; all numeric values must be positive";
+            << "Invalid message stream profiler numeric options";
         request.valid = false;
         return request;
     }
@@ -101,6 +108,27 @@ MessageStreamProfileRequest messageStreamProfileRequest(
     request.options.batchSize = *batchSize;
     request.options.intervalMs = *intervalMs;
     request.options.payloadBytes = *payloadBytes;
+    request.options.pauseOutput = arguments.contains(QStringLiteral("--profile-pause-output"));
+    request.options.varyPayload = arguments.contains(QStringLiteral("--profile-vary-payload"));
+    request.options.localBrokerPort = *localBrokerPort;
+    request.options.observationMs = *observationMs;
+    request.options.brokerInput = arguments.contains(QStringLiteral("--profile-broker-input"));
+    request.options.scrollOutput = arguments.contains(QStringLiteral("--profile-scroll-output"));
+    request.options.activateWindow = arguments.contains(QStringLiteral("--profile-activate-window"));
+    request.options.backgroundWindow = arguments.contains(QStringLiteral("--profile-background-window"));
+    request.options.captureWindow = arguments.contains(QStringLiteral("--profile-capture-window"));
+    if (request.options.activateWindow && request.options.backgroundWindow) {
+        qCritical().noquote() << "Foreground and background profiling options are mutually exclusive";
+        request.valid = false;
+    }
+    if (request.options.scrollOutput && request.options.pauseOutput) {
+        qCritical().noquote() << "Scrolling profiling requires active output";
+        request.valid = false;
+    }
+    if (request.options.brokerInput && request.options.localBrokerPort == 0) {
+        qCritical().noquote() << "Broker input profiling requires an explicit local broker port";
+        request.valid = false;
+    }
     return request;
 }
 #endif
@@ -115,17 +143,47 @@ int main(int argc, char *argv[])
     const QFont baseApplicationFont = guiApplication.font();
     guiApplication.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/app-icon.png")));
 
-#ifdef QT_QML_DEBUG
+#if !defined(QT_QML_DEBUG) && !defined(MQTT_PLUS_ENABLE_PROFILING)
+    if (guiApplication.arguments().contains(QStringLiteral("--profile-message-stream"))) {
+        qCritical().noquote() << "Synthetic profiling requires a profiling-enabled build";
+        return 2;
+    }
+#endif
+
+    QSettings::Format applicationSettingsFormat = QSettings::NativeFormat;
+#if defined(QT_QML_DEBUG) || defined(MQTT_PLUS_ENABLE_PROFILING)
     const auto profileRequest = messageStreamProfileRequest(guiApplication.arguments());
     if (!profileRequest.valid) {
         return 2;
     }
+    std::unique_ptr<QTemporaryDir> profileSettingsDirectory;
     if (profileRequest.requested) {
         QStandardPaths::setTestModeEnabled(true);
+        profileSettingsDirectory = std::make_unique<QTemporaryDir>();
+        if (!profileSettingsDirectory->isValid()) {
+            qCritical().noquote() << "Cannot create isolated profiler settings";
+            return 2;
+        }
+        applicationSettingsFormat = QSettings::IniFormat;
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
+            profileSettingsDirectory->path());
+        QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope,
+            profileSettingsDirectory->path());
+        QSettings profileSettings(QSettings::IniFormat, QSettings::UserScope,
+            QStringLiteral("mqtt-plus"), QStringLiteral("mqtt-plus"));
+        profileSettings.setFallbacksEnabled(false);
+        profileSettings.setValue(QStringLiteral("updates/automaticChecksEnabled"), false);
+        profileSettings.setValue(QStringLiteral("workspace/contextPane"), QStringLiteral("subscriptions"));
+        profileSettings.sync();
+        if (profileSettings.status() != QSettings::NoError) {
+            qCritical().noquote() << "Cannot initialize isolated profiler settings";
+            return 2;
+        }
+        qInfo().noquote() << "PROFILE_MESSAGE_STREAM settings isolated format=ini updates=disabled";
     }
 #endif
 
-    Application application;
+    Application application(applicationSettingsFormat);
     SettingsViewModel *settingsViewModel = application.viewModel()->settings();
     const auto applyConfiguredIcon = [&guiApplication, settingsViewModel]() {
         const QIcon icon = AppIcon::themed(settingsViewModel->themeColor());
@@ -179,6 +237,12 @@ int main(int argc, char *argv[])
     }
     applyConfiguredIcon();
 
+#if defined(QT_QML_DEBUG) || defined(MQTT_PLUS_ENABLE_PROFILING)
+    if (profileRequest.requested && profileRequest.options.backgroundWindow) {
+        window->setFlag(Qt::WindowDoesNotAcceptFocus);
+    }
+#endif
+
     auto *windowGeometryManager = new WindowGeometryManager(
         *window,
         *application.viewModel()->preferences(),
@@ -190,13 +254,20 @@ int main(int argc, char *argv[])
         &WindowGeometryManager::saveNow);
     windowGeometryManager->restoreAndShow();
 
-#ifdef QT_QML_DEBUG
+#if defined(QT_QML_DEBUG) || defined(MQTT_PLUS_ENABLE_PROFILING)
     std::unique_ptr<MessageStreamProfileDriver> profileDriver;
     if (profileRequest.requested) {
         profileDriver = std::make_unique<MessageStreamProfileDriver>(
             *application.viewModel(),
             profileRequest.options,
+            *window,
             &guiApplication);
+        QObject::connect(
+            window,
+            &QQuickWindow::frameSwapped,
+            profileDriver.get(),
+            &MessageStreamProfileDriver::recordRenderedFrame,
+            Qt::QueuedConnection);
         QTimer::singleShot(
             1000,
             profileDriver.get(),

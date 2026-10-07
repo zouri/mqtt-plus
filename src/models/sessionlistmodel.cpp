@@ -128,28 +128,42 @@ void SessionListModel::setSessions(const QVector<SessionState> &sessions)
         return;
     }
 
-    m_rows = std::move(rows);
-    if (!m_rows.isEmpty()) {
+    for (qsizetype row = 0; row < rows.size(); ++row) {
+        const QList<int> roles = changedRoles(m_rows.at(row), rows.at(row));
+        if (roles.isEmpty()) {
+            continue;
+        }
+        m_rows[row] = std::move(rows[row]);
         emit dataChanged(
-            index(0, 0),
-            index(static_cast<int>(m_rows.size() - 1), 0),
-            {
-                IdRole,
-                NameRole,
-                StateRole,
-                ConnectedRole,
-                HostRole,
-                PortRole,
-                ClientIdRole,
-                TransportRole,
-                TransportLabelRole,
-                ProtocolVersionRole,
-                ProtocolVersionNameRole,
-                SummaryRole,
-                LastErrorRole,
-                UnreadMessageCountRole,
-            });
+            index(static_cast<int>(row), 0),
+            index(static_cast<int>(row), 0),
+            roles);
     }
+}
+
+QList<int> SessionListModel::changedRoles(const SessionRow &before, const SessionRow &after)
+{
+    QList<int> roles;
+    const auto appendChanged = [&roles](const auto &left, const auto &right, Role role) {
+        if (left != right) {
+            roles.append(role);
+        }
+    };
+    appendChanged(before.id, after.id, IdRole);
+    appendChanged(before.name, after.name, NameRole);
+    appendChanged(before.state, after.state, StateRole);
+    appendChanged(before.connected, after.connected, ConnectedRole);
+    appendChanged(before.host, after.host, HostRole);
+    appendChanged(before.port, after.port, PortRole);
+    appendChanged(before.clientId, after.clientId, ClientIdRole);
+    appendChanged(before.transport, after.transport, TransportRole);
+    appendChanged(before.transportLabel, after.transportLabel, TransportLabelRole);
+    appendChanged(before.protocolVersion, after.protocolVersion, ProtocolVersionRole);
+    appendChanged(before.protocolVersionName, after.protocolVersionName, ProtocolVersionNameRole);
+    appendChanged(before.summary, after.summary, SummaryRole);
+    appendChanged(before.lastError, after.lastError, LastErrorRole);
+    appendChanged(before.unreadMessageCount, after.unreadMessageCount, UnreadMessageCountRole);
+    return roles;
 }
 
 SessionListModel::SessionRow SessionListModel::rowFromSession(const SessionState &session)

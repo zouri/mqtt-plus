@@ -150,6 +150,10 @@ Item {
         }
 
         eventList.followScrollQueued = true
+        const frameInterval = Math.round(1000 / Math.max(1, root.autoFollowFps))
+        followScrollTimer.interval = Math.min(
+            frameInterval,
+            Math.max(0, eventList.lastFollowScrollMs + frameInterval - Date.now()))
         followScrollTimer.start()
     }
 
@@ -310,13 +314,14 @@ Item {
     Timer {
         id: followScrollTimer
 
-        interval: Math.round(1000 / Math.max(1, root.autoFollowFps))
+        interval: 0
         repeat: false
         onTriggered: {
-            eventList.followScrollQueued = false
             if (eventList.bottomAnchorActive) {
+                eventList.lastFollowScrollMs = Date.now()
                 eventList.scrollToBottom()
             }
+            eventList.followScrollQueued = false
         }
     }
 
@@ -514,6 +519,7 @@ Item {
 
             ListView {
                 id: eventList
+                objectName: root.showOutputControls ? "messageEventList" : "logEventList"
                 anchors.fill: parent
                 anchors.leftMargin: 14
                 anchors.rightMargin: 14
@@ -526,6 +532,7 @@ Item {
                 property bool userScrollActive: false
                 property bool bottomAnchorActive: false
                 property bool followScrollQueued: false
+                property double lastFollowScrollMs: 0
                 property int unreadCount: 0
 
                 function scrollToBottom() {
@@ -539,12 +546,15 @@ Item {
                         contentY = originY
                     } else {
                         // The bounded model rotates rows without changing count.
+                        forceLayout()
                         positionViewAtEnd()
                     }
-                    Qt.callLater(function() {
-                        eventList.programmaticScroll = false
-                        eventList.shouldFollowOutput = true
-                    })
+                    Qt.callLater(finishProgrammaticScroll)
+                }
+
+                function finishProgrammaticScroll() {
+                    programmaticScroll = false
+                    shouldFollowOutput = true
                 }
 
                 function refreshFollowState(allowResume) {
@@ -686,6 +696,8 @@ Item {
                               ? qsTr("Complete payload is unavailable")
                               : eventDelegate.payload
                     readonly property string payloadSizeLabel: qsTr("%1 B").arg(eventDelegate.payloadSize)
+                    // Keep fully expanded payloads on the scalable text renderer.
+                    readonly property bool usesNativeAsciiPayload: Qt.platform.os === "osx" && root.payloadDisplayMode !== 2 && !/[^\x00-\x7f]/.test(eventDelegate.displayedPayload)
                     readonly property color topicSwatchColor: eventDelegate.topicColor.length > 0
                                                              ? eventDelegate.topicColor
                                                              : (eventDelegate.isMessage
@@ -850,6 +862,7 @@ Item {
                                 id: messageContent
 
                                 Layout.fillWidth: true
+                                Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
                                 spacing: 3
 
@@ -897,11 +910,14 @@ Item {
                                     id: payloadText
 
                                     Layout.fillWidth: true
+                                    Layout.preferredWidth: 0
                                     Layout.minimumWidth: 0
                                     text: eventDelegate.displayedPayload
                                     color: eventDelegate.isEvent ? root.ui.textMuted : root.ui.textStrong
                                     font.family: root.fontFamily
                                     font.pixelSize: 12
+                                    font.preferShaping: !eventDelegate.usesNativeAsciiPayload
+                                    renderType: eventDelegate.usesNativeAsciiPayload ? Text.NativeRendering : Text.QtRendering
                                     textFormat: Text.PlainText
                                     wrapMode: Text.WrapAnywhere
                                     maximumLineCount: root.payloadDisplayMode === 2 ? 4096
@@ -919,7 +935,7 @@ Item {
                                 visible: eventDelegate.isMessage || eventDelegate.payloadFormat.length > 0
                                 Layout.alignment: Qt.AlignRight | Qt.AlignTop
                                 Layout.preferredWidth: Math.max(metadataRow.implicitWidth,
-                                                                quickActionsRow.implicitWidth)
+                                                                76)
                                 Layout.minimumWidth: Layout.preferredWidth
                                 Layout.maximumWidth: Layout.preferredWidth
                                 spacing: 4
@@ -947,66 +963,72 @@ Item {
                                     }
                                 }
 
-                                RowLayout {
+                                Loader {
                                     id: quickActionsRow
 
                                     visible: eventDelegate.isMessage
                                              && (rowHover.hovered || messageRow.activeFocus
                                                  || eventDelegate.historyId === root.selectedHistoryId)
+                                    active: visible
                                     Layout.alignment: Qt.AlignRight
-                                    spacing: 2
+                                    Layout.preferredWidth: 76
+                                    Layout.preferredHeight: 24
 
-                                    AppIconButton {
-                                        ui: root.ui
-                                        implicitWidth: 24
-                                        implicitHeight: 24
-                                        cornerRadius: 6
-                                        iconSource: root.ui.materialIcon("content-copy")
-                                        iconSize: 13
-                                        restBg: root.ui.themePalette.itemBg
-                                        outlineColor: root.ui.themePalette.panelBorder
-                                        accessibleName: qsTr("Copy payload")
-                                        toolTipText: qsTr("Copy payload")
-                                        onClicked: root.viewModel.copyMessagePayload(
-                                            eventDelegate.historyId,
-                                            eventDelegate.payload,
-                                            eventDelegate.testPayload,
-                                            eventDelegate.testFormat)
-                                    }
+                                    sourceComponent: Row {
+                                        spacing: 2
 
-                                    AppIconButton {
-                                        ui: root.ui
-                                        implicitWidth: 24
-                                        implicitHeight: 24
-                                        cornerRadius: 6
-                                        iconSource: root.ui.materialIcon("topic")
-                                        iconSize: 13
-                                        restBg: root.ui.themePalette.itemBg
-                                        outlineColor: root.ui.themePalette.panelBorder
-                                        accessibleName: qsTr("Copy topic")
-                                        toolTipText: qsTr("Copy topic")
-                                        onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
-                                    }
-
-                                    AppIconButton {
-                                        ui: root.ui
-                                        implicitWidth: 24
-                                        implicitHeight: 24
-                                        cornerRadius: 6
-                                        iconSource: root.ui.materialIcon("edit")
-                                        iconSize: 13
-                                        restBg: root.ui.themePalette.itemBg
-                                        outlineColor: root.ui.themePalette.panelBorder
-                                        accessibleName: qsTr("Use as publish draft")
-                                        toolTipText: qsTr("Use as publish draft")
-                                        onClicked: {
-                                            root.viewModel.useMessageAsDraft(
+                                        AppIconButton {
+                                            ui: root.ui
+                                            implicitWidth: 24
+                                            implicitHeight: 24
+                                            cornerRadius: 6
+                                            iconSource: root.ui.materialIcon("content-copy")
+                                            iconSize: 13
+                                            restBg: root.ui.themePalette.itemBg
+                                            outlineColor: root.ui.themePalette.panelBorder
+                                            accessibleName: qsTr("Copy payload")
+                                            toolTipText: qsTr("Copy payload")
+                                            onClicked: root.viewModel.copyMessagePayload(
                                                 eventDelegate.historyId,
-                                                eventDelegate.topic,
                                                 eventDelegate.payload,
                                                 eventDelegate.testPayload,
                                                 eventDelegate.testFormat)
-                                            root.publishDraftRevealRequested()
+                                        }
+
+                                        AppIconButton {
+                                            ui: root.ui
+                                            implicitWidth: 24
+                                            implicitHeight: 24
+                                            cornerRadius: 6
+                                            iconSource: root.ui.materialIcon("topic")
+                                            iconSize: 13
+                                            restBg: root.ui.themePalette.itemBg
+                                            outlineColor: root.ui.themePalette.panelBorder
+                                            accessibleName: qsTr("Copy topic")
+                                            toolTipText: qsTr("Copy topic")
+                                            onClicked: root.viewModel.copyMessageTopic(eventDelegate.topic)
+                                        }
+
+                                        AppIconButton {
+                                            ui: root.ui
+                                            implicitWidth: 24
+                                            implicitHeight: 24
+                                            cornerRadius: 6
+                                            iconSource: root.ui.materialIcon("edit")
+                                            iconSize: 13
+                                            restBg: root.ui.themePalette.itemBg
+                                            outlineColor: root.ui.themePalette.panelBorder
+                                            accessibleName: qsTr("Use as publish draft")
+                                            toolTipText: qsTr("Use as publish draft")
+                                            onClicked: {
+                                                root.viewModel.useMessageAsDraft(
+                                                    eventDelegate.historyId,
+                                                    eventDelegate.topic,
+                                                    eventDelegate.payload,
+                                                    eventDelegate.testPayload,
+                                                    eventDelegate.testFormat)
+                                                root.publishDraftRevealRequested()
+                                            }
                                         }
                                     }
                                 }

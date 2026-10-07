@@ -31,9 +31,10 @@ TopicObservation topicObservationFromMessage(const MessageRecord &message)
 }
 }
 
-Application::Application()
+Application::Application(QSettings::Format settingsFormat)
     : m_owner(nullptr)
-    , m_settings(QStringLiteral("mqtt-plus"), QStringLiteral("mqtt-plus"))
+    , m_settings(settingsFormat, QSettings::UserScope,
+          QStringLiteral("mqtt-plus"), QStringLiteral("mqtt-plus"))
     , m_preferences(&m_settings, &m_owner)
     , m_historyWriter(new HistoryWriterWorker(
           m_historyStore.dataPath(),
@@ -127,6 +128,7 @@ Application::Application()
                 success ? 5000 : 0);
         });
 
+    m_historyWriterThread.setObjectName(QStringLiteral("MessageHistoryWriter"));
     m_historyWriter->moveToThread(&m_historyWriterThread);
     QObject::connect(
         &m_historyWriterThread,
@@ -138,6 +140,7 @@ Application::Application()
         m_historyWriter,
         &HistoryWriterWorker::start,
         Qt::BlockingQueuedConnection);
+    m_messageParserThread.setObjectName(QStringLiteral("MessageParser"));
     m_messageParser->moveToThread(&m_messageParserThread);
     QObject::connect(
         &m_messageParserThread,

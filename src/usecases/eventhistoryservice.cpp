@@ -30,7 +30,8 @@ struct SubscriptionRenderContext
 };
 
 namespace {
-constexpr int kVisibleMessageRowsFlushIntervalMs = 16;
+// Coalesce rows before notifying the view; parsing can finish in the same window.
+constexpr int kVisibleMessageRowsFlushIntervalMs = 33;
 constexpr int kMessagePressureNotificationIntervalMs = 100;
 constexpr int kMessageActivityNotificationIntervalMs = 50;
 constexpr qsizetype kVisibleParsedCharacters = 64 * 1024;
@@ -163,6 +164,7 @@ EventHistoryService::EventHistoryService(
         Qt::QueuedConnection);
 
     m_messageAdmissionWorker = new MessageAdmissionWorker;
+    m_messageAdmissionThread.setObjectName(QStringLiteral("MessageAdmission"));
     m_messageAdmissionWorker->moveToThread(&m_messageAdmissionThread);
     connect(
         &m_messageAdmissionThread,

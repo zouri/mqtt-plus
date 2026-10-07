@@ -12,6 +12,8 @@ private slots:
     void exposesConnectionDetails();
     void setSessionsOwnsRowsAndUpdatesWithoutResetWhenCountIsStable();
     void setSessionsResetsWhenCountChanges();
+    void viewedTrafficDoesNotInvalidateConnectionRows();
+    void unreadTrafficAnnouncesOnlyTheAffectedRowAndRole();
 };
 
 void SessionListModelTest::exposesConnectionDetails()
@@ -95,6 +97,41 @@ void SessionListModelTest::setSessionsResetsWhenCountChanges()
     QCOMPARE(resetSpy.count(), 1);
     QCOMPARE(countSpy.count(), 1);
     QCOMPARE(dataSpy.count(), 0);
+}
+
+void SessionListModelTest::viewedTrafficDoesNotInvalidateConnectionRows()
+{
+    QVector<SessionState> sessions(1);
+    sessions[0].id = QStringLiteral("session-1");
+    SessionListModel model;
+    model.setSessions(sessions);
+    QSignalSpy dataSpy(&model, &SessionListModel::dataChanged);
+
+    for (int batch = 1; batch <= 10; ++batch) {
+        sessions[0].runtime.totalMessageCount = batch * 10;
+        sessions[0].runtime.viewedMessageCount = batch * 10;
+        model.setSessions(sessions);
+    }
+    QCOMPARE(dataSpy.count(), 0);
+}
+
+void SessionListModelTest::unreadTrafficAnnouncesOnlyTheAffectedRowAndRole()
+{
+    QVector<SessionState> sessions(2);
+    sessions[0].id = QStringLiteral("session-1");
+    sessions[1].id = QStringLiteral("session-2");
+    SessionListModel model;
+    model.setSessions(sessions);
+    QSignalSpy dataSpy(&model, &SessionListModel::dataChanged);
+    sessions[1].runtime.totalMessageCount = 10;
+    model.setSessions(sessions);
+
+    QCOMPARE(dataSpy.count(), 1);
+    QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 1);
+    QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 1);
+    QCOMPARE(dataSpy.first().at(2).value<QList<int>>(),
+        QList<int> {SessionListModel::UnreadMessageCountRole});
+    QCOMPARE(model.data(model.index(1, 0), SessionListModel::UnreadMessageCountRole).toLongLong(), qint64(10));
 }
 
 QTEST_MAIN(SessionListModelTest)

@@ -160,6 +160,10 @@ private slots:
     void forwardsMessageBatchNotifications();
     void exposesTotalMessageCount();
     void coalescesDisplayTotalMessageCountUpdates();
+    void synchronizesDisplayCountWithVisibleMessageBatches_data();
+    void synchronizesDisplayCountWithVisibleMessageBatches();
+    void limitsDisplayCountRefreshesDuringSteadyTraffic_data();
+    void limitsDisplayCountRefreshesDuringSteadyTraffic();
     void exposesConnectionTimingAndAggregateRates();
     void ownsSubscriptionFilterState();
     void subscriptionFilterSupportsRegularExpressions();
@@ -810,6 +814,98 @@ void WorkbenchViewModelTest::coalescesDisplayTotalMessageCountUpdates()
     emit fixture.eventHistoryService.messageStreamChanged();
     QCOMPARE(displayTotalSpy.count(), 3);
     QCOMPARE(viewModel.displayTotalMessageCount(), 0);
+}
+
+void WorkbenchViewModelTest::synchronizesDisplayCountWithVisibleMessageBatches_data()
+{
+    QTest::addColumn<bool>("paused");
+    QTest::addColumn<bool>("matchesFilter");
+    QTest::newRow("visible") << false << true;
+    QTest::newRow("paused") << true << true;
+    QTest::newRow("filtered-out") << false << false;
+}
+
+void WorkbenchViewModelTest::synchronizesDisplayCountWithVisibleMessageBatches()
+{
+    QFETCH(bool, paused);
+    QFETCH(bool, matchesFilter);
+    WorkbenchFixture fixture;
+    fixture.sessionService.sessions().append(SessionState {});
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.sessionService.setCurrentOutputPaused(paused);
+    fixture.filteredMessagesModel.setFilterText(QStringLiteral("visible/"));
+    WorkbenchViewModel &viewModel = fixture.viewModel;
+    QSignalSpy displaySpy(&viewModel, &WorkbenchViewModel::displayTotalMessageCountChanged);
+
+    fixture.sessionService.currentSession()->runtime.totalMessageCount = 1;
+    emit fixture.eventHistoryService.totalMessageCountChanged();
+    QCOMPARE(displaySpy.count(), 0);
+    fixture.messagesModel.appendRow(EventRow {
+        .kind = QStringLiteral("message"),
+        .topic = matchesFilter ? QStringLiteral("visible/one") : QStringLiteral("hidden/one"),
+        .direction = QStringLiteral("incoming"),
+    });
+
+    const bool syncsWithBatch = !paused && matchesFilter;
+    QCOMPARE(displaySpy.count(), syncsWithBatch ? 1 : 0);
+    QCOMPARE(viewModel.displayTotalMessageCount(), syncsWithBatch ? 1 : 0);
+    QTRY_COMPARE(viewModel.displayTotalMessageCount(), 1);
+    QTest::qWait(100);
+    QCOMPARE(displaySpy.count(), 1);
+}
+
+void WorkbenchViewModelTest::limitsDisplayCountRefreshesDuringSteadyTraffic_data()
+{
+    QTest::addColumn<bool>("paused");
+    QTest::newRow("active") << false;
+    QTest::newRow("paused") << true;
+}
+
+void WorkbenchViewModelTest::limitsDisplayCountRefreshesDuringSteadyTraffic()
+{
+    QFETCH(bool, paused);
+    WorkbenchFixture fixture;
+    fixture.sessionService.sessions().append(SessionState {});
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.sessionService.setCurrentOutputPaused(paused);
+    WorkbenchViewModel &viewModel = fixture.viewModel;
+    QSignalSpy exactTotalSpy(&viewModel, &WorkbenchViewModel::totalMessageCountChanged);
+    QSignalSpy displayTotalSpy(&viewModel, &WorkbenchViewModel::displayTotalMessageCountChanged);
+    QElapsedTimer elapsed;
+    elapsed.start();
+
+    for (qint64 count = 1; count <= 50; ++count) {
+        fixture.sessionService.currentSession()->runtime.totalMessageCount = count;
+        emit fixture.eventHistoryService.totalMessageCountChanged();
+        QTest::qWait(10);
+    }
+
+    QCOMPARE(exactTotalSpy.count(), 50);
+    QCOMPARE(viewModel.totalMessageCount(), 50);
+    const qint64 maximumDisplayRefreshes = elapsed.elapsed() / (paused ? 200 : 40) + 1;
+    QVERIFY2(displayTotalSpy.count() <= maximumDisplayRefreshes,
+        qPrintable(QStringLiteral("%1 footer refreshes in %2 ms exceed the display budget")
+            .arg(displayTotalSpy.count()).arg(elapsed.elapsed())));
+    if (!paused) {
+        QVERIFY2(displayTotalSpy.count() >= 4,
+            "Active output must retain prompt display-count updates");
+    }
+    QTRY_COMPARE(viewModel.displayTotalMessageCount(), 50);
+
+    fixture.sessionService.currentSession()->runtime.totalMessageCount = 51;
+    emit fixture.eventHistoryService.totalMessageCountChanged();
+    fixture.sessionService.setCurrentOutputPaused(!paused);
+    QCOMPARE(viewModel.displayTotalMessageCount(), 51);
+    displayTotalSpy.clear();
+    fixture.sessionService.currentSession()->runtime.totalMessageCount = 52;
+    emit fixture.eventHistoryService.totalMessageCountChanged();
+    if (paused) {
+        QTRY_COMPARE_WITH_TIMEOUT(viewModel.displayTotalMessageCount(), 52, 200);
+    } else {
+        QTest::qWait(100);
+        QCOMPARE(displayTotalSpy.count(), 0);
+        QTRY_COMPARE(viewModel.displayTotalMessageCount(), 52);
+    }
 }
 
 void WorkbenchViewModelTest::exposesConnectionTimingAndAggregateRates()

@@ -22,6 +22,7 @@ using namespace AppUtils;
 
 namespace {
 constexpr int kDisplayTotalMessageCountIntervalMs = 50;
+constexpr int kPausedDisplayTotalMessageCountIntervalMs = 250;
 constexpr int kTrafficRateIntervalMs = 1000;
 
 QStringList topicFiltersFromText(const QString &text)
@@ -65,6 +66,18 @@ WorkbenchViewModel::WorkbenchViewModel(
         &QTimer::timeout,
         this,
         &WorkbenchViewModel::syncDisplayTotalMessageCount);
+
+    connect(&m_filteredMessagesModel, &QAbstractItemModel::rowsInserted, this, [this]()
+    {
+        const SessionState *session = m_sessionService.currentSession();
+        if (!session || session->outputPaused)
+        {
+            return;
+        }
+        // Share the list's update frame; retain the timer when no visible rows arrive.
+        m_displayTotalMessageCountTimer.stop();
+        syncDisplayTotalMessageCount();
+    });
 
     m_trafficRateTimer.setInterval(kTrafficRateIntervalMs);
     m_trafficRateTimer.setTimerType(Qt::CoarseTimer);
@@ -358,6 +371,10 @@ qint64 WorkbenchViewModel::outgoingByteRate() const
 void WorkbenchViewModel::scheduleDisplayTotalMessageCountUpdate()
 {
     if (!m_displayTotalMessageCountTimer.isActive()) {
+        const SessionState *session = m_sessionService.currentSession();
+        m_displayTotalMessageCountTimer.setInterval(session && session->outputPaused
+            ? kPausedDisplayTotalMessageCountIntervalMs
+            : kDisplayTotalMessageCountIntervalMs);
         m_displayTotalMessageCountTimer.start();
     }
 }

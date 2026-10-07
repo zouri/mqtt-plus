@@ -13,6 +13,8 @@ private slots:
     void appendRowsAndTrimFrontKeepsIncrementalWindow();
     void prependRowsAndTrimBackKeepsIncrementalWindow();
     void updatesSingleHistoryRowWithoutReset();
+    void announcesOnlyParseRolesWhenParseOutcomeUpdatesRow();
+    void announcesChangedMetadataAndIgnoresInternalTimestamp();
     void detectsMatchingLastRow();
     void exposesCanonicalMessageMetadata();
     void rowAtMatchesRoleInterface();
@@ -112,6 +114,64 @@ void EventStreamModelTest::updatesSingleHistoryRowWithoutReset()
     QCOMPARE(dataSpy.first().at(0).toModelIndex().row(), 0);
     QCOMPARE(dataSpy.first().at(1).toModelIndex().row(), 0);
     QCOMPARE(resetSpy.count(), 0);
+}
+
+void EventStreamModelTest::announcesOnlyParseRolesWhenParseOutcomeUpdatesRow()
+{
+    EventStreamModel model;
+    model.setRows(QVector<EventRow> {
+        EventRow {
+            .kind = QStringLiteral("message"),
+            .topic = QStringLiteral("devices/one"),
+            .historyId = 41,
+            .parseState = QStringLiteral("pending"),
+        },
+    });
+    QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
+
+    QVERIFY(model.updateRowByHistoryId(
+        41,
+        EventRow {
+            .kind = QStringLiteral("message"),
+            .topic = QStringLiteral("devices/one"),
+            .historyId = 41,
+            .parseState = QStringLiteral("succeeded"),
+        }));
+
+    QCOMPARE(dataSpy.count(), 1);
+    const QList<int> roles = dataSpy.first().at(2).value<QList<int>>();
+    QVERIFY(roles.contains(EventStreamModel::ParseStateRole));
+    QVERIFY(!roles.contains(EventStreamModel::TopicRole));
+    QVERIFY(!roles.contains(EventStreamModel::TimestampRole));
+    QVERIFY(!roles.contains(EventStreamModel::DirectionRole));
+    QVERIFY(!roles.contains(EventStreamModel::HistoryIdRole));
+    QCOMPARE(roles, QList<int> {EventStreamModel::ParseStateRole});
+}
+
+void EventStreamModelTest::announcesChangedMetadataAndIgnoresInternalTimestamp()
+{
+    EventStreamModel model;
+    EventRow row {.historyId = 41};
+    model.setRows({row});
+    QSignalSpy dataSpy(&model, &EventStreamModel::dataChanged);
+
+    row.topic = QStringLiteral("devices/updated");
+    row.timestamp = QStringLiteral("12:34:56");
+    row.testFormat = 2;
+    QVERIFY(model.updateRowByHistoryId(41, row));
+    QCOMPARE(dataSpy.count(), 1);
+    const QList<int> expected {
+        EventStreamModel::TimestampRole,
+        EventStreamModel::TopicRole,
+        EventStreamModel::TestFormatRole,
+    };
+    QCOMPARE(dataSpy.first().at(2).value<QList<int>>(), expected);
+
+    dataSpy.clear();
+    row.timestampRaw = QStringLiteral("2026-10-07T12:34:56Z");
+    QVERIFY(model.updateRowByHistoryId(41, row));
+    QCOMPARE(dataSpy.count(), 0);
+    QVERIFY(!model.updateRowByHistoryId(41, row));
 }
 
 void EventStreamModelTest::cachesExpandedPayloadByHistoryId()

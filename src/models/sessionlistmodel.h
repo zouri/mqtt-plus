@@ -64,6 +64,7 @@ private:
     };
 
     static SessionRow rowFromSession(const SessionState &session);
+    static QList<int> changedRoles(const SessionRow &before, const SessionRow &after);
 
     QVector<SessionRow> m_rows;
 };
