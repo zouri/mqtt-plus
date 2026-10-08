@@ -19,12 +19,25 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
+    },
+    {
+      "name": "qt6.11-release",
+      "displayName": "Qt 6.11 macOS Release",
+      "inherits": "qt6.11-debug",
+      "binaryDir": "${sourceDir}/build/qt6.11-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "qt6.11-debug",
       "configurePreset": "qt6.11-debug"
+    },
+    {
+      "name": "qt6.11-release",
+      "configurePreset": "qt6.11-release"
     }
   ]
 }
