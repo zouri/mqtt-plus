@@ -5,6 +5,7 @@ option(MQTT_PLUS_ENABLE_PROFILING "Enable isolated synthetic workloads without Q
 
 qt_add_executable(mqtt_plus_app MANUAL_FINALIZATION ${app_sources})
 set_target_properties(mqtt_plus_app PROPERTIES
+    OUTPUT_NAME "mqtt-plus"
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
 )
 

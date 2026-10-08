@@ -15,7 +15,7 @@ cmake --build --preset qt6.11-debug --target all_qmllint
 ctest --test-dir build/qt6.11-debug --output-on-failure
 ```
 
-The commands configure, build, lint application QML, and run all registered Qt Test executables. After building, launch the macOS app with `./build/qt6.11-debug/mqtt_plus_app.app/Contents/MacOS/mqtt_plus_app`. Platform release scripts live in `scripts/package-{macos,linux}.*` and `scripts/package-windows.ps1`.
+The commands configure, build, lint application QML, and run all registered Qt Test executables. After building, launch the macOS app with `./build/qt6.11-debug/mqtt-plus.app/Contents/MacOS/mqtt-plus`. Platform release scripts live in `scripts/package-{macos,linux}.*` and `scripts/package-windows.ps1`.
 
 ## Coding Style & Naming Conventions
 Match nearby Qt code: use 4 spaces, no tabs, and C++ opening braces on the next line. Classes and QML components use `PascalCase`; functions, properties, signals, and QML `id` values use `camelCase`; private C++ members use the `m_` prefix. Keep C++ filenames lowercase (`historystore.cpp`) and QML component filenames descriptive (`MessageInspector.qml`). Prefer Qt value types, signals/slots, and `QStringLiteral` where existing code does. No repository-wide C++ formatter is configured, so preserve local formatting and run `all_qmllint` for QML changes.

@@ -71,7 +71,7 @@ find "$app_dir/usr/lib/mqtt-plus/plugins/sqldrivers" \
     cd "$appimage_output_dir"
     APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 "$linuxdeploy" \
         --appdir "$app_dir" \
-        --executable "$app_dir/usr/lib/mqtt-plus/mqtt_plus_app" \
+        --executable "$app_dir/usr/lib/mqtt-plus/mqtt-plus" \
         --desktop-file "$repo_root/packaging/linux/mqtt-plus.desktop" \
         --icon-file "$repo_root/assets/icons/app-icon-512.png" \
         --output appimage
