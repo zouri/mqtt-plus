@@ -1695,3 +1695,59 @@ The apps were left running and no subscriptions or capture policies were
 changed. The remaining fair-comparison/idle/scroll acceptance gates remain
 open. This continuation produced diagnostic evidence only, not a production
 optimization or a completed performance claim.
+
+## Notification Timer Isolation Check (2026-10-08)
+
+This check evaluates only the previously uncommitted notification timer change.
+The baseline is commit `5042d83`; the comparison uses its notification model
+plus the working-tree notification timer changes. Font discovery and message
+pressure changes are excluded. Normal business clients were not restarted,
+reconfigured, disconnected, or used as measurement targets.
+
+Two Release Qt 6.11.1/AppleClang 21 probes compile the actual baseline and
+modified `NotificationCenterModel` sources. A temporary local harness observes
+the existing member timer without changing its interval or runtime behavior.
+It pre-includes Qt headers before making model-private members accessible in
+the probe translation unit only; production sources receive no instrumentation.
+Each process warms its event loop for 250 ms, then samples for 3 seconds.
+Five pairs per scenario alternate A/B and B/A order (30 samples total).
+`getrusage(RUSAGE_SELF)` measures user plus system CPU time during the sample;
+elapsed monotonic time converts it to one-core CPU percentage. Timer counts
+are this model's timeout callbacks, not total OS/process wakeups.
+
+| Scenario | Baseline callbacks per sample | Modified callbacks per sample | Baseline median CPU | Modified median CPU |
+| --- | ---: | ---: | ---: | ---: |
+| No notifications | 30 | 0 | 0.065258% | 0.006631% |
+| One permanent notification | 30 | 0 | 0.063410% | 0.004365% |
+| One 10-second timed notification | 30 | 30 | 0.062875% | 0.076532% |
+
+All five pairs have the callback counts shown. Empty-model median CPU time
+falls from 1,959 to 199 microseconds per sample, and permanent-notification
+median CPU time falls from 1,903 to 131 microseconds. Timed-notification CPU
+ranges overlap (baseline 0.055111%-0.080036%, modified
+0.053143%-0.083188%); its median is higher, not lower. No CPU improvement is
+claimed while a countdown is active. The absolute times are too small for a
+strong active-countdown overhead conclusion from these short samples.
+
+The direct timer-state check fails against the baseline with an active empty
+notification timer, and passes against the modified model: empty/permanent
+states are inactive, changing a notification to timed restarts the timer, and
+expiration returns it to inactive. Added regression cases in
+`tests/test_notificationcentermodel.cpp` cover restart after idle, switching
+between timed and permanent notifications, and starting a queued notification's
+countdown only when it becomes visible. Existing tests cover hover pause,
+queue limits/promotion, actionable overflow, updates, and action dismissal.
+The modified model passes the notification test executable. An isolated Debug
+application build of `5042d83` plus only this model change and its new tests
+also passes all 43 registered CTest executables (23.02 seconds).
+
+Conclusion: this is a verified reduction of approximately ten unnecessary
+notification timer callbacks per second in the empty/permanent states, with
+small isolated CPU savings of approximately 0.059 percentage points. It is
+reasonable to retain as an idle-work cleanup, not as an explanation or solution
+for the reported competitor CPU gap. This is a model-only measurement, not a
+whole-application CPU, energy, live-message, or scrolling acceptance result.
+Raw output and the temporary measurement harness stay local; no business data
+was read or recorded. The implementation still ticks while timed notifications
+are hovered; stopping that timer would be a separate change and is not tested
+or claimed here.

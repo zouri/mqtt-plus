@@ -62,6 +62,7 @@ private:
                      const QString &severity, int autoCloseMs,
                      const QString &actionLabel, const QString &actionId);
     void promoteQueued();
+    void updateTickTimer();
     void tick();
 
     QVector<Entry> m_visible;

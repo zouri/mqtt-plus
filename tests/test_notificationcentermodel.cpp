@@ -13,6 +13,9 @@ private slots:
     void preservesActionableNotificationDuringOverflow();
     void updatesInPlaceAndTriggersAction();
     void pausesAutomaticCloseWhileHovered();
+    void restartsAutomaticCloseAfterIdle();
+    void updatesBetweenPermanentAndTimedNotifications();
+    void startsCountdownWhenQueuedNotificationBecomesVisible();
 };
 
 void NotificationCenterModelTest::queuesBeyondThreeAndPromotesOnDismiss()
@@ -124,6 +127,46 @@ void NotificationCenterModelTest::pausesAutomaticCloseWhileHovered()
 
     model.setHovered(QStringLiteral("success"), false);
     QTRY_COMPARE_WITH_TIMEOUT(model.count(), 0, 600);
+}
+
+void NotificationCenterModelTest::restartsAutomaticCloseAfterIdle()
+{
+    NotificationCenterModel model;
+    const auto postTimed = [&model](const QString &id) {
+        model.postOrUpdate(id, QStringLiteral("Saved"), QString(), QStringLiteral("success"), 150);
+    };
+    postTimed(QStringLiteral("first"));
+    QTRY_COMPARE_WITH_TIMEOUT(model.count(), 0, 600);
+    QTest::qWait(250);
+    postTimed(QStringLiteral("second"));
+    QTRY_COMPARE_WITH_TIMEOUT(model.count(), 0, 600);
+}
+
+void NotificationCenterModelTest::updatesBetweenPermanentAndTimedNotifications()
+{
+    NotificationCenterModel model;
+    const QString id = QStringLiteral("status");
+    model.postOrUpdate(id, QStringLiteral("Saved"), QString(), QStringLiteral("success"), 150);
+    model.postOrUpdate(id, QStringLiteral("Error"), QString(), QStringLiteral("error"), 0);
+    QTest::qWait(350);
+    QCOMPARE(model.count(), 1);
+    model.postOrUpdate(id, QStringLiteral("Recovered"), QString(), QStringLiteral("success"), 150);
+    QTRY_COMPARE_WITH_TIMEOUT(model.count(), 0, 600);
+}
+
+void NotificationCenterModelTest::startsCountdownWhenQueuedNotificationBecomesVisible()
+{
+    NotificationCenterModel model;
+    for (int index = 0; index < 3; ++index) {
+        model.postOrUpdate(QString::number(index), QStringLiteral("Error"), QString(), QStringLiteral("error"));
+    }
+    model.postOrUpdate(QStringLiteral("queued"), QStringLiteral("Saved"), QString(), QStringLiteral("success"), 150);
+    QTest::qWait(350);
+    QCOMPARE(model.count(), 3);
+    model.dismiss(QStringLiteral("0"));
+    QCOMPARE(model.count(), 3);
+    QCOMPARE(model.index(2, 0).data(NotificationCenterModel::IdRole).toString(), QStringLiteral("queued"));
+    QTRY_COMPARE_WITH_TIMEOUT(model.count(), 2, 600);
 }
 
 QTEST_MAIN(NotificationCenterModelTest)

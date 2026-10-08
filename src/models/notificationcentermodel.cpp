@@ -10,7 +10,6 @@ NotificationCenterModel::NotificationCenterModel(QObject *parent)
     m_tickTimer.setInterval(100);
     m_tickTimer.setTimerType(Qt::CoarseTimer);
     connect(&m_tickTimer, &QTimer::timeout, this, &NotificationCenterModel::tick);
-    m_tickTimer.start();
 }
 
 int NotificationCenterModel::rowCount(const QModelIndex &parent) const
@@ -62,6 +61,7 @@ void NotificationCenterModel::postOrUpdate(
     if (visibleRow >= 0) {
         updateEntry(m_visible[visibleRow], title, message, severity, autoCloseMs, actionLabel, actionId);
         emit dataChanged(index(visibleRow, 0), index(visibleRow, 0));
+        updateTickTimer();
         return;
     }
     const int queuedRow = queuedIndex(id);
@@ -79,6 +79,7 @@ void NotificationCenterModel::postOrUpdate(
         m_visible.append(entry);
         endInsertRows();
         emit countChanged();
+        updateTickTimer();
     } else {
         if (m_queued.size() >= kMaxQueued) {
             const auto disposable = std::find_if(
@@ -112,6 +113,7 @@ void NotificationCenterModel::dismiss(const QString &id)
         endRemoveRows();
         emit countChanged();
         promoteQueued();
+        updateTickTimer();
         return;
     }
     const int queuedRow = queuedIndex(id);
@@ -125,6 +127,7 @@ void NotificationCenterModel::setHovered(const QString &id, bool hovered)
     const int row = visibleIndex(id);
     if (row >= 0) {
         m_visible[row].hovered = hovered;
+        updateTickTimer();
     }
 }
 
@@ -188,6 +191,22 @@ void NotificationCenterModel::promoteQueued()
     m_visible.append(m_queued.takeFirst());
     endInsertRows();
     emit countChanged();
+    updateTickTimer();
+}
+
+void NotificationCenterModel::updateTickTimer()
+{
+    const bool hasCountdown = std::any_of(
+        m_visible.cbegin(),
+        m_visible.cend(),
+        [](const Entry &entry) { return entry.remainingMs > 0; });
+    if (hasCountdown) {
+        if (!m_tickTimer.isActive()) {
+            m_tickTimer.start();
+        }
+    } else {
+        m_tickTimer.stop();
+    }
 }
 
 void NotificationCenterModel::tick()
@@ -205,4 +224,5 @@ void NotificationCenterModel::tick()
     for (const QString &id : expired) {
         dismiss(id);
     }
+    updateTickTimer();
 }
