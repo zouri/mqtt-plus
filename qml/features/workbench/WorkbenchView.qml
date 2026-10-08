@@ -52,10 +52,10 @@ Item {
     readonly property bool allSubscriptionsPaused: root.viewModel.allSubscriptionsPaused
     readonly property double incomingByteRate: root.viewModel.incomingByteRate
     readonly property double outgoingByteRate: root.viewModel.outgoingByteRate
-    readonly property var messagePressure: root.viewModel.messagePressure
-    readonly property string messagePressureState: String(root.messagePressure.state || "normal")
+    readonly property string messagePressureState: root.viewModel.messagePressureState
+    readonly property bool messagePressureStorageDegraded: root.viewModel.messagePressureStorageDegraded
     readonly property bool messagePressureVisible: root.messagePressureState !== "normal"
-                                                    || Boolean(root.messagePressure.storageDegraded)
+                                                    || root.messagePressureStorageDegraded
     readonly property bool incomingTrafficActive: root.incomingByteRate > 0
     readonly property bool outgoingTrafficActive: root.outgoingByteRate > 0
     property double nowMs: Date.now()
@@ -187,7 +187,7 @@ Item {
         return qsTr("%1 MiB").arg((value / 1024 / 1024).toFixed(value < 10 * 1024 * 1024 ? 1 : 0));
     }
 
-    function pressureStatusLabel() {
+    readonly property string pressureStatusLabel: {
         if (root.messagePressureState === "dropping") {
             return qsTr("Dropping");
         }
@@ -200,29 +200,25 @@ Item {
         return qsTr("Storage error");
     }
 
-    function pressureStatusDescription() {
+    readonly property string pressureStatusDescription: {
         if (root.messagePressureState === "dropping") {
             return qsTr("The storage queue is full. Some messages are being dropped.");
         }
-        if (String(root.messagePressure.captureMode || "full") === "raw_only") {
+        if (root.viewModel.messagePressureCaptureMode === "raw_only") {
             return qsTr("Only raw messages are being saved until the queues recover.");
         }
         return qsTr("Message storage reported an error.");
     }
 
-    function pressureTextColor() {
-        return root.messagePressureState === "dropping"
-                || Boolean(root.messagePressure.storageDegraded)
-                ? root.ui.themePalette.errorText
-                : root.ui.themePalette.warningText;
-    }
+    readonly property color pressureStatusTextColor: root.messagePressureState === "dropping"
+                                                     || root.messagePressureStorageDegraded
+                                                     ? root.ui.themePalette.errorText
+                                                     : root.ui.themePalette.warningText
 
-    function pressureBackgroundColor() {
-        return root.messagePressureState === "dropping"
-                || Boolean(root.messagePressure.storageDegraded)
-                ? root.ui.themePalette.errorBg
-                : root.ui.themePalette.warningBg;
-    }
+    readonly property color pressureStatusBackgroundColor: root.messagePressureState === "dropping"
+                                                           || root.messagePressureStorageDegraded
+                                                           ? root.ui.themePalette.errorBg
+                                                           : root.ui.themePalette.warningBg
 
     function connectionStatusText() {
         const state = root.status.state || "idle";
@@ -915,7 +911,7 @@ Item {
                 rightPadding: 7
                 topPadding: 0
                 bottomPadding: 0
-                Accessible.name: qsTr("Message processing status: %1").arg(root.pressureStatusLabel())
+                Accessible.name: qsTr("Message processing status: %1").arg(root.pressureStatusLabel)
 
                 contentItem: RowLayout {
                     id: pressureStatusContent
@@ -927,13 +923,13 @@ Item {
                         Layout.preferredHeight: 5
                         Layout.alignment: Qt.AlignVCenter
                         radius: 3
-                        color: root.pressureTextColor()
+                        color: root.pressureStatusTextColor
                         Accessible.ignored: true
                     }
 
                     Label {
-                        text: root.pressureStatusLabel()
-                        color: root.pressureTextColor()
+                        text: root.pressureStatusLabel
+                        color: root.pressureStatusTextColor
                         font.pixelSize: 10
                         font.bold: true
                     }
@@ -941,14 +937,14 @@ Item {
 
                 background: Rectangle {
                     radius: 6
-                    color: root.pressureBackgroundColor()
-                    border.color: root.pressureTextColor()
+                    color: root.pressureStatusBackgroundColor
+                    border.color: root.pressureStatusTextColor
                     border.width: 1
                 }
 
                 AppToolTip {
                     ui: root.ui
-                    text: root.pressureStatusDescription()
+                    text: root.pressureStatusDescription
                     position: AppToolTip.Position.Top
                     active: pressureStatusButton.hovered
                 }
@@ -998,20 +994,20 @@ Item {
 
                     AppBadge {
                         ui: root.ui
-                        label: root.pressureStatusLabel()
+                        label: root.pressureStatusLabel
                         badgeRadius: 6
                         horizontalPadding: 7
                         verticalPadding: 2
-                        badgeBg: root.pressureBackgroundColor()
-                        badgeBorder: root.pressureTextColor()
-                        badgeText: root.pressureTextColor()
+                        badgeBg: root.pressureStatusBackgroundColor
+                        badgeBorder: root.pressureStatusTextColor
+                        badgeText: root.pressureStatusTextColor
                     }
                 }
 
                 Label {
                     Layout.fillWidth: true
-                    text: root.pressureStatusDescription()
-                    color: root.pressureTextColor()
+                    text: root.pressureStatusDescription
+                    color: root.pressureStatusTextColor
                     font.pixelSize: 11
                     wrapMode: Text.Wrap
                 }
@@ -1035,8 +1031,8 @@ Item {
 
                     Label {
                         text: qsTr("%1 messages · %2")
-                                  .arg(Number(root.messagePressure.backlog || 0))
-                                  .arg(root.compactBytes(root.messagePressure.backlogBytes))
+                                  .arg(root.viewModel.messageWriterBacklog)
+                                  .arg(root.compactBytes(root.viewModel.messageWriterBacklogBytes))
                         color: root.ui.textStrong
                         font.pixelSize: 10
                     }
@@ -1054,8 +1050,8 @@ Item {
 
                     Label {
                         text: qsTr("%1 messages · %2")
-                                  .arg(Number(root.messagePressure.parseBacklog || 0))
-                                  .arg(root.compactBytes(root.messagePressure.parseBacklogBytes))
+                                  .arg(root.viewModel.messageParserBacklog)
+                                  .arg(root.compactBytes(root.viewModel.messageParserBacklogBytes))
                         color: root.ui.textStrong
                         font.pixelSize: 10
                     }
@@ -1073,9 +1069,9 @@ Item {
 
                     Label {
                         text: qsTr("%1 raw · %2 parse · %3 results")
-                                  .arg(Number(root.messagePressure.dropped || 0))
-                                  .arg(Number(root.messagePressure.parseDropped || 0))
-                                  .arg(Number(root.messagePressure.parseResultDropped || 0))
+                                  .arg(root.viewModel.messageDroppedCount)
+                                  .arg(root.viewModel.messageDroppedParseTaskCount)
+                                  .arg(root.viewModel.messageDroppedParseResultCount)
                         color: root.ui.textStrong
                         font.pixelSize: 10
                     }
@@ -1093,17 +1089,17 @@ Item {
 
                     Label {
                         text: qsTr("%1 capture · %2 parse")
-                                  .arg(Number(root.messagePressure.captureFiltered || 0))
-                                  .arg(Number(root.messagePressure.parseSkippedPressure || 0))
+                                  .arg(root.viewModel.messageCaptureFilteredCount)
+                                  .arg(root.viewModel.messagePressureSkippedParseCount)
                         color: root.ui.textStrong
                         font.pixelSize: 10
                     }
                 }
 
                 Label {
-                    visible: String(root.messagePressure.lastError || "").length > 0
+                    visible: root.viewModel.messageStorageError.length > 0
                     Layout.fillWidth: true
-                    text: String(root.messagePressure.lastError || "")
+                    text: root.viewModel.messageStorageError
                     color: root.ui.themePalette.errorText
                     font.pixelSize: 10
                     wrapMode: Text.Wrap

@@ -46,7 +46,19 @@ class WorkbenchViewModel : public QObject
     Q_PROPERTY(qint64 displayTotalMessageCount READ displayTotalMessageCount NOTIFY displayTotalMessageCountChanged)
     Q_PROPERTY(qint64 incomingByteRate READ incomingByteRate NOTIFY trafficRatesChanged)
     Q_PROPERTY(qint64 outgoingByteRate READ outgoingByteRate NOTIFY trafficRatesChanged)
-    Q_PROPERTY(QVariantMap messagePressure READ messagePressure NOTIFY messagePressureChanged)
+    Q_PROPERTY(QString messagePressureState READ messagePressureState NOTIFY messagePressureChanged)
+    Q_PROPERTY(QString messagePressureCaptureMode READ messagePressureCaptureMode NOTIFY messagePressureChanged)
+    Q_PROPERTY(bool messagePressureStorageDegraded READ messagePressureStorageDegraded NOTIFY messagePressureChanged)
+    Q_PROPERTY(int messageWriterBacklog READ messageWriterBacklog NOTIFY messagePressureChanged)
+    Q_PROPERTY(qint64 messageWriterBacklogBytes READ messageWriterBacklogBytes NOTIFY messagePressureChanged)
+    Q_PROPERTY(int messageParserBacklog READ messageParserBacklog NOTIFY messagePressureChanged)
+    Q_PROPERTY(qint64 messageParserBacklogBytes READ messageParserBacklogBytes NOTIFY messagePressureChanged)
+    Q_PROPERTY(qint64 messageDroppedCount READ messageDroppedCount NOTIFY messagePressureChanged)
+    Q_PROPERTY(qint64 messageDroppedParseTaskCount READ messageDroppedParseTaskCount NOTIFY messagePressureChanged)
+    Q_PROPERTY(qint64 messageDroppedParseResultCount READ messageDroppedParseResultCount NOTIFY messagePressureChanged)
+    Q_PROPERTY(qint64 messageCaptureFilteredCount READ messageCaptureFilteredCount NOTIFY messagePressureChanged)
+    Q_PROPERTY(qint64 messagePressureSkippedParseCount READ messagePressureSkippedParseCount NOTIFY messagePressureChanged)
+    Q_PROPERTY(QString messageStorageError READ messageStorageError NOTIFY messagePressureChanged)
     Q_PROPERTY(QVariantMap messageCapturePolicy READ messageCapturePolicy NOTIFY messageCapturePolicyChanged)
 
 public:
@@ -86,6 +98,19 @@ public:
     qint64 incomingByteRate() const;
     qint64 outgoingByteRate() const;
     QVariantMap messagePressure() const;
+    QString messagePressureState() const;
+    QString messagePressureCaptureMode() const;
+    bool messagePressureStorageDegraded() const;
+    int messageWriterBacklog() const;
+    qint64 messageWriterBacklogBytes() const;
+    int messageParserBacklog() const;
+    qint64 messageParserBacklogBytes() const;
+    qint64 messageDroppedCount() const;
+    qint64 messageDroppedParseTaskCount() const;
+    qint64 messageDroppedParseResultCount() const;
+    qint64 messageCaptureFilteredCount() const;
+    qint64 messagePressureSkippedParseCount() const;
+    QString messageStorageError() const;
     QVariantMap messageCapturePolicy() const;
 
     void setCurrentSessionIndex(int index);
@@ -150,11 +175,33 @@ signals:
     void messageCapturePolicyChanged();
 
 private:
+    struct MessagePressure
+    {
+        QString state = QStringLiteral("normal");
+        QString captureMode = QStringLiteral("full");
+        QString writerState = QStringLiteral("normal");
+        QString parserState = QStringLiteral("normal");
+        int writerBacklog = 0;
+        qint64 writerBacklogBytes = 0;
+        int parserBacklog = 0;
+        qint64 parserBacklogBytes = 0;
+        qint64 droppedCount = 0;
+        qint64 droppedParseTaskCount = 0;
+        qint64 droppedParseResultCount = 0;
+        qint64 captureFilteredCount = 0;
+        qint64 skippedParseCount = 0;
+        bool storageDegraded = false;
+        QString storageError;
+
+        bool operator==(const MessagePressure &) const = default;
+    };
+
     QString reusableMessagePayload(
         const QString &historyId,
         const QString &payload,
         const QString &testPayload,
         int format) const;
+    void refreshMessagePressure();
     void refreshSubscriptionEditorProcessorOptions();
     void clearPendingSubscriptionDelete();
     void scheduleDisplayTotalMessageCountUpdate();
@@ -179,6 +226,7 @@ private:
     qint64 m_outgoingByteRate = 0;
     QString m_pendingSubscriptionDeleteTopic;
     QString m_pendingSubscriptionDeleteDisplayName;
+    MessagePressure m_messagePressure;
     SessionEditorViewModel m_sessionEditor;
     SubscriptionEditorViewModel m_subscriptionEditor;
 };

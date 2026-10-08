@@ -52,11 +52,12 @@ QSettings::Format failingSettingsFormat()
 
 struct WorkbenchFixture
 {
-    explicit WorkbenchFixture(QSettings::Format settingsFormat = QSettings::IniFormat)
+    explicit WorkbenchFixture(QSettings::Format settingsFormat = QSettings::IniFormat,
+        HistoryWriterLimits writerLimits = {})
         : settings(temporaryDirectory.filePath(QStringLiteral("settings.data")), settingsFormat)
         , preferences(&settings)
         , historyStore(temporaryDirectory.path())
-        , historyWriter(temporaryDirectory.path(), historyStore.nextMessageId())
+        , historyWriter(temporaryDirectory.path(), historyStore.nextMessageId(), writerLimits)
         , processorLibrary(temporaryDirectory.filePath(QStringLiteral("processors")))
         , sessionService(
               settings,
@@ -138,6 +139,8 @@ class WorkbenchViewModelTest : public QObject
 private slots:
     void exposesDefaultPublishDraft();
     void exposesMessagePressureState();
+    void suppressesUnchangedMessagePressureNotifications();
+    void updatesTypedPressurePropertiesThroughDroppingAndRecovery();
     void persistsAndDuplicatesMessageCapturePolicy();
     void rollsBackMessageCapturePolicyWhenSettingsWriteFails();
     void recoversFromInvalidSessionSettingsWithoutOverwritingFile();
@@ -218,6 +221,57 @@ void WorkbenchViewModelTest::exposesMessagePressureState()
     pressure = fixture.viewModel.messagePressure();
     QCOMPARE(pressure.value(QStringLiteral("backlog")).toInt(), 1);
     QCOMPARE(pressure.value(QStringLiteral("backlogBytes")).toLongLong() > 0, true);
+}
+
+void WorkbenchViewModelTest::suppressesUnchangedMessagePressureNotifications()
+{
+    WorkbenchFixture fixture;
+    QSignalSpy pressureSpy(&fixture.viewModel, &WorkbenchViewModel::messagePressureChanged);
+    for (int index = 0; index < 100; ++index) {
+        emit fixture.eventHistoryService.messageWriterStateChanged();
+    }
+    QCOMPARE(pressureSpy.count(), 0);
+}
+
+void WorkbenchViewModelTest::updatesTypedPressurePropertiesThroughDroppingAndRecovery()
+{
+    HistoryWriterLimits limits;
+    limits.highWaterMessages = 3;
+    limits.lowWaterMessages = 1;
+    limits.maxMessages = 4;
+    limits.flushIntervalMs = 60000;
+    WorkbenchFixture fixture(QSettings::IniFormat, limits);
+    MessageRecord record;
+    record.sessionId = QStringLiteral("pressure-demo");
+    record.topic = QStringLiteral("synthetic/pressure");
+    record.timestamp = QStringLiteral("2026-10-08T00:00:00.000Z");
+    record.payloadBytes = QByteArrayLiteral("synthetic payload");
+    record.payloadSize = record.payloadBytes.size();
+    QSignalSpy pressureSpy(&fixture.viewModel, &WorkbenchViewModel::messagePressureChanged);
+    for (int index = 0; index < 4; ++index) {
+        QVERIFY(fixture.historyWriter.enqueueMessage(record) > 0);
+    }
+    QVERIFY(fixture.historyWriter.enqueueMessage(record) <= 0);
+    QTRY_COMPARE(fixture.viewModel.messagePressureState(), QStringLiteral("dropping"));
+    QCOMPARE(fixture.viewModel.messagePressureCaptureMode(), QStringLiteral("dropping"));
+    QCOMPARE(fixture.viewModel.messageWriterBacklog(), 4);
+    QCOMPARE(fixture.viewModel.messageDroppedCount(), qint64(1));
+    QVERIFY(fixture.viewModel.messageWriterBacklogBytes() > 0);
+    QCOMPARE(fixture.viewModel.messagePressureStorageDegraded(), false);
+    QCOMPARE(fixture.viewModel.messageParserBacklog(), 0);
+    QCOMPARE(fixture.viewModel.messageStorageError(), QString());
+    const int notifications = pressureSpy.count();
+    emit fixture.eventHistoryService.messageWriterStateChanged();
+    QCOMPARE(pressureSpy.count(), notifications);
+
+    QVERIFY(fixture.eventHistoryService.flushPendingMessageHistory());
+    QTRY_COMPARE(fixture.viewModel.messageWriterBacklog(), 0);
+    QCOMPARE(fixture.viewModel.messageWriterBacklogBytes(), qint64(0));
+    QCOMPARE(fixture.viewModel.messagePressureState(), QStringLiteral("normal"));
+    QCOMPARE(fixture.viewModel.messagePressureCaptureMode(), QStringLiteral("full"));
+    QCOMPARE(fixture.viewModel.messageDroppedCount(), qint64(1));
+    QVERIFY(pressureSpy.count() > notifications);
+    QCOMPARE(fixture.viewModel.messagePressure().value(QStringLiteral("dropped")).toLongLong(), qint64(1));
 }
 
 void WorkbenchViewModelTest::persistsAndDuplicatesMessageCapturePolicy()

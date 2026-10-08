@@ -1751,3 +1751,73 @@ Raw output and the temporary measurement harness stay local; no business data
 was read or recorded. The implementation still ticks while timed notifications
 are hovered; stopping that timer would be a separate change and is not tested
 or claimed here.
+
+## Message Pressure Binding Isolation Check (2026-10-08)
+
+Baseline `7335f0e` is compared with only the working-tree message-pressure
+cache/typed properties in `WorkbenchViewModel` and their QML consumers. Font
+changes are excluded; notification behavior is identical. Release Qt 6.11.1
+and AppleClang 21 probes instantiate the actual existing `WorkbenchFixture`
+with temporary settings/databases and synthetic records, without a broker.
+
+A minimal `QtObject` binds the 13 pressure values consumed by the workbench.
+The baseline uses its real `messagePressure` map followed by field bindings;
+the comparison binds the corresponding real typed properties. A private probe
+counts QML binding evaluations. It does not reproduce the complete workbench's
+widgets, formatting helpers, colors, layout, visibility, or rendering, and is
+not a whole-application benchmark. No counters are added to production sources.
+
+Five fresh-process A/B pairs per scenario alternate order. The unchanged test
+directly emits 10,000 real `EventHistoryService::messageWriterStateChanged`
+signals with no state change. The changing test enqueues 2,000 synthetic
+records, directly emitting that signal after each enqueue. The event loop is
+not pumped in the timed loop, so the writer does not drain the queue there.
+Fixture/QML initialization occurs before timing; queue enqueue costs and worker
+CPU during the loop are included. CPU is process user plus system time from
+`getrusage`; elapsed time is monotonic. This intentionally accelerated signal
+test bypasses the service's normal 100 ms pressure-notification coalescing and
+does not represent an actual message rate or CPU load.
+
+| Scenario | Baseline CPU median | Modified CPU median | Baseline elapsed median | Modified elapsed median | Baseline/modified notifications |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 10,000 unchanged signals | 63.251 ms | 1.058 ms | 62.496 ms | 0.786 ms | 10,000 / 0 |
+| 2,000 changing backlogs | 14.016 ms | 7.785 ms | 13.592 ms | 7.342 ms | 2,000 / 2,000 |
+
+All five pairs agree on notification counts. Including initial binding
+creation, evaluation counts are 140,014 versus 13 for unchanged signals, and
+28,014 versus 26,013 for changing backlogs. Both versions finish unchanged
+tests with backlog zero/state normal and changing tests with backlog
+2,000/state elevated. Typed fields still share one change signal: the modified
+changing test re-evaluates all 13 bindings, not only fields that changed.
+
+The no-duplicate-notification assertion fails against baseline (10,000 emitted)
+and passes against the comparison (zero). New persistent tests cover unchanged
+notifications and a real four-record queue reaching dropping state, rejecting
+the next record, and recovering after a drain. They verify typed backlog,
+bytes, capture mode, drop count, normal-state recovery, and continued map getter
+compatibility. A long fixture flush interval makes the dropping state stable
+until the test explicitly drains it; production timing is unchanged.
+
+The isolated Debug application build contains only this change and these tests,
+not the font changes or probe instrumentation. QML lint and all 43 registered
+CTest executables pass (23.94 seconds). A separate background application smoke
+run loads the actual modified workbench QML with isolated profiler settings;
+all 20 synthetic messages are displayed, persisted and parsed, no messages or
+parse tasks/results are dropped, final pressure is normal, and follow-tail is
+verified. The window never becomes active. This Debug smoke run is functional
+validation only, not a CPU comparison.
+
+The profiler reports results without exiting the application. After its report,
+only this isolated smoke process is terminated explicitly; no normal client is
+stopped. A clean application shutdown is not part of this smoke assertion.
+
+Conclusion: unchanged snapshots no longer cause redundant UI notifications,
+and the isolated changing-pressure binding path is cheaper. The absolute
+measured savings are microseconds per signal in this small probe; large local
+relative reductions must not be advertised as whole-application CPU gains.
+The real UI's format/color caching and representative live/idle/scroll CPU
+still require separate paired acceptance. The state-cache change retains the
+existing service notification cadence and adds no deliberate timer delay.
+Recommend retaining it as a tested reduction in repeated state/UI work, not
+as proof that the reported competitor CPU gap is resolved. Raw probes/reports
+remain local and contain only synthetic data.

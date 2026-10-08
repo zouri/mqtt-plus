@@ -167,7 +167,7 @@ WorkbenchViewModel::WorkbenchViewModel(
     connect(&m_eventHistoryService,
             &EventHistoryService::messageWriterStateChanged,
             this,
-            &WorkbenchViewModel::messagePressureChanged);
+            &WorkbenchViewModel::refreshMessagePressure);
     connect(&m_eventHistoryService,
             &EventHistoryService::messageRowsAppended,
             this,
@@ -197,6 +197,7 @@ WorkbenchViewModel::WorkbenchViewModel(
             &WorkbenchViewModel::subscriptionsStateChanged);
     m_displayTotalMessageCount = totalMessageCount();
     refreshTrafficRates();
+    refreshMessagePressure();
     refreshSubscriptionEditorProcessorOptions();
 }
 
@@ -314,23 +315,64 @@ bool WorkbenchViewModel::allSubscriptionsPaused() const
 
 QVariantMap WorkbenchViewModel::messagePressure() const
 {
-    QVariantMap pressure;
-    pressure.insert(QStringLiteral("state"), m_eventHistoryService.messagePressureState());
-    pressure.insert(QStringLiteral("captureMode"), m_eventHistoryService.messageCaptureMode());
-    pressure.insert(QStringLiteral("writerState"), m_eventHistoryService.messageWriterPressureState());
-    pressure.insert(QStringLiteral("parserState"), m_eventHistoryService.messageParserPressureState());
-    pressure.insert(QStringLiteral("backlog"), m_eventHistoryService.messageWriterBacklog());
-    pressure.insert(QStringLiteral("backlogBytes"), m_eventHistoryService.messageWriterBacklogBytes());
-    pressure.insert(QStringLiteral("dropped"), m_eventHistoryService.droppedMessageCount());
-    pressure.insert(QStringLiteral("parseBacklog"), m_eventHistoryService.messageParserBacklog());
-    pressure.insert(QStringLiteral("parseBacklogBytes"), m_eventHistoryService.messageParserBacklogBytes());
-    pressure.insert(QStringLiteral("parseDropped"), m_eventHistoryService.droppedParseTaskCount());
-    pressure.insert(QStringLiteral("parseResultDropped"), m_eventHistoryService.droppedParseResultCount());
-    pressure.insert(QStringLiteral("captureFiltered"), m_eventHistoryService.captureFilteredMessageCount());
-    pressure.insert(QStringLiteral("parseSkippedPressure"), m_eventHistoryService.pressureSkippedParseCount());
-    pressure.insert(QStringLiteral("storageDegraded"), m_eventHistoryService.messageStorageDegraded());
-    pressure.insert(QStringLiteral("lastError"), m_eventHistoryService.messageStorageError());
-    return pressure;
+    const MessagePressure &pressure = m_messagePressure;
+    return {
+        {QStringLiteral("state"), pressure.state},
+        {QStringLiteral("captureMode"), pressure.captureMode},
+        {QStringLiteral("writerState"), pressure.writerState},
+        {QStringLiteral("parserState"), pressure.parserState},
+        {QStringLiteral("backlog"), pressure.writerBacklog},
+        {QStringLiteral("backlogBytes"), pressure.writerBacklogBytes},
+        {QStringLiteral("dropped"), pressure.droppedCount},
+        {QStringLiteral("parseBacklog"), pressure.parserBacklog},
+        {QStringLiteral("parseBacklogBytes"), pressure.parserBacklogBytes},
+        {QStringLiteral("parseDropped"), pressure.droppedParseTaskCount},
+        {QStringLiteral("parseResultDropped"), pressure.droppedParseResultCount},
+        {QStringLiteral("captureFiltered"), pressure.captureFilteredCount},
+        {QStringLiteral("parseSkippedPressure"), pressure.skippedParseCount},
+        {QStringLiteral("storageDegraded"), pressure.storageDegraded},
+        {QStringLiteral("lastError"), pressure.storageError},
+    };
+}
+
+QString WorkbenchViewModel::messagePressureState() const { return m_messagePressure.state; }
+QString WorkbenchViewModel::messagePressureCaptureMode() const { return m_messagePressure.captureMode; }
+bool WorkbenchViewModel::messagePressureStorageDegraded() const { return m_messagePressure.storageDegraded; }
+int WorkbenchViewModel::messageWriterBacklog() const { return m_messagePressure.writerBacklog; }
+qint64 WorkbenchViewModel::messageWriterBacklogBytes() const { return m_messagePressure.writerBacklogBytes; }
+int WorkbenchViewModel::messageParserBacklog() const { return m_messagePressure.parserBacklog; }
+qint64 WorkbenchViewModel::messageParserBacklogBytes() const { return m_messagePressure.parserBacklogBytes; }
+qint64 WorkbenchViewModel::messageDroppedCount() const { return m_messagePressure.droppedCount; }
+qint64 WorkbenchViewModel::messageDroppedParseTaskCount() const { return m_messagePressure.droppedParseTaskCount; }
+qint64 WorkbenchViewModel::messageDroppedParseResultCount() const { return m_messagePressure.droppedParseResultCount; }
+qint64 WorkbenchViewModel::messageCaptureFilteredCount() const { return m_messagePressure.captureFilteredCount; }
+qint64 WorkbenchViewModel::messagePressureSkippedParseCount() const { return m_messagePressure.skippedParseCount; }
+QString WorkbenchViewModel::messageStorageError() const { return m_messagePressure.storageError; }
+
+void WorkbenchViewModel::refreshMessagePressure()
+{
+    MessagePressure next;
+    next.state = m_eventHistoryService.messagePressureState();
+    next.captureMode = m_eventHistoryService.messageCaptureMode();
+    next.writerState = m_eventHistoryService.messageWriterPressureState();
+    next.parserState = m_eventHistoryService.messageParserPressureState();
+    next.writerBacklog = m_eventHistoryService.messageWriterBacklog();
+    next.writerBacklogBytes = m_eventHistoryService.messageWriterBacklogBytes();
+    next.droppedCount = m_eventHistoryService.droppedMessageCount();
+    next.parserBacklog = m_eventHistoryService.messageParserBacklog();
+    next.parserBacklogBytes = m_eventHistoryService.messageParserBacklogBytes();
+    next.droppedParseTaskCount = m_eventHistoryService.droppedParseTaskCount();
+    next.droppedParseResultCount = m_eventHistoryService.droppedParseResultCount();
+    next.captureFilteredCount = m_eventHistoryService.captureFilteredMessageCount();
+    next.skippedParseCount = m_eventHistoryService.pressureSkippedParseCount();
+    next.storageDegraded = m_eventHistoryService.messageStorageDegraded();
+    next.storageError = m_eventHistoryService.messageStorageError();
+
+    if (next == m_messagePressure) {
+        return;
+    }
+    m_messagePressure = next;
+    emit messagePressureChanged();
 }
 
 QVariantMap WorkbenchViewModel::messageCapturePolicy() const
