@@ -61,6 +61,11 @@ DESTDIR="$app_dir" cmake --install "$build_dir" \
     --config Release \
     --prefix /usr
 
+# AppImage tools expect the desktop entry to resolve to an ELF executable,
+# not the DEB launcher script. Keep Qt's deployed executable layout intact.
+rm "$app_dir/usr/bin/mqtt-plus"
+ln -s ../lib/mqtt-plus/mqtt-plus "$app_dir/usr/bin/mqtt-plus"
+
 # Qt deploys every SQL driver plugin, including drivers whose proprietary
 # client libraries are unavailable on the AppImage build host. MQTT Plus only
 # uses SQLite for local persistence.
@@ -71,7 +76,6 @@ find "$app_dir/usr/lib/mqtt-plus/plugins/sqldrivers" \
     cd "$appimage_output_dir"
     APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64 "$linuxdeploy" \
         --appdir "$app_dir" \
-        --executable "$app_dir/usr/lib/mqtt-plus/mqtt-plus" \
         --desktop-file "$repo_root/packaging/linux/mqtt-plus.desktop" \
         --icon-file "$repo_root/assets/icons/app-icon-512.png" \
         --output appimage
