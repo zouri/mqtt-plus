@@ -151,6 +151,8 @@ When using the preset, replace `build/dev` above with `build/qt6.11-debug`.
 
 The packaging scripts perform a Release build, run QML lint, and write the artifacts to `dist/`.
 
+macOS packages retain only the target CPU architecture in bundled Qt libraries and plugins. See the [size reduction and verification record](docs/package-size.md) (Chinese).
+
 ```bash
 # macOS: arm64 or x86_64
 ./scripts/package-macos.sh /path/to/Qt/6.11.x/macos arm64

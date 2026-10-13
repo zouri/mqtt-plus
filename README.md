@@ -151,6 +151,8 @@ ctest --test-dir build/dev --output-on-failure
 
 打包脚本会执行 Release 构建、QML lint，并将产物写入 `dist/`。
 
+macOS 安装包仅保留目标 CPU 架构的 Qt 库和插件，避免携带另一种架构的冗余内容。见[体积精简与验证记录](docs/package-size.md)。
+
 ```bash
 # macOS: arm64 或 x86_64
 ./scripts/package-macos.sh /path/to/Qt/6.11.x/macos arm64

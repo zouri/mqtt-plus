@@ -1,0 +1,12 @@
+include("@CMAKE_CURRENT_SOURCE_DIR@/cmake/ThinMacosBundle.cmake")
+set(app_bundle "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/mqtt-plus.app")
+file(REMOVE "${app_bundle}/Contents/PlugIns/sqldrivers/libqsqlmimer.dylib")
+
+# Leave default/universal builds intact unless the build selected architectures.
+if(NOT "@CMAKE_OSX_ARCHITECTURES@" STREQUAL "")
+    mqtt_plus_thin_macos_bundle("${app_bundle}" "@CMAKE_OSX_ARCHITECTURES@")
+endif()
+
+# Thinning changes signed code. Refresh signatures only after all modifications.
+execute_process(COMMAND /usr/bin/codesign --force --deep --sign - "${app_bundle}"
+    COMMAND_ERROR_IS_FATAL ANY)

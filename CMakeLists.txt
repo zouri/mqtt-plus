@@ -314,19 +314,9 @@ else()
 endif()
 
 if(APPLE)
-    install(CODE [[
-        set(app_bundle "${CMAKE_INSTALL_PREFIX}/mqtt-plus.app")
-        file(REMOVE
-            "${app_bundle}/Contents/PlugIns/sqldrivers/libqsqlmimer.dylib"
-        )
-        execute_process(
-            COMMAND /usr/bin/codesign --force --deep --sign - "${app_bundle}"
-            RESULT_VARIABLE codesign_result
-        )
-        if(NOT codesign_result EQUAL 0)
-            message(FATAL_ERROR "Failed to refresh the macOS package signature")
-        endif()
-    ]])
+    configure_file(cmake/OptimizeMacosBundle.cmake.in
+        "${CMAKE_CURRENT_BINARY_DIR}/OptimizeMacosBundle.cmake" @ONLY)
+    install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/OptimizeMacosBundle.cmake")
 endif()
 
 set(CPACK_PACKAGE_NAME "mqtt-plus")
@@ -370,6 +360,13 @@ elseif(UNIX)
 endif()
 
 if(BUILD_TESTING)
+    if(APPLE)
+        add_test(NAME macos_bundle_thinning
+            COMMAND "${CMAKE_COMMAND}"
+                "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+                "-DTEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/tests/macos-bundle-thinning"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_macos_bundle_thinning.cmake")
+    endif()
     find_package(Perl QUIET)
     if(PERL_FOUND)
         add_test(NAME process_tree_cpu
