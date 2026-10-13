@@ -14,6 +14,7 @@ struct ProcessorDefinition
     QString currentRevisionId;
     QString createdAt;
     QString updatedAt;
+    qint64 changeSequence = 0;
 };
 
 struct ProcessorSourceFile

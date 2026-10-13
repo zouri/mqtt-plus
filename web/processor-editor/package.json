@@ -1,0 +1,9 @@
+{
+  "name": "mqtt-plus-processor-editor",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": { "build": "tsc --noEmit && vite build", "dev": "vite --host 127.0.0.1", "test": "tsc --target ES2022 --module ES2022 --moduleResolution bundler --skipLibCheck --outDir .test-build src/draftstate.ts && node --test test/*.test.mjs" },
+  "dependencies": { "lucide": "^0.468.0", "monaco-editor": "^0.52.2" },
+  "devDependencies": { "typescript": "~5.7.3", "vite": "^6.4.1" }
+}

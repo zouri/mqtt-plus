@@ -1,6 +1,7 @@
 #include "processorlibrary_p.h"
 
 #include <QDateTime>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QCborValue>
 #include <QJsonDocument>
@@ -15,7 +16,7 @@
 #include <utility>
 
 namespace {
-constexpr int kProcessorLibrarySchemaVersion = 1;
+constexpr int kProcessorLibrarySchemaVersion = 2;
 
 QString timestampNow()
 {
@@ -40,6 +41,7 @@ ProcessorDefinition processorFromQuery(const QSqlQuery &query)
     processor.currentRevisionId = query.value(3).toString();
     processor.createdAt = query.value(4).toString();
     processor.updatedAt = query.value(5).toString();
+    processor.changeSequence = query.value(6).toLongLong();
     return processor;
 }
 
@@ -138,6 +140,16 @@ bool ProcessorLibrary::Impl::initialize(const QString &storageDirectory)
     }
     if (schemaVersion == 0 && !createSchema()) {
         return false;
+    }
+    if (schemaVersion < 2) {
+        if (!m_db.transaction()) return false;
+        if (!executeStatement(QStringLiteral("ALTER TABLE processors ADD COLUMN change_sequence INTEGER NOT NULL DEFAULT 1"))
+            || !executeStatement(QStringLiteral("CREATE TABLE editor_save_requests (request_id TEXT PRIMARY KEY, digest TEXT NOT NULL, result BLOB NOT NULL)"))
+            || !executeStatement(QStringLiteral("PRAGMA user_version = 2"))
+            || !m_db.commit()) {
+            m_db.rollback();
+            return false;
+        }
     }
     // Archived processors from older builds become ordinary editable processors.
     return executeStatement(QStringLiteral(
@@ -261,14 +273,59 @@ SaveProcessorRevisionResult ProcessorLibrary::Impl::saveRevision(
         return result;
     }
 
+    const QByteArray digest = QCryptographicHash::hash(
+        QCborValue(QCborMap{{QStringLiteral("processor"), command.processorId},
+            {QStringLiteral("name"), command.name}, {QStringLiteral("description"), command.description},
+            {QStringLiteral("version"), command.expectedVersion},
+            {QStringLiteral("content"), package.contentHash}}).toCbor(), QCryptographicHash::Sha256).toHex();
+
     const QString processorId = command.processorId.isEmpty()
         ? QUuid::createUuid().toString(QUuid::WithoutBraces)
         : command.processorId;
     const QString now = timestampNow();
 
-    if (!m_db.transaction()) {
+    QSqlQuery begin(m_db);
+    if (!begin.exec(QStringLiteral("BEGIN IMMEDIATE"))) {
         result.error = m_db.lastError().text();
         return result;
+    }
+
+    if (!command.requestId.isEmpty()) {
+        QSqlQuery previous(m_db);
+        previous.prepare(QStringLiteral("SELECT digest, result FROM editor_save_requests WHERE request_id = ?"));
+        previous.addBindValue(command.requestId);
+        if (!previous.exec()) {
+            result.error = previous.lastError().text();
+            m_db.rollback();
+            return result;
+        }
+        if (previous.next()) {
+            m_db.rollback();
+            if (previous.value(0).toByteArray() != digest) {
+                result.error = QStringLiteral("Save request identity was reused with different content.");
+                result.status = 409;
+                return result;
+            }
+            const auto saved = QCborValue::fromCbor(previous.value(1).toByteArray()).toMap();
+            result.processor = {saved.value(QStringLiteral("id")).toString(), saved.value(QStringLiteral("name")).toString(),
+                saved.value(QStringLiteral("description")).toString(), saved.value(QStringLiteral("revisionId")).toString(),
+                saved.value(QStringLiteral("createdAt")).toString(), saved.value(QStringLiteral("updatedAt")).toString(),
+                saved.value(QStringLiteral("sequence")).toInteger()};
+            result.revision = revisionById(result.processor.currentRevisionId);
+            result.ok = !result.revision.isNull();
+            result.replayed = true;
+            if (!result.ok) { result.status = 410; result.error = QStringLiteral("Saved processor was deleted."); }
+            return result;
+        }
+    }
+    if (!command.expectedVersion.isEmpty()) {
+        const auto current = processorById(command.processorId);
+        if (!current || QString::number(current->changeSequence) != command.expectedVersion) {
+            m_db.rollback();
+            result.status = current ? 409 : 410;
+            result.error = current ? QStringLiteral("Processor changed since editing began.") : QStringLiteral("Processor was deleted.");
+            return result;
+        }
     }
 
     QSqlQuery processorQuery(m_db);
@@ -375,7 +432,7 @@ SaveProcessorRevisionResult ProcessorLibrary::Impl::saveRevision(
     QSqlQuery updateProcessor(m_db);
     updateProcessor.prepare(QStringLiteral(
         "UPDATE processors SET name = ?, description = ?, current_revision_id = ?, "
-        "updated_at = ? WHERE id = ?"));
+        "updated_at = ?, change_sequence = change_sequence + 1 WHERE id = ?"));
     updateProcessor.addBindValue(command.name);
     updateProcessor.addBindValue(command.description);
     updateProcessor.addBindValue(revisionId);
@@ -390,6 +447,20 @@ SaveProcessorRevisionResult ProcessorLibrary::Impl::saveRevision(
         return result;
     }
 
+    if (!command.requestId.isEmpty()) {
+        const auto saved = processorById(processorId);
+        if (!saved) { m_db.rollback(); result.error = QStringLiteral("Cannot read saved metadata."); return result; }
+        const QCborMap data{{QStringLiteral("id"), saved->id}, {QStringLiteral("name"), saved->name},
+            {QStringLiteral("description"), saved->description}, {QStringLiteral("revisionId"), saved->currentRevisionId},
+            {QStringLiteral("createdAt"), saved->createdAt}, {QStringLiteral("updatedAt"), saved->updatedAt},
+            {QStringLiteral("sequence"), saved->changeSequence}};
+        QSqlQuery record(m_db);
+        record.prepare(QStringLiteral("INSERT INTO editor_save_requests VALUES (?, ?, ?)"));
+        record.addBindValue(command.requestId);
+        record.addBindValue(digest);
+        record.addBindValue(QCborValue(data).toCbor());
+        if (!record.exec()) { result.error = record.lastError().text(); m_db.rollback(); return result; }
+    }
     if (!m_db.commit()) {
         result.error = m_db.lastError().text();
         return result;
@@ -450,6 +521,24 @@ bool ProcessorLibrary::Impl::deleteProcessor(const QString &processorId)
     return true;
 }
 
+SaveProcessorRevisionResult ProcessorLibrary::Impl::savedRequest(const QString &requestId) const
+{
+    SaveProcessorRevisionResult result;
+    QSqlQuery query(m_db);
+    query.prepare(QStringLiteral("SELECT result FROM editor_save_requests WHERE request_id = ?"));
+    query.addBindValue(requestId);
+    if (!query.exec() || !query.next()) return result;
+    const auto data = QCborValue::fromCbor(query.value(0).toByteArray()).toMap();
+    result.processor = {data.value(QStringLiteral("id")).toString(), data.value(QStringLiteral("name")).toString(),
+        data.value(QStringLiteral("description")).toString(), data.value(QStringLiteral("revisionId")).toString(),
+        data.value(QStringLiteral("createdAt")).toString(), data.value(QStringLiteral("updatedAt")).toString(),
+        data.value(QStringLiteral("sequence")).toInteger()};
+    result.revision = revisionById(result.processor.currentRevisionId);
+    result.ok = !result.revision.isNull();
+    result.status = result.ok ? 200 : 410;
+    return result;
+}
+
 std::optional<ProcessorDefinition> ProcessorLibrary::Impl::processorById(
     const QString &processorId) const
 {
@@ -458,7 +547,7 @@ std::optional<ProcessorDefinition> ProcessorLibrary::Impl::processorById(
     }
     QSqlQuery query(m_db);
     query.prepare(QStringLiteral(
-        "SELECT id, name, description, current_revision_id, created_at, updated_at "
+        "SELECT id, name, description, current_revision_id, created_at, updated_at, change_sequence "
         "FROM processors WHERE id = ?"));
     query.addBindValue(normalizedId(processorId));
     if (!query.exec()) {
@@ -482,7 +571,7 @@ QVector<ProcessorDefinition> ProcessorLibrary::Impl::processors() const
 
     QSqlQuery query(m_db);
     if (!query.exec(QStringLiteral(
-            "SELECT id, name, description, current_revision_id, created_at, updated_at "
+        "SELECT id, name, description, current_revision_id, created_at, updated_at, change_sequence "
             "FROM processors ORDER BY name COLLATE NOCASE, id"))) {
         m_lastError = query.lastError().text();
         return result;

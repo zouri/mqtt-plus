@@ -3,18 +3,27 @@
 
 #include <algorithm>
 #include <memory>
+#include <QDir>
+#include <QStandardPaths>
 
-ProcessorLibrary::ProcessorLibrary(const QString &storageDirectory)
-    : m_impl(std::make_unique<Impl>(storageDirectory))
+ProcessorLibrary::ProcessorLibrary(const QString &storageDirectory, bool snapshotOnly)
+    : m_storageDirectory(storageDirectory)
 {
-    reload();
+    if (snapshotOnly && m_storageDirectory.isEmpty()) {
+        m_storageDirectory = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation))
+            .filePath(QStringLiteral("mqtt_plus/processors"));
+    }
+    if (!snapshotOnly) {
+        m_impl = std::make_unique<Impl>(storageDirectory);
+        reload();
+    }
 }
 
 ProcessorLibrary::~ProcessorLibrary() = default;
 
 bool ProcessorLibrary::isReady() const
 {
-    return m_impl->isReady() && m_lastError.isEmpty();
+    return !m_impl || m_impl->isReady();
 }
 
 QString ProcessorLibrary::lastError() const
@@ -24,11 +33,14 @@ QString ProcessorLibrary::lastError() const
 
 QString ProcessorLibrary::storageDirectory() const
 {
-    return m_impl->storageDirectory();
+    return m_impl ? m_impl->storageDirectory() : m_storageDirectory;
 }
 
 bool ProcessorLibrary::reload()
 {
+    if (!m_impl) {
+        return false;
+    }
     if (!m_impl->isReady()) {
         m_lastError = m_impl->lastError();
         return false;
@@ -157,36 +169,59 @@ std::optional<ResolvedProcessor> ProcessorLibrary::resolve(
 SaveProcessorRevisionResult ProcessorLibrary::saveRevision(
     const SaveProcessorRevisionCommand &command)
 {
+    if (!m_impl) {
+        SaveProcessorRevisionResult result;
+        result.error = QStringLiteral("Read-only Processor snapshot.");
+        return result;
+    }
     SaveProcessorRevisionResult result = m_impl->saveRevision(command);
     if (!result.ok) {
         m_lastError = result.error;
         return result;
     }
 
-    if (!reload()) {
-        result.ok = false;
-        result.error = m_lastError;
-        return result;
-    }
-
-    const auto processor = processorById(result.processor.id);
-    const auto revision = revisionById(result.revision->id);
-    if (!processor || revision.isNull()) {
-        result.ok = false;
-        result.error = QStringLiteral("Cannot refresh the saved Processor snapshot.");
-        m_lastError = result.error;
-        return result;
-    }
-    result.processor = *processor;
-    result.revision = revision;
+    if (!result.replayed) applySavedSnapshot(result);
+    m_lastError.clear();
     return result;
 }
 
 bool ProcessorLibrary::deleteProcessor(const QString &processorId)
 {
+    if (!m_impl) {
+        return false;
+    }
     if (!m_impl->deleteProcessor(processorId)) {
         m_lastError = m_impl->lastError();
         return false;
     }
     return reload();
+}
+
+void ProcessorLibrary::replaceSnapshot(const QVector<ProcessorDefinition> &processors,
+    const QVector<QSharedPointer<const ProcessorRevisionSnapshot>> &revisions)
+{
+    m_processors.clear();
+    m_revisions.clear();
+    for (const auto &processor : processors) m_processors.insert(processor.id, processor);
+    for (const auto &revision : revisions) m_revisions.insert(revision->id, revision);
+}
+
+void ProcessorLibrary::applySavedSnapshot(const SaveProcessorRevisionResult &result)
+{
+    m_processors.insert(result.processor.id, result.processor);
+    m_revisions.insert(result.revision->id, result.revision);
+}
+
+void ProcessorLibrary::applyDeletedSnapshot(const QString &processorId)
+{
+    m_processors.remove(processorId);
+    for (auto it = m_revisions.begin(); it != m_revisions.end();) {
+        if ((*it)->processorId == processorId) it = m_revisions.erase(it);
+        else ++it;
+    }
+}
+
+SaveProcessorRevisionResult ProcessorLibrary::savedRequest(const QString &requestId) const
+{
+    return m_impl ? m_impl->savedRequest(requestId) : SaveProcessorRevisionResult{};
 }

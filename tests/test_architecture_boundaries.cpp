@@ -481,9 +481,15 @@ void ArchitectureBoundariesTest::qmlElementTypesRemainOnApplicationTarget()
     const QString appOnlySources = cmakeSource.mid(
         appOnlySourcesStart,
         appOnlySourcesEnd - appOnlySourcesStart);
-    QVERIFY2(appOnlySources.contains(QStringLiteral("src/presentation/codesyntaxhighlighter.cpp"))
-            && appOnlySources.contains(QStringLiteral("src/presentation/codesyntaxhighlighter.h")),
-        "QML_ELEMENT types must remain on the target passed to qt_add_qml_module");
+    QVERIFY2(appOnlySources.contains(QStringLiteral("src/app/main.cpp")),
+        "The QML application entry point must remain on the executable target");
+    QVERIFY2(!cmakeSource.contains(QStringLiteral("KF6SyntaxHighlighting"))
+            && !cmakeSource.contains(QStringLiteral("FetchContent_MakeAvailable(extra_cmake_modules)")),
+        "The removed native code editor must not retain its highlighter dependencies");
+    QString textAreaSource;
+    QVERIFY(readSourceFile(QStringLiteral("qml/components/AppTextArea.qml"), textAreaSource));
+    QVERIFY(!textAreaSource.contains(QStringLiteral("CodeSyntaxHighlighter")));
+    QVERIFY(textAreaSource.contains(QStringLiteral("property bool showLineNumbers")));
     QVERIFY(cmakeSource.contains(QStringLiteral("add_subdirectory(qml)")));
     QString appCmakeSource;
     QVERIFY(readSourceFile(QStringLiteral("qml/CMakeLists.txt"), appCmakeSource));
@@ -711,11 +717,13 @@ void ArchitectureBoundariesTest::processorLibraryUiUsesProcessorContracts()
     QVERIFY(readSourceFile(
         QStringLiteral("qml/features/processors/ProcessorsView.qml"),
         processorView));
-    QVERIFY2(processorView.contains(QStringLiteral("text: qsTr(\"Save\")"))
+    QVERIFY2(processorView.contains(QStringLiteral("text: qsTr(\"Edit in Browser\")"))
             && !processorView.contains(QStringLiteral("Revision history"))
-            && processorView.contains(QStringLiteral("newProcessor(\"lua\")"))
-            && processorView.contains(QStringLiteral("newProcessor(\"javascript\")")),
-        "Processor Library must expose simple saves and both initial runtime templates");
+            && processorView.contains(QStringLiteral("newProcessor(newLanguage.currentIndex === 0 ? \"lua\" : \"javascript\")"))
+            && !processorView.contains(QStringLiteral("saveEditor()"))
+            && !processorView.contains(QStringLiteral("validateEditor()"))
+            && !processorView.contains(QStringLiteral("ProcessorEditor {")),
+        "Processor Library must manage scripts and delegate all editing to the browser");
 
     QString applicationViewModel;
     QVERIFY(readSourceFile(

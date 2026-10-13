@@ -98,9 +98,11 @@ MQTT Plus 不包含内置 Broker，开始前需要一个可以访问的 MQTT Bro
 
 ### 消息处理器
 
-把设备上报转换成更便于阅读的结果，在编辑器中验证脚本，再绑定到订阅；版本记录用于保留处理逻辑的演进。
+把设备上报转换成更便于阅读的结果。在程序内管理脚本，通过默认浏览器编辑与校验，草稿保存在本机，保存后更新订阅使用的版本。[编辑器说明](docs/browser-processor-editor.md)
 
-![MQTT Plus 消息处理器：Lua 脚本编辑与验证](docs/images/mqtt-plus-processors.png)
+![MQTT Plus 浏览器编辑器：Lua 脚本编辑与校验](docs/images/mqtt-plus-browser-editor.png)
+
+![MQTT Plus 脚本管理：只读详情与浏览器编辑入口](docs/images/mqtt-plus-processor-management.png)
 
 ### 个性化设置
 
@@ -115,9 +117,10 @@ MQTT Plus 不包含内置 Broker，开始前需要一个可以访问的 MQTT Bro
 - CMake 3.29+
 - 支持 C++20 的编译器
 - Qt 6.11
+- Node 22 和 npm（仅构建时需要）
 - Ninja 或其他 CMake 生成器
 
-Qt 需要包含 Concurrent、Core、Gui、Network、Qml、Quick、Quick Controls 2、Sql、Svg、Test、LinguistTools 和 WebSockets。首次配置时，CMake 会下载固定版本的 Lua、KSyntaxHighlighting 和 Extra CMake Modules；如果本机没有 Qt MQTT，还会下载并构建 Qt MQTT 6.11.1。
+Qt 需要包含 Concurrent、Core、Gui、Network、Qml、Quick、Quick Controls 2、Sql、Svg、LinguistTools、WebSockets 和 HttpServer；启用测试时还需要 Test。首次配置时，CMake 会下载固定版本的 Lua，并安装锁定的网页编辑器依赖；如果本机没有 Qt MQTT，还会下载并构建 Qt MQTT 6.11.1。
 
 ### 配置与编译
 

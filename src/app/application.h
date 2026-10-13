@@ -22,6 +22,7 @@
 #include "usecases/subscriptionservice.h"
 #include "usecases/updatecontroller.h"
 #include "viewmodels/applicationviewmodel.h"
+#include "usecases/browsereditorservice.h"
 
 #include <QObject>
 #include <QSettings>
@@ -81,4 +82,5 @@ private:
     QString m_pendingTopicSessionId;
     QVector<TopicObservation> m_pendingTopicObservations;
     ApplicationViewModel m_viewModel;
+    std::unique_ptr<BrowserEditorService> m_editorService;
 };

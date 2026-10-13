@@ -1,8 +1,32 @@
 # 文档截图与隐私检查 / Screenshot Privacy Checklist
 
-README 中的配图应展示真实应用界面，但不能暴露个人或业务测试数据。当前四张 PNG 更新于 2026-09-07，来自 0.5.0 版本的真实 Qt Quick 界面。
+## 浏览器编辑器迁移 / Browser Editor Migration
 
-Documentation screenshots must show the real application without exposing personal or business test data. The four current PNGs were updated on 2026-09-07 using the actual Qt Quick interface from version 0.5.0.
+### UI/UX 改进证据 / UI/UX refinement evidence
+
+`mqtt-plus-editor-single-window.jpg` captured on 2026-10-13 at 1280 × 720 shows the second editor document as read-only while the first Lua document owns editing, even though the second targets JavaScript. Both use one temporary-database demo host with separate disposable authorizations. Only the built-in JavaScript template and localized default new-script name are visible. The saved image and metadata were inspected; no browser address, authorization value, personal path, broker, or business data is present, and no redaction was needed.
+
+`mqtt-plus-editor-disconnected-readonly.jpg` captured on 2026-10-13 at 1280 × 720 shows the actual editor locked after the temporary demo host stopped responding. Only the built-in Lua source and synthetic `Demo readonly` / `Synthetic disconnect check` metadata appear. The saved JPEG and its metadata were reopened and inspected; no authorization values, personal paths, broker, or real business data are visible, and no redaction was needed. The temporary host was resumed for reconnect verification, then stopped.
+
+`mqtt-plus-editor-compact-toolbar.jpg` (1280 × 720) and `mqtt-plus-editor-compact-mobile.jpg` (390 × 844), captured on 2026-10-13 with the temporary demo host and in-app browser, show file-title controls and validation feedback consolidated without a standalone row. They contain only the localized default new-script name, the built-in Lua template, and synthetic demo metadata (hidden in the mobile shot). The full images and metadata were inspected; no personal paths, authorization values, real broker/business data, or redaction are present. Earlier UI refinement screenshots remain historical evidence, not the latest layout.
+
+`mqtt-plus-editor-no-draft.jpg` captured on 2026-10-13 at 1280 × 720 shows the actual editor after validating an untouched built-in Lua template: the draft chooser is empty and the footer states that no draft was created. The demo host uses temporary storage. Only the localized default new-script name and built-in source are shown; there is no address bar, authorization value, personal path, broker, or business data. The final JPEG and its metadata were reopened and checked, and no redaction was needed.
+
+`mqtt-plus-editor-ux-{before,after,error,drafts,mobile,disconnected}.jpg` captured on 2026-10-13 uses the actual editor and a temporary-database demo host. Desktop images are 1280 × 720; mobile is 390 × 844. The before image is from the same day's audit before edits (light system appearance); after images use dark system appearance. This is a layout/state comparison, not a same-theme pixel-fidelity comparison. Names and descriptions are synthetic (`Demo UI audit`, `Synthetic telemetry processor`, or the built-in new-script name), source is the built-in Lua template, and the error uses the fictional `missing_process` symbol. Branch identifiers belong only to the disposable demo database. The images contain no address bar, authorization values, personal paths, broker, or real business data. All final files and image metadata were reopened and checked; no redaction was needed. The capture API returns JPEG bytes, so the files use the matching `.jpg` extension.
+
+See [the refinement verification](../browser-editor-ux-refinement.md) for observed workflows and remaining checks. These images supplement, rather than replace, the migration screenshots below.
+
+`mqtt-plus-browser-editor.png` updated on 2026-10-13 uses the real bundled web editor, served by the temporary-database integration-test host and captured with Playwright at 1440 x 900. It contains only the synthetic `Demo telemetry decoder` name, the fictional `Retained change from A` description, and the built-in Lua template. The header now includes processor switching. No normal application data, broker, account, database path, authorization link, or token is visible. The image and metadata were reopened and inspected. Browser test traces may contain disposable authorization values and remain ignored, not published. No image content was redacted because none required redaction.
+
+`mqtt-plus-processor-switcher.png` captured on 2026-10-13 shows the actual searchable processor picker at 1440 x 900, filtered to the two fictional Demo processors. It uses the same isolated host and data as the editor image, contains no browser address bar or authorization values, and passed visual and metadata inspection. The 390 x 844 mobile check remains in ignored test output, not public documentation.
+
+`mqtt-plus-processor-management.png` captured on 2026-10-13 shows the actual read-only management QML at 1440 x 900 using `test_processorsviewmodel`, temporary SQLite storage, the offscreen platform, and software rendering. Only two fictional processors and test readiness states are injected. It contains no broker connection, credentials, private path, authorization link, or normal user settings. The final PNG and its metadata were inspected; no redaction was needed.
+
+The older `mqtt-plus-processors.png` remains the pre-migration native-editor baseline, not an image of the new management screen. New browser and management images show the two current surfaces; cross-platform package and performance acceptance remain outstanding.
+
+README 中的配图应展示真实应用界面，但不能暴露个人或业务测试数据。较早的四张 PNG 更新于 2026-09-07，来自 0.5.0 版本的真实 Qt Quick 界面。
+
+Documentation screenshots must show the real application without exposing personal or business test data. The four older PNGs were updated on 2026-09-07 using the actual Qt Quick interface from version 0.5.0. The environment below describes those baseline captures, not the new migration captures above.
 
 ## 本次截图环境 / Capture Environment
 
@@ -29,6 +53,9 @@ Documentation screenshots must show the real application without exposing person
 | `mqtt-plus-workbench.png` | 主题树、消息详情、MQTT 5 属性与发布编辑器 / Topic tree, message details, MQTT 5 properties, publishing | localhost、虚构主题与载荷、底部状态栏 / localhost, fictional topics and payloads, status bar |
 | `mqtt-plus-messages.png` | 订阅分组、JSON 消息流与发布编辑器 / Subscription groups, JSON messages, publishing | 演示订阅别名与虚构设备消息 / Demo subscription aliases and fictional device messages |
 | `mqtt-plus-processors.png` | Lua / JavaScript 处理器库及已验证的 Lua 脚本 / Lua and JavaScript library with a validated Lua script | 名称、描述和脚本中无真实业务数据 / No real business data in names, descriptions, or scripts |
+| `mqtt-plus-processor-management.png` | 新版只读脚本管理页面 / New read-only processor management | 两个虚构脚本，无连接、私人路径和授权链接 / Fictional scripts, no connections, private paths, or authorization links |
+| `mqtt-plus-browser-editor.png` | 新版浏览器 Lua 编辑器 / New browser Lua editor | 默认模板、虚构名称、无可见令牌 / Built-in template, fictional name, no visible tokens |
+| `mqtt-plus-processor-switcher.png` | 浏览器脚本搜索与切换 / Browser processor search and switching | 两个虚构脚本、无授权链接 / Fictional processors, no authorization links |
 | `mqtt-plus-settings.png` | 外观与工作台设置 / Appearance and workbench settings | 无账号、私人路径或连接信息 / No accounts, private paths, or connection data |
 
 删除当前截图中的敏感内容不会移除 Git 历史里的旧文件。若未来发现已提交的凭据，应先撤销或轮换凭据，再单独安排历史清理。

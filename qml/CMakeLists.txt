@@ -4,6 +4,32 @@ list(TRANSFORM app_sources PREPEND "${PROJECT_SOURCE_DIR}/")
 option(MQTT_PLUS_ENABLE_PROFILING "Enable isolated synthetic workloads without QML debugging" OFF)
 
 qt_add_executable(mqtt_plus_app MANUAL_FINALIZATION ${app_sources})
+find_program(MQTT_PLUS_NPM npm REQUIRED)
+set(editor_source "${PROJECT_SOURCE_DIR}/web/processor-editor")
+set_property(TARGET mqtt_plus_app APPEND PROPERTY QT_EXCLUDE_SOURCES_FROM_TRANSLATION
+    "${editor_source}/dist/*")
+file(GLOB_RECURSE editor_inputs CONFIGURE_DEPENDS "${editor_source}/src/*" "${editor_source}/test/*")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${editor_inputs}
+    "${editor_source}/package-lock.json" "${editor_source}/package.json"
+    "${editor_source}/index.html" "${editor_source}/tsconfig.json" "${editor_source}/vite.config.ts")
+file(SHA256 "${editor_source}/package-lock.json" editor_lock_hash)
+set(editor_lock_stamp "${editor_source}/node_modules/.mqtt-plus-lock-hash")
+set(editor_installed_hash "")
+if(EXISTS "${editor_lock_stamp}")
+    file(READ "${editor_lock_stamp}" editor_installed_hash)
+endif()
+if(NOT EXISTS "${editor_source}/node_modules/.package-lock.json" OR NOT editor_installed_hash STREQUAL editor_lock_hash)
+    execute_process(COMMAND "${MQTT_PLUS_NPM}" ci --no-audit --no-fund
+        WORKING_DIRECTORY "${editor_source}" COMMAND_ERROR_IS_FATAL ANY)
+    file(WRITE "${editor_lock_stamp}" "${editor_lock_hash}")
+endif()
+execute_process(COMMAND "${MQTT_PLUS_NPM}" test
+    WORKING_DIRECTORY "${editor_source}" COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND "${MQTT_PLUS_NPM}" run build
+    WORKING_DIRECTORY "${editor_source}" COMMAND_ERROR_IS_FATAL ANY)
+file(GLOB_RECURSE editor_resources "${editor_source}/dist/*")
+qt_add_resources(mqtt_plus_app processor_editor
+    PREFIX "/processor-editor" BASE "${editor_source}/dist" FILES ${editor_resources})
 set_target_properties(mqtt_plus_app PROPERTIES
     OUTPUT_NAME "mqtt-plus"
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
@@ -82,7 +108,6 @@ target_link_libraries(mqtt_plus_app
         Qt6::Sql
         Qt6::Svg
         Qt6::WebSockets
-        KF6SyntaxHighlighting
         MqttPlus::Lua
 )
 

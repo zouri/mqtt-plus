@@ -15,7 +15,6 @@ Control {
     property alias placeholderTextColor: textArea.placeholderTextColor
     property alias selectByMouse: textArea.selectByMouse
     property alias wrapMode: textArea.wrapMode
-    property string syntaxLanguage: ""
     property bool showLineNumbers: false
     property bool submitOnCtrlEnter: false
     property int backgroundRadius: 8
@@ -39,13 +38,6 @@ Control {
                                                             textArea.contentHeight
                                                             / control.lineCount)
                                                  : lineNumberFontMetrics.lineSpacing
-    readonly property int firstVisibleBlock: Math.max(0,
-                                                       Math.floor(control.contentY
-                                                                  / control.lineNumberLineHeight))
-    readonly property int lastVisibleBlock: Math.min(control.lineCount - 1,
-                                                      Math.ceil((control.contentY
-                                                                 + control.viewportHeight)
-                                                                / control.lineNumberLineHeight))
 
     signal submitRequested
     signal textEdited
@@ -81,14 +73,6 @@ Control {
 
         font.family: control.font.family
         font.pixelSize: control.font.pixelSize
-    }
-
-    CodeSyntaxHighlighter {
-        textDocument: textArea.textDocument
-        language: control.syntaxLanguage
-        darkTheme: control.ui.isDarkTheme
-        firstVisibleBlock: control.firstVisibleBlock
-        lastVisibleBlock: control.lastVisibleBlock
     }
 
     background: Rectangle {

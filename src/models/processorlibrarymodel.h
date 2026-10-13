@@ -38,12 +38,15 @@ public:
     Q_INVOKABLE QVariantMap rowAt(int row) const;
     Q_INVOKABLE int indexOfId(const QString &id) const;
 
-    void refresh(ProcessorLibrary &library, MessageProcessorEngine &engine);
+    void refresh(ProcessorLibrary &library, MessageProcessorEngine &engine, bool validate = true);
+    void refreshSnapshots(ProcessorLibrary &library);
+    void setReadiness(const QString &processorId, const QString &state, const QString &detail);
 
 signals:
     void countChanged();
 
 private:
+    void refreshRows(ProcessorLibrary &library, MessageProcessorEngine *engine);
     struct Row
     {
         QString id;
@@ -56,6 +59,7 @@ private:
         QString readinessDetail;
         QString updatedAt;
         QString sourceText;
+        QString revisionId;
     };
 
     static QVariantMap rowToMap(const Row &row);

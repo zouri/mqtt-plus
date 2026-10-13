@@ -24,11 +24,16 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v6
 
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: ${{ runner.os != 'Windows' && 'qtwebsockets qttasktree' || 'qtwebsockets' }}
+          modules: ${{ runner.os != 'Windows' && 'qtwebsockets qttasktree qthttpserver' || 'qtwebsockets qthttpserver' }}
           aqtsource: ${{ runner.os == 'Windows' && 'git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b' || '' }}
           cache: true
 
@@ -79,11 +84,16 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v6
 
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: ${{ runner.os != 'Windows' && 'qtwebsockets qttasktree' || 'qtwebsockets' }}
+          modules: ${{ runner.os != 'Windows' && 'qtwebsockets qttasktree qthttpserver' || 'qtwebsockets qthttpserver' }}
           aqtsource: ${{ runner.os == 'Windows' && 'git+https://github.com/miurahr/aqtinstall.git@8c3695d4a4e1ceabf6a74dc6c79681656dc6b74b' || '' }}
           cache: true
 

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core Gui Network Qml Quick QuickControls2 Sql Svg Test LinguistTools WebSockets)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Concurrent Core Gui Network Qml Quick QuickControls2 Sql Svg LinguistTools WebSockets HttpServer)
 
 option(
     MQTT_PLUS_FORCE_BUNDLED_QTMQTT
@@ -19,6 +19,9 @@ endif()
 
 include(GNUInstallDirs)
 include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 6.11 REQUIRED COMPONENTS Test)
+endif()
 
 set(MQTT_PLUS_RUNTIME_DESTINATION "${CMAKE_INSTALL_BINDIR}")
 if(UNIX AND NOT APPLE)
@@ -56,16 +59,6 @@ function(mqtt_plus_reuse_cached_dependency dependency marker)
     endif()
 endfunction()
 
-set(MQTT_PLUS_BUILD_TESTING "${BUILD_TESTING}")
-set(MQTT_PLUS_BUILD_DOC "${BUILD_DOC}")
-if(DEFINED BUILD_SHARED_LIBS)
-    set(MQTT_PLUS_BUILD_SHARED_LIBS_WAS_DEFINED TRUE)
-    set(MQTT_PLUS_BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS}")
-else()
-    set(MQTT_PLUS_BUILD_SHARED_LIBS_WAS_DEFINED FALSE)
-endif()
-set(BUILD_TESTING OFF)
-set(BUILD_DOC OFF)
 mqtt_plus_reuse_cached_dependency(lua "src/lua.c")
 FetchContent_Declare(
     lua
@@ -76,67 +69,6 @@ FetchContent_Declare(
     BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/lua-build"
 )
 FetchContent_MakeAvailable(lua)
-
-mqtt_plus_reuse_cached_dependency(extra_cmake_modules "CMakeLists.txt")
-FetchContent_Declare(
-    extra_cmake_modules
-    URL "https://download.kde.org/stable/frameworks/6.28/extra-cmake-modules-6.28.0.tar.xz"
-    URL_HASH "SHA256=a32e24b267e8528d0253bc8df18bdc00e676560a43b796533e1b1406f4eef4db"
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    SOURCE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/extra_cmake_modules-src"
-    BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/extra_cmake_modules-build"
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable(extra_cmake_modules)
-set(MQTT_PLUS_ECM_CONFIG_DIR "${CMAKE_CURRENT_BINARY_DIR}/mqtt-plus-ecm")
-file(MAKE_DIRECTORY "${MQTT_PLUS_ECM_CONFIG_DIR}")
-file(WRITE "${MQTT_PLUS_ECM_CONFIG_DIR}/ECMConfig.cmake"
-    "set(ECM_FIND_MODULE_DIR \"${extra_cmake_modules_SOURCE_DIR}/find-modules\")\n"
-    "set(ECM_MODULE_DIR \"${extra_cmake_modules_SOURCE_DIR}/modules\")\n"
-    "set(ECM_KDE_MODULE_DIR \"${extra_cmake_modules_SOURCE_DIR}/kde-modules\")\n"
-    "set(ECM_MODULE_PATH \"\${ECM_MODULE_DIR}\" \"\${ECM_FIND_MODULE_DIR}\" \"\${ECM_KDE_MODULE_DIR}\")\n"
-    "include(\"\${ECM_MODULE_DIR}/ECMUseFindModules.cmake\")\n"
-)
-configure_file(
-    "${extra_cmake_modules_BINARY_DIR}/ECMConfigVersion.cmake"
-    "${MQTT_PLUS_ECM_CONFIG_DIR}/ECMConfigVersion.cmake"
-    COPYONLY
-)
-set(ECM_DIR "${MQTT_PLUS_ECM_CONFIG_DIR}" CACHE PATH "" FORCE)
-
-set(KSYNTAXHIGHLIGHTING_USE_GUI ON CACHE BOOL "" FORCE)
-set(QRC_SYNTAX ON CACHE BOOL "" FORCE)
-set(NO_STANDARD_PATHS ON CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
-mqtt_plus_reuse_cached_dependency(ksyntaxhighlighting "CMakeLists.txt")
-FetchContent_Declare(
-    ksyntaxhighlighting
-    URL "https://download.kde.org/stable/frameworks/6.28/syntax-highlighting-6.28.1.tar.xz"
-    URL_HASH "SHA256=fe0d4133af62c6b9c0cf7728928c64d2deb55fe808a264a5de871f4b6bc86f65"
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    SOURCE_DIR "${MQTT_PLUS_FETCHCONTENT_BASE_DIR}/ksyntaxhighlighting-src"
-    BINARY_DIR "${CMAKE_BINARY_DIR}/_deps/ksyntaxhighlighting-build"
-    EXCLUDE_FROM_ALL
-)
-FetchContent_MakeAvailable(ksyntaxhighlighting)
-if(MSVC)
-    get_target_property(MQTT_PLUS_KSYNTAX_SOURCES KF6SyntaxHighlighting SOURCES)
-    list(REMOVE_ITEM MQTT_PLUS_KSYNTAX_SOURCES "$<TARGET_OBJECTS:SyntaxHighlightingData>")
-    set_property(TARGET KF6SyntaxHighlighting PROPERTY SOURCES ${MQTT_PLUS_KSYNTAX_SOURCES})
-    add_dependencies(KF6SyntaxHighlighting SyntaxHighlightingData)
-    target_link_libraries(
-        KF6SyntaxHighlighting
-        PRIVATE
-            "$<BUILD_INTERFACE:${ksyntaxhighlighting_BINARY_DIR}/data/SyntaxHighlightingData.dir/$<CONFIG>/SyntaxHighlightingData.lib>"
-    )
-endif()
-set(BUILD_TESTING "${MQTT_PLUS_BUILD_TESTING}")
-set(BUILD_DOC "${MQTT_PLUS_BUILD_DOC}")
-if(MQTT_PLUS_BUILD_SHARED_LIBS_WAS_DEFINED)
-    set(BUILD_SHARED_LIBS "${MQTT_PLUS_BUILD_SHARED_LIBS}" CACHE BOOL "Build shared libraries" FORCE)
-else()
-    unset(BUILD_SHARED_LIBS CACHE)
-endif()
 
 file(
     GLOB MQTT_PLUS_LUA_SOURCES
@@ -297,8 +229,6 @@ set(MQTT_PLUS_APP_ONLY_SOURCES
     src/app/messagestreamprofiledriver.h
     src/app/windowgeometrymanager.cpp
     src/app/windowgeometrymanager.h
-    src/presentation/codesyntaxhighlighter.cpp
-    src/presentation/codesyntaxhighlighter.h
 )
 set(MQTT_PLUS_APP_LIBRARY_SOURCES ${MQTT_PLUS_APP_SOURCES})
 list(REMOVE_ITEM MQTT_PLUS_APP_LIBRARY_SOURCES
@@ -328,6 +258,7 @@ target_link_libraries(mqtt_plus_core
         Qt6::Sql
         Qt6::Svg
         Qt6::WebSockets
+        Qt6::HttpServer
         MqttPlus::Lua
 )
 
@@ -469,7 +400,6 @@ if(BUILD_TESTING)
                 Qt6::Svg
                 Qt6::Test
                 Qt6::WebSockets
-                KF6SyntaxHighlighting
                 MqttPlus::Lua
         )
         add_test(NAME ${target} COMMAND ${target})
@@ -762,10 +692,30 @@ if(BUILD_TESTING)
     add_mqtt_plus_core_test(test_processorsviewmodel
         tests/test_processorsviewmodel.cpp
     )
+    target_link_libraries(test_processorsviewmodel PRIVATE Qt6::Quick Qt6::QuickControls2)
+    qt_add_qml_module(test_processorsviewmodel
+        URI MqttPlusProcessorViewTest VERSION 1.0
+        QML_FILES qml/AppUi.qml
+            qml/features/processors/ProcessorsView.qml qml/features/processors/ProcessorListPane.qml
+            qml/components/AppBadge.qml qml/components/AppButton.qml qml/components/AppComboBox.qml
+            qml/components/AppDialog.qml qml/components/AppDialogOverlay.qml qml/components/AppPopover.qml
+            qml/components/AppTextField.qml qml/components/AppIconButton.qml qml/components/AppToolTip.qml
+            qml/components/AppSelectableCard.qml qml/components/AppNativeTextMenu.qml
+    )
+    file(GLOB_RECURSE processor_view_icons "${PROJECT_SOURCE_DIR}/resources/*.svg")
+    qt_add_resources(test_processorsviewmodel processor_view_icons
+        PREFIX "/qt/qml/MqttPlusProcessorViewTest" BASE "${PROJECT_SOURCE_DIR}" FILES ${processor_view_icons})
+    add_mqtt_plus_core_test(test_editordraftstore tests/test_editordraftstore.cpp)
+    add_mqtt_plus_core_test(test_browsereditorservice tests/test_browsereditorservice.cpp)
+    file(GLOB_RECURSE editor_test_resources "${PROJECT_SOURCE_DIR}/web/processor-editor/dist/*")
+    qt_add_resources(test_browsereditorservice editor_test_web
+        PREFIX "/processor-editor" BASE "${PROJECT_SOURCE_DIR}/web/processor-editor/dist" FILES ${editor_test_resources})
 
-    add_mqtt_plus_qt_test(test_codesyntaxhighlighter
-        tests/test_codesyntaxhighlighter.cpp
-        src/presentation/codesyntaxhighlighter.cpp
+    add_mqtt_plus_qt_test(test_apptextarea tests/test_apptextarea.cpp)
+    qt_add_qml_module(test_apptextarea
+        URI MqttPlusTextAreaTest
+        VERSION 1.0
+        QML_FILES qml/AppUi.qml qml/components/AppTextArea.qml qml/components/AppNativeTextMenu.qml
     )
 
     add_mqtt_plus_core_test(test_settingsviewmodel

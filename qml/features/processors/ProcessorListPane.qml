@@ -141,7 +141,8 @@ Rectangle {
                                 Label {
                                     text: processorDelegate.readinessState === "ready"
                                           ? qsTr("Ready")
-                                          : qsTr("Unavailable")
+                                          : (processorDelegate.readinessState === "not_validated"
+                                             ? qsTr("Not validated") : qsTr("Unavailable"))
                                     color: root.ui.textMuted
                                     font.pixelSize: 10
                                 }

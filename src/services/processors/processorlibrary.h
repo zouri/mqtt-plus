@@ -16,6 +16,8 @@ struct SaveProcessorRevisionCommand
     QString name;
     QString description;
     ProcessorRevisionContent content;
+    QString expectedVersion;
+    QString requestId;
 };
 
 struct SaveProcessorRevisionResult
@@ -26,6 +28,8 @@ struct SaveProcessorRevisionResult
     ProcessorDefinition processor;
     QSharedPointer<const ProcessorRevisionSnapshot> revision;
     QString error;
+    int status = 200;
+    bool replayed = false;
 };
 
 struct ResolvedProcessor
@@ -37,7 +41,7 @@ struct ResolvedProcessor
 class ProcessorLibrary
 {
 public:
-    explicit ProcessorLibrary(const QString &storageDirectory = QString());
+    explicit ProcessorLibrary(const QString &storageDirectory = QString(), bool snapshotOnly = false);
     ~ProcessorLibrary();
 
     Q_DISABLE_COPY_MOVE(ProcessorLibrary)
@@ -58,6 +62,11 @@ public:
         QString *error = nullptr) const;
     SaveProcessorRevisionResult saveRevision(const SaveProcessorRevisionCommand &command);
     bool deleteProcessor(const QString &processorId);
+    void replaceSnapshot(const QVector<ProcessorDefinition> &processors,
+        const QVector<QSharedPointer<const ProcessorRevisionSnapshot>> &revisions);
+    void applySavedSnapshot(const SaveProcessorRevisionResult &result);
+    void applyDeletedSnapshot(const QString &processorId);
+    SaveProcessorRevisionResult savedRequest(const QString &requestId) const;
 
 private:
     class Impl;
@@ -66,4 +75,5 @@ private:
     QHash<QString, ProcessorDefinition> m_processors;
     QHash<QString, QSharedPointer<const ProcessorRevisionSnapshot>> m_revisions;
     QString m_lastError;
+    QString m_storageDirectory;
 };

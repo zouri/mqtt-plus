@@ -39,3 +39,8 @@ build/
 dist/
 profiler/
 docs/research/
+
+# Browser test traces can include ephemeral editor session credentials.
+.playwright-cli/
+output/playwright/
+web/processor-editor/.test-build/

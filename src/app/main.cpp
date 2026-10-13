@@ -10,6 +10,8 @@
 #include "app/application.h"
 #include "app/appicon.h"
 #include "app/windowgeometrymanager.h"
+#include "services/processors/editorcodec.h"
+#include <cstring>
 
 #if defined(QT_QML_DEBUG) || defined(MQTT_PLUS_ENABLE_PROFILING)
 #include <QStandardPaths>
@@ -136,6 +138,8 @@ MessageStreamProfileRequest messageStreamProfileRequest(
 
 int main(int argc, char *argv[])
 {
+    if (argc == 2 && std::strcmp(argv[1], "--processor-validator") == 0)
+        return EditorCodec::runValidator(argc, argv);
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
     QGuiApplication guiApplication(argc, argv);

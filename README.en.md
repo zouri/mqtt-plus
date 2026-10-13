@@ -98,9 +98,11 @@ Distinguish device traffic with subscription aliases and colors, inspect JSON me
 
 ### Message Processors
 
-Turn device reports into readable results, validate scripts in the editor, and bind them to subscriptions. Revision history preserves changes to the processing logic.
+Manage processors in the application and edit and validate them in the default browser. Drafts are stored locally; saving updates the version used by subscriptions. [Editor reference](docs/browser-processor-editor.md)
 
-![MQTT Plus message processor with Lua script editing and validation](docs/images/mqtt-plus-processors.png)
+![MQTT Plus processor management: read-only details and browser editing](docs/images/mqtt-plus-processor-management.png)
+
+![MQTT Plus browser editor with Lua script editing and validation](docs/images/mqtt-plus-browser-editor.png)
 
 ### Preferences
 
@@ -115,9 +117,10 @@ Choose the interface language, light or dark theme, accent color, and font, then
 - CMake 3.29+
 - A compiler with C++20 support
 - Qt 6.11
+- Node 22 and npm (build time only)
 - Ninja or another CMake generator
 
-Qt must include Concurrent, Core, Gui, Network, Qml, Quick, Quick Controls 2, Sql, Svg, Test, LinguistTools, and WebSockets. During the first configuration, CMake downloads pinned versions of Lua, KSyntaxHighlighting, and Extra CMake Modules. If Qt MQTT is not installed locally, CMake also downloads and builds Qt MQTT 6.11.1.
+Qt must include Concurrent, Core, Gui, Network, Qml, Quick, Quick Controls 2, Sql, Svg, LinguistTools, WebSockets, and HttpServer. Test is also required when tests are enabled. During the first configuration, CMake downloads a pinned version of Lua and installs the locked web editor dependencies. If Qt MQTT is not installed locally, CMake also downloads and builds Qt MQTT 6.11.1.
 
 ### Configure and Build
 

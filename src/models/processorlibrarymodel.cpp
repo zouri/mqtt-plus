@@ -158,8 +158,19 @@ int ProcessorLibraryModel::indexOfId(const QString &id) const
 
 void ProcessorLibraryModel::refresh(
     ProcessorLibrary &library,
-    MessageProcessorEngine &engine)
+    MessageProcessorEngine &engine, bool validate)
 {
+    refreshRows(library, validate ? &engine : nullptr);
+}
+
+void ProcessorLibraryModel::refreshSnapshots(ProcessorLibrary &library)
+{
+    refreshRows(library, nullptr);
+}
+
+void ProcessorLibraryModel::refreshRows(ProcessorLibrary &library, MessageProcessorEngine *engine)
+{
+    const bool validate = engine != nullptr;
     QVector<Row> rows;
     const QVector<ProcessorDefinition> processors = library.processors();
     rows.reserve(processors.size());
@@ -172,13 +183,23 @@ void ProcessorLibraryModel::refresh(
 
         const auto revision = library.revisionById(processor.currentRevisionId);
         if (revision) {
-            const ProcessorValidationResult validation = engine.validate(*revision);
+            row.revisionId = revision->id;
+            const ProcessorValidationResult validation = validate ? engine->validate(*revision) : ProcessorValidationResult{};
             row.languageId = revision->languageId;
             row.languageName = languageName(revision->languageId);
             row.runtimeId = revision->runtimeId;
-            row.readinessState = validationStateName(validation.state);
-            row.readinessDetail = diagnosticsText(validation.diagnostics);
-            row.sourceText = revisionSourceText(*revision);
+            row.readinessState = validate ? validationStateName(validation.state) : QStringLiteral("not_validated");
+            row.readinessDetail = validate ? diagnosticsText(validation.diagnostics) : tr("Not validated");
+            const auto previousRow = indexOfId(processor.id);
+            row.sourceText = previousRow >= 0 && m_rows.at(previousRow).revisionId == revision->id
+                ? m_rows.at(previousRow).sourceText : revisionSourceText(*revision);
+            if (!validate) {
+                const auto previous = indexOfId(processor.id);
+                if (previous >= 0 && m_rows.at(previous).revisionId == revision->id) {
+                    row.readinessState = m_rows.at(previous).readinessState;
+                    row.readinessDetail = m_rows.at(previous).readinessDetail;
+                }
+            }
         } else {
             row.readinessState = QStringLiteral("revision_not_found");
             row.readinessDetail = QStringLiteral("The Message Processor is unavailable.");
@@ -193,6 +214,15 @@ void ProcessorLibraryModel::refresh(
     if (rowCountChanged) {
         emit countChanged();
     }
+}
+
+void ProcessorLibraryModel::setReadiness(const QString &processorId, const QString &state, const QString &detail)
+{
+    const auto row = indexOfId(processorId);
+    if (row < 0) return;
+    m_rows[row].readinessState = state;
+    m_rows[row].readinessDetail = detail;
+    emit dataChanged(index(row), index(row), {ReadinessStateRole, ReadinessDetailRole});
 }
 
 QVariantMap ProcessorLibraryModel::rowToMap(const Row &row)

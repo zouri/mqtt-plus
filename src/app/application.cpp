@@ -40,6 +40,7 @@ Application::Application(QSettings::Format settingsFormat)
           m_historyStore.dataPath(),
           m_historyStore.nextMessageId()))
     , m_messageParser(new MessageParseWorker())
+    , m_processorLibrary(QString(), true)
     , m_draftService(QString(), &m_owner)
     , m_sessionService(
           m_settings,
@@ -109,6 +110,15 @@ Application::Application(QSettings::Format settingsFormat)
           m_settings,
           &m_owner)
 {
+    m_editorService = std::make_unique<BrowserEditorService>(m_processorLibrary);
+    m_viewModel.processors()->setBrowserEditor(m_editorService.get());
+    const auto updateEditorAppearance = [this]() {
+        const auto settings = m_viewModel.settings();
+        m_editorService->setAppearance(settings->languageMode(), settings->effectiveTheme(), settings->effectiveFontFamily());
+    };
+    updateEditorAppearance();
+    QObject::connect(m_viewModel.settings(), &SettingsViewModel::languageChanged, &m_owner, updateEditorAppearance);
+    QObject::connect(m_viewModel.settings(), &SettingsViewModel::themeModeChanged, &m_owner, updateEditorAppearance);
     QObject::connect(
         m_viewModel.settings(),
         &SettingsViewModel::languageChanged,

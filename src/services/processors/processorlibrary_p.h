@@ -26,6 +26,7 @@ public:
 
     SaveProcessorRevisionResult saveRevision(const SaveProcessorRevisionCommand &command);
     bool deleteProcessor(const QString &processorId);
+    SaveProcessorRevisionResult savedRequest(const QString &requestId) const;
     std::optional<ProcessorDefinition> processorById(const QString &processorId) const;
     QVector<ProcessorDefinition> processors() const;
     QVector<QSharedPointer<const ProcessorRevisionSnapshot>> revisions(
