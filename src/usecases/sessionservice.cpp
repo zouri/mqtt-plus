@@ -528,6 +528,56 @@ void SessionService::removeSessionAt(int index)
     emit currentSessionChanged();
 }
 
+bool SessionService::moveSession(const QString &sessionId, const QString &anchorId, bool after)
+{
+    int from = -1;
+    int anchor = -1;
+    for (qsizetype row = 0; row < m_sessions.size(); ++row) {
+        if (m_sessions.at(row).id == sessionId) {
+            from = static_cast<int>(row);
+        }
+        if (m_sessions.at(row).id == anchorId) {
+            anchor = static_cast<int>(row);
+        }
+    }
+    if (sessionId.isEmpty() || anchorId.isEmpty() || from < 0 || anchor < 0) {
+        return false;
+    }
+    if (from == anchor) {
+        return true;
+    }
+    const int to = anchor + (after ? 1 : 0) - (from < anchor ? 1 : 0);
+    if (from == to) {
+        return true;
+    }
+
+    const int previousIndex = m_currentIndex;
+    m_sessions.move(from, to);
+    if (m_currentIndex == from) {
+        m_currentIndex = to;
+    } else if (from < m_currentIndex && m_currentIndex <= to) {
+        --m_currentIndex;
+    } else if (to <= m_currentIndex && m_currentIndex < from) {
+        ++m_currentIndex;
+    }
+
+    QString errorMessage;
+    if (!SessionSettingsStore::writeSessions(m_settings, m_sessions, errorMessage)) {
+        m_sessions.move(to, from);
+        m_currentIndex = previousIndex;
+        QString ignoredError;
+        SessionSettingsStore::writeSessions(m_settings, m_sessions, ignoredError);
+        emit storageError(errorMessage.isEmpty() ? tr("Cannot save sessions.") : errorMessage);
+        return false;
+    }
+
+    emit sessionsChanged();
+    if (previousIndex != m_currentIndex) {
+        emit currentSessionIndexChanged();
+    }
+    return true;
+}
+
 void SessionService::setHistoryWriter(HistoryWriterWorker *historyWriter)
 {
     m_historyWriter = historyWriter;

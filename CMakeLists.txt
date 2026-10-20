@@ -732,6 +732,16 @@ if(BUILD_TESTING)
     add_mqtt_plus_core_test(test_workbenchviewmodel
         tests/test_workbenchviewmodel.cpp
     )
+    target_link_libraries(test_workbenchviewmodel PRIVATE Qt6::Quick Qt6::QuickControls2)
+    file(GLOB workbench_test_components CONFIGURE_DEPENDS RELATIVE "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/qml/components/*.qml")
+    qt_add_qml_module(test_workbenchviewmodel
+        URI MqttPlusWorkbenchTest VERSION 1.0
+        QML_FILES qml/AppUi.qml ${workbench_test_components}
+            qml/features/workbench/SessionSidebar.qml qml/features/workbench/SubscriptionsPanel.qml
+            qml/features/workbench/AddSubscriptionDialog.qml
+    )
+    qt_add_resources(test_workbenchviewmodel workbench_test_icons
+        PREFIX "/qt/qml/MqttPlusWorkbenchTest" BASE "${PROJECT_SOURCE_DIR}" FILES ${processor_view_icons})
 
     add_mqtt_plus_qt_test(test_architecture_boundaries
         tests/test_architecture_boundaries.cpp

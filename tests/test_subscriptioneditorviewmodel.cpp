@@ -24,6 +24,8 @@ class SubscriptionEditorViewModelTest : public QObject
 private slots:
     void opensForCreateWithDefaults();
     void opensForCreateWithInitialTopic();
+    void selectsDefaultColorFromPaletteForEachCreate();
+    void preservesExplicitColorAndNoColorWhenEditing();
     void opensForEditWithExistingProcessorBinding();
     void preservesUnavailableBindingWhenOptionsRefresh();
     void validatesAndCollectsCurrentSubmission();
@@ -53,6 +55,42 @@ void SubscriptionEditorViewModelTest::opensForCreateWithInitialTopic()
     QVERIFY(!editor.editMode());
     QCOMPARE(editor.topic(), QStringLiteral("sensors/room/#"));
     QVERIFY(editor.canSubmit());
+}
+
+void SubscriptionEditorViewModelTest::selectsDefaultColorFromPaletteForEachCreate()
+{
+    SubscriptionEditorViewModel editor;
+    for (int attempt = 0; attempt < 32; ++attempt) {
+        editor.setColor(QStringLiteral("#123456"));
+        editor.openForCreate(QStringLiteral("sensors/room/#"));
+        const QString color = editor.color();
+        QVERIFY(!color.isEmpty());
+        QVERIFY(editor.colorOptions().contains(color));
+        editor.setAlias(QStringLiteral("Room sensors"));
+        editor.setTopic(QStringLiteral("sensors/other/#"));
+        QCOMPARE(editor.color(), color);
+        QCOMPARE(editor.submission().color, color);
+    }
+
+    editor.setColor({});
+    QVERIFY(editor.submission().color.isEmpty());
+}
+
+void SubscriptionEditorViewModelTest::preservesExplicitColorAndNoColorWhenEditing()
+{
+    SubscriptionEditorViewModel editor;
+    SubscriptionEntry subscription;
+    subscription.topic = QStringLiteral("sensors/room/#");
+    subscription.color = QStringLiteral("#123456");
+    editor.openForCreate();
+    editor.openForEdit(subscription);
+    QCOMPARE(editor.color(), subscription.color);
+    QCOMPARE(editor.submission().color, subscription.color);
+
+    subscription.color.clear();
+    editor.openForEdit(subscription);
+    QVERIFY(editor.color().isEmpty());
+    QVERIFY(editor.submission().color.isEmpty());
 }
 
 void SubscriptionEditorViewModelTest::opensForEditWithExistingProcessorBinding()

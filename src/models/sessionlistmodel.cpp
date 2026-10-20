@@ -129,6 +129,19 @@ void SessionListModel::setSessions(const QVector<SessionState> &sessions)
     }
 
     for (qsizetype row = 0; row < rows.size(); ++row) {
+        if (m_rows.at(row).id == rows.at(row).id) {
+            continue;
+        }
+        for (qsizetype source = row + 1; source < m_rows.size(); ++source) {
+            if (m_rows.at(source).id == rows.at(row).id) {
+                beginMoveRows({}, static_cast<int>(source), static_cast<int>(source), {}, static_cast<int>(row));
+                m_rows.move(source, row);
+                endMoveRows();
+                break;
+            }
+        }
+    }
+    for (qsizetype row = 0; row < rows.size(); ++row) {
         const QList<int> roles = changedRoles(m_rows.at(row), rows.at(row));
         if (roles.isEmpty()) {
             continue;

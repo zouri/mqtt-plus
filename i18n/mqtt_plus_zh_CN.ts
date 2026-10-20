@@ -120,6 +120,13 @@
     </message>
 </context>
 <context>
+    <name>AppListReorder</name>
+    <message>
+        <source>Reorder</source>
+        <translation>调整顺序</translation>
+    </message>
+</context>
+<context>
     <name>AppEmptyState</name>
     <message>
         <location filename="../qml/components/AppEmptyState.qml" line="11"/>
@@ -2564,6 +2571,14 @@
 <context>
     <name>SessionSidebar</name>
     <message>
+        <source>Move up</source>
+        <translation>上移</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>下移</translation>
+    </message>
+    <message>
         <location filename="../qml/features/workbench/SessionSidebar.qml" line="193"/>
         <source>%1:%2</source>
         <translation>%1:%2</translation>
@@ -3250,6 +3265,14 @@
 </context>
 <context>
     <name>SubscriptionsPanel</name>
+    <message>
+        <source>Move up</source>
+        <translation>上移</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>下移</translation>
+    </message>
     <message>
         <location filename="../qml/features/workbench/SubscriptionsPanel.qml" line="44"/>
         <source>Copy Topic</source>

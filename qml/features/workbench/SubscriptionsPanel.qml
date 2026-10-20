@@ -37,6 +37,8 @@ AppPanel {
         if (actionId === "edit") {
             return qsTr("Edit");
         }
+        if (actionId === "up") return qsTr("Move up");
+        if (actionId === "down") return qsTr("Move down");
         if (actionId === "only") {
             return qsTr("Enable only this subscription");
         }
@@ -50,6 +52,9 @@ AppPanel {
     }
 
     function subscriptionActionIcon(actionId) {
+        if (actionId === "up" || actionId === "down") {
+            return control.ui.materialIcon("chevron-" + actionId);
+        }
         if (actionId === "only") {
             return control.ui.materialIcon("check");
         }
@@ -112,6 +117,8 @@ AppPanel {
         ListElement {
             actionId: "edit"
         }
+        ListElement { actionId: "up" }
+        ListElement { actionId: "down" }
         ListElement {
             actionId: "delete"
         }
@@ -127,6 +134,8 @@ AppPanel {
         actionIcon: actionId => control.subscriptionActionIcon(actionId)
         actionDanger: actionId => actionId === "delete"
         actionSeparatorBefore: actionId => actionId === "edit"
+        actionEnabled: actionId => actionId === "up" ? subscriptionReorder.canMove(control.subscriptionContextTopic, -1)
+                                   : (actionId === "down" ? subscriptionReorder.canMove(control.subscriptionContextTopic, 1) : true)
 
         onTriggered: actionId => {
             if (control.viewModel.currentSession.id !== control.subscriptionContextSessionId) {
@@ -139,6 +148,8 @@ AppPanel {
                 control.viewModel.copyMessageTopic(control.subscriptionContextTopic);
             } else if (actionId === "edit") {
                 control.subscriptionEditRequested(control.subscriptionContextSessionId, control.subscriptionContextTopic);
+            } else if (actionId === "up" || actionId === "down") {
+                subscriptionReorder.moveByOffset(control.subscriptionContextTopic, actionId === "up" ? -1 : 1);
             } else if (actionId === "delete") {
                 control.viewModel.requestSubscriptionDelete(control.subscriptionContextTopic, control.subscriptionContextDisplayName);
             }
@@ -230,6 +241,19 @@ AppPanel {
                 policy: ScrollBar.AsNeeded
             }
 
+            AppListReorder {
+                id: subscriptionReorder
+                objectName: "subscriptionReorder"
+                parent: subscriptionList
+                anchors.fill: parent
+                ui: control.ui
+                view: subscriptionList
+                keyRole: "topic"
+                scopeKey: control.viewModel.currentSession.id || ""
+                enabled: control.active
+                onMoveRequested: (scope, source, anchor, after) => control.viewModel.moveSubscription(scope, source, anchor, after)
+            }
+
             delegate: Rectangle {
                 id: subscriptionDelegate
                 required property int index
@@ -270,6 +294,7 @@ AppPanel {
                                                                    ? qsTr("Paused, %1").arg(subscriptionDelegate.rateText)
                                                                    : subscriptionDelegate.rateText)
                 readonly property string menuVisualKey: `${subscriptionDelegate.topic}::menu`
+                opacity: subscriptionReorder.dragging && subscriptionReorder.sourceKey === subscriptionDelegate.topic ? 0.6 : 1
                 width: ListView.view.width
                 implicitHeight: subscriptionDelegate.hasError ? 60 : 46
                 radius: 7
@@ -313,7 +338,11 @@ AppPanel {
                 }
 
                 Keys.onPressed: event => {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                    if ((event.modifiers & Qt.ControlModifier)
+                            && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+                        subscriptionReorder.moveByOffset(subscriptionDelegate.topic, event.key === Qt.Key_Up ? -1 : 1);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
                         subscriptionDelegate.toggleSubscriptionPaused();
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
@@ -336,6 +365,21 @@ AppPanel {
                     }
                 }
 
+                ToolButton {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24
+                    height: 28
+                    icon.source: control.ui.materialIcon("grip-vertical")
+                    icon.width: 14
+                    icon.height: 14
+                    icon.color: control.ui.textMuted
+                    background: null
+                    focusPolicy: Qt.NoFocus
+                    Accessible.ignored: true
+                    visible: subscriptionList.count > 1
+                }
+
                 HoverHandler {
                     id: subscriptionRowHover
                     cursorShape: Qt.PointingHandCursor
@@ -351,7 +395,7 @@ AppPanel {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 8
+                    anchors.leftMargin: 30
                     anchors.rightMargin: 6
                     anchors.topMargin: 6
                     anchors.bottomMargin: 6
@@ -550,7 +594,7 @@ AppPanel {
         id: deleteSubscriptionDialog
 
         ui: control.ui
-        width: Math.min(340, Overlay.overlay.width - 32)
+        width: Overlay.overlay ? Math.min(340, Overlay.overlay.width - 32) : 340
 
         header: Item {
             implicitHeight: 0

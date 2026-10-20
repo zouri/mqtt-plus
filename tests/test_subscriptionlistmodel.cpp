@@ -5,6 +5,7 @@
 #include "services/processors/processorlibrary.h"
 
 #include <QDateTime>
+#include <QAbstractItemModelTester>
 #include <QStandardItemModel>
 #include <QTemporaryDir>
 #include <QtTest/QtTest>
@@ -22,6 +23,7 @@ private slots:
     void pausedSubscriptionClearsTopicRateHistory();
     void filterSourceChangeNotifiesOnce();
     void filterRowAtUsesPublicRoles();
+    void reorderingPreservesRateHistoryAndIdentity();
 };
 
 void SubscriptionListModelTest::setSubscriptionsOwnsSnapshot()
@@ -272,6 +274,30 @@ void SubscriptionListModelTest::filterRowAtUsesPublicRoles()
     QCOMPARE(row.value(QStringLiteral("state")).toString(), QStringLiteral("subscribed"));
     QVERIFY(!row.contains(QStringLiteral("topicColor")));
     QVERIFY(!row.contains(QStringLiteral("subscriptionState")));
+}
+
+void SubscriptionListModelTest::reorderingPreservesRateHistoryAndIdentity()
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    QVector<SubscriptionEntry> subscriptions {
+        SubscriptionEntry {.topic = QStringLiteral("one")},
+        SubscriptionEntry {.topic = QStringLiteral("two")},
+    };
+    subscriptions[0].recentMessages.add(now);
+    SubscriptionListModel model;
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    model.setSubscriptions(QStringLiteral("session"), subscriptions);
+    model.updateTopicFps(subscriptions, now);
+    QPersistentModelIndex selected(model.index(0, 0));
+    const QVariant history = selected.data(SubscriptionListModel::TopicRateHistoryRole);
+    QVERIFY(!history.toList().isEmpty());
+    QSignalSpy resetSpy(&model, &SubscriptionListModel::modelReset);
+    subscriptions.move(0, 1);
+    model.setSubscriptions(QStringLiteral("session"), subscriptions);
+    QCOMPARE(selected.row(), 1);
+    QCOMPARE(selected.data(SubscriptionListModel::TopicRole).toString(), QStringLiteral("one"));
+    QCOMPARE(selected.data(SubscriptionListModel::TopicRateHistoryRole), history);
+    QCOMPARE(resetSpy.count(), 0);
 }
 
 QTEST_MAIN(SubscriptionListModelTest)

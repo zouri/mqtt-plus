@@ -48,6 +48,7 @@ public:
         const QString &color,
         const MqttSubscriptionOptions &options = {});
     void removeCurrentSubscription(const QString &topic);
+    bool moveCurrentSubscription(const QString &topic, const QString &anchorTopic, bool after);
     Q_INVOKABLE void setCurrentSubscriptionPaused(const QString &topic, bool paused);
     Q_INVOKABLE void setOnlyCurrentSubscriptionActive(const QString &topic);
     Q_INVOKABLE void setAllCurrentSubscriptionsPaused(bool paused);

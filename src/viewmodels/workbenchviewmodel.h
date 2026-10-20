@@ -120,6 +120,8 @@ public:
     Q_INVOKABLE bool submitSessionEditor();
     Q_INVOKABLE void requestSessionDuplicate(const QString &sessionId);
     Q_INVOKABLE void requestSessionDelete(const QString &sessionId);
+    Q_INVOKABLE bool moveSession(const QString &sessionId, const QString &anchorId, bool after);
+    Q_INVOKABLE bool moveSubscription(const QString &sessionId, const QString &topic, const QString &anchorTopic, bool after);
     Q_INVOKABLE void toggleCurrentSessionConnection();
     Q_INVOKABLE bool openSubscriptionEditorForCreate(const QString &sessionId, const QString &topic = {});
     Q_INVOKABLE bool openSubscriptionEditorForEdit(const QString &sessionId, const QString &topic);

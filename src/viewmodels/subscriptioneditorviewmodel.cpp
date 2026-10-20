@@ -3,6 +3,7 @@
 #include "domain/sessionconfig.h"
 
 #include <QCoreApplication>
+#include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSet>
 
@@ -203,7 +204,8 @@ void SubscriptionEditorViewModel::openForCreate(const QString &initialTopic)
     setFormat(0);
     m_processorParameters.clear();
     setProcessorId({});
-    setColor({});
+    const QStringList colors = colorOptions();
+    setColor(colors.at(QRandomGenerator::global()->bounded(1, static_cast<int>(colors.size()))));
     setNoLocal(false);
     setSubscriptionIdentifierText({});
     setUserPropertiesText({});

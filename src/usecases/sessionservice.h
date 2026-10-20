@@ -60,6 +60,7 @@ public:
         QString &errorMessage);
     void duplicateSessionAt(int index);
     void removeSessionAt(int index);
+    bool moveSession(const QString &sessionId, const QString &anchorId, bool after);
     void setHistoryWriter(HistoryWriterWorker *historyWriter);
     void setMessageParser(MessageParseWorker *messageParser);
     Q_INVOKABLE void setCurrentOutputPaused(bool paused);

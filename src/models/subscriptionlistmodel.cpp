@@ -142,6 +142,19 @@ void SubscriptionListModel::setSubscriptions(
         return;
     }
 
+    for (qsizetype row = 0; row < rows.size(); ++row) {
+        if (m_rows.at(row).topic == rows.at(row).topic) {
+            continue;
+        }
+        for (qsizetype source = row + 1; source < m_rows.size(); ++source) {
+            if (m_rows.at(source).topic == rows.at(row).topic) {
+                beginMoveRows({}, static_cast<int>(source), static_cast<int>(source), {}, static_cast<int>(row));
+                m_rows.move(source, row);
+                endMoveRows();
+                break;
+            }
+        }
+    }
     for (qsizetype i = 0; i < rows.size(); ++i) {
         if (!rows[i].paused
             && rows[i].topic == m_rows.at(i).topic) {

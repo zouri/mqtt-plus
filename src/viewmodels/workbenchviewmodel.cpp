@@ -562,6 +562,19 @@ void WorkbenchViewModel::requestSessionDelete(const QString &sessionId)
     m_sessionService.removeSessionAt(index);
 }
 
+bool WorkbenchViewModel::moveSession(const QString &sessionId, const QString &anchorId, bool after)
+{
+    return m_sessionService.moveSession(sessionId, anchorId, after);
+}
+
+bool WorkbenchViewModel::moveSubscription(
+    const QString &sessionId, const QString &topic, const QString &anchorTopic, bool after)
+{
+    const SessionState *session = m_sessionService.currentSession();
+    return session && !sessionId.isEmpty() && session->id == sessionId
+        && m_subscriptionService.moveCurrentSubscription(topic, anchorTopic, after);
+}
+
 void WorkbenchViewModel::toggleCurrentSessionConnection()
 {
     const QString state = sessionStatus().value(QStringLiteral("state")).toString();

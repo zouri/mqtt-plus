@@ -39,7 +39,7 @@ Item {
     readonly property int compactSubscriptionPaneWidth: 286
     readonly property int effectiveSubscriptionPaneWidth: root.compactPaneWidths ? root.compactSubscriptionPaneWidth : root.subscriptionPaneWidth
     property bool collapseConnectionPaneOnConnect: false
-    property int trackedConnectionSessionIndex: -1
+    property string trackedConnectionSessionId: ""
     property string trackedConnectionState: ""
     property string pendingSessionEditorMode: ""
     property string pendingSessionEditorId: ""
@@ -249,9 +249,9 @@ Item {
 
     function handleConnectionStateChanged() {
         const state = root.status.state || "";
-        const sessionIndex = root.viewModel.currentSessionIndex;
-        if (root.trackedConnectionSessionIndex !== sessionIndex) {
-            root.trackedConnectionSessionIndex = sessionIndex;
+        const sessionId = root.viewModel.currentSession.id || "";
+        if (root.trackedConnectionSessionId !== sessionId) {
+            root.trackedConnectionSessionId = sessionId;
             root.trackedConnectionState = state;
             root.collapseConnectionPaneOnConnect = false;
             return;
@@ -331,7 +331,7 @@ Item {
     }
 
     Component.onCompleted: {
-        root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
+        root.trackedConnectionSessionId = root.viewModel.currentSession.id || "";
         root.trackedConnectionState = root.status.state || "";
         root.settleConnectionPaneWidth();
         if (root.active) {
@@ -343,7 +343,7 @@ Item {
     onActiveChanged: {
         root.settleConnectionPaneWidth();
         if (root.active) {
-            root.trackedConnectionSessionIndex = root.viewModel.currentSessionIndex;
+            root.trackedConnectionSessionId = root.viewModel.currentSession.id || "";
             root.trackedConnectionState = root.status.state || "";
         }
     }
@@ -399,6 +399,9 @@ Item {
         }
 
         function onCurrentSessionIndexChanged() {
+            if (root.trackedConnectionSessionId === (root.viewModel.currentSession.id || "")) {
+                return;
+            }
             root.collapseConnectionPaneOnConnect = false;
             topicTreePanel.clearSelection();
             root.pendingSubscriptionDialogMode = "";

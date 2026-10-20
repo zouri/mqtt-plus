@@ -2,6 +2,7 @@
 #include "models/sessionlistmodel.h"
 
 #include <QMqttClient>
+#include <QAbstractItemModelTester>
 #include <QtTest/QtTest>
 
 class SessionListModelTest : public QObject
@@ -14,6 +15,7 @@ private slots:
     void setSessionsResetsWhenCountChanges();
     void viewedTrafficDoesNotInvalidateConnectionRows();
     void unreadTrafficAnnouncesOnlyTheAffectedRowAndRole();
+    void reorderingPreservesPersistentIdentity();
 };
 
 void SessionListModelTest::exposesConnectionDetails()
@@ -132,6 +134,26 @@ void SessionListModelTest::unreadTrafficAnnouncesOnlyTheAffectedRowAndRole()
     QCOMPARE(dataSpy.first().at(2).value<QList<int>>(),
         QList<int> {SessionListModel::UnreadMessageCountRole});
     QCOMPARE(model.data(model.index(1, 0), SessionListModel::UnreadMessageCountRole).toLongLong(), qint64(10));
+}
+
+void SessionListModelTest::reorderingPreservesPersistentIdentity()
+{
+    QVector<SessionState> sessions(3);
+    for (int row = 0; row < sessions.size(); ++row) {
+        sessions[row].id = QString::number(row);
+    }
+    SessionListModel model;
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    model.setSessions(sessions);
+    QPersistentModelIndex selected(model.index(0, 0));
+    QSignalSpy resetSpy(&model, &SessionListModel::modelReset);
+    QSignalSpy moveSpy(&model, &SessionListModel::rowsMoved);
+    sessions.move(0, 2);
+    model.setSessions(sessions);
+    QCOMPARE(selected.row(), 2);
+    QCOMPARE(selected.data(SessionListModel::IdRole).toString(), QStringLiteral("0"));
+    QCOMPARE(resetSpy.count(), 0);
+    QVERIFY(moveSpy.count() > 0);
 }
 
 QTEST_MAIN(SessionListModelTest)

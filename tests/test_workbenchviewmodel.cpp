@@ -21,9 +21,16 @@
 #include <QDateTime>
 #include <QFile>
 #include <QIODevice>
+#include <QInputMethodEvent>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <QQmlComponent>
+#include <QQmlEngine>
+#include <QQuickItem>
+#include <QQuickWindow>
 #include <QtTest/QtTest>
+
+#include <memory>
 
 namespace {
 
@@ -156,10 +163,18 @@ private slots:
     void exposesTopicTree();
     void preparesSubscriptionEditorForCreate();
     void addsBatchSubscriptions();
+    void savesSingleLevelSubscription();
+    void savesSingleLevelSubscriptionFromDialog();
+    void savesSingleLevelSubscriptionFromDialog_data();
     void rejectsMissingSubscriptionEditorTopic();
     void opensFilteredSubscriptionEditorWithTypedEntry();
     void editsOriginalSubscriptionAfterFilterChanges();
     void ignoresMissingSessionIds();
+    void reordersSessionsWithoutChangingCurrentSession();
+    void reordersFilteredSubscriptionsAndPersistsOrder();
+    void rollsBackReorderingWhenSettingsWriteFails();
+    void dragsListsWithoutChangingSelection_data();
+    void dragsListsWithoutChangingSelection();
     void updatesPublishDraft();
     void savedDraftQuickPublishDoesNotReplaceComposer();
     void draftEditorSelectionFollowsPopulatedModel();
@@ -657,6 +672,8 @@ void WorkbenchViewModelTest::addsBatchSubscriptions()
     fixture.sessionService.setCurrentSessionIndex(0);
 
     QVERIFY(viewModel.openSubscriptionEditorForCreate(session.id));
+    const QString defaultColor = viewModel.subscriptionEditor()->color();
+    QVERIFY(!defaultColor.isEmpty());
     viewModel.subscriptionEditor()->setTopic(QStringLiteral(
         "devices/one, devices/two\ndevices/one"));
     viewModel.subscriptionEditor()->setQos(1);
@@ -670,6 +687,109 @@ void WorkbenchViewModelTest::addsBatchSubscriptions()
     QCOMPARE(currentSession->subscriptions.at(1).topic, QStringLiteral("devices/two"));
     QCOMPARE(currentSession->subscriptions.at(0).requestedQos, 1);
     QCOMPARE(currentSession->subscriptions.at(1).format, 2);
+    QCOMPARE(currentSession->subscriptions.at(0).color, defaultColor);
+    QCOMPARE(currentSession->subscriptions.at(1).color, defaultColor);
+}
+
+void WorkbenchViewModelTest::savesSingleLevelSubscription()
+{
+    WorkbenchFixture fixture;
+    QVERIFY(fixture.sessionService.addSessionWithConfig(SessionEditorViewModel::defaultConfig(1)));
+    const QString sessionId = fixture.sessionService.currentSession()->id;
+    QVERIFY(fixture.viewModel.openSubscriptionEditorForCreate(sessionId));
+    fixture.viewModel.subscriptionEditor()->setTopic(QStringLiteral("test"));
+    QVERIFY(fixture.viewModel.subscriptionEditor()->canSubmit());
+    QVERIFY(fixture.viewModel.submitSubscriptionEditor());
+    QCOMPARE(fixture.sessionService.currentSession()->subscriptions.size(), 1);
+    QCOMPARE(fixture.sessionService.currentSession()->subscriptions.first().topic, QStringLiteral("test"));
+
+    SessionService reloaded(fixture.settings, fixture.historyStore, fixture.preferences);
+    QVERIFY(reloaded.loadSessions());
+    QCOMPARE(reloaded.sessions().first().subscriptions.first().topic, QStringLiteral("test"));
+}
+
+void WorkbenchViewModelTest::savesSingleLevelSubscriptionFromDialog_data()
+{
+    QTest::addColumn<bool>("inputMethod");
+    QTest::addColumn<bool>("edit");
+    QTest::newRow("create-keyboard") << false << false;
+    QTest::newRow("create-input-method-commit") << true << false;
+    QTest::newRow("edit-keyboard") << false << true;
+    QTest::newRow("edit-input-method-commit") << true << true;
+}
+
+void WorkbenchViewModelTest::savesSingleLevelSubscriptionFromDialog()
+{
+    QFETCH(bool, inputMethod);
+    QFETCH(bool, edit);
+    WorkbenchFixture fixture;
+    QVERIFY(fixture.sessionService.addSessionWithConfig(SessionEditorViewModel::defaultConfig(1)));
+    const QString sessionId = fixture.sessionService.currentSession()->id;
+    if (edit) {
+        fixture.sessionService.currentSession()->subscriptions.append(
+            SubscriptionEntry {.topic = QStringLiteral("oldtopic")});
+    }
+    QQmlEngine engine;
+    QQmlComponent uiComponent(&engine);
+    uiComponent.loadFromModule("MqttPlusWorkbenchTest", "AppUi");
+    std::unique_ptr<QObject> ui(uiComponent.createWithInitialProperties({
+        {QStringLiteral("isDarkTheme"), false}, {QStringLiteral("themeColor"), QStringLiteral("mint")},
+        {QStringLiteral("animationsEnabled"), false}}));
+    QVERIFY2(ui, qPrintable(uiComponent.errorString()));
+    QQuickWindow window;
+    window.resize(640, 900);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    QQmlComponent component(&engine);
+    component.loadFromModule("MqttPlusWorkbenchTest", "AddSubscriptionDialog");
+    std::unique_ptr<QObject> dialog(component.createWithInitialProperties({
+        {QStringLiteral("ui"), QVariant::fromValue(ui.get())},
+        {QStringLiteral("viewModel"), QVariant::fromValue(&fixture.viewModel)},
+        {QStringLiteral("parent"), QVariant::fromValue(window.contentItem())},
+    }));
+    QVERIFY2(dialog, qPrintable(component.errorString()));
+    QVERIFY(QMetaObject::invokeMethod(dialog.get(), edit ? "openForEdit" : "openForCreate",
+        Q_ARG(QVariant, sessionId), Q_ARG(QVariant, edit ? QStringLiteral("oldtopic") : QString())));
+    QTRY_VERIFY(dialog->property("visible").toBool());
+    QQuickItem *topicField = nullptr;
+    QQuickItem *saveButton = nullptr;
+    for (auto *child : dialog->findChildren<QQuickItem *>()) {
+        if (child->property("placeholderText").toString()
+                == (edit ? QStringLiteral("sensor/+/temperature") : QStringLiteral("sensor/one, sensor/two"))
+            && child->metaObject()->indexOfProperty("cursorPosition") >= 0) {
+            topicField = child;
+        }
+        if (child->property("accessibleName").toString()
+                == (edit ? QStringLiteral("Save subscription") : QStringLiteral("Add subscription"))) {
+            saveButton = child;
+        }
+    }
+    QVERIFY(topicField);
+    QVERIFY(saveButton);
+    QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier,
+        topicField->mapToScene(QPointF(20, 20)).toPoint());
+    QVERIFY(QMetaObject::invokeMethod(topicField, "selectAll"));
+    QSignalSpy textSpy(topicField, SIGNAL(textChanged()));
+    QSignalSpy editedSpy(topicField, SIGNAL(textEdited()));
+    if (inputMethod) {
+        QInputMethodEvent event;
+        event.setCommitString(QStringLiteral("fdafda"));
+        QCoreApplication::sendEvent(topicField, &event);
+    } else {
+        for (const char letter : QByteArrayLiteral("fdafda")) {
+            QTest::keyClick(&window, letter);
+        }
+    }
+    QCOMPARE(topicField->property("text").toString(), QStringLiteral("fdafda"));
+    QVERIFY2(fixture.viewModel.subscriptionEditor()->topic() == QStringLiteral("fdafda"),
+        qPrintable(QStringLiteral("Text did not reach the form: textChanged=%1, textEdited=%2")
+            .arg(textSpy.count()).arg(editedSpy.count())));
+    QVERIFY(saveButton->isEnabled());
+    QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier,
+        saveButton->mapToScene(QPointF(saveButton->width() / 2, saveButton->height() / 2)).toPoint());
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QCOMPARE(fixture.sessionService.currentSession()->subscriptions.size(), 1);
+    QCOMPARE(fixture.sessionService.currentSession()->subscriptions.first().topic, QStringLiteral("fdafda"));
 }
 
 void WorkbenchViewModelTest::rejectsMissingSubscriptionEditorTopic()
@@ -768,6 +888,243 @@ void WorkbenchViewModelTest::ignoresMissingSessionIds()
     QVERIFY(!viewModel.openSessionEditorForEdit(QStringLiteral("missing-session")));
 
     QVERIFY(fixture.sessionService.sessions().isEmpty());
+}
+
+void WorkbenchViewModelTest::reordersSessionsWithoutChangingCurrentSession()
+{
+    WorkbenchFixture fixture;
+    for (int number = 1; number <= 3; ++number) {
+        QVERIFY(fixture.sessionService.addSessionWithConfig(SessionEditorViewModel::defaultConfig(number)));
+    }
+    const QString first = fixture.sessionService.sessions().at(0).id;
+    const QString second = fixture.sessionService.sessions().at(1).id;
+    const QString third = fixture.sessionService.sessions().at(2).id;
+    fixture.sessionService.setCurrentSessionIndex(1);
+    const auto client = fixture.sessionService.currentSession()->runtime.client;
+    QSignalSpy historySpy(&fixture.sessionService, &SessionService::currentSessionHistoryReloadRequested);
+    QSignalSpy changedSpy(&fixture.sessionService, &SessionService::currentSessionChanged);
+    QSignalSpy indexSpy(&fixture.sessionService, &SessionService::currentSessionIndexChanged);
+
+    QVERIFY(fixture.viewModel.moveSession(first, third, true));
+    QCOMPARE(fixture.sessionService.currentSession()->id, second);
+    QCOMPARE(fixture.sessionService.currentIndex(), 0);
+    QCOMPARE(fixture.sessionService.currentSession()->runtime.client, client);
+    QCOMPARE(fixture.sessionService.sessions().at(2).id, first);
+    QCOMPARE(indexSpy.count(), 1);
+    QCOMPARE(historySpy.count(), 0);
+    QCOMPARE(changedSpy.count(), 0);
+    QVERIFY(fixture.viewModel.moveSession(second, first, true));
+    QCOMPARE(fixture.sessionService.currentIndex(), 2);
+    QVERIFY(fixture.viewModel.moveSession(second, third, false));
+    QCOMPARE(fixture.sessionService.currentIndex(), 0);
+    QVERIFY(fixture.viewModel.moveSession(first, first, false));
+    QVERIFY(!fixture.viewModel.moveSession(QStringLiteral("missing"), first, false));
+    QVERIFY(!fixture.viewModel.moveSession(first, QStringLiteral("missing"), false));
+
+    SessionService reloaded(fixture.settings, fixture.historyStore, fixture.preferences);
+    QVERIFY(reloaded.loadSessions());
+    QCOMPARE(reloaded.sessions().at(0).id, second);
+    QCOMPARE(reloaded.sessions().at(1).id, third);
+    QCOMPARE(reloaded.sessions().at(2).id, first);
+}
+
+void WorkbenchViewModelTest::reordersFilteredSubscriptionsAndPersistsOrder()
+{
+    WorkbenchFixture fixture;
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.subscriptions = {
+        SubscriptionEntry {.topic = QStringLiteral("visible/one"), .alias = QStringLiteral("One")},
+        SubscriptionEntry {.topic = QStringLiteral("hidden/two")},
+        SubscriptionEntry {.topic = QStringLiteral("visible/three"), .paused = true},
+    };
+    fixture.sessionService.sessions().append(session);
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.subscriptionsModel.setSubscriptions(session.id, session.subscriptions);
+    fixture.filteredSubscriptionsModel.setFilterText(QStringLiteral("visible"));
+    const QString source = fixture.filteredSubscriptionsModel.rowAt(1).value(QStringLiteral("topic")).toString();
+    const QString anchor = fixture.filteredSubscriptionsModel.rowAt(0).value(QStringLiteral("topic")).toString();
+    QVERIFY(fixture.viewModel.moveSubscription(session.id, source, anchor, false));
+    const auto *current = fixture.sessionService.currentSession();
+    QCOMPARE(current->subscriptions.at(0).topic, source);
+    QVERIFY(current->subscriptions.at(0).paused);
+    QCOMPARE(current->subscriptions.at(1).alias, QStringLiteral("One"));
+    QCOMPARE(current->subscriptions.at(2).topic, QStringLiteral("hidden/two"));
+    QVERIFY(!fixture.viewModel.moveSubscription(QStringLiteral("other-session"), source, anchor, true));
+    QVERIFY(!fixture.viewModel.moveSubscription(session.id, QStringLiteral("missing"), anchor, true));
+    QVERIFY(!fixture.viewModel.moveSubscription(session.id, source, QStringLiteral("missing"), true));
+    QVERIFY(fixture.viewModel.moveSubscription(session.id, source, source, true));
+
+    SessionService reloaded(fixture.settings, fixture.historyStore, fixture.preferences);
+    QVERIFY(reloaded.loadSessions());
+    QCOMPARE(reloaded.sessions().first().subscriptions.at(0).topic, source);
+    QCOMPARE(reloaded.sessions().first().subscriptions.at(1).topic, anchor);
+    QCOMPARE(reloaded.sessions().first().subscriptions.at(2).topic, QStringLiteral("hidden/two"));
+}
+
+void WorkbenchViewModelTest::rollsBackReorderingWhenSettingsWriteFails()
+{
+    WorkbenchFixture fixture(failingSettingsFormat());
+    SessionState first;
+    first.id = QStringLiteral("first");
+    first.subscriptions = {
+        SubscriptionEntry {.topic = QStringLiteral("one")},
+        SubscriptionEntry {.topic = QStringLiteral("two")},
+    };
+    SessionState second;
+    second.id = QStringLiteral("second");
+    fixture.sessionService.sessions() = {first, second};
+    fixture.sessionService.setCurrentSessionIndex(0);
+    QVERIFY(!fixture.viewModel.moveSession(first.id, second.id, true));
+    QCOMPARE(fixture.sessionService.sessions().first().id, first.id);
+    QCOMPARE(fixture.sessionService.currentIndex(), 0);
+    QVERIFY(!fixture.viewModel.moveSubscription(first.id, QStringLiteral("one"), QStringLiteral("two"), true));
+    QCOMPARE(fixture.sessionService.currentSession()->subscriptions.first().topic, QStringLiteral("one"));
+}
+
+void WorkbenchViewModelTest::dragsListsWithoutChangingSelection_data()
+{
+    QTest::addColumn<bool>("subscriptions");
+    QTest::addColumn<int>("width");
+    QTest::addColumn<bool>("dark");
+    QTest::newRow("connections") << false << 360 << false;
+    QTest::newRow("topics") << true << 360 << false;
+    QTest::newRow("connections-narrow-dark") << false << 240 << true;
+    QTest::newRow("topics-narrow-dark") << true << 240 << true;
+}
+
+void WorkbenchViewModelTest::dragsListsWithoutChangingSelection()
+{
+    QFETCH(bool, subscriptions);
+    QFETCH(int, width);
+    QFETCH(bool, dark);
+    WorkbenchFixture fixture;
+    for (int number = 1; number <= 3; ++number) {
+        auto config = SessionEditorViewModel::defaultConfig(number);
+        config.name = QStringLiteral("Demo connection %1").arg(number);
+        config.host = QStringLiteral("localhost");
+        QVERIFY(fixture.sessionService.addSessionWithConfig(config));
+    }
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.sessionService.currentSession()->subscriptions = {
+        SubscriptionEntry {.topic = QStringLiteral("demo/office/temperature"), .alias = QStringLiteral("Temperature")},
+        SubscriptionEntry {.topic = QStringLiteral("demo/office/humidity"), .alias = QStringLiteral("Humidity")},
+        SubscriptionEntry {.topic = QStringLiteral("demo/office/status"), .alias = QStringLiteral("Status")},
+    };
+    const QString sessionId = fixture.sessionService.currentSession()->id;
+    const QString firstKey = subscriptions
+        ? fixture.sessionService.currentSession()->subscriptions.first().topic
+        : fixture.sessionService.sessions().first().id;
+    const auto refresh = [&fixture]() {
+        fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+        const auto *session = fixture.sessionService.currentSession();
+        fixture.subscriptionsModel.setSubscriptions(session->id, session->subscriptions);
+    };
+    connect(&fixture.sessionService, &SessionService::sessionsChanged, this, refresh);
+    connect(&fixture.sessionService, &SessionService::currentSessionChanged, this, refresh);
+    connect(&fixture.subscriptionService, &SubscriptionService::subscriptionsChanged, this, refresh);
+    refresh();
+    QQmlEngine engine;
+    QQmlComponent uiComponent(&engine);
+    uiComponent.loadFromModule("MqttPlusWorkbenchTest", "AppUi");
+    std::unique_ptr<QObject> ui(uiComponent.createWithInitialProperties({
+        {QStringLiteral("isDarkTheme"), dark}, {QStringLiteral("themeColor"), QStringLiteral("mint")},
+        {QStringLiteral("animationsEnabled"), false}}));
+    QVERIFY2(ui, qPrintable(uiComponent.errorString()));
+    QQmlComponent component(&engine);
+    component.loadFromModule("MqttPlusWorkbenchTest", subscriptions ? "SubscriptionsPanel" : "SessionSidebar");
+    QVariantMap properties {
+        {QStringLiteral("ui"), QVariant::fromValue(ui.get())},
+        {QStringLiteral("viewModel"), QVariant::fromValue(&fixture.viewModel)},
+    };
+    if (subscriptions) {
+        properties.insert(QStringLiteral("subscriptionService"), QVariant::fromValue(&fixture.subscriptionService));
+        properties.insert(QStringLiteral("active"), true);
+    }
+    std::unique_ptr<QObject> page(component.createWithInitialProperties(properties));
+    QVERIFY2(page, qPrintable(component.errorString()));
+    auto *item = qobject_cast<QQuickItem *>(page.get());
+    QVERIFY(item);
+    QQuickWindow window;
+    window.resize(width, 400);
+    item->setParentItem(window.contentItem());
+    item->setSize(QSizeF(width, 400));
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    auto *reorder = page->findChild<QQuickItem *>(subscriptions ? "subscriptionReorder" : "sessionReorder");
+    QVERIFY(reorder);
+    QTest::qWait(100);
+    const int rowHeight = subscriptions ? 46 : 54;
+    const QPoint start = reorder->mapToScene(QPointF(12, rowHeight / 2)).toPoint();
+    const QPoint end = start + QPoint(0, 2 * (rowHeight + 4) + 10);
+    const QString capture = qEnvironmentVariable("MQTT_PLUS_TEST_CAPTURE_DIR");
+    const auto captureWindow = [&window, &capture, subscriptions, width](const QString &state) {
+        if (capture.isEmpty()) return true;
+        const auto image = window.grabWindow();
+        return !image.isNull() && image.save(capture + QStringLiteral("/%1-%2-%3.png")
+            .arg(subscriptions ? QStringLiteral("topics") : QStringLiteral("connections"))
+            .arg(width).arg(state));
+    };
+    QVERIFY(captureWindow(QStringLiteral("before")));
+
+    QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, start);
+    QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, start);
+    QTest::mouseMove(&window, end, 30);
+    QTRY_VERIFY(reorder->property("dragging").toBool());
+    QVERIFY(captureWindow(QStringLiteral("dragging")));
+    QTest::keyClick(&window, Qt::Key_Escape);
+    QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, end);
+    QCOMPARE(subscriptions ? fixture.sessionService.currentSession()->subscriptions.first().topic
+                           : fixture.sessionService.sessions().first().id, firstKey);
+
+    QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, start);
+    QTest::mouseMove(&window, end, 30);
+    QTRY_VERIFY(reorder->property("dragging").toBool());
+    QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, end);
+    QTRY_COMPARE(subscriptions ? fixture.sessionService.currentSession()->subscriptions.last().topic
+                              : fixture.sessionService.sessions().last().id, firstKey);
+    QCOMPARE(fixture.sessionService.currentSession()->id, sessionId);
+    for (const auto &entry : fixture.sessionService.currentSession()->subscriptions) {
+        QVERIFY(!entry.paused);
+    }
+    QVERIFY(captureWindow(QStringLiteral("after")));
+
+    if (subscriptions) {
+        QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(&window, end, 30);
+        QTRY_VERIFY(reorder->property("dragging").toBool());
+        fixture.sessionService.setCurrentSessionIndex(1);
+        QVERIFY(!reorder->property("dragging").toBool());
+        QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, end);
+        QVERIFY(fixture.sessionService.currentSession()->subscriptions.isEmpty());
+        fixture.sessionService.setCurrentSessionIndex(0);
+    }
+
+    for (int number = 0; number < 30; ++number) {
+        if (subscriptions) {
+            fixture.sessionService.currentSession()->subscriptions.append(
+                SubscriptionEntry {.topic = QStringLiteral("demo/extra/%1").arg(number)});
+        } else {
+            SessionState session;
+            session.id = QStringLiteral("extra-%1").arg(number);
+            session.name = QStringLiteral("Demo extra %1").arg(number);
+            fixture.sessionService.sessions().append(session);
+        }
+    }
+    refresh();
+    QTest::qWait(50);
+    auto *list = reorder->property("view").value<QObject *>();
+    QVERIFY(list);
+    const qreal previousY = list->property("contentY").toReal();
+    const QPoint bottom = reorder->mapToScene(QPointF(12, reorder->height() - 8)).toPoint();
+    QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, start);
+    QTest::mouseMove(&window, bottom, 30);
+    QTRY_VERIFY(reorder->property("dragging").toBool());
+    QTRY_VERIFY(list->property("contentY").toReal() > previousY);
+    QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier,
+                       reorder->mapToScene(QPointF(reorder->width() + 4, reorder->height() - 8)).toPoint());
+    QVERIFY(!reorder->property("dragging").toBool());
+    item->setParentItem(nullptr);
 }
 
 void WorkbenchViewModelTest::updatesPublishDraft()

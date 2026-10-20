@@ -29,6 +29,8 @@ Rectangle {
         if (actionId === "edit") {
             return qsTr("Edit");
         }
+        if (actionId === "up") return qsTr("Move up");
+        if (actionId === "down") return qsTr("Move down");
         if (actionId === "copy") {
             return qsTr("Copy");
         }
@@ -61,6 +63,8 @@ Rectangle {
         ListElement {
             actionId: "copy"
         }
+        ListElement { actionId: "up" }
+        ListElement { actionId: "down" }
         ListElement {
             actionId: "delete"
         }
@@ -73,8 +77,12 @@ Rectangle {
         accessibleName: qsTr("Connection actions")
         model: sessionContextActions
         actionText: actionId => control.sessionActionLabel(actionId)
-        actionIcon: actionId => control.ui.materialIcon(actionId === "copy" ? "content-copy" : actionId)
-        actionEnabled: actionId => actionId !== "delete" || control.canDeleteSession
+        actionIcon: actionId => control.ui.materialIcon(actionId === "copy" ? "content-copy"
+                                                       : (actionId === "up" || actionId === "down"
+                                                          ? "chevron-" + actionId : actionId))
+        actionEnabled: actionId => actionId === "up" ? sessionReorder.canMove(control.sessionContextId, -1)
+                                   : (actionId === "down" ? sessionReorder.canMove(control.sessionContextId, 1)
+                                      : (actionId !== "delete" || control.canDeleteSession))
         actionDanger: actionId => actionId === "delete"
         actionSeparatorBefore: actionId => actionId === "delete"
 
@@ -85,6 +93,8 @@ Rectangle {
                 control.viewModel.requestSessionDuplicate(control.sessionContextId);
             } else if (actionId === "delete") {
                 control.viewModel.requestSessionDelete(control.sessionContextId);
+            } else if (actionId === "up" || actionId === "down") {
+                sessionReorder.moveByOffset(control.sessionContextId, actionId === "up" ? -1 : 1);
             }
 
             control.sessionContextId = "";
@@ -174,6 +184,18 @@ Rectangle {
                 policy: ScrollBar.AsNeeded
             }
 
+            AppListReorder {
+                id: sessionReorder
+                objectName: "sessionReorder"
+                parent: sessionList
+                anchors.fill: parent
+                ui: control.ui
+                view: sessionList
+                keyRole: "id"
+                enabled: !control.collapsed
+                onMoveRequested: (scope, source, anchor, after) => control.viewModel.moveSession(source, anchor, after)
+            }
+
             delegate: Rectangle {
                 id: sessionDelegate
                 required property int index
@@ -195,13 +217,15 @@ Rectangle {
                 width: ListView.view.width
                 height: 54
                 radius: 10
-                opacity: sessionDelegate.connectionState === "disconnecting" ? 0.72 : 1.0
+                opacity: sessionReorder.dragging && sessionReorder.sourceKey === sessionDelegate.id
+                         ? 0.6 : (sessionDelegate.connectionState === "disconnecting" ? 0.72 : 1.0)
                 color: sessionDelegate.selected ? control.selectedSessionBg : (sessionDelegate.highlighted ? control.ui.themePalette.rowHover : "transparent")
                 border.color: "transparent"
                 border.width: 0
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Connection %1").arg(sessionDelegate.name)
                 Accessible.description: sessionDelegate.endpointText
+                activeFocusOnTab: true
 
                 HoverHandler {
                     id: rowHover
@@ -218,7 +242,11 @@ Rectangle {
                 }
 
                 Keys.onPressed: event => {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                    if ((event.modifiers & Qt.ControlModifier)
+                            && (event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+                        sessionReorder.moveByOffset(sessionDelegate.id, event.key === Qt.Key_Up ? -1 : 1);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
                         control.viewModel.currentSessionIndex = sessionDelegate.index;
                         event.accepted = true;
                     } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers & Qt.ShiftModifier)) {
@@ -229,7 +257,7 @@ Rectangle {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 10
+                    anchors.leftMargin: 32
                     anchors.rightMargin: 10
                     spacing: 10
                     z: 1
@@ -322,11 +350,27 @@ Rectangle {
 
                     onClicked: mouse => {
                         if (mouse.button === Qt.LeftButton) {
+                            sessionDelegate.forceActiveFocus();
                             control.viewModel.currentSessionIndex = sessionDelegate.index;
                         } else if (mouse.button === Qt.RightButton) {
                             sessionDelegate.openSessionContextMenuAt(mouse.x, mouse.y);
                         }
                     }
+                }
+
+                ToolButton {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 24
+                    height: 28
+                    icon.source: control.ui.materialIcon("grip-vertical")
+                    icon.width: 14
+                    icon.height: 14
+                    icon.color: control.ui.textMuted
+                    background: null
+                    focusPolicy: Qt.NoFocus
+                    Accessible.ignored: true
+                    visible: sessionList.count > 1
                 }
             }
 

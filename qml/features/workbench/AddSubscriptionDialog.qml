@@ -303,7 +303,11 @@ AppDialog {
             placeholderText: qsTr("sensor/one, sensor/two")
             wrapMode: TextEdit.Wrap
             Accessible.name: qsTr("Topic filters")
-            onTextEdited: root.editor.topic = text
+            onTextChanged: {
+                if (root.editor.topic !== text) {
+                    root.editor.topic = text
+                }
+            }
         }
     }
 

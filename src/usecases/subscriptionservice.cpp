@@ -260,6 +260,43 @@ bool SubscriptionService::updateCurrentSubscription(
     return saved;
 }
 
+bool SubscriptionService::moveCurrentSubscription(const QString &topic, const QString &anchorTopic, bool after)
+{
+    auto *session = m_sessionService.currentSession();
+    if (!session) {
+        return false;
+    }
+    int from = -1;
+    int anchor = -1;
+    for (qsizetype row = 0; row < session->subscriptions.size(); ++row) {
+        if (session->subscriptions.at(row).topic == topic) {
+            from = static_cast<int>(row);
+        }
+        if (session->subscriptions.at(row).topic == anchorTopic) {
+            anchor = static_cast<int>(row);
+        }
+    }
+    if (topic.isEmpty() || anchorTopic.isEmpty() || from < 0 || anchor < 0) {
+        return false;
+    }
+    if (from == anchor) {
+        return true;
+    }
+    const int to = anchor + (after ? 1 : 0) - (from < anchor ? 1 : 0);
+    if (from == to) {
+        return true;
+    }
+    session->subscriptions.move(from, to);
+    if (!m_sessionService.saveSessions()) {
+        session->subscriptions.move(to, from);
+        m_sessionService.saveSessions();
+        emit subscriptionsChanged();
+        return false;
+    }
+    emit subscriptionsChanged();
+    return true;
+}
+
 void SubscriptionService::removeCurrentSubscription(const QString &topic)
 {
     auto *session = m_sessionService.currentSession();
