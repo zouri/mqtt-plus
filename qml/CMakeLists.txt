@@ -4,7 +4,14 @@ list(TRANSFORM app_sources PREPEND "${PROJECT_SOURCE_DIR}/")
 option(MQTT_PLUS_ENABLE_PROFILING "Enable isolated synthetic workloads without QML debugging" OFF)
 
 qt_add_executable(mqtt_plus_app MANUAL_FINALIZATION ${app_sources})
-find_program(MQTT_PLUS_NPM npm REQUIRED)
+if(WIN32)
+    find_program(MQTT_PLUS_NPM NAMES npm.cmd REQUIRED)
+    # Select the Windows launcher, not npm's extensionless POSIX shell script.
+    set(editor_npm_command cmd /c call "${MQTT_PLUS_NPM}")
+else()
+    find_program(MQTT_PLUS_NPM npm REQUIRED)
+    set(editor_npm_command "${MQTT_PLUS_NPM}")
+endif()
 set(editor_source "${PROJECT_SOURCE_DIR}/web/processor-editor")
 set_property(TARGET mqtt_plus_app APPEND PROPERTY QT_EXCLUDE_SOURCES_FROM_TRANSLATION
     "${editor_source}/dist/*")
@@ -19,13 +26,13 @@ if(EXISTS "${editor_lock_stamp}")
     file(READ "${editor_lock_stamp}" editor_installed_hash)
 endif()
 if(NOT EXISTS "${editor_source}/node_modules/.package-lock.json" OR NOT editor_installed_hash STREQUAL editor_lock_hash)
-    execute_process(COMMAND "${MQTT_PLUS_NPM}" ci --no-audit --no-fund
+    execute_process(COMMAND ${editor_npm_command} ci --no-audit --no-fund
         WORKING_DIRECTORY "${editor_source}" COMMAND_ERROR_IS_FATAL ANY)
     file(WRITE "${editor_lock_stamp}" "${editor_lock_hash}")
 endif()
-execute_process(COMMAND "${MQTT_PLUS_NPM}" test
+execute_process(COMMAND ${editor_npm_command} test
     WORKING_DIRECTORY "${editor_source}" COMMAND_ERROR_IS_FATAL ANY)
-execute_process(COMMAND "${MQTT_PLUS_NPM}" run build
+execute_process(COMMAND ${editor_npm_command} run build
     WORKING_DIRECTORY "${editor_source}" COMMAND_ERROR_IS_FATAL ANY)
 file(GLOB_RECURSE editor_resources "${editor_source}/dist/*")
 qt_add_resources(mqtt_plus_app processor_editor
