@@ -17,6 +17,7 @@
 #include <QRegularExpression>
 
 #include <algorithm>
+#include <utility>
 
 using namespace AppUtils;
 
@@ -504,12 +505,27 @@ void WorkbenchViewModel::openSessionEditorForCreate()
     m_sessionEditor.openForCreate(m_sessionService.defaultSessionConfig());
 }
 
-void WorkbenchViewModel::openSessionEditorForEdit(int index)
+int WorkbenchViewModel::sessionIndexById(const QString &sessionId) const
 {
-    if (index < 0 || index >= m_sessionsModel.rowCount()) {
-        return;
+    const auto &sessions = std::as_const(m_sessionService).sessions();
+    if (!sessionId.isEmpty()) {
+        for (qsizetype index = 0; index < sessions.size(); ++index) {
+            if (sessions.at(index).id == sessionId) {
+                return static_cast<int>(index);
+            }
+        }
     }
-    m_sessionEditor.openForEdit(index, m_sessionService.sessionConfigAt(index));
+    return -1;
+}
+
+bool WorkbenchViewModel::openSessionEditorForEdit(const QString &sessionId)
+{
+    const int index = sessionIndexById(sessionId);
+    if (index < 0) {
+        return false;
+    }
+    m_sessionEditor.openForEdit(sessionId, m_sessionService.sessionConfigAt(index));
+    return true;
 }
 
 bool WorkbenchViewModel::submitSessionEditor()
@@ -522,22 +538,24 @@ bool WorkbenchViewModel::submitSessionEditor()
         return m_sessionService.addSessionWithConfig(config);
     }
 
-    const int index = m_sessionEditor.targetIndex();
+    const int index = sessionIndexById(m_sessionEditor.targetSessionId());
     return index >= 0 && m_sessionService.updateSessionConfigAt(index, config);
 }
 
-void WorkbenchViewModel::requestSessionDuplicate(int index)
+void WorkbenchViewModel::requestSessionDuplicate(const QString &sessionId)
 {
-    if (index < 0 || index >= m_sessionsModel.rowCount()) {
+    const int index = sessionIndexById(sessionId);
+    if (index < 0) {
         return;
     }
 
     m_sessionService.duplicateSessionAt(index);
 }
 
-void WorkbenchViewModel::requestSessionDelete(int index)
+void WorkbenchViewModel::requestSessionDelete(const QString &sessionId)
 {
-    if (index < 0 || index >= m_sessionsModel.rowCount() || m_sessionsModel.rowCount() <= 1) {
+    const int index = sessionIndexById(sessionId);
+    if (index < 0 || m_sessionService.sessions().size() <= 1) {
         return;
     }
 
@@ -566,34 +584,42 @@ void WorkbenchViewModel::refreshSubscriptionEditorProcessorOptions()
     m_subscriptionEditor.setProcessorOptions(options);
 }
 
-void WorkbenchViewModel::openSubscriptionEditorForCreate(const QString &topic)
+bool WorkbenchViewModel::openSubscriptionEditorForCreate(const QString &sessionId, const QString &topic)
 {
+    const SessionState *session = m_sessionService.currentSession();
+    if (!session || sessionId.isEmpty() || session->id != sessionId) {
+        return false;
+    }
+    m_subscriptionEditorSessionId = sessionId;
     refreshSubscriptionEditorProcessorOptions();
     m_subscriptionEditor.openForCreate(topic);
+    return true;
 }
 
-bool WorkbenchViewModel::openSubscriptionEditorForEdit(int filteredIndex)
+bool WorkbenchViewModel::openSubscriptionEditorForEdit(const QString &sessionId, const QString &topic)
 {
-    if (filteredIndex < 0 || filteredIndex >= m_filteredSubscriptionsModel.rowCount()) {
-        return false;
-    }
     const SessionState *session = m_sessionService.currentSession();
-    const QModelIndex sourceIndex = m_filteredSubscriptionsModel.mapToSource(
-        m_filteredSubscriptionsModel.index(filteredIndex, 0));
-    if (!session
-        || !sourceIndex.isValid()
-        || sourceIndex.row() >= session->subscriptions.size()) {
+    if (!session || sessionId.isEmpty() || session->id != sessionId || topic.isEmpty()) {
         return false;
     }
 
-    refreshSubscriptionEditorProcessorOptions();
-    m_subscriptionEditor.openForEdit(session->subscriptions.at(sourceIndex.row()));
-    return true;
+    for (const SubscriptionEntry &subscription : session->subscriptions) {
+        if (subscription.topic == topic) {
+            m_subscriptionEditorSessionId = sessionId;
+            refreshSubscriptionEditorProcessorOptions();
+            m_subscriptionEditor.openForEdit(subscription);
+            return true;
+        }
+    }
+    return false;
 }
 
 bool WorkbenchViewModel::submitSubscriptionEditor()
 {
-    if (!m_subscriptionEditor.canSubmit()) {
+    const SessionState *session = m_sessionService.currentSession();
+    if (!session || m_subscriptionEditorSessionId.isEmpty()
+        || session->id != m_subscriptionEditorSessionId
+        || !m_subscriptionEditor.canSubmit()) {
         return false;
     }
 

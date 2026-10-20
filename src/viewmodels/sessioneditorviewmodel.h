@@ -9,7 +9,7 @@ class SessionEditorViewModel : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(bool editMode READ editMode NOTIFY editModeChanged)
-    Q_PROPERTY(int targetIndex READ targetIndex NOTIFY targetIndexChanged)
+    Q_PROPERTY(QString targetSessionId READ targetSessionId NOTIFY targetSessionIdChanged)
     Q_PROPERTY(QString title READ title NOTIFY titleChanged)
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged)
     Q_PROPERTY(QString host READ host WRITE setHost NOTIFY hostChanged)
@@ -62,7 +62,7 @@ public:
     static SessionConnectionConfig defaultConfig(int sessionNumber);
 
     bool editMode() const;
-    int targetIndex() const;
+    QString targetSessionId() const;
     QString title() const;
     QString name() const;
     QString host() const;
@@ -152,14 +152,14 @@ public:
     void setWillUserPropertiesText(const QString &text);
 
     void openForCreate(const SessionConnectionConfig &config);
-    void openForEdit(int index, const SessionConnectionConfig &config);
+    void openForEdit(const QString &sessionId, const SessionConnectionConfig &config);
     void loadConfig(const SessionConnectionConfig &config);
     SessionConnectionConfig collectedConfig() const;
     bool validate();
 
 signals:
     void editModeChanged();
-    void targetIndexChanged();
+    void targetSessionIdChanged();
     void titleChanged();
     void nameChanged();
     void hostChanged();
@@ -206,12 +206,12 @@ signals:
 private:
     QString integerValidationError(const QString &text, const QString &label, quint64 minimum, quint64 maximum, bool required) const;
     void setEditMode(bool editMode);
-    void setTargetIndex(int targetIndex);
+    void setTargetSessionId(const QString &sessionId);
     void setTitle(const QString &title);
     void setValidationError(const QString &message);
 
     bool m_editMode = false;
-    int m_targetIndex = -1;
+    QString m_targetSessionId;
     QString m_title = QStringLiteral("New Connection");
     QString m_name;
     QString m_host = QStringLiteral("broker.emqx.io");

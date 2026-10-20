@@ -12,13 +12,13 @@ Rectangle {
     required property var viewModel
     property bool collapsed: false
     property real visibleWidth: width
-    property int sessionContextIndex: -1
+    property string sessionContextId: ""
     readonly property bool canDeleteSession: sessionList.count > 1
     readonly property color sidebarBg: control.ui.themePalette.sidebarBg
     readonly property color selectedSessionBg: control.ui.themePalette.selectedItemBg
 
     signal sessionCreateRequested
-    signal sessionEditRequested(int index)
+    signal sessionEditRequested(string sessionId)
     signal collapseRequested
     signal expandRequested
 
@@ -38,17 +38,17 @@ Rectangle {
         return "";
     }
 
-    function prepareSessionContextMenu(index) {
-        control.sessionContextIndex = index;
+    function prepareSessionContextMenu(sessionId) {
+        control.sessionContextId = sessionId;
     }
 
-    function openSessionContextMenuAt(index, sourceItem, localX, localY) {
-        control.prepareSessionContextMenu(index);
+    function openSessionContextMenuAt(sessionId, sourceItem, localX, localY) {
+        control.prepareSessionContextMenu(sessionId);
         sessionContextMenu.openAtPoint(sourceItem, localX, localY);
     }
 
-    function openSessionActionsMenu(index, anchorItem) {
-        control.prepareSessionContextMenu(index);
+    function openSessionActionsMenu(sessionId, anchorItem) {
+        control.prepareSessionContextMenu(sessionId);
         sessionContextMenu.openForItem(anchorItem);
     }
 
@@ -80,17 +80,17 @@ Rectangle {
 
         onTriggered: actionId => {
             if (actionId === "edit") {
-                control.sessionEditRequested(control.sessionContextIndex);
+                control.sessionEditRequested(control.sessionContextId);
             } else if (actionId === "copy") {
-                control.viewModel.requestSessionDuplicate(control.sessionContextIndex);
+                control.viewModel.requestSessionDuplicate(control.sessionContextId);
             } else if (actionId === "delete") {
-                control.viewModel.requestSessionDelete(control.sessionContextIndex);
+                control.viewModel.requestSessionDelete(control.sessionContextId);
             }
 
-            control.sessionContextIndex = -1;
+            control.sessionContextId = "";
         }
 
-        onClosed: control.sessionContextIndex = -1
+        onClosed: control.sessionContextId = ""
     }
 
     ColumnLayout {
@@ -177,6 +177,7 @@ Rectangle {
             delegate: Rectangle {
                 id: sessionDelegate
                 required property int index
+                required property string id
                 required property string name
                 required property string host
                 required property int port
@@ -209,11 +210,11 @@ Rectangle {
                 }
 
                 function openSessionContextMenuAt(localX, localY) {
-                    control.openSessionContextMenuAt(sessionDelegate.index, sessionDelegate, localX, localY);
+                    control.openSessionContextMenuAt(sessionDelegate.id, sessionDelegate, localX, localY);
                 }
 
                 function openSessionActionsMenu(anchorItem) {
-                    control.openSessionActionsMenu(sessionDelegate.index, anchorItem);
+                    control.openSessionActionsMenu(sessionDelegate.id, anchorItem);
                 }
 
                 Keys.onPressed: event => {
@@ -299,7 +300,7 @@ Rectangle {
                         visible: sessionDelegate.selected
                                  || sessionDelegate.highlighted
                                  || (sessionContextMenu.visible
-                                     && control.sessionContextIndex === sessionDelegate.index)
+                                     && control.sessionContextId === sessionDelegate.id)
                         iconSource: control.ui.materialIcon("more-horiz")
                         iconSize: 15
                         cornerRadius: 6
@@ -308,7 +309,7 @@ Rectangle {
                         outlineColor: "transparent"
                         symbolColor: control.ui.textMuted
                         forceActive: sessionContextMenu.visible
-                                     && control.sessionContextIndex === sessionDelegate.index
+                                     && control.sessionContextId === sessionDelegate.id
                         accessibleName: qsTr("Connection actions")
                         onClicked: sessionDelegate.openSessionActionsMenu(sessionMenuButton)
                     }

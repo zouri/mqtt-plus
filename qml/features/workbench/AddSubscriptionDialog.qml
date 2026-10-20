@@ -11,13 +11,14 @@ AppDialog {
 
     required property var viewModel
     readonly property var editor: root.viewModel.subscriptionEditor
-    function openForCreate(initialTopic) {
-        root.viewModel.openSubscriptionEditorForCreate(initialTopic || "")
-        open()
+    function openForCreate(sessionId, initialTopic) {
+        if (root.viewModel.openSubscriptionEditorForCreate(sessionId, initialTopic || "")) {
+            open()
+        }
     }
 
-    function openForEdit(index) {
-        if (root.viewModel.openSubscriptionEditorForEdit(index)) {
+    function openForEdit(sessionId, topic) {
+        if (root.viewModel.openSubscriptionEditorForEdit(sessionId, topic)) {
             open()
         }
     }

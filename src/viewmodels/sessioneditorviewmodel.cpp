@@ -22,9 +22,9 @@ bool SessionEditorViewModel::editMode() const
     return m_editMode;
 }
 
-int SessionEditorViewModel::targetIndex() const
+QString SessionEditorViewModel::targetSessionId() const
 {
-    return m_targetIndex;
+    return m_targetSessionId;
 }
 
 QString SessionEditorViewModel::title() const
@@ -561,17 +561,17 @@ void SessionEditorViewModel::setWillUserPropertiesText(const QString &text)
 void SessionEditorViewModel::openForCreate(const SessionConnectionConfig &config)
 {
     setEditMode(false);
-    setTargetIndex(-1);
+    setTargetSessionId({});
     setTitle(QStringLiteral("New Connection"));
     loadConfig(config);
 }
 
 void SessionEditorViewModel::openForEdit(
-    int index,
+    const QString &sessionId,
     const SessionConnectionConfig &config)
 {
     setEditMode(true);
-    setTargetIndex(index);
+    setTargetSessionId(sessionId);
     setTitle(QStringLiteral("Edit Connection"));
     loadConfig(config);
 }
@@ -782,13 +782,13 @@ void SessionEditorViewModel::setEditMode(bool editMode)
     emit editModeChanged();
 }
 
-void SessionEditorViewModel::setTargetIndex(int targetIndex)
+void SessionEditorViewModel::setTargetSessionId(const QString &sessionId)
 {
-    if (m_targetIndex == targetIndex) {
+    if (m_targetSessionId == sessionId) {
         return;
     }
-    m_targetIndex = targetIndex;
-    emit targetIndexChanged();
+    m_targetSessionId = sessionId;
+    emit targetSessionIdChanged();
 }
 
 void SessionEditorViewModel::setTitle(const QString &title)

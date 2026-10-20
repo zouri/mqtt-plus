@@ -14,8 +14,8 @@ AppPanel {
     required property bool active
 
     property string subscriptionActionVisualKey: ""
-    property int subscriptionContextIndex: -1
     property string subscriptionContextTopic: ""
+    property string subscriptionContextSessionId: ""
     property string subscriptionContextDisplayName: ""
     readonly property var subscriptionModel: control.viewModel ? control.viewModel.filteredSubscriptions : null
     readonly property int matchingSubscriptionCount: control.subscriptionModel ? control.subscriptionModel.count : 0
@@ -31,7 +31,7 @@ AppPanel {
     Layout.fillHeight: true
 
     signal subscriptionCreateRequested
-    signal subscriptionEditRequested(int index)
+    signal subscriptionEditRequested(string sessionId, string topic)
 
     function subscriptionActionLabel(actionId) {
         if (actionId === "edit") {
@@ -59,21 +59,21 @@ AppPanel {
         return control.ui.materialIcon(actionId);
     }
 
-    function prepareSubscriptionContextMenu(index, topic, displayName, visualKey) {
-        control.subscriptionContextIndex = index;
+    function prepareSubscriptionContextMenu(topic, displayName, visualKey) {
+        control.subscriptionContextSessionId = control.viewModel.currentSession.id || "";
         control.subscriptionContextTopic = topic;
         control.subscriptionContextDisplayName = displayName;
         control.subscriptionActionVisualKey = visualKey;
         subscriptionActionVisualResetTimer.stop();
     }
 
-    function openSubscriptionContextMenuAt(index, topic, displayName, visualKey, sourceItem, localX, localY) {
-        control.prepareSubscriptionContextMenu(index, topic, displayName, visualKey);
+    function openSubscriptionContextMenuAt(topic, displayName, visualKey, sourceItem, localX, localY) {
+        control.prepareSubscriptionContextMenu(topic, displayName, visualKey);
         subscriptionContextMenu.openAtPoint(sourceItem, localX, localY);
     }
 
-    function openSubscriptionActionsMenu(index, topic, displayName, visualKey, anchorItem) {
-        control.prepareSubscriptionContextMenu(index, topic, displayName, visualKey);
+    function openSubscriptionActionsMenu(topic, displayName, visualKey, anchorItem) {
+        control.prepareSubscriptionContextMenu(topic, displayName, visualKey);
         subscriptionContextMenu.openForItem(anchorItem);
     }
 
@@ -129,18 +129,21 @@ AppPanel {
         actionSeparatorBefore: actionId => actionId === "edit"
 
         onTriggered: actionId => {
+            if (control.viewModel.currentSession.id !== control.subscriptionContextSessionId) {
+                return;
+            }
             if (actionId === "only") {
                 control.subscriptionService.setOnlyCurrentSubscriptionActive(
                             control.subscriptionContextTopic);
             } else if (actionId === "copy") {
                 control.viewModel.copyMessageTopic(control.subscriptionContextTopic);
             } else if (actionId === "edit") {
-                control.subscriptionEditRequested(control.subscriptionContextIndex);
+                control.subscriptionEditRequested(control.subscriptionContextSessionId, control.subscriptionContextTopic);
             } else if (actionId === "delete") {
                 control.viewModel.requestSubscriptionDelete(control.subscriptionContextTopic, control.subscriptionContextDisplayName);
             }
-            control.subscriptionContextIndex = -1;
             control.subscriptionContextTopic = "";
+            control.subscriptionContextSessionId = "";
             control.subscriptionContextDisplayName = "";
         }
 
@@ -149,8 +152,8 @@ AppPanel {
         })
 
         onClosed: {
-            control.subscriptionContextIndex = -1;
             control.subscriptionContextTopic = "";
+            control.subscriptionContextSessionId = "";
             control.subscriptionContextDisplayName = "";
         }
     }
@@ -294,8 +297,7 @@ AppPanel {
                 }
 
                 function openSubscriptionContextMenuAt(localX, localY) {
-                    control.openSubscriptionContextMenuAt(subscriptionDelegate.index,
-                                                          subscriptionDelegate.topic,
+                    control.openSubscriptionContextMenuAt(subscriptionDelegate.topic,
                                                           subscriptionDelegate.displayName,
                                                           subscriptionDelegate.menuVisualKey,
                                                           subscriptionDelegate,
@@ -304,8 +306,7 @@ AppPanel {
                 }
 
                 function openSubscriptionActionsMenu(anchorItem) {
-                    control.openSubscriptionActionsMenu(subscriptionDelegate.index,
-                                                        subscriptionDelegate.topic,
+                    control.openSubscriptionActionsMenu(subscriptionDelegate.topic,
                                                         subscriptionDelegate.displayName,
                                                         subscriptionDelegate.menuVisualKey,
                                                         anchorItem);

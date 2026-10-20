@@ -23,12 +23,12 @@ void SessionEditorViewModelTest::opensForCreateAndEdit()
 
     editor.openForCreate(SessionEditorViewModel::defaultConfig(1));
     QVERIFY(!editor.editMode());
-    QCOMPARE(editor.targetIndex(), -1);
+    QVERIFY(editor.targetSessionId().isEmpty());
     QCOMPARE(editor.title(), QStringLiteral("New Connection"));
 
-    editor.openForEdit(2, existing);
+    editor.openForEdit(QStringLiteral("session-2"), existing);
     QVERIFY(editor.editMode());
-    QCOMPARE(editor.targetIndex(), 2);
+    QCOMPARE(editor.targetSessionId(), QStringLiteral("session-2"));
     QCOMPARE(editor.title(), QStringLiteral("Edit Connection"));
     QCOMPARE(editor.name(), QStringLiteral("Existing"));
 }

@@ -42,10 +42,10 @@ Item {
     property int trackedConnectionSessionIndex: -1
     property string trackedConnectionState: ""
     property string pendingSessionEditorMode: ""
-    property int pendingSessionEditorIndex: -1
+    property string pendingSessionEditorId: ""
     property string pendingSubscriptionDialogMode: ""
-    property int pendingSubscriptionIndex: -1
     property string pendingSubscriptionTopic: ""
+    property string pendingSubscriptionSessionId: ""
     property string selectedExplorerTopic: ""
     property string selectedExplorerHistoryId: ""
     readonly property int contextPaneIndex: root.preferences.workbenchContextPane === "subscriptions" ? 1 : 0
@@ -277,23 +277,23 @@ Item {
         if (root.pendingSessionEditorMode === "create") {
             sessionEditorLoader.openForCreate();
         } else if (root.pendingSessionEditorMode === "edit") {
-            sessionEditorLoader.openForEdit(root.pendingSessionEditorIndex);
+            sessionEditorLoader.openForEdit(root.pendingSessionEditorId);
         }
 
         root.pendingSessionEditorMode = "";
-        root.pendingSessionEditorIndex = -1;
+        root.pendingSessionEditorId = "";
     }
 
     function openSessionEditorForCreate() {
         root.pendingSessionEditorMode = "create";
-        root.pendingSessionEditorIndex = -1;
+        root.pendingSessionEditorId = "";
         sessionEditorLoader.active = true;
         root.openPendingSessionEditor();
     }
 
-    function openSessionEditorForEdit(index) {
+    function openSessionEditorForEdit(sessionId) {
         root.pendingSessionEditorMode = "edit";
-        root.pendingSessionEditorIndex = index;
+        root.pendingSessionEditorId = sessionId;
         sessionEditorLoader.active = true;
         root.openPendingSessionEditor();
     }
@@ -304,27 +304,28 @@ Item {
         }
 
         if (root.pendingSubscriptionDialogMode === "create") {
-            addSubscriptionDialogLoader.openForCreate(root.pendingSubscriptionTopic);
+            addSubscriptionDialogLoader.openForCreate(root.pendingSubscriptionSessionId, root.pendingSubscriptionTopic);
         } else if (root.pendingSubscriptionDialogMode === "edit") {
-            addSubscriptionDialogLoader.openForEdit(root.pendingSubscriptionIndex);
+            addSubscriptionDialogLoader.openForEdit(root.pendingSubscriptionSessionId, root.pendingSubscriptionTopic);
         }
 
         root.pendingSubscriptionDialogMode = "";
-        root.pendingSubscriptionIndex = -1;
         root.pendingSubscriptionTopic = "";
+        root.pendingSubscriptionSessionId = "";
     }
 
     function openSubscriptionDialogForCreate(initialTopic) {
         root.pendingSubscriptionDialogMode = "create";
-        root.pendingSubscriptionIndex = -1;
         root.pendingSubscriptionTopic = String(initialTopic || "");
+        root.pendingSubscriptionSessionId = root.viewModel.currentSession.id || "";
         addSubscriptionDialogLoader.active = true;
         root.openPendingSubscriptionDialog();
     }
 
-    function openSubscriptionDialogForEdit(index) {
+    function openSubscriptionDialogForEdit(sessionId, topic) {
         root.pendingSubscriptionDialogMode = "edit";
-        root.pendingSubscriptionIndex = index;
+        root.pendingSubscriptionTopic = topic;
+        root.pendingSubscriptionSessionId = sessionId;
         addSubscriptionDialogLoader.active = true;
         root.openPendingSubscriptionDialog();
     }
@@ -400,6 +401,10 @@ Item {
         function onCurrentSessionIndexChanged() {
             root.collapseConnectionPaneOnConnect = false;
             topicTreePanel.clearSelection();
+            root.pendingSubscriptionDialogMode = "";
+            root.pendingSubscriptionTopic = "";
+            root.pendingSubscriptionSessionId = "";
+            addSubscriptionDialogLoader.closeDialog();
         }
 
         function onMessagePressureChanged() {
@@ -431,7 +436,7 @@ Item {
         visible: !root.connectionPaneAutoHidden
         visibleWidth: root.connectionPaneWidth
         onSessionCreateRequested: root.openSessionEditorForCreate()
-        onSessionEditRequested: index => root.openSessionEditorForEdit(index)
+        onSessionEditRequested: sessionId => root.openSessionEditorForEdit(sessionId)
         onCollapseRequested: root.connectionPaneCollapsed = true
         onExpandRequested: root.connectionPaneCollapsed = false
     }
@@ -503,7 +508,7 @@ Item {
                     session: root.session
                     status: root.status
                     viewModel: root.viewModel
-                    onSessionEditRequested: index => root.openSessionEditorForEdit(index)
+                    onSessionEditRequested: sessionId => root.openSessionEditorForEdit(sessionId)
                     onConnectionConnectRequested: root.collapseConnectionPaneOnConnect = root.autoCollapseConnectionListOnConnect
                 }
 
@@ -727,7 +732,7 @@ Item {
                         viewModel: root.viewModel
                         subscriptionService: root.subscriptionService
                         onSubscriptionCreateRequested: root.openSubscriptionDialogForCreate()
-                        onSubscriptionEditRequested: index => root.openSubscriptionDialogForEdit(index)
+                        onSubscriptionEditRequested: (sessionId, topic) => root.openSubscriptionDialogForEdit(sessionId, topic)
                     }
                 }
             }
@@ -1129,10 +1134,10 @@ Item {
             }
         }
 
-        function openForEdit(index) {
+        function openForEdit(sessionId) {
             if (status === Loader.Ready) {
                 // qmllint disable missing-property
-                item.openForEdit(index);
+                item.openForEdit(sessionId);
                 // qmllint enable missing-property
             }
         }
@@ -1153,18 +1158,26 @@ Item {
             }
         }
 
-        function openForCreate(initialTopic) {
+        function openForCreate(sessionId, initialTopic) {
             if (status === Loader.Ready) {
                 // qmllint disable missing-property
-                item.openForCreate(initialTopic || "");
+                item.openForCreate(sessionId, initialTopic || "");
                 // qmllint enable missing-property
             }
         }
 
-        function openForEdit(index) {
+        function openForEdit(sessionId, topic) {
             if (status === Loader.Ready) {
                 // qmllint disable missing-property
-                item.openForEdit(index);
+                item.openForEdit(sessionId, topic);
+                // qmllint enable missing-property
+            }
+        }
+
+        function closeDialog() {
+            if (status === Loader.Ready) {
+                // qmllint disable missing-property
+                item.close();
                 // qmllint enable missing-property
             }
         }

@@ -12,7 +12,7 @@ AppPanel {
     required property var status
     required property var viewModel
 
-    signal sessionEditRequested(int index)
+    signal sessionEditRequested(string sessionId)
     signal connectionConnectRequested
 
     readonly property string statusState: control.status.state || "idle"
@@ -104,7 +104,7 @@ AppPanel {
                 outlineColor: control.ui.themePalette.innerPanelBorder
                 symbolColor: control.ui.themePalette.infoText
                 accessibleName: qsTr("Edit connection")
-                onClicked: control.sessionEditRequested(control.viewModel.currentSessionIndex)
+                onClicked: control.sessionEditRequested(control.session.id || "")
             }
 
             AppButton {

@@ -78,13 +78,10 @@ AppDialog {
         open()
     }
 
-    function openForEdit(index) {
-        if (index < 0 || index >= viewModel.sessions.count) {
-            return
+    function openForEdit(sessionId) {
+        if (root.viewModel.openSessionEditorForEdit(sessionId)) {
+            open()
         }
-
-        root.viewModel.openSessionEditorForEdit(index)
-        open()
     }
 
     function submit() {

@@ -116,13 +116,13 @@ public:
     void setCurrentSessionIndex(int index);
 
     Q_INVOKABLE void openSessionEditorForCreate();
-    Q_INVOKABLE void openSessionEditorForEdit(int index);
+    Q_INVOKABLE bool openSessionEditorForEdit(const QString &sessionId);
     Q_INVOKABLE bool submitSessionEditor();
-    Q_INVOKABLE void requestSessionDuplicate(int index);
-    Q_INVOKABLE void requestSessionDelete(int index);
+    Q_INVOKABLE void requestSessionDuplicate(const QString &sessionId);
+    Q_INVOKABLE void requestSessionDelete(const QString &sessionId);
     Q_INVOKABLE void toggleCurrentSessionConnection();
-    Q_INVOKABLE void openSubscriptionEditorForCreate(const QString &topic = {});
-    Q_INVOKABLE bool openSubscriptionEditorForEdit(int filteredIndex);
+    Q_INVOKABLE bool openSubscriptionEditorForCreate(const QString &sessionId, const QString &topic = {});
+    Q_INVOKABLE bool openSubscriptionEditorForEdit(const QString &sessionId, const QString &topic);
     Q_INVOKABLE bool submitSubscriptionEditor();
     Q_INVOKABLE void requestSubscriptionDelete(const QString &topic, const QString &displayName);
     Q_INVOKABLE void cancelPendingSubscriptionDelete();
@@ -207,6 +207,7 @@ private:
     void scheduleDisplayTotalMessageCountUpdate();
     void syncDisplayTotalMessageCount();
     void refreshTrafficRates();
+    int sessionIndexById(const QString &sessionId) const;
 
     SessionService &m_sessionService;
     MqttSessionService &m_mqttService;
@@ -229,4 +230,5 @@ private:
     MessagePressure m_messagePressure;
     SessionEditorViewModel m_sessionEditor;
     SubscriptionEditorViewModel m_subscriptionEditor;
+    QString m_subscriptionEditorSessionId;
 };

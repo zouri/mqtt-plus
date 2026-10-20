@@ -146,14 +146,20 @@ private slots:
     void recoversFromInvalidSessionSettingsWithoutOverwritingFile();
     void rejectsSessionCreateWhenSettingsWriteFails();
     void rollsBackSessionEditWhenSettingsWriteFails();
+    void sessionEditKeepsTargetAfterEarlierSessionRemoved();
+    void sessionEditKeepsTargetAfterEarlierSessionRemoved_data();
+    void sessionActionsKeepTargetAfterEarlierSessionRemoved();
+    void subscriptionEditRejectsChangedSession();
+    void subscriptionEditRejectsChangedSession_data();
     void exposesSessionEditor();
     void exposesSubscriptionEditor();
     void exposesTopicTree();
     void preparesSubscriptionEditorForCreate();
     void addsBatchSubscriptions();
-    void rejectsInvalidSubscriptionEditorIndex();
+    void rejectsMissingSubscriptionEditorTopic();
     void opensFilteredSubscriptionEditorWithTypedEntry();
-    void ignoresInvalidSessionIndexes();
+    void editsOriginalSubscriptionAfterFilterChanges();
+    void ignoresMissingSessionIds();
     void updatesPublishDraft();
     void savedDraftQuickPublishDoesNotReplaceComposer();
     void draftEditorSelectionFollowsPopulatedModel();
@@ -302,7 +308,7 @@ void WorkbenchViewModelTest::persistsAndDuplicatesMessageCapturePolicy()
     QCOMPARE(policySpy.size(), 1);
 
     const QString sourceSessionId = fixture.sessionService.currentSession()->id;
-    fixture.viewModel.requestSessionDuplicate(0);
+    fixture.viewModel.requestSessionDuplicate(sourceSessionId);
     QCOMPARE(fixture.sessionService.sessions().size(), 2);
     const QString duplicateSessionId = fixture.sessionService.currentSession()->id;
     const SessionState *sourceSession = fixture.sessionService.sessionById(sourceSessionId);
@@ -449,7 +455,7 @@ void WorkbenchViewModelTest::rollsBackSessionEditWhenSettingsWriteFails()
     QSignalSpy currentChangedSpy(&fixture.sessionService, &SessionService::currentSessionChanged);
     failingSettingsWriteCount = 0;
 
-    fixture.viewModel.openSessionEditorForEdit(0);
+    QVERIFY(fixture.viewModel.openSessionEditorForEdit(session.id));
     fixture.viewModel.sessionEditor()->setName(QStringLiteral("Changed Session"));
     fixture.viewModel.sessionEditor()->setHost(QStringLiteral("changed.example.com"));
 
@@ -464,6 +470,127 @@ void WorkbenchViewModelTest::rollsBackSessionEditWhenSettingsWriteFails()
     QCOMPARE(failingSettingsWriteCount, 2);
 }
 
+void WorkbenchViewModelTest::sessionEditKeepsTargetAfterEarlierSessionRemoved_data()
+{
+    QTest::addColumn<bool>("removeBeforeOpening");
+    QTest::addColumn<bool>("removeTarget");
+    QTest::newRow("earlier-before-open") << true << false;
+    QTest::newRow("earlier-before-submit") << false << false;
+    QTest::newRow("target-before-open") << true << true;
+    QTest::newRow("target-before-submit") << false << true;
+}
+
+void WorkbenchViewModelTest::sessionEditKeepsTargetAfterEarlierSessionRemoved()
+{
+    QFETCH(bool, removeBeforeOpening);
+    QFETCH(bool, removeTarget);
+    WorkbenchFixture fixture;
+    for (int number = 1; number <= 3; ++number) {
+        QVERIFY(fixture.sessionService.addSessionWithConfig(
+            SessionEditorViewModel::defaultConfig(number)));
+    }
+    fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+    const QString selectedId = fixture.sessionService.sessions().at(1).id;
+    const QString otherId = fixture.sessionService.sessions().at(2).id;
+    const QString otherName = fixture.sessionService.sessionById(otherId)->name;
+
+    if (removeBeforeOpening) {
+        fixture.sessionService.removeSessionAt(removeTarget ? 1 : 0);
+        fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+    }
+    const bool opened = fixture.viewModel.openSessionEditorForEdit(selectedId);
+    QCOMPARE(opened, !(removeBeforeOpening && removeTarget));
+    if (opened) {
+        fixture.viewModel.sessionEditor()->setName(QStringLiteral("Updated selected connection"));
+        if (!removeBeforeOpening) {
+            fixture.sessionService.removeSessionAt(removeTarget ? 1 : 0);
+            fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+        }
+        QCOMPARE(fixture.viewModel.submitSessionEditor(), !removeTarget);
+    }
+
+    if (!removeTarget) {
+        QCOMPARE(fixture.sessionService.sessionById(selectedId)->name,
+                 QStringLiteral("Updated selected connection"));
+    }
+    QCOMPARE(fixture.sessionService.sessionById(otherId)->name, otherName);
+}
+
+void WorkbenchViewModelTest::sessionActionsKeepTargetAfterEarlierSessionRemoved()
+{
+    WorkbenchFixture fixture;
+    for (int number = 1; number <= 3; ++number) {
+        QVERIFY(fixture.sessionService.addSessionWithConfig(
+            SessionEditorViewModel::defaultConfig(number)));
+    }
+    const QString selectedId = fixture.sessionService.sessions().at(1).id;
+    const QString otherId = fixture.sessionService.sessions().at(2).id;
+    const QString selectedName = fixture.sessionService.sessionById(selectedId)->name;
+    fixture.sessionsModel.setSessions(fixture.sessionService.sessions());
+    fixture.sessionService.removeSessionAt(0);
+
+    fixture.viewModel.requestSessionDuplicate(selectedId);
+    QCOMPARE(fixture.sessionService.currentSession()->name, selectedName + QStringLiteral(" Copy"));
+    QCOMPARE(fixture.sessionService.sessions().size(), 3);
+    fixture.viewModel.requestSessionDelete(selectedId);
+    QVERIFY(!fixture.sessionService.sessionById(selectedId));
+    QVERIFY(fixture.sessionService.sessionById(otherId));
+    QCOMPARE(fixture.sessionService.sessions().size(), 2);
+
+    fixture.viewModel.requestSessionDuplicate(selectedId);
+    fixture.viewModel.requestSessionDelete(selectedId);
+    QVERIFY(!fixture.viewModel.openSessionEditorForEdit(selectedId));
+    QCOMPARE(fixture.sessionService.sessions().size(), 2);
+    QVERIFY(fixture.sessionService.sessionById(otherId));
+}
+
+void WorkbenchViewModelTest::subscriptionEditRejectsChangedSession_data()
+{
+    QTest::addColumn<bool>("create");
+    QTest::addColumn<bool>("switchBeforeOpening");
+    QTest::newRow("edit-before-open") << false << true;
+    QTest::newRow("edit-before-submit") << false << false;
+    QTest::newRow("create-before-open") << true << true;
+    QTest::newRow("create-before-submit") << true << false;
+}
+
+void WorkbenchViewModelTest::subscriptionEditRejectsChangedSession()
+{
+    QFETCH(bool, create);
+    QFETCH(bool, switchBeforeOpening);
+    WorkbenchFixture fixture;
+    for (const QString &id : {QStringLiteral("session-a"), QStringLiteral("session-b")}) {
+        SessionState session;
+        session.id = id;
+        session.name = id;
+        session.subscriptions = {
+            SubscriptionEntry {.topic = QStringLiteral("devices/temp"), .alias = id},
+        };
+        fixture.sessionService.sessions().append(session);
+    }
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.subscriptionsModel.setSubscriptions(
+        QStringLiteral("session-a"), fixture.sessionService.currentSession()->subscriptions);
+    if (switchBeforeOpening) {
+        fixture.sessionService.setCurrentSessionIndex(1);
+    }
+    const bool opened = create
+        ? fixture.viewModel.openSubscriptionEditorForCreate(QStringLiteral("session-a"), QStringLiteral("devices/new"))
+        : fixture.viewModel.openSubscriptionEditorForEdit(QStringLiteral("session-a"), QStringLiteral("devices/temp"));
+    QCOMPARE(opened, !switchBeforeOpening);
+    if (opened) {
+        fixture.viewModel.subscriptionEditor()->setAlias(QStringLiteral("Updated alias"));
+    }
+    fixture.sessionService.setCurrentSessionIndex(1);
+
+    QVERIFY(!fixture.viewModel.submitSubscriptionEditor());
+    QCOMPARE(fixture.sessionService.sessionById(QStringLiteral("session-a"))->subscriptions.first().alias,
+             QStringLiteral("session-a"));
+    QCOMPARE(fixture.sessionService.sessionById(QStringLiteral("session-b"))->subscriptions.first().alias,
+             QStringLiteral("session-b"));
+    QCOMPARE(fixture.sessionService.sessionById(QStringLiteral("session-b"))->subscriptions.size(), 1);
+}
+
 void WorkbenchViewModelTest::exposesSessionEditor()
 {
     WorkbenchFixture fixture;
@@ -471,7 +598,7 @@ void WorkbenchViewModelTest::exposesSessionEditor()
 
     QVERIFY(viewModel.sessionEditor());
     viewModel.openSessionEditorForCreate();
-    QCOMPARE(viewModel.sessionEditor()->targetIndex(), -1);
+    QVERIFY(viewModel.sessionEditor()->targetSessionId().isEmpty());
     QCOMPARE(viewModel.sessionEditor()->title(), QStringLiteral("New Connection"));
     viewModel.sessionEditor()->setName(QString());
 
@@ -501,17 +628,20 @@ void WorkbenchViewModelTest::exposesTopicTree()
 void WorkbenchViewModelTest::preparesSubscriptionEditorForCreate()
 {
     WorkbenchFixture fixture;
+    QVERIFY(fixture.sessionService.loadSessions());
+    fixture.sessionService.setCurrentSessionIndex(0);
+    const QString sessionId = fixture.sessionService.currentSession()->id;
     WorkbenchViewModel &viewModel = fixture.viewModel;
     viewModel.subscriptionEditor()->setTopic(QStringLiteral("devices/+/temp"));
     viewModel.subscriptionEditor()->setAlias(QStringLiteral("Temperature"));
 
-    viewModel.openSubscriptionEditorForCreate();
+    QVERIFY(viewModel.openSubscriptionEditorForCreate(sessionId));
 
     QVERIFY(!viewModel.subscriptionEditor()->editMode());
     QVERIFY(viewModel.subscriptionEditor()->topic().isEmpty());
     QVERIFY(viewModel.subscriptionEditor()->alias().isEmpty());
 
-    viewModel.openSubscriptionEditorForCreate(QStringLiteral("sensors/room/#"));
+    QVERIFY(viewModel.openSubscriptionEditorForCreate(sessionId, QStringLiteral("sensors/room/#")));
     QCOMPARE(viewModel.subscriptionEditor()->topic(), QStringLiteral("sensors/room/#"));
     QVERIFY(viewModel.subscriptionEditor()->canSubmit());
 }
@@ -526,7 +656,7 @@ void WorkbenchViewModelTest::addsBatchSubscriptions()
     fixture.sessionService.sessions().append(session);
     fixture.sessionService.setCurrentSessionIndex(0);
 
-    viewModel.openSubscriptionEditorForCreate();
+    QVERIFY(viewModel.openSubscriptionEditorForCreate(session.id));
     viewModel.subscriptionEditor()->setTopic(QStringLiteral(
         "devices/one, devices/two\ndevices/one"));
     viewModel.subscriptionEditor()->setQos(1);
@@ -542,12 +672,12 @@ void WorkbenchViewModelTest::addsBatchSubscriptions()
     QCOMPARE(currentSession->subscriptions.at(1).format, 2);
 }
 
-void WorkbenchViewModelTest::rejectsInvalidSubscriptionEditorIndex()
+void WorkbenchViewModelTest::rejectsMissingSubscriptionEditorTopic()
 {
     WorkbenchFixture fixture;
     WorkbenchViewModel &viewModel = fixture.viewModel;
 
-    QVERIFY(!viewModel.openSubscriptionEditorForEdit(0));
+    QVERIFY(!viewModel.openSubscriptionEditorForEdit(QStringLiteral("session-1"), QStringLiteral("devices/missing")));
     QVERIFY(!viewModel.subscriptionEditor()->editMode());
 }
 
@@ -580,7 +710,7 @@ void WorkbenchViewModelTest::opensFilteredSubscriptionEditorWithTypedEntry()
     fixture.filteredSubscriptionsModel.setFilterText(QStringLiteral("visible"));
 
     QCOMPARE(fixture.filteredSubscriptionsModel.rowCount(), 1);
-    QVERIFY(viewModel.openSubscriptionEditorForEdit(0));
+    QVERIFY(viewModel.openSubscriptionEditorForEdit(session.id, visible.topic));
     QCOMPARE(viewModel.subscriptionEditor()->editTopic(), visible.topic);
     QCOMPARE(viewModel.subscriptionEditor()->alias(), visible.alias);
     QCOMPARE(viewModel.subscriptionEditor()->qos(), visible.requestedQos);
@@ -595,13 +725,47 @@ void WorkbenchViewModelTest::opensFilteredSubscriptionEditorWithTypedEntry()
         4);
 }
 
-void WorkbenchViewModelTest::ignoresInvalidSessionIndexes()
+void WorkbenchViewModelTest::editsOriginalSubscriptionAfterFilterChanges()
+{
+    WorkbenchFixture fixture;
+    SessionState session;
+    session.id = QStringLiteral("session-1");
+    session.name = QStringLiteral("Session 1");
+    session.subscriptions = {
+        SubscriptionEntry {.topic = QStringLiteral("devices/one"), .alias = QStringLiteral("One")},
+        SubscriptionEntry {.topic = QStringLiteral("devices/two"), .alias = QStringLiteral("Two")},
+    };
+    fixture.sessionService.sessions().append(session);
+    fixture.sessionService.setCurrentSessionIndex(0);
+    fixture.subscriptionsModel.setSubscriptions(session.id, session.subscriptions);
+    fixture.filteredSubscriptionsModel.setFilterText(QStringLiteral("devices/two"));
+
+    // A menu or asynchronous dialog load retains the selection while the list changes.
+    const QString selectedTopic = fixture.filteredSubscriptionsModel.rowAt(0)
+                                      .value(QStringLiteral("topic")).toString();
+    fixture.filteredSubscriptionsModel.setFilterText(QStringLiteral("devices/one"));
+    QVERIFY(fixture.viewModel.openSubscriptionEditorForEdit(session.id, selectedTopic));
+    fixture.viewModel.subscriptionEditor()->setAlias(QStringLiteral("Updated two"));
+    QVERIFY(fixture.viewModel.submitSubscriptionEditor());
+
+    const auto *current = fixture.sessionService.currentSession();
+    QCOMPARE(current->subscriptions.at(0).alias, QStringLiteral("One"));
+    QCOMPARE(current->subscriptions.at(1).alias, QStringLiteral("Updated two"));
+
+    fixture.subscriptionService.removeCurrentSubscription(selectedTopic);
+    QVERIFY(!fixture.viewModel.openSubscriptionEditorForEdit(session.id, selectedTopic));
+    QCOMPARE(current->subscriptions.size(), 1);
+    QCOMPARE(current->subscriptions.first().alias, QStringLiteral("One"));
+}
+
+void WorkbenchViewModelTest::ignoresMissingSessionIds()
 {
     WorkbenchFixture fixture;
     WorkbenchViewModel &viewModel = fixture.viewModel;
 
-    viewModel.requestSessionDuplicate(0);
-    viewModel.requestSessionDelete(0);
+    viewModel.requestSessionDuplicate(QStringLiteral("missing-session"));
+    viewModel.requestSessionDelete(QStringLiteral("missing-session"));
+    QVERIFY(!viewModel.openSessionEditorForEdit(QStringLiteral("missing-session")));
 
     QVERIFY(fixture.sessionService.sessions().isEmpty());
 }
