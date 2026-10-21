@@ -124,6 +124,23 @@ Qt 需要包含 Concurrent、Core、Gui、Network、Qml、Quick、Quick Controls
 
 ### 配置与编译
 
+macOS 本地开发推荐使用统一入口：
+
+```bash
+./scripts/dev.sh             # 配置、编译、QML lint、全量测试
+./scripts/dev.sh build       # 只编译应用
+./scripts/dev.sh run         # 编译并启动应用
+./scripts/dev.sh test        # 编译并运行全量测试
+./scripts/dev.sh lint        # QML lint
+./scripts/dev.sh check release  # 验证 Release 构建
+```
+
+默认使用 `$HOME/Qt/6.11.1/macos`，其他安装位置通过 `QT_PREFIX` 指定。
+工具从 `PATH` 查找，默认 4 个编译任务，可用 `CMAKE_BUILD_PARALLEL_LEVEL` 调整。
+所有命令复用 `build/qt6.11-debug`（Release 为 `build/qt6.11-release`），不需要额外的本地 preset 或 IDE 任务配置。首次运行需要网络下载依赖。
+
+其他平台或手动配置：
+
 ```bash
 cmake -S . -B build/dev -G Ninja \
   -DCMAKE_BUILD_TYPE=Debug \

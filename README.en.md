@@ -124,6 +124,23 @@ Qt must include Concurrent, Core, Gui, Network, Qml, Quick, Quick Controls 2, Sq
 
 ### Configure and Build
 
+For local macOS development, use the shared entry point:
+
+```bash
+./scripts/dev.sh             # Configure, build, QML lint, and all tests
+./scripts/dev.sh build       # Build the app only
+./scripts/dev.sh run         # Build and launch the app
+./scripts/dev.sh test        # Build and run all tests
+./scripts/dev.sh lint        # QML lint
+./scripts/dev.sh check release  # Validate a Release build
+```
+
+Qt defaults to `$HOME/Qt/6.11.1/macos`; set `QT_PREFIX` for another installation.
+Tools are resolved from `PATH`. Compilation defaults to 4 jobs; override with `CMAKE_BUILD_PARALLEL_LEVEL`.
+Commands reuse `build/qt6.11-debug` (`build/qt6.11-release` for Release), with no extra local presets or IDE task configuration required. The first run needs network access to download dependencies.
+
+For other platforms or manual configuration:
+
 ```bash
 cmake -S . -B build/dev -G Ninja \
   -DCMAKE_BUILD_TYPE=Debug \

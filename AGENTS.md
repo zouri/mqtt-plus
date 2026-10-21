@@ -6,13 +6,17 @@ If `AGENTS.local.md` exists in the repository root, read it before starting work
 `src/` contains the C++20 application. Keep domain types in `src/domain/`, orchestration in `src/usecases/`, infrastructure in `src/services/`, Qt models in `src/models/`, QML-facing state in `src/viewmodels/`, and startup/composition in `src/app/`. The Qt Quick UI lives in `qml/`: shared controls belong in `qml/components/`, while page-specific views belong in `qml/features/`. Tests are in `tests/`; translations, icons, and bundled resources are in `i18n/`, `assets/`, and `resources/`. Record significant design choices in `docs/adr/`. Treat `build/` and `dist/` as generated output.
 
 ## Build, Test, and Development Commands
-Use Qt 6.11, CMake, and Ninja with the checked-in macOS preset:
+Use Qt 6.11, CMake, and Ninja with the checked-in macOS preset.
+
+For local macOS development, `./scripts/dev.sh` configures, builds, lints, and runs all tests. Use `./scripts/dev.sh run` to build and launch the app. The helper defaults to `$HOME/Qt/6.11.1/macos`; override with `QT_PREFIX`.
+
+Equivalent manual commands:
 
 ```bash
-cmake --preset qt6.11-debug
+cmake --preset qt6.11-debug -DCMAKE_PREFIX_PATH="$QT_PREFIX"
 cmake --build --preset qt6.11-debug
 cmake --build --preset qt6.11-debug --target all_qmllint
-ctest --test-dir build/qt6.11-debug --output-on-failure
+ctest --preset qt6.11-debug
 ```
 
 The commands configure, build, lint application QML, and run all registered Qt Test executables. After building, launch the macOS app with `./build/qt6.11-debug/mqtt-plus.app/Contents/MacOS/mqtt-plus`. Platform release scripts live in `scripts/package-{macos,linux}.*` and `scripts/package-windows.ps1`.

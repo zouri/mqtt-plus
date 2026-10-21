@@ -2,7 +2,7 @@
   "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 24,
+    "minor": 29,
     "patch": 0
   },
   "configurePresets": [
@@ -38,6 +38,20 @@
     {
       "name": "qt6.11-release",
       "configurePreset": "qt6.11-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "qt6.11-debug",
+      "configurePreset": "qt6.11-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "qt6.11-release",
+      "configurePreset": "qt6.11-release",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
     }
   ]
 }
