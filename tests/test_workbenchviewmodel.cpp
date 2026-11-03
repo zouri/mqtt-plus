@@ -28,6 +28,8 @@
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <QPointingDevice>
+#include <QWheelEvent>
 #include <QtTest/QtTest>
 
 #include <memory>
@@ -144,6 +146,11 @@ class WorkbenchViewModelTest : public QObject
     Q_OBJECT
 
 private slots:
+    void togglesSubscriptionOnlyOnDoubleClick_data();
+    void togglesSubscriptionOnlyOnDoubleClick();
+    void coalescesPublishMotionAndHonorsDisabledAnimations();
+    void iconButtonKeepsStableScale();
+    void inspectorReversesCloseWithoutClearingSelection();
     void exposesDefaultPublishDraft();
     void exposesMessagePressureState();
     void suppressesUnchangedMessagePressureNotifications();
@@ -196,6 +203,217 @@ private slots:
     void ownsMessageSearchState();
     void keepsSubscriptionListFilterOutOfUnfilteredModel();
 };
+
+void WorkbenchViewModelTest::togglesSubscriptionOnlyOnDoubleClick_data()
+{
+    QTest::addColumn<bool>("paused");
+    QTest::addColumn<bool>("multipleRows");
+    QTest::newRow("unsubscribe") << false << false;
+    QTest::newRow("subscribe") << true << false;
+    QTest::newRow("unsubscribe-reorderable") << false << true;
+    QTest::newRow("subscribe-reorderable") << true << true;
+}
+
+void WorkbenchViewModelTest::togglesSubscriptionOnlyOnDoubleClick()
+{
+    QFETCH(bool, paused);
+    QFETCH(bool, multipleRows);
+    WorkbenchFixture fixture;
+    QVERIFY(fixture.sessionService.addSessionWithConfig(SessionEditorViewModel::defaultConfig(1)));
+    fixture.sessionService.currentSession()->subscriptions = {
+        SubscriptionEntry {.topic = QStringLiteral("demo/temperature"), .paused = paused}};
+    if (multipleRows) {
+        fixture.sessionService.currentSession()->subscriptions.append(
+            SubscriptionEntry {.topic = QStringLiteral("demo/humidity")});
+    }
+    const auto refresh = [&fixture]() {
+        const auto *session = fixture.sessionService.currentSession();
+        fixture.subscriptionsModel.setSubscriptions(session->id, session->subscriptions);
+    };
+    connect(&fixture.subscriptionService, &SubscriptionService::subscriptionsChanged, this, refresh);
+    refresh();
+    QQmlEngine engine;
+    QQmlComponent uiComponent(&engine);
+    uiComponent.loadFromModule("MqttPlusWorkbenchTest", "AppUi");
+    std::unique_ptr<QObject> ui(uiComponent.createWithInitialProperties({
+        {QStringLiteral("isDarkTheme"), false}, {QStringLiteral("themeColor"), QStringLiteral("mint")},
+        {QStringLiteral("animationsEnabled"), false}}));
+    QVERIFY2(ui, qPrintable(uiComponent.errorString()));
+    QQmlComponent component(&engine);
+    component.loadFromModule("MqttPlusWorkbenchTest", "SubscriptionsPanel");
+    std::unique_ptr<QObject> page(component.createWithInitialProperties({
+        {QStringLiteral("ui"), QVariant::fromValue(ui.get())},
+        {QStringLiteral("viewModel"), QVariant::fromValue(&fixture.viewModel)},
+        {QStringLiteral("subscriptionService"), QVariant::fromValue(&fixture.subscriptionService)},
+        {QStringLiteral("active"), true}}));
+    QVERIFY2(page, qPrintable(component.errorString()));
+    auto *item = qobject_cast<QQuickItem *>(page.get());
+    QVERIFY(item);
+    QQuickWindow window;
+    window.resize(360, 400);
+    item->setParentItem(window.contentItem());
+    item->setSize(QSizeF(360, 400));
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    auto *reorder = page->findChild<QQuickItem *>("subscriptionReorder");
+    QVERIFY(reorder);
+    const QPoint row = reorder->mapToScene(QPointF(100, 23)).toPoint();
+    QTest::qWait(50);
+    QSignalSpy changes(&fixture.subscriptionService, &SubscriptionService::subscriptionsChanged);
+    QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, row);
+    QCOMPARE(fixture.sessionService.currentSession()->subscriptions.first().paused, paused);
+    QCOMPARE(changes.count(), 0);
+    QTest::mouseDClick(&window, Qt::LeftButton, Qt::NoModifier, row);
+    QTRY_COMPARE(fixture.sessionService.currentSession()->subscriptions.first().paused, !paused);
+    QCOMPARE(changes.count(), 1);
+    QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, row);
+    QCOMPARE(fixture.sessionService.currentSession()->subscriptions.first().paused, !paused);
+    QCOMPARE(changes.count(), 1);
+    QTest::keyClick(&window, Qt::Key_Space);
+    QTRY_COMPARE(fixture.sessionService.currentSession()->subscriptions.first().paused, paused);
+    QCOMPARE(changes.count(), 2);
+    item->setParentItem(nullptr);
+}
+
+void WorkbenchViewModelTest::coalescesPublishMotionAndHonorsDisabledAnimations()
+{
+    WorkbenchFixture fixture;
+    QQmlEngine engine;
+    QQmlComponent uiComponent(&engine);
+    uiComponent.loadFromModule("MqttPlusWorkbenchTest", "AppUi");
+    std::unique_ptr<QObject> ui(uiComponent.createWithInitialProperties({
+        {QStringLiteral("isDarkTheme"), false}, {QStringLiteral("themeColor"), QStringLiteral("mint")},
+        {QStringLiteral("animationsEnabled"), true}}));
+    QVERIFY2(ui, qPrintable(uiComponent.errorString()));
+    QQmlComponent component(&engine);
+    component.loadFromModule("MqttPlusWorkbenchTest", "PublishComposer");
+    std::unique_ptr<QObject> composer(component.createWithInitialProperties({
+        {QStringLiteral("ui"), QVariant::fromValue(ui.get())},
+        {QStringLiteral("publisher"), QVariant::fromValue(fixture.viewModel.publisher())},
+        {QStringLiteral("publishStatus"), QVariantMap {}},
+        {QStringLiteral("status"), QVariantMap {{QStringLiteral("state"), QStringLiteral("disconnected")}}}}));
+    QVERIFY2(composer, qPrintable(component.errorString()));
+    int revision = 0;
+    const auto update = [&](const QString &request, const QString &state, int qos) {
+        composer->setProperty("publishStatus", QVariantMap {
+            {QStringLiteral("sessionId"), QStringLiteral("synthetic-session")},
+            {QStringLiteral("requestId"), request}, {QStringLiteral("state"), state},
+            {QStringLiteral("qos"), qos}, {QStringLiteral("updatedAt"), ++revision}});
+    };
+    update(QStringLiteral("first"), QStringLiteral("queued"), 2);
+    update(QStringLiteral("first"), QStringLiteral("sent"), 2);
+    QVERIFY(!composer->property("publishPulseActive").toBool());
+    update(QStringLiteral("first"), QStringLiteral("acknowledged"), 2);
+    QVERIFY(!composer->property("publishPulseActive").toBool());
+    update(QStringLiteral("first"), QStringLiteral("completed"), 2);
+    QVERIFY(composer->property("publishPulseActive").toBool());
+    QTRY_VERIFY(!composer->property("publishPulseActive").toBool());
+    update(QStringLiteral("first"), QStringLiteral("completed"), 2);
+    QVERIFY(!composer->property("publishPulseActive").toBool());
+    update(QStringLiteral("second"), QStringLiteral("queued"), 0);
+    update(QStringLiteral("second"), QStringLiteral("sent"), 0);
+    QVERIFY(!composer->property("publishPulseActive").toBool());
+    ui->setProperty("animationsEnabled", false);
+    update(QStringLiteral("third"), QStringLiteral("queued"), 1);
+    update(QStringLiteral("third"), QStringLiteral("failed"), 1);
+    QVERIFY(!composer->property("publishPulseActive").toBool());
+    QVERIFY(composer->property("publishFeedback").toString().contains(QStringLiteral("Failed")));
+    composer->setProperty("expanded", false);
+    QCOMPARE(composer->property("expansionProgress").toReal(), 0.0);
+    composer->setProperty("expanded", true);
+    QCOMPARE(composer->property("expansionProgress").toReal(), 1.0);
+}
+
+void WorkbenchViewModelTest::iconButtonKeepsStableScale()
+{
+    QQmlEngine engine;
+    QQmlComponent uiComponent(&engine);
+    uiComponent.loadFromModule("MqttPlusWorkbenchTest", "AppUi");
+    std::unique_ptr<QObject> ui(uiComponent.createWithInitialProperties({
+        {QStringLiteral("isDarkTheme"), false}, {QStringLiteral("themeColor"), QStringLiteral("mint")},
+        {QStringLiteral("animationsEnabled"), true}}));
+    QVERIFY(ui);
+    QQmlComponent component(&engine);
+    component.loadFromModule("MqttPlusWorkbenchTest", "AppIconButton");
+    std::unique_ptr<QObject> button(component.createWithInitialProperties({
+        {QStringLiteral("ui"), QVariant::fromValue(ui.get())}}));
+    QVERIFY2(button, qPrintable(component.errorString()));
+    button->setProperty("down", true);
+    QTest::qWait(150);
+    QCOMPARE(button->property("scale").toReal(), 1.0);
+    button->setProperty("down", false);
+    QCOMPARE(button->property("scale").toReal(), 1.0);
+}
+
+void WorkbenchViewModelTest::inspectorReversesCloseWithoutClearingSelection()
+{
+    WorkbenchFixture fixture;
+    QQmlEngine engine;
+    QQmlComponent uiComponent(&engine);
+    uiComponent.loadFromModule("MqttPlusWorkbenchTest", "AppUi");
+    std::unique_ptr<QObject> ui(uiComponent.createWithInitialProperties({
+        {QStringLiteral("isDarkTheme"), false}, {QStringLiteral("themeColor"), QStringLiteral("mint")},
+        {QStringLiteral("animationsEnabled"), true}}));
+    QVERIFY(ui);
+    QQuickWindow window;
+    window.resize(900, 650);
+    QQmlComponent component(&engine);
+    component.loadFromModule("MqttPlusWorkbenchTest", "SessionMessagePanel");
+    std::unique_ptr<QObject> panel(component.createWithInitialProperties({
+        {QStringLiteral("ui"), QVariant::fromValue(ui.get())},
+        {QStringLiteral("viewModel"), QVariant::fromValue(&fixture.viewModel)},
+        {QStringLiteral("publisher"), QVariant::fromValue(fixture.viewModel.publisher())},
+        {QStringLiteral("eventHistory"), QVariant::fromValue(&fixture.eventHistoryService)},
+        {QStringLiteral("sessionService"), QVariant::fromValue(&fixture.sessionService)},
+        {QStringLiteral("active"), true},
+        {QStringLiteral("session"), QVariantMap {{QStringLiteral("outputPaused"), false}}},
+        {QStringLiteral("status"), QVariantMap {}}, {QStringLiteral("publishStatus"), QVariantMap {}},
+        {QStringLiteral("fontFamily"), QStringLiteral("Arial")},
+        {QStringLiteral("messagePayloadDisplayMode"), 0}, {QStringLiteral("autoFollowFps"), 30}}));
+    QVERIFY2(panel, qPrintable(component.errorString()));
+    auto *item = qobject_cast<QQuickItem *>(panel.get());
+    QVERIFY(item);
+    item->setParentItem(window.contentItem());
+    item->setSize(QSizeF(900, 650));
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    QObject *inspector = nullptr;
+    for (auto *child : panel->findChildren<QObject *>()) {
+        if (child->property("externallyAnimated").toBool()) {
+            inspector = child;
+            break;
+        }
+    }
+    QVERIFY(inspector);
+    panel->setProperty("selectedMessageHistoryId", QStringLiteral("synthetic-first"));
+    panel->setProperty("inspectorOpened", true);
+    QTRY_COMPARE(inspector->property("revealProgress").toReal(), 1.0);
+    const QString capture = qEnvironmentVariable("MQTT_PLUS_TEST_CAPTURE_DIR");
+    if (!capture.isEmpty()) {
+        QTest::qWait(50);
+        QVERIFY(window.grabWindow().save(capture + QStringLiteral("/motion-inspector-open.png")));
+    }
+    QVERIFY(QMetaObject::invokeMethod(panel.get(), "closeInspector"));
+    QCOMPARE(panel->property("selectedMessageHistoryId").toString(), QStringLiteral("synthetic-first"));
+    QTest::qWait(30);
+    panel->setProperty("selectedMessageHistoryId", QStringLiteral("synthetic-second"));
+    panel->setProperty("inspectorOpened", true);
+    QTRY_COMPARE(inspector->property("revealProgress").toReal(), 1.0);
+    QCOMPARE(panel->property("selectedMessageHistoryId").toString(), QStringLiteral("synthetic-second"));
+    QVERIFY(QMetaObject::invokeMethod(panel.get(), "closeInspector"));
+    QTRY_COMPARE(inspector->property("revealProgress").toReal(), 0.0);
+    QTRY_VERIFY(panel->property("selectedMessageHistoryId").toString().isEmpty());
+    if (!capture.isEmpty()) {
+        QTest::qWait(50);
+        QVERIFY(window.grabWindow().save(capture + QStringLiteral("/motion-inspector-closed.png")));
+    }
+    ui->setProperty("animationsEnabled", false);
+    panel->setProperty("inspectorOpened", true);
+    QTRY_COMPARE(inspector->property("revealProgress").toReal(), 1.0);
+    QVERIFY(QMetaObject::invokeMethod(panel.get(), "closeInspector"));
+    QTRY_COMPARE(inspector->property("revealProgress").toReal(), 0.0);
+    item->setParentItem(nullptr);
+}
 
 void WorkbenchViewModelTest::exposesDefaultPublishDraft()
 {
@@ -1055,7 +1273,7 @@ void WorkbenchViewModelTest::dragsListsWithoutChangingSelection()
     QVERIFY(reorder);
     QTest::qWait(100);
     const int rowHeight = subscriptions ? 46 : 54;
-    const QPoint start = reorder->mapToScene(QPointF(12, rowHeight / 2)).toPoint();
+    const QPoint start = reorder->mapToScene(QPointF(100, rowHeight / 2)).toPoint();
     const QPoint end = start + QPoint(0, 2 * (rowHeight + 4) + 10);
     const QString capture = qEnvironmentVariable("MQTT_PLUS_TEST_CAPTURE_DIR");
     const auto captureWindow = [&window, &capture, subscriptions, width](const QString &state) {
@@ -1067,13 +1285,47 @@ void WorkbenchViewModelTest::dragsListsWithoutChangingSelection()
     };
     QVERIFY(captureWindow(QStringLiteral("before")));
 
+    QObject *menu = nullptr;
+    for (auto *child : page->findChildren<QObject *>()) {
+        if (child->property("accessibleName").toString()
+                == (subscriptions ? QStringLiteral("More actions") : QStringLiteral("Connection actions"))
+            && child->metaObject()->indexOfProperty("opened") >= 0) {
+            menu = child;
+            break;
+        }
+    }
+    QVERIFY(menu);
+    const QPoint menuPoint = reorder->mapToScene(QPointF(reorder->width() - 20, rowHeight / 2)).toPoint();
+    QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, menuPoint);
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QVERIFY(!reorder->property("dragging").toBool());
+    QTest::keyClick(&window, Qt::Key_Escape);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+    QTest::mouseClick(&window, Qt::RightButton, Qt::NoModifier, start);
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QVERIFY(!reorder->property("dragging").toBool());
+    QTest::keyClick(&window, Qt::Key_Escape);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+
     QTest::mouseClick(&window, Qt::LeftButton, Qt::NoModifier, start);
     QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, start);
     QTest::mouseMove(&window, end, 30);
     QTRY_VERIFY(reorder->property("dragging").toBool());
+    QTRY_VERIFY(reorder->findChild<QQuickItem *>("reorderDragPreview"));
+    auto *preview = reorder->findChild<QQuickItem *>("reorderDragPreview");
+    QVERIFY(preview->isVisible());
+    QVERIFY(preview->width() > 0);
+    QCOMPARE(reorder->property("previewTitle").toString(),
+             subscriptions ? QStringLiteral("Temperature") : QStringLiteral("Demo connection 1"));
+    const qreal previewY = preview->mapToItem(reorder, QPointF()).y();
+    QTest::mouseMove(&window, end - QPoint(0, 20), 30);
+    QVERIFY(preview->mapToItem(reorder, QPointF()).y() < previewY);
+    QTest::mouseMove(&window, end, 30);
+    QTest::qWait(50);
     QVERIFY(captureWindow(QStringLiteral("dragging")));
     QTest::keyClick(&window, Qt::Key_Escape);
     QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, end);
+    QTRY_VERIFY(!reorder->findChild<QQuickItem *>("reorderDragPreview"));
     QCOMPARE(subscriptions ? fixture.sessionService.currentSession()->subscriptions.first().topic
                            : fixture.sessionService.sessions().first().id, firstKey);
 
@@ -1116,13 +1368,63 @@ void WorkbenchViewModelTest::dragsListsWithoutChangingSelection()
     auto *list = reorder->property("view").value<QObject *>();
     QVERIFY(list);
     const qreal previousY = list->property("contentY").toReal();
-    const QPoint bottom = reorder->mapToScene(QPointF(12, reorder->height() - 8)).toPoint();
+    list->setProperty("contentY", 400);
+    QTest::qWait(50);
+    const qreal beforeReorder = list->property("contentY").toReal();
+    const QPoint scrolledStart = reorder->mapToScene(QPointF(100, 70)).toPoint();
+    const QPoint scrolledEnd = scrolledStart + QPoint(0, 90);
+    QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, scrolledStart);
+    QTest::mouseMove(&window, scrolledEnd, 30);
+    QTRY_VERIFY(reorder->property("dragging").toBool());
+    QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier, scrolledEnd);
+    QTest::qWait(100);
+    QVERIFY(qAbs(list->property("contentY").toReal() - beforeReorder) < 1);
+    list->setProperty("contentY", previousY);
+    const QPoint bottom = reorder->mapToScene(QPointF(100, reorder->height() - 8)).toPoint();
     QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, start);
     QTest::mouseMove(&window, bottom, 30);
     QTRY_VERIFY(reorder->property("dragging").toBool());
     QTRY_VERIFY(list->property("contentY").toReal() > previousY);
     QTest::mouseRelease(&window, Qt::LeftButton, Qt::NoModifier,
                        reorder->mapToScene(QPointF(reorder->width() + 4, reorder->height() - 8)).toPoint());
+    QVERIFY(!reorder->property("dragging").toBool());
+    QTest::mouseMove(&window, start);
+    const qreal beforeWheel = list->property("contentY").toReal();
+    QWheelEvent wheel(QPointF(start), QPointF(window.mapToGlobal(start)), QPoint(), QPoint(0, -120),
+                      Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+    QCoreApplication::sendEvent(&window, &wheel);
+    QTRY_VERIFY(list->property("contentY").toReal() > beforeWheel);
+    QVERIFY(!reorder->property("dragging").toBool());
+    QVERIFY(QMetaObject::invokeMethod(list, "cancelFlick"));
+    QTRY_VERIFY(!list->property("moving").toBool());
+    const qreal beforeTrackpad = list->property("contentY").toReal();
+    static const QPointingDevice touchpad(QStringLiteral("Test touchpad"), 42,
+        QInputDevice::DeviceType::TouchPad, QPointingDevice::PointerType::Finger,
+        QInputDevice::Capability::Position | QInputDevice::Capability::Scroll
+            | QInputDevice::Capability::PixelScroll, 2, 0);
+    static ulong touchpadTimestamp = 100000;
+    touchpadTimestamp += 1000;
+    QWheelEvent trackpadBegin(QPointF(start), QPointF(window.mapToGlobal(start)), QPoint(), QPoint(),
+                              Qt::NoButton, Qt::NoModifier, Qt::ScrollBegin, false,
+                              Qt::MouseEventSynthesizedBySystem, &touchpad);
+    trackpadBegin.setTimestamp(touchpadTimestamp);
+    QCoreApplication::sendEvent(&window, &trackpadBegin);
+    for (int step = 1; step <= 3; ++step) {
+        QWheelEvent trackpad(QPointF(start), QPointF(window.mapToGlobal(start)), QPoint(0, -48), QPoint(0, -120),
+                             Qt::NoButton, Qt::NoModifier, Qt::ScrollUpdate, false,
+                             Qt::MouseEventSynthesizedBySystem, &touchpad);
+        QTest::qWait(16);
+        touchpadTimestamp += 16;
+        trackpad.setTimestamp(touchpadTimestamp);
+        QCoreApplication::sendEvent(&window, &trackpad);
+    }
+    QWheelEvent trackpadEnd(QPointF(start), QPointF(window.mapToGlobal(start)), QPoint(), QPoint(),
+                            Qt::NoButton, Qt::NoModifier, Qt::ScrollEnd, false,
+                            Qt::MouseEventSynthesizedBySystem, &touchpad);
+    touchpadTimestamp += 16;
+    trackpadEnd.setTimestamp(touchpadTimestamp);
+    QCoreApplication::sendEvent(&window, &trackpadEnd);
+    QTRY_VERIFY_WITH_TIMEOUT(list->property("contentY").toReal() >= beforeTrackpad + 24, 1000);
     QVERIFY(!reorder->property("dragging").toBool());
     item->setParentItem(nullptr);
 }

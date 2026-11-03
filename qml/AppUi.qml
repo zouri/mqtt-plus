@@ -21,6 +21,7 @@ QtObject {
     readonly property int motionPopoverEnterDuration: root.animationsEnabled ? 120 : 0
     readonly property int motionPopoverExitDuration: root.animationsEnabled ? 80 : 0
     readonly property int motionPanelDuration: root.animationsEnabled ? 180 : 0
+    readonly property int motionPanelExitDuration: root.animationsEnabled ? 120 : 0
     readonly property int motionModalEnterDuration: root.animationsEnabled ? 180 : 0
     readonly property int motionModalExitDuration: root.animationsEnabled ? 140 : 0
     readonly property int motionEnterEasing: Easing.OutCubic

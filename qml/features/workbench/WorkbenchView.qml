@@ -104,7 +104,7 @@ Item {
 
         target: root
         property: "connectionPaneWidth"
-        duration: root.ui.motionPanelDuration
+        duration: root.connectionPaneCollapsed ? root.ui.motionPanelExitDuration : root.ui.motionPanelDuration
         easing.type: root.ui.motionEnterEasing
     }
 

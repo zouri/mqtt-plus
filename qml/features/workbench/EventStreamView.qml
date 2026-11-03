@@ -1188,7 +1188,9 @@ Item {
 
                     Label {
                         visible: eventList.unreadCount > 0
-                        text: `+${eventList.unreadCount}`
+                        width: 48
+                        horizontalAlignment: Text.AlignRight
+                        text: eventList.unreadCount > 9999 ? "9999+" : `+${eventList.unreadCount}`
                         color: root.ui.themePalette.followBadgeText
                         font.pixelSize: 11
                         font.bold: true

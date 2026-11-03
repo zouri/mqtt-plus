@@ -45,7 +45,6 @@ ToolButton {
     implicitWidth: 30
     implicitHeight: 30
     padding: 0
-    scale: control.down ? 0.97 : 1.0
     text: control.symbol
     display: control.iconSource.toString().length > 0 ? AbstractButton.IconOnly : AbstractButton.TextOnly
     icon.source: control.iconSource
@@ -58,15 +57,6 @@ ToolButton {
 
     HoverHandler {
         cursorShape: control.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-    }
-
-    Behavior on scale {
-        enabled: control.enabled && control.ui.animationsEnabled
-
-        ScaleAnimator {
-            duration: control.ui.motionMicroDuration
-            easing.type: control.ui.motionEnterEasing
-        }
     }
 
     background: Item {
@@ -87,7 +77,7 @@ ToolButton {
             opacity: control.enabled && (control.down || control.hovered) ? 1 : 0
 
             Behavior on opacity {
-                enabled: control.enabled && control.ui.animationsEnabled
+                enabled: control.enabled && !control.down && control.ui.animationsEnabled
 
                 OpacityAnimator {
                     duration: control.ui.motionMicroDuration

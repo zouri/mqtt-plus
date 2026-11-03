@@ -249,12 +249,31 @@ AppPanel {
                 ui: control.ui
                 view: subscriptionList
                 keyRole: "topic"
+                titleRole: "displayName"
+                subtitleRole: "topic"
+                colorRole: "color"
+                actionAreaWidth: 30
                 scopeKey: control.viewModel.currentSession.id || ""
                 enabled: control.active
-                onMoveRequested: (scope, source, anchor, after) => control.viewModel.moveSubscription(scope, source, anchor, after)
+                onRowClicked: index => subscriptionList.currentIndex = index
+                onRowDoubleClicked: index => {
+                    const row = subscriptionList.itemAtIndex(index) as SubscriptionRow;
+                    if (row) {
+                        row.toggleSubscriptionPaused();
+                    }
+                }
+                onMoveRequested: (scope, source, anchor, after) => {
+                    const offset = subscriptionList.contentY - subscriptionList.originY;
+                    control.viewModel.moveSubscription(scope, source, anchor, after);
+                    subscriptionList.forceLayout();
+                    subscriptionList.contentY = subscriptionList.originY + Math.max(0,
+                        Math.min(offset, subscriptionList.contentHeight - subscriptionList.height));
+                }
             }
 
-            delegate: Rectangle {
+            delegate: SubscriptionRow {}
+
+            component SubscriptionRow: Rectangle {
                 id: subscriptionDelegate
                 required property int index
                 required property string topic
@@ -294,7 +313,7 @@ AppPanel {
                                                                    ? qsTr("Paused, %1").arg(subscriptionDelegate.rateText)
                                                                    : subscriptionDelegate.rateText)
                 readonly property string menuVisualKey: `${subscriptionDelegate.topic}::menu`
-                opacity: subscriptionReorder.dragging && subscriptionReorder.sourceKey === subscriptionDelegate.topic ? 0.6 : 1
+                opacity: subscriptionReorder.dragging && subscriptionReorder.sourceKey === subscriptionDelegate.topic ? 0.35 : 1
                 width: ListView.view.width
                 implicitHeight: subscriptionDelegate.hasError ? 60 : 46
                 radius: 7
@@ -354,31 +373,24 @@ AppPanel {
                 MouseArea {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    scrollGestureEnabled: false
                     onClicked: mouse => {
                         if (mouse.button === Qt.LeftButton) {
                             subscriptionList.currentIndex = subscriptionDelegate.index;
                             subscriptionDelegate.forceActiveFocus();
-                            subscriptionDelegate.toggleSubscriptionPaused();
                         } else if (mouse.button === Qt.RightButton) {
                             subscriptionDelegate.openSubscriptionContextMenuAt(mouse.x, mouse.y);
                         }
                     }
+                    onDoubleClicked: mouse => {
+                        if (mouse.button === Qt.LeftButton) {
+                            subscriptionList.currentIndex = subscriptionDelegate.index;
+                            subscriptionDelegate.forceActiveFocus();
+                            subscriptionDelegate.toggleSubscriptionPaused();
+                        }
+                    }
                 }
 
-                ToolButton {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 24
-                    height: 28
-                    icon.source: control.ui.materialIcon("grip-vertical")
-                    icon.width: 14
-                    icon.height: 14
-                    icon.color: control.ui.textMuted
-                    background: null
-                    focusPolicy: Qt.NoFocus
-                    Accessible.ignored: true
-                    visible: subscriptionList.count > 1
-                }
 
                 HoverHandler {
                     id: subscriptionRowHover
@@ -395,7 +407,7 @@ AppPanel {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 30
+                    anchors.leftMargin: 12
                     anchors.rightMargin: 6
                     anchors.topMargin: 6
                     anchors.bottomMargin: 6

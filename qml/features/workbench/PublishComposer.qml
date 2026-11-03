@@ -40,6 +40,8 @@ Item {
     readonly property string publishDisabledReason: root.status.state !== "connected" ? qsTr("Connect before publishing") : (root.publisher.topic.trim().length === 0 ? qsTr("Enter a topic before publishing") : "")
     readonly property color publishFeedbackColor: root.publishStatus.state === "failed" ? root.ui.themePalette.errorText : (root.publishStatus.state === "sent" || root.publishStatus.state === "acknowledged" || root.publishStatus.state === "completed" ? root.ui.themePalette.successText : root.ui.textMuted)
     property bool publishPulseActive: false
+    property string feedbackSessionId: ""
+    property string lastFeedbackRequestId: ""
     property int sendLibraryTabIndex: 0
     property int pendingDraftIndex: -1
     property string pendingDraftId: ""
@@ -73,7 +75,7 @@ Item {
 
         target: root
         property: "expansionProgress"
-        duration: root.ui.motionPanelDuration
+        duration: root.expanded ? root.ui.motionPanelDuration : root.ui.motionPanelExitDuration
         easing.type: root.ui.motionEnterEasing
     }
 
@@ -83,6 +85,8 @@ Item {
         function onAnimationsEnabledChanged() {
             if (!root.ui.animationsEnabled) {
                 root.updateExpansion(false);
+                publishPulseTimer.stop();
+                root.publishPulseActive = false;
             }
         }
     }
@@ -124,11 +128,37 @@ Item {
         root.publisher.quickPublishDraft(index)
     }
 
+    Component.onCompleted: {
+        root.feedbackSessionId = String(root.publishStatus.sessionId || "");
+        root.lastFeedbackRequestId = String(root.publishStatus.requestId || "");
+    }
+
     onPublishStatusChanged: {
+        const sessionId = String(root.publishStatus.sessionId || "");
+        const requestId = String(root.publishStatus.requestId || "");
+        if (sessionId !== root.feedbackSessionId) {
+            root.feedbackSessionId = sessionId;
+            root.lastFeedbackRequestId = root.publishStatus.state === "queued" ? "" : requestId;
+            publishPulseTimer.stop();
+            publishFeedbackCooldown.stop();
+            root.publishPulseActive = false;
+            return;
+        }
         const state = String(root.publishStatus.state || "");
-        if (state === "failed" || state === "sent" || state === "acknowledged" || state === "completed") {
+        const qos = Number(root.publishStatus.qos || 0);
+        const finished = state === "failed"
+                         || (qos === 0 && state === "sent")
+                         || (qos === 1 && state === "acknowledged")
+                         || (qos === 2 && state === "completed");
+        if (!finished || requestId.length === 0 || requestId === root.lastFeedbackRequestId) {
+            return;
+        }
+        root.lastFeedbackRequestId = requestId;
+        // Keep protocol progress readable without flashing on every acknowledgement.
+        if (root.visible && root.ui.animationsEnabled && !publishFeedbackCooldown.running) {
             root.publishPulseActive = true;
             publishPulseTimer.restart();
+            publishFeedbackCooldown.restart();
         }
     }
 
@@ -137,6 +167,11 @@ Item {
         interval: 300
         repeat: false
         onTriggered: root.publishPulseActive = false
+    }
+
+    Timer {
+        id: publishFeedbackCooldown
+        interval: 1000
     }
 
     onHeightChanged: {

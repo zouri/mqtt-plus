@@ -52,8 +52,6 @@ AppPanel {
 
     function closeInspector() {
         root.inspectorOpened = false;
-        root.selectedMessageHistoryId = "";
-        root.inspectorSessionId = "";
         eventStreamView.clearMessageSelection();
     }
 
@@ -212,13 +210,31 @@ AppPanel {
         padding: 0
         modal: false
         dim: false
-        closePolicy: Popup.CloseOnPressOutside
+        focus: true
+        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         background: Item {}
+        enter: Transition {
+            NumberAnimation {
+                target: messageInspector
+                property: "revealProgress"
+                to: 1
+                duration: root.ui.motionPanelDuration
+                easing.type: root.ui.motionEnterEasing
+            }
+        }
         exit: Transition {
-            PauseAnimation {
-                duration: root.ui.animationsEnabled
-                          ? root.ui.motionPanelDuration
-                          : 0
+            NumberAnimation {
+                target: messageInspector
+                property: "revealProgress"
+                to: 0
+                duration: root.ui.motionPanelExitDuration
+                easing.type: root.ui.motionExitEasing
+            }
+        }
+        onClosed: {
+            if (!root.inspectorOpened) {
+                root.selectedMessageHistoryId = "";
+                root.inspectorSessionId = "";
             }
         }
         onAboutToHide: {
@@ -234,6 +250,7 @@ AppPanel {
             viewModel: root.viewModel
             historyId: root.selectedMessageHistoryId
             opened: root.inspectorOpened
+            externallyAnimated: true
             width: messageInspectorPopup.availableWidth
             height: messageInspectorPopup.availableHeight
             onCloseRequested: root.closeInspector()

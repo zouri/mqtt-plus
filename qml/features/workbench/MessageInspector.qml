@@ -20,6 +20,7 @@ Item {
     property string displayedPayload: ""
     property bool opened: false
     property bool embedded: false
+    property bool externallyAnimated: false
     property real revealProgress: 0.0
     readonly property bool motionEnabled: control.ui.animationsEnabled
     readonly property int payloadTextMaximumHeight: 220
@@ -96,6 +97,9 @@ Item {
     function syncRevealProgress() {
         const targetProgress = control.opened ? 1.0 : 0.0;
         inspectorRevealAnimation.stop();
+        if (control.externallyAnimated) {
+            return;
+        }
         if (!control.motionEnabled
                 || Math.abs(control.revealProgress - targetProgress) < 0.001) {
             control.revealProgress = targetProgress;
@@ -141,7 +145,7 @@ Item {
 
         target: control
         property: "revealProgress"
-        duration: control.ui.motionPanelDuration
+        duration: control.opened ? control.ui.motionPanelDuration : control.ui.motionPanelExitDuration
     }
 
     Rectangle {

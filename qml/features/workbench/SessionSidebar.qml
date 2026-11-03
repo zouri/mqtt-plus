@@ -192,7 +192,10 @@ Rectangle {
                 ui: control.ui
                 view: sessionList
                 keyRole: "id"
+                titleRole: "name"
+                subtitleRole: "host"
                 enabled: !control.collapsed
+                onRowClicked: index => control.viewModel.currentSessionIndex = index
                 onMoveRequested: (scope, source, anchor, after) => control.viewModel.moveSession(source, anchor, after)
             }
 
@@ -218,7 +221,7 @@ Rectangle {
                 height: 54
                 radius: 10
                 opacity: sessionReorder.dragging && sessionReorder.sourceKey === sessionDelegate.id
-                         ? 0.6 : (sessionDelegate.connectionState === "disconnecting" ? 0.72 : 1.0)
+                         ? 0.35 : (sessionDelegate.connectionState === "disconnecting" ? 0.72 : 1.0)
                 color: sessionDelegate.selected ? control.selectedSessionBg : (sessionDelegate.highlighted ? control.ui.themePalette.rowHover : "transparent")
                 border.color: "transparent"
                 border.width: 0
@@ -257,7 +260,7 @@ Rectangle {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 32
+                    anchors.leftMargin: 12
                     anchors.rightMargin: 10
                     spacing: 10
                     z: 1
@@ -347,6 +350,7 @@ Rectangle {
                     id: rowMouse
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    scrollGestureEnabled: false
 
                     onClicked: mouse => {
                         if (mouse.button === Qt.LeftButton) {
@@ -358,20 +362,6 @@ Rectangle {
                     }
                 }
 
-                ToolButton {
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 24
-                    height: 28
-                    icon.source: control.ui.materialIcon("grip-vertical")
-                    icon.width: 14
-                    icon.height: 14
-                    icon.color: control.ui.textMuted
-                    background: null
-                    focusPolicy: Qt.NoFocus
-                    Accessible.ignored: true
-                    visible: sessionList.count > 1
-                }
             }
 
         }

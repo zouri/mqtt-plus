@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.29)
 
-project(mqtt-plus VERSION 0.5.4 LANGUAGES C CXX)
+project(mqtt-plus VERSION 0.5.5 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -739,6 +739,9 @@ if(BUILD_TESTING)
         QML_FILES qml/AppUi.qml ${workbench_test_components}
             qml/features/workbench/SessionSidebar.qml qml/features/workbench/SubscriptionsPanel.qml
             qml/features/workbench/AddSubscriptionDialog.qml
+            qml/features/workbench/PublishComposer.qml qml/features/workbench/MessageInspector.qml
+            qml/features/workbench/SessionMessagePanel.qml qml/features/workbench/EventStreamView.qml
+            qml/features/workbench/MessageCaptureDialog.qml
     )
     qt_add_resources(test_workbenchviewmodel workbench_test_icons
         PREFIX "/qt/qml/MqttPlusWorkbenchTest" BASE "${PROJECT_SOURCE_DIR}" FILES ${processor_view_icons})
