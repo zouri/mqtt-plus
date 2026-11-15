@@ -146,6 +146,7 @@ class WorkbenchViewModelTest : public QObject
     Q_OBJECT
 
 private slots:
+    void restoredPreviewUsesAvailableWidth();
     void togglesSubscriptionOnlyOnDoubleClick_data();
     void togglesSubscriptionOnlyOnDoubleClick();
     void coalescesPublishMotionAndHonorsDisabledAnimations();
@@ -203,6 +204,65 @@ private slots:
     void ownsMessageSearchState();
     void keepsSubscriptionListFilterOutOfUnfilteredModel();
 };
+
+void WorkbenchViewModelTest::restoredPreviewUsesAvailableWidth()
+{
+    WorkbenchFixture fixture;
+    QVERIFY(fixture.sessionService.addSessionWithConfig(SessionEditorViewModel::defaultConfig(1)));
+    EventRow row;
+    row.kind = QStringLiteral("message");
+    row.historyId = 1;
+    row.title = row.topic = QStringLiteral("demo/to_android");
+    row.payload = QString::fromLatin1(QByteArray(26, '\x0c').toHex(' ').toUpper());
+    row.payloadSize = 26;
+    row.payloadFormat = QStringLiteral("Hex: raw");
+    row.payloadState = QStringLiteral("raw_only");
+    fixture.messagesModel.appendRow(row);
+    QQmlEngine engine;
+    QQmlComponent uiComponent(&engine);
+    uiComponent.loadFromModule("MqttPlusWorkbenchTest", "AppUi");
+    std::unique_ptr<QObject> ui(uiComponent.createWithInitialProperties({
+        {QStringLiteral("isDarkTheme"), false}, {QStringLiteral("themeColor"), QStringLiteral("mint")},
+        {QStringLiteral("animationsEnabled"), false}}));
+    QVERIFY2(ui, qPrintable(uiComponent.errorString()));
+    QQmlComponent component(&engine);
+    component.loadFromModule("MqttPlusWorkbenchTest", "EventStreamView");
+    std::unique_ptr<QObject> page(component.createWithInitialProperties({
+        {QStringLiteral("ui"), QVariant::fromValue(ui.get())},
+        {QStringLiteral("viewModel"), QVariant::fromValue(&fixture.viewModel)},
+        {QStringLiteral("publisher"), QVariant::fromValue(fixture.viewModel.publisher())},
+        {QStringLiteral("eventHistory"), QVariant::fromValue(&fixture.eventHistoryService)},
+        {QStringLiteral("sessionService"), QVariant::fromValue(&fixture.sessionService)},
+        {QStringLiteral("streamModel"), QVariant::fromValue(&fixture.filteredMessagesModel)},
+        {QStringLiteral("session"), fixture.viewModel.currentSession()},
+        {QStringLiteral("status"), fixture.viewModel.sessionStatus()},
+        {QStringLiteral("active"), true}, {QStringLiteral("fontFamily"), QStringLiteral("Menlo")},
+        {QStringLiteral("title"), QStringLiteral("Messages")},
+        {QStringLiteral("payloadDisplayMode"), 1}, {QStringLiteral("autoFollowFps"), 30}}));
+    QVERIFY2(page, qPrintable(component.errorString()));
+    auto *item = qobject_cast<QQuickItem *>(page.get());
+    QQuickWindow window;
+    window.resize(570, 600);
+    item->setParentItem(window.contentItem());
+    item->setSize(QSizeF(570, 600));
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    QQuickItem *preview = nullptr;
+    const auto findPreview = [&](auto &&self, QQuickItem *parent) -> QQuickItem * {
+        if (parent->objectName() == QStringLiteral("messagePayloadPreview")) return parent;
+        for (auto *child : parent->childItems()) {
+            if (auto *found = self(self, child)) return found;
+        }
+        return nullptr;
+    };
+    QTRY_VERIFY((preview = findPreview(findPreview, item)));
+    QTRY_VERIFY(!preview->property("truncated").toBool());
+    QTRY_COMPARE(preview->width(), preview->parentItem()->width());
+    item->setWidth(700);
+    QTRY_COMPARE(preview->width(), preview->parentItem()->width());
+    QTRY_VERIFY(!preview->property("truncated").toBool());
+    item->setParentItem(nullptr);
+}
 
 void WorkbenchViewModelTest::togglesSubscriptionOnlyOnDoubleClick_data()
 {

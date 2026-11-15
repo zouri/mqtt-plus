@@ -858,7 +858,7 @@ Item {
                                 elide: Label.ElideRight
                             }
 
-                            ColumnLayout {
+                            Column {
                                 id: messageContent
 
                                 Layout.fillWidth: true
@@ -867,7 +867,7 @@ Item {
                                 spacing: 3
 
                                 RowLayout {
-                                    Layout.fillWidth: true
+                                    width: messageContent.width
                                     spacing: 6
 
                                     Label {
@@ -908,10 +908,9 @@ Item {
 
                                 Label {
                                     id: payloadText
+                                    objectName: "messagePayloadPreview"
 
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: 0
-                                    Layout.minimumWidth: 0
+                                    width: messageContent.width
                                     text: eventDelegate.displayedPayload
                                     color: eventDelegate.isEvent ? root.ui.textMuted : root.ui.textStrong
                                     font.family: root.fontFamily
